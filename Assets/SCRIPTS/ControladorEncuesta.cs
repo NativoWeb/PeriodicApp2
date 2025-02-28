@@ -78,6 +78,7 @@ public class ControladorEncuesta : MonoBehaviour
         MostrarPreguntaActual();
         desmarcarToggle();
         ConfigurarToggleListeners(); // DEJA ESTA LLAMADA AL INICIO DE START
+
         ActualizarTextoTiempo();
 
         eventosToggleHabilitados = true;
