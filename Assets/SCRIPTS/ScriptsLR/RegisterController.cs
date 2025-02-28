@@ -1,4 +1,5 @@
-﻿using Firebase;
+﻿//registercontroller
+using Firebase;
 using Firebase.Auth;
 using Firebase.Extensions;
 using Firebase.Firestore;
@@ -63,6 +64,7 @@ public class RegisterController : MonoBehaviour
                 if (currentUser.IsEmailVerified)
                 {
                     Debug.Log("✅ Correo verificado después de recargar Firebase. Registrando usuario...");
+
                     PlayerPrefs.SetInt("EmailVerified", 1); // Guardamos la verificación
                     PlayerPrefs.Save();
                     UpdateUserProfile(currentUser, userName);
@@ -80,22 +82,7 @@ public class RegisterController : MonoBehaviour
     }
 
 
-    //if (currentUser != null)
-    //{
-    //    if (currentUser.IsEmailVerified)
-    //    {
-    //        // Actualizar el nombre de usuario
-    //        UpdateUserProfile(currentUser, userName);
-    //    }
-    //    else
-    //    {
-    //        Debug.Log("Por favor, verifica tu correo antes de continuar.");
-    //    }
-    //}
-    //else
-    //{
-    //    Debug.LogError("No se ha encontrado un usuario autenticado.");
-    //}
+
 
 
     private void UpdateUserProfile(FirebaseUser user, string userName)
@@ -149,6 +136,15 @@ public class RegisterController : MonoBehaviour
             }
             Debug.Log("Datos de usuario guardados en Firestore.");
 
+            PlayerPrefs.SetString("userId", user.UserId);
+            PlayerPrefs.SetString("username", user.DisplayName);
+            PlayerPrefs.SetString("correo", user.Email);
+            PlayerPrefs.Save();
+
+            Debug.Log("Guardando en PlayerPrefs:");
+            Debug.Log("userId: " + user.UserId);
+            Debug.Log("username: " + user.DisplayName);
+            Debug.Log("correo: " + user.Email);
             // Cambiar a la siguiente escena después de guardar los datos
             SceneManager.LoadScene("EcnuestaScen1e");
         });
