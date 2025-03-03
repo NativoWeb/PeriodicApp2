@@ -6,7 +6,7 @@ using Firebase.Firestore;
 using TMPro;
 using UnityEngine.UI;
 
-public class CargarMisiones : MonoBehaviour
+public class FirestoreManager : MonoBehaviour
 {
     FirebaseFirestore db;
 
@@ -16,10 +16,10 @@ public class CargarMisiones : MonoBehaviour
     void Start()
     {
         db = FirebaseFirestore.DefaultInstance;
-        CargarMisioness();
+        CargarMisiones();
     }
 
-    async void CargarMisioness()
+    async void CargarMisiones()
     {
         Query misionesQuery = db.Collection("misiones");
         QuerySnapshot snapshot = await misionesQuery.GetSnapshotAsync();
@@ -39,7 +39,18 @@ public class CargarMisiones : MonoBehaviour
 
                 // Crear un nuevo botón y añadirlo al Content del ScrollView
                 GameObject newButton = Instantiate(buttonPrefab, content);
-                newButton.GetComponentInChildren<TextMeshProUGUI>().text = titulo; // Coloca el título o descripción en el botón
+
+                // Asignar el título al primer TextMeshProUGUI
+                TextMeshProUGUI[] textComponents = newButton.GetComponentsInChildren<TextMeshProUGUI>();
+
+                // Asegúrate de que el primer TextMeshProUGUI es para el título
+                textComponents[0].text = titulo; // Coloca el título en el primer TextMeshProUGUI
+
+                // Asignar la descripción al segundo TextMeshProUGUI
+                textComponents[1].text = descripcion; // Coloca la descripción en el segundo TextMeshProUGUI
+
+                // Asignar los XP al tercer TextMeshProUGUI
+                textComponents[2].text = $"XP: {xp}"; // Coloca los XP en el tercer TextMeshProUGUI
             }
             else
             {
