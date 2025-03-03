@@ -76,6 +76,7 @@ public class EmailController : MonoBehaviour
 
             // Generar código de verificación aleatorio
             string verificationCode = GenerateVerificationCode();
+            Debug.Log(verificationCode);
 
             // Guardar el código en Firestore
             SaveVerificationCode(newUser.UserId, verificationCode);

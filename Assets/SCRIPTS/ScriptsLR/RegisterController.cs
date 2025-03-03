@@ -12,11 +12,27 @@ public class RegisterController : MonoBehaviour
 {
     public TMP_InputField userNameInput;
     public Button completeProfileButton;
-
+    public Dropdown roles;
     private FirebaseAuth auth;
 
     void Start()
     {
+        /*-----------------------------------------------Lista de ocupaciones-----------------------------------------------*/
+
+        // Crear lista de opciones con "Ocupación" como la primera opción
+        List<string> opciones = new List<string>() { "Seleccionar una ocupación", "Estudiante", "Profesor" };
+        // Agregar opciones al Dropdown
+        roles.AddOptions(opciones);
+        // Asegurar que la opción por defecto sea "Ocupación"
+        roles.value = 0;
+        // Cambiar el color del texto cuando sea "Ocupación"
+        roles.onValueChanged.AddListener(delegate { CambiarColor(); });
+        // Aplicar el color gris al inicio
+        CambiarColor();
+
+        /*------------------------------------------------------------------------------------------------------------------*/
+
+
         FirebaseApp.CheckAndFixDependenciesAsync().ContinueWithOnMainThread(task => {
             FirebaseApp app = FirebaseApp.DefaultInstance;
             if (app != null)
@@ -30,6 +46,24 @@ public class RegisterController : MonoBehaviour
             }
         });
     }
+
+    /*******************************************Funcion para ocupaciones*******************************************/
+
+    void CambiarColor()
+    {
+        Text label = roles.captionText; // Obtener el texto actual del dropdown
+
+        if (roles.value == 0) // Si está en "Ocupación"
+        {
+            label.color = Color.gray; // Cambiar el color a gris
+        }
+        else
+        {
+            label.color = Color.black; // Restaurar color normal
+        }
+    }
+
+    /**************************************************************************************/
 
     public void OnCompleteProfileButtonClick()
     {
@@ -125,34 +159,39 @@ public class RegisterController : MonoBehaviour
     }
 
     private void SaveUserData(FirebaseUser user)
-    {
-        FirebaseFirestore firestore = FirebaseFirestore.DefaultInstance;
-        DocumentReference docRef = firestore.Collection("users").Document(user.UserId);
+{
+    FirebaseFirestore firestore = FirebaseFirestore.DefaultInstance;
+    DocumentReference docRef = firestore.Collection("users").Document(user.UserId);
 
-        Dictionary<string, object> userData = new Dictionary<string, object>
+    // Obtener la ocupación seleccionada
+    string ocupacionSeleccionada = roles.options[roles.value].text;
+
+    Dictionary<string, object> userData = new Dictionary<string, object>
     {
         { "DisplayName", user.DisplayName },
-        { "Email", user.Email }
+        { "Email", user.Email },
+        { "Ocupacion", ocupacionSeleccionada } // 🔹 Agregar ocupación
     };
 
-        // Usa SetOptions.MergeAll correctamente
-        docRef.SetAsync(userData, SetOptions.MergeAll).ContinueWithOnMainThread(task => {
-            if (task.IsCanceled)
-            {
-                Debug.LogError("Error al guardar los datos del usuario.");
-                return;
-            }
-            if (task.IsFaulted)
-            {
-                Debug.LogError("Error al guardar los datos: " + task.Exception?.Message);
-                return;
-            }
-            Debug.Log("Datos de usuario guardados en Firestore.");
+    // Usa SetOptions.MergeAll para evitar sobreescribir otros datos existentes
+    docRef.SetAsync(userData, SetOptions.MergeAll).ContinueWithOnMainThread(task => {
+        if (task.IsCanceled)
+        {
+            Debug.LogError("Error al guardar los datos del usuario.");
+            return;
+        }
+        if (task.IsFaulted)
+        {
+            Debug.LogError("Error al guardar los datos: " + task.Exception?.Message);
+            return;
+        }
+        Debug.Log("Datos de usuario guardados en Firestore.");
 
-            // Cambiar a la siguiente escena después de guardar los datos
-            SceneManager.LoadScene("EcnuestaScen1e");
-        });
-    }
+        // Cambiar a la siguiente escena después de guardar los datos
+        SceneManager.LoadScene("EcnuestaScen1e");
+    });
+}
+
 
 
 
