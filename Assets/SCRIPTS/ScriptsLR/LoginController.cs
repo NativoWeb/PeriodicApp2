@@ -1,3 +1,4 @@
+﻿//logincontroller
 using Firebase;
 using Firebase.Auth;
 using Firebase.Extensions;
@@ -29,7 +30,6 @@ public class LoginController : MonoBehaviour
 
         SignInUserWithEmail(email, password);
     }
-
     private void SignInUserWithEmail(string email, string password)
     {
         auth.SignInWithEmailAndPasswordAsync(email, password).ContinueWithOnMainThread(task => {
@@ -40,7 +40,7 @@ public class LoginController : MonoBehaviour
             }
             if (task.IsFaulted)
             {
-                Debug.LogError("Error: {task.Exception?.Message}");
+                Debug.LogError($"Error: {task.Exception?.Message}");
                 return;
             }
 
@@ -48,10 +48,19 @@ public class LoginController : MonoBehaviour
             AuthResult authResult = task.Result;
             FirebaseUser user = authResult.User;
 
-            Debug.Log("Inicio de sesi�n exitoso! Bienvenido, " + user.Email);
-            // Aqu� puedes navegar a la pantalla principal o men� de tu juego.
+            Debug.Log("✅ Inicio de sesión exitoso! Bienvenido, " + user.Email);
 
+            // 🔹 Guardamos el `userId` en PlayerPrefs
+            PlayerPrefs.SetString("userId", user.UserId);
+            PlayerPrefs.Save();
+
+            Debug.Log($"🔹 userId guardado en PlayerPrefs: {user.UserId}");
+
+            // 🔹 Cargamos la escena donde se mostrará la información
             SceneManager.LoadScene("Inicio");
         });
     }
+
+
+
 }
