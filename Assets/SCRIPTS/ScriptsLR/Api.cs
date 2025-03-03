@@ -6,7 +6,7 @@ using System.Collections;
 
 public class Api : MonoBehaviour
 {
-    private const string SendGridApiKey = "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";  // Sustituye con tu clave API de SendGrid
+    private const string SendGridApiKey = "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";  // Sustituye con tu clave API de SendGrid
 
     // Método para enviar correo con código de verificación
     public void SendVerificationEmail(string toEmail, string verificationCode)
