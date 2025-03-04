@@ -5,18 +5,19 @@ using Firebase;
 using Firebase.Firestore;
 using TMPro;
 using UnityEngine.UI;
-using UnityEngine.SceneManagement; // Asegúrate de importar esto
+using UnityEngine.SceneManagement;
 
-public class CargarMisiones : MonoBehaviour
+public class CargarMisiones: MonoBehaviour
 {
     FirebaseFirestore db;
-
-    public Transform content; // El transform del Content dentro del ScrollView
-    public GameObject buttonPrefab; // Prefab del botón de misión
+    public Transform content;
+    public GameObject buttonPrefab;
+    public string userUID; // Debe contener el UID del usuario autenticado
 
     void Start()
     {
         db = FirebaseFirestore.DefaultInstance;
+        userUID = "UQZQOwiNqqN4Tm1xoIKFLmSHzOL2"; // Reemplázalo con el UID real del usuario autenticado
         CargarMisioness();
     }
 
@@ -29,41 +30,37 @@ public class CargarMisiones : MonoBehaviour
         {
             if (document.Exists)
             {
-                // Obtener los datos de la misión
                 string titulo = document.GetValue<string>("titulo");
                 string descripcion = document.GetValue<string>("descripcion");
                 int xp = document.GetValue<int>("xp");
                 string rutaEscena = document.GetValue<string>("rutaEscena");
+                string misionID = document.Id; // ID de la misión
 
-                // Mostrar los datos en el log
                 Debug.Log($"Misión: {titulo}, {descripcion}, XP: {xp}, Escena: {rutaEscena}");
 
-                // Crear un nuevo botón y añadirlo al Content del ScrollView
                 GameObject newButton = Instantiate(buttonPrefab, content);
 
-                // Asignar el título al primer TextMeshProUGUI
+                // Obtener componentes del botón
                 TextMeshProUGUI[] textComponents = newButton.GetComponentsInChildren<TextMeshProUGUI>();
+                Slider barraProgreso = newButton.GetComponentInChildren<Slider>();
+
                 textComponents[0].text = titulo;
                 textComponents[1].text = descripcion;
                 textComponents[2].text = $"XP: {xp}";
 
-                // Asegurarse de que el botón tenga el componente Button
+                // Asignar evento al botón
                 Button btn = newButton.GetComponent<Button>();
                 if (btn != null)
                 {
-                    btn.onClick.AddListener(() =>
-                    {
-                        Debug.Log("Botón presionado, cargando escena...");
-                        CambiarEscena(rutaEscena);
-                    });
+                    btn.onClick.AddListener(() => CambiarEscena(rutaEscena));
                 }
                 else
                 {
                     Debug.LogWarning("El botón no tiene componente Button.");
                 }
 
-                // Forzar la actualización del layout para que el botón se ajuste al texto
-                LayoutRebuilder.ForceRebuildLayoutImmediate(newButton.GetComponent<RectTransform>());
+                // Cargar el progreso del usuario desde Firestore
+                await CargarProgreso(userUID, misionID, barraProgreso);
             }
             else
             {
@@ -72,11 +69,29 @@ public class CargarMisiones : MonoBehaviour
         }
     }
 
-    // Método para cambiar de escena
+    // Método para cargar el progreso del usuario
+    async Task CargarProgreso(string userId, string missionId, Slider barraProgreso)
+    {
+        DocumentReference docRef = db.Collection("progreso_misiones").Document(userId).Collection("misiones").Document(missionId);
+        DocumentSnapshot docSnap = await docRef.GetSnapshotAsync();
+
+        if (docSnap.Exists)
+        {
+            int progreso = docSnap.GetValue<int>("progreso");
+            barraProgreso.value = progreso / 100f; // Normalizar entre 0 y 1
+            Debug.Log($"✅ Progreso de {missionId}: {progreso}%");
+        }
+        else
+        {
+            barraProgreso.value = 0f; // Si no existe, empieza en 0
+            Debug.Log($"⚠️ No se encontró progreso para {missionId}, iniciando en 0%");
+        }
+    }
+
     void CambiarEscena(string rutaEscena)
     {
-        Debug.Log("Intentando cargar la escena: " + rutaEscena);  // Asegúrate de ver la ruta en la consola
-        if (Application.CanStreamedLevelBeLoaded(rutaEscena)) // Verifica si la escena existe
+        Debug.Log("Intentando cargar la escena: " + rutaEscena);
+        if (Application.CanStreamedLevelBeLoaded(rutaEscena))
         {
             Debug.Log("Cambiando a la escena: " + rutaEscena);
             SceneManager.LoadScene(rutaEscena);
