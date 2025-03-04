@@ -167,6 +167,7 @@ PlayerSettings:
   applicationIdentifier:
     Android: com.DefaultCompany.PeriodicApp
     Standalone: com.DefaultCompany.PeriodicApp
+    iPhone: com.DefaultCompany.PeriodicApp
   buildNumber:
     Standalone: 0
     VisionOS: 0
@@ -174,7 +175,7 @@ PlayerSettings:
     tvOS: 0
   overrideDefaultApplicationIdentifier: 0
   AndroidBundleVersionCode: 1
-  AndroidMinSdkVersion: 30
+  AndroidMinSdkVersion: 32
   AndroidTargetSdkVersion: 0
   AndroidPreferredInstallLocation: 1
   aotOptions: 
@@ -514,6 +515,9 @@ PlayerSettings:
   - serializedVersion: 3
     m_BuildTarget: Android
     m_Formats: 01000000
+  - serializedVersion: 3
+    m_BuildTarget: iOS
+    m_Formats: 03000000
   playModeTestRunnerEnabled: 0
   runPlayModeTestAsEditModeTest: 0
   actionOnDotNetUnhandledException: 1
