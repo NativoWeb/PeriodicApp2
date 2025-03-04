@@ -57,7 +57,7 @@ public class LoginController : MonoBehaviour
             Debug.Log($"🔹 userId guardado en PlayerPrefs: {user.UserId}");
 
             // 🔹 Cargamos la escena donde se mostrará la información
-            SceneManager.LoadScene("Grupos");
+            SceneManager.LoadScene("Inicio");
         });
     }
 
