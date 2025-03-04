@@ -1,25 +1,26 @@
-using System.Collections.Generic;
+Ôªøusing System.Collections.Generic;
 using System.Threading.Tasks;
 using UnityEngine;
 using Firebase;
 using Firebase.Firestore;
 using TMPro;
 using UnityEngine.UI;
+using UnityEngine.SceneManagement; // Aseg√∫rate de importar esto
 
-public class FirestoreManager : MonoBehaviour
+public class CargarMisiones : MonoBehaviour
 {
     FirebaseFirestore db;
 
     public Transform content; // El transform del Content dentro del ScrollView
-    public GameObject buttonPrefab; // Prefab del botÛn de misiÛn
+    public GameObject buttonPrefab; // Prefab del bot√≥n de misi√≥n
 
     void Start()
     {
         db = FirebaseFirestore.DefaultInstance;
-        CargarMisiones();
+        CargarMisioness();
     }
 
-    async void CargarMisiones()
+    async void CargarMisioness()
     {
         Query misionesQuery = db.Collection("misiones");
         QuerySnapshot snapshot = await misionesQuery.GetSnapshotAsync();
@@ -28,34 +29,61 @@ public class FirestoreManager : MonoBehaviour
         {
             if (document.Exists)
             {
-                // Obtener los datos de la misiÛn
+                // Obtener los datos de la misi√≥n
                 string titulo = document.GetValue<string>("titulo");
                 string descripcion = document.GetValue<string>("descripcion");
                 int xp = document.GetValue<int>("xp");
                 string rutaEscena = document.GetValue<string>("rutaEscena");
 
                 // Mostrar los datos en el log
-                Debug.Log($"MisiÛn: {titulo}, {descripcion}, XP: {xp}, Escena: {rutaEscena}");
+                Debug.Log($"Misi√≥n: {titulo}, {descripcion}, XP: {xp}, Escena: {rutaEscena}");
 
-                // Crear un nuevo botÛn y aÒadirlo al Content del ScrollView
+                // Crear un nuevo bot√≥n y a√±adirlo al Content del ScrollView
                 GameObject newButton = Instantiate(buttonPrefab, content);
 
-                // Asignar el tÌtulo al primer TextMeshProUGUI
+                // Asignar el t√≠tulo al primer TextMeshProUGUI
                 TextMeshProUGUI[] textComponents = newButton.GetComponentsInChildren<TextMeshProUGUI>();
+                textComponents[0].text = titulo;
+                textComponents[1].text = descripcion;
+                textComponents[2].text = $"XP: {xp}";
 
-                // Aseg˙rate de que el primer TextMeshProUGUI es para el tÌtulo
-                textComponents[0].text = titulo; // Coloca el tÌtulo en el primer TextMeshProUGUI
+                // Asegurarse de que el bot√≥n tenga el componente Button
+                Button btn = newButton.GetComponent<Button>();
+                if (btn != null)
+                {
+                    btn.onClick.AddListener(() =>
+                    {
+                        Debug.Log("Bot√≥n presionado, cargando escena...");
+                        CambiarEscena(rutaEscena);
+                    });
+                }
+                else
+                {
+                    Debug.LogWarning("El bot√≥n no tiene componente Button.");
+                }
 
-                // Asignar la descripciÛn al segundo TextMeshProUGUI
-                textComponents[1].text = descripcion; // Coloca la descripciÛn en el segundo TextMeshProUGUI
-
-                // Asignar los XP al tercer TextMeshProUGUI
-                textComponents[2].text = $"XP: {xp}"; // Coloca los XP en el tercer TextMeshProUGUI
+                // Forzar la actualizaci√≥n del layout para que el bot√≥n se ajuste al texto
+                LayoutRebuilder.ForceRebuildLayoutImmediate(newButton.GetComponent<RectTransform>());
             }
             else
             {
                 Debug.LogWarning("Documento no encontrado.");
             }
+        }
+    }
+
+    // M√©todo para cambiar de escena
+    void CambiarEscena(string rutaEscena)
+    {
+        Debug.Log("Intentando cargar la escena: " + rutaEscena);  // Aseg√∫rate de ver la ruta en la consola
+        if (Application.CanStreamedLevelBeLoaded(rutaEscena)) // Verifica si la escena existe
+        {
+            Debug.Log("Cambiando a la escena: " + rutaEscena);
+            SceneManager.LoadScene(rutaEscena);
+        }
+        else
+        {
+            Debug.LogError("‚ùå ERROR: La escena '" + rutaEscena + "' no est√° en Build Settings o tiene un nombre incorrecto.");
         }
     }
 }
