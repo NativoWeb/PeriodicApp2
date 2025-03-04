@@ -1,4 +1,4 @@
-using System.Collections;
+锘縰sing System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -7,11 +7,12 @@ using Firebase.Firestore;
 using Firebase.Extensions;
 using TMPro;
 using UnityEngine.SceneManagement;
+using System.Linq;
 
 public class GroupManager : MonoBehaviour
 {
-    public GameObject buttonPrefab;  // Prefab del bot髇
-    public Transform content;        // Contenedor donde se agregar醤 los botones
+    public GameObject buttonPrefab;  // Prefab del bot贸n
+    public Transform content;        // Contenedor donde se agregar谩n los botones
     private FirebaseFirestore db;
 
     // Start is called before the first frame update
@@ -21,56 +22,60 @@ public class GroupManager : MonoBehaviour
         FirebaseApp.CheckAndFixDependenciesAsync().ContinueWithOnMainThread(task => {
             FirebaseApp app = FirebaseApp.DefaultInstance;
             db = FirebaseFirestore.GetInstance(app);  // Inicializa Firestore
-            LoadGroups();  // Cargar los grupos de Firestore
+            LoadGroups();
         });
+
+
     }
 
-    // Cargar los grupos desde Firestore
+    //Cargar los grupos desde Firestore
     void LoadGroups()
     {
-        // Referencia a la colecci髇 "grupos" en Firestore
         CollectionReference gruposRef = db.Collection("grupos");
 
-        // Obtener todos los documentos de la colecci髇 "grupos"
-        gruposRef.GetSnapshotAsync().ContinueWithOnMainThread(task => {
-            if (task.IsCompleted)
+        gruposRef.GetSnapshotAsync().ContinueWithOnMainThread(task =>
+        {
+            if (task.IsFaulted || task.IsCanceled)
             {
-                QuerySnapshot snapshot = task.Result;
+                Debug.LogError("Error al cargar los grupos desde Firebase: " + task.Exception);
+                return;
+            }
 
-                // Comprobamos si hay documentos
-                if (snapshot.Count > 0)
+            QuerySnapshot snapshot = task.Result;
+
+            if (snapshot.Count > 0)
+            {
+                foreach (DocumentSnapshot document in snapshot.Documents)
                 {
-                    foreach (DocumentSnapshot document in snapshot.Documents)
+                    if (document.Exists)
                     {
-                        // Extraer los datos de cada grupo (nombre, descripcion, juegoEscena)
                         string groupName = document.GetValue<string>("nombre");
                         string groupDescription = document.GetValue<string>("descripcion");
                         string gameScene = document.GetValue<string>("juegoEscena");
 
-                        // Imprimir los datos en consola para verificar que se est醤 cargando correctamente
-                        Debug.Log($"Grupo: {groupName}, Descripci髇: {groupDescription}, Escena: {gameScene}");
+                        Debug.Log($"Grupo: {groupName}, Descripci贸n: {groupDescription}, Escena: {gameScene}");
 
-                        // Crear un bot髇 para cada grupo
+                        // Crear el bot贸n en el hilo principal
                         CreateGroupButton(groupName, groupDescription, gameScene);
                     }
-                }
-                else
-                {
-                    Debug.LogError("No hay documentos en la colecci髇 'grupos'.");
                 }
             }
             else
             {
-                Debug.LogError("Error al cargar los grupos desde Firebase: " + task.Exception);
+                Debug.LogWarning("No hay documentos en la colecci贸n 'grupos'.");
             }
         });
     }
 
-    // Crear un bot髇 para cada grupo
+
+
+    // Crear un bot贸n para cada grupo
     void CreateGroupButton(string groupName, string groupDescription, string gameScene)
     {
-        // Instanciar un nuevo bot髇 a partir del prefab
+        Debug.Log($"Creando bot贸n para: {groupName}");
+        // Instanciar un nuevo bot贸n a partir del prefab
         GameObject newButton = Instantiate(buttonPrefab, content);
+        newButton.SetActive(true);
 
         // Verificar que el prefab tenga el componente Text para el nombre del grupo
         TextMeshProUGUI[] buttonTexts = newButton.GetComponentsInChildren<TextMeshProUGUI>();
@@ -80,23 +85,26 @@ public class GroupManager : MonoBehaviour
             // Asignar el texto del primer componente Text (para el nombre)
             buttonTexts[0].text = groupName;
 
-            // Asignar el texto del segundo componente Text (para la descripci髇)
+            // Asignar el texto del segundo componente Text (para la descripci贸n)
             buttonTexts[1].text = groupDescription;
 
-            Debug.Log($"Texto del bot髇 asignado: {buttonTexts[0].text} - {buttonTexts[1].text}");
+            Debug.Log($"Texto del bot贸n asignado: {buttonTexts[0].text} - {buttonTexts[1].text}");
         }
         else
         {
-            Debug.LogError("El prefab de bot髇 no tiene suficientes componentes Text.");
+            Debug.LogError("El prefab de bot贸n no tiene suficientes componentes Text.");
         }
 
-        // Configurar el evento para cuando se haga clic en el bot髇
+        // Configurar el evento para cuando se haga clic en el bot贸n
         Button button = newButton.GetComponent<Button>();
         button.onClick.AddListener(() => OnGroupSelected(gameScene));
+        // Forzar actualizaci贸n del layout
+        Canvas.ForceUpdateCanvases();
+        LayoutRebuilder.ForceRebuildLayoutImmediate(content as RectTransform);
     }
 
 
-    // Acci髇 cuando se selecciona un grupo
+    // Acci贸n cuando se selecciona un grupo
     void OnGroupSelected(string gameScene)
     {
         // Cargar la escena relacionada con el grupo
