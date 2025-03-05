@@ -111,19 +111,34 @@ public class RegisterController : MonoBehaviour
         });
     }
 
+
+
     private void SaveUserData(FirebaseUser user)
     {
         FirebaseFirestore firestore = FirebaseFirestore.DefaultInstance;
         DocumentReference docRef = firestore.Collection("users").Document(user.UserId);
 
+        
+
+        // Asignar avatar según el nivel
+        string avatarUrl = "Avatares/defecto";  // Ruta de la imagen dentro de Resources
+
+        // Asegúrate de que el DisplayName no esté vacío (si lo deseas)
+        string displayName = string.IsNullOrEmpty(user.DisplayName) ? "Usuario Sin Nombre" : user.DisplayName;
+
         Dictionary<string, object> userData = new Dictionary<string, object>
     {
         { "DisplayName", user.DisplayName },
-        { "Email", user.Email }
+        { "Email", user.Email },
+        { "xp", 0 },
+        { "nivel",0 },
+        { "avatar", avatarUrl } // Avatar inicial
+
     };
 
         // Usa SetOptions.MergeAll correctamente
-        docRef.SetAsync(userData, SetOptions.MergeAll).ContinueWithOnMainThread(task => {
+        docRef.SetAsync(userData, SetOptions.MergeAll).ContinueWithOnMainThread(task =>
+        {
             if (task.IsCanceled)
             {
                 Debug.LogError("Error al guardar los datos del usuario.");

@@ -12,20 +12,59 @@ public class CargarMisiones: MonoBehaviour
     FirebaseFirestore db;
     public Transform content;
     public GameObject buttonPrefab;
-    public string userUID; // Debe contener el UID del usuario autenticado
+    public string userUID;
 
     void Start()
     {
         db = FirebaseFirestore.DefaultInstance;
-        userUID = "UQZQOwiNqqN4Tm1xoIKFLmSHzOL2"; // Reemplázalo con el UID real del usuario autenticado
+        // llamamos el userId que se guarda para cada usuario en el registro y se guardo con el play prefers
+        userUID = PlayerPrefs.GetString("userId", "").Trim();
+        // verificamos que userUID no sea nulo
+        if (string.IsNullOrEmpty(userUID))
+        {
+            Debug.LogWarning("Error: no se encontro userUID válido");
+        }
+        else
+        {
+            Debug.LogAssertion("userUID cargado correctamente" + userUID);
+        }
+
         CargarMisioness();
+    }
+
+    // Método para obtener el nivel del usuario desde Firestore
+    async Task<int> ObtenerNivelUsuario(string userId)
+    {
+        // Referencia a la colección de usuarios en Firestore
+        DocumentReference userRef = db.Collection("users").Document(userId);
+
+        // Obtenemos el documento del usuario
+        DocumentSnapshot userSnap = await userRef.GetSnapshotAsync();
+
+        if (userSnap.Exists)
+        {
+            // Obtenemos el nivel del usuario
+            int nivel = userSnap.GetValue<int>("nivel");
+            Debug.Log($"Nivel del usuario: {nivel}");
+            return nivel;
+        }
+        else
+        {
+            Debug.LogError("No se encontró el usuario en Firestore.");
+            return 0; // Devolvemos 0 si no se encuentra el usuario
+        }
     }
 
     async void CargarMisioness()
     {
-        Query misionesQuery = db.Collection("misiones");
+        // Obtener el nivel del usuario
+        int nivelUsuario = await ObtenerNivelUsuario(userUID);
+
+        // Filtrar misiones por nivel
+        Query misionesQuery = db.Collection("misiones").WhereEqualTo("nivelRequerido", nivelUsuario);
         QuerySnapshot snapshot = await misionesQuery.GetSnapshotAsync();
 
+        // Recorremos las misiones obtenidas
         foreach (DocumentSnapshot document in snapshot.Documents)
         {
             if (document.Exists)
@@ -38,17 +77,19 @@ public class CargarMisiones: MonoBehaviour
 
                 Debug.Log($"Misión: {titulo}, {descripcion}, XP: {xp}, Escena: {rutaEscena}");
 
+                // Instanciamos el botón para mostrar la misión
                 GameObject newButton = Instantiate(buttonPrefab, content);
 
                 // Obtener componentes del botón
                 TextMeshProUGUI[] textComponents = newButton.GetComponentsInChildren<TextMeshProUGUI>();
                 Slider barraProgreso = newButton.GetComponentInChildren<Slider>();
 
+                // Asignamos la información al botón
                 textComponents[0].text = titulo;
                 textComponents[1].text = descripcion;
                 textComponents[2].text = $"XP: {xp}";
 
-                // Asignar evento al botón
+                // Asignar evento al botón para cambiar de escena
                 Button btn = newButton.GetComponent<Button>();
                 if (btn != null)
                 {
@@ -59,7 +100,7 @@ public class CargarMisiones: MonoBehaviour
                     Debug.LogWarning("El botón no tiene componente Button.");
                 }
 
-                // Cargar el progreso del usuario desde Firestore
+                // Cargar el progreso del usuario en la misión
                 await CargarProgreso(userUID, misionID, barraProgreso);
             }
             else
@@ -68,6 +109,7 @@ public class CargarMisiones: MonoBehaviour
             }
         }
     }
+
 
     // Método para cargar el progreso del usuario
     async Task CargarProgreso(string userId, string missionId, Slider barraProgreso)
