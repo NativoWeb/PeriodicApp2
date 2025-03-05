@@ -2,7 +2,8 @@ using UnityEngine;
 using TMPro;
 using Firebase.Firestore;
 using System.Threading.Tasks;
-using UnityEngine.UI;  // Importante para Image
+using UnityEngine.UI;
+using System.Collections;  // Importante para Image
 
 public class ControllerPerfil : MonoBehaviour
 {
@@ -78,7 +79,7 @@ public class ControllerPerfil : MonoBehaviour
             // Obtener la ruta del avatar según el nivel
             string avatarPath = ObtenerAvatarPorNivel(nivel);
             Sprite avatarSprite = Resources.Load<Sprite>(avatarPath); // Cargar la imagen desde Resources
-
+            
             if (avatarSprite != null)
             {
                 avatarImage.sprite = avatarSprite;  // Asignar la imagen al Image

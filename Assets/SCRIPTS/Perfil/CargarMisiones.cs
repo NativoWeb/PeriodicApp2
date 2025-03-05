@@ -14,11 +14,12 @@ public class CargarMisiones: MonoBehaviour
     public GameObject buttonPrefab;
     public string userUID;
 
+
     void Start()
     {
         db = FirebaseFirestore.DefaultInstance;
         // llamamos el userId que se guarda para cada usuario en el registro y se guardo con el play prefers
-        userUID = PlayerPrefs.GetString("userId", "").Trim();
+        userUID = PlayerPrefs.GetString("userId","").Trim();
         // verificamos que userUID no sea nulo
         if (string.IsNullOrEmpty(userUID))
         {
@@ -55,7 +56,7 @@ public class CargarMisiones: MonoBehaviour
         }
     }
 
-    async void CargarMisioness()
+    public async void CargarMisioness()
     {
         // Obtener el nivel del usuario
         int nivelUsuario = await ObtenerNivelUsuario(userUID);

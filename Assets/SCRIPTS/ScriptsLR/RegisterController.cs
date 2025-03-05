@@ -32,6 +32,8 @@ public class RegisterController : MonoBehaviour
         });
     }
 
+   
+
     public void OnCompleteProfileButtonClick()
     {
         string userName = userNameInput.text;
@@ -81,12 +83,9 @@ public class RegisterController : MonoBehaviour
         }
     }
 
-
-
-
-
     private void UpdateUserProfile(FirebaseUser user, string userName)
     {
+        
         // Actualizar el nombre de usuario en Firebase
         UserProfile profile = new UserProfile { DisplayName = userName };
         user.UpdateUserProfileAsync(profile).ContinueWithOnMainThread(task => {
@@ -164,6 +163,8 @@ public class RegisterController : MonoBehaviour
             SceneManager.LoadScene("EcnuestaScen1e");
         });
     }
+
+    
 
 
 
