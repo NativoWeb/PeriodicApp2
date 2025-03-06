@@ -130,8 +130,8 @@ public class RegisterController : MonoBehaviour
         { "DisplayName", user.DisplayName },
         { "Email", user.Email },
         { "xp", 0 },
-        { "nivel",0 },
-        { "avatar", avatarUrl } // Avatar inicial
+        { "avatar", avatarUrl }, // Avatar inicial
+        {"Rango", "Novato de laboratorio" }
 
     };
 
