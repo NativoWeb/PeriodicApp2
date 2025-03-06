@@ -2,31 +2,36 @@
 using System.Collections;
 using System.Collections.Generic;
 using TMPro;
+using Firebase.Auth;
+using Firebase.Firestore;
 
 public class MemoriaQuimica : MonoBehaviour
 {
     public GameObject tarjetaPrefab;
     public Transform panelCartas;
+    public GameObject botonContinuar;
+
+    private int xpGanadoPorNivel = 100; // Ajustable desde el Inspector
+    private int numeroNivel = 2; // Número de nivel ajustable
 
     private List<string> elementos = new List<string> { "Litio", "Sodio", "Potasio", "Rubidio", "Cesio", "Francio" };
     private List<string> simbolos = new List<string> { "Li", "Na", "K", "Rb", "Cs", "Fr" };
-
     private Dictionary<string, string> parejasDiccionario = new Dictionary<string, string>();
 
     private Tarjeta primeraSeleccionada;
     private Tarjeta segundaSeleccionada;
     private bool puedeSeleccionar = true;
-    public GameObject botonContinuar; // Referencia al botón "Continuar"
+    private int parejasEncontradas = 0;
 
-    private int parejasEncontradas = 0; // Contador de parejas encontradas
-
+    private FirebaseAuth firebaseAuth;
+    private FirebaseFirestore firebaseDB;
 
     void Start()
     {
-        Debug.Log("Iniciando juego de memoria química...");
+        firebaseAuth = FirebaseAuth.DefaultInstance;
+        firebaseDB = FirebaseFirestore.DefaultInstance;
 
-        botonContinuar.SetActive(false); // Ocultar el botón al iniciar
-        Debug.Log("🔄 Botón 'Continuar' oculto.");
+        botonContinuar.SetActive(false);
 
         for (int i = 0; i < elementos.Count; i++)
         {
@@ -37,42 +42,30 @@ public class MemoriaQuimica : MonoBehaviour
         CrearCartas();
     }
 
-
     void CrearCartas()
     {
-        Debug.Log("📌 Iniciando la creación de cartas...");
-
         List<GameObject> tarjetasCreadas = new List<GameObject>();
 
         for (int i = 0; i < elementos.Count; i++)
         {
-            // Crear tarjeta con el nombre
             GameObject tarjetaNombre = Instantiate(tarjetaPrefab);
             Tarjeta scriptNombre = tarjetaNombre.GetComponent<Tarjeta>();
             scriptNombre.ConfigurarTarjeta(elementos[i], simbolos[i], this);
-            tarjetaNombre.name = $"Tarjeta_{elementos[i]}";
             tarjetasCreadas.Add(tarjetaNombre);
 
-            // Crear tarjeta con el símbolo
             GameObject tarjetaSimbolo = Instantiate(tarjetaPrefab);
             Tarjeta scriptSimbolo = tarjetaSimbolo.GetComponent<Tarjeta>();
             scriptSimbolo.ConfigurarTarjeta(simbolos[i], elementos[i], this);
-            tarjetaSimbolo.name = $"Tarjeta_{simbolos[i]}";
             tarjetasCreadas.Add(tarjetaSimbolo);
         }
 
-        // Mezclar las tarjetas antes de agregarlas al panel
         Shuffle(tarjetasCreadas);
-        Debug.Log($"🔄 Se crearon y mezclaron {tarjetasCreadas.Count} tarjetas.");
 
         foreach (GameObject tarjeta in tarjetasCreadas)
         {
-            tarjeta.transform.SetParent(panelCartas, false);  // Asignar al Canvas con posiciones aleatorias
+            tarjeta.transform.SetParent(panelCartas, false);
         }
-
-        Debug.Log("✅ Cartas colocadas en posiciones aleatorias.");
     }
-
 
     public void VerificarPareja(Tarjeta seleccionada)
     {
@@ -98,14 +91,12 @@ public class MemoriaQuimica : MonoBehaviour
         {
             primeraSeleccionada.botonTarjeta.interactable = false;
             segundaSeleccionada.botonTarjeta.interactable = false;
+            parejasEncontradas++;
 
-            parejasEncontradas++; // Aumentar el contador de parejas encontradas
-            Debug.Log($"✅ Parejas encontradas: {parejasEncontradas}");
-
-            if (parejasEncontradas == elementos.Count) // Si se encontraron todas
+            if (parejasEncontradas == elementos.Count)
             {
-                Debug.Log("🎉 ¡Juego completado! Mostrando botón 'Continuar'.");
-                botonContinuar.SetActive(true); // Mostrar botón
+                botonContinuar.SetActive(true);
+                GuardarProgresoEnFirebase();
             }
         }
         else
@@ -119,12 +110,10 @@ public class MemoriaQuimica : MonoBehaviour
         puedeSeleccionar = true;
     }
 
-
     bool EsPareja(Tarjeta a, Tarjeta b)
     {
         return (a.elementoNombre == b.elementoSimbolo) || (a.elementoSimbolo == b.elementoNombre);
     }
-
 
     void Shuffle<T>(List<T> list)
     {
@@ -134,9 +123,67 @@ public class MemoriaQuimica : MonoBehaviour
             (list[i], list[randomIndex]) = (list[randomIndex], list[i]);
         }
     }
+
     public bool PuedeSeleccionar()
     {
         return puedeSeleccionar;
     }
 
+    private async void GuardarProgresoEnFirebase()
+    {
+        if (firebaseAuth.CurrentUser != null)
+        {
+            string userId = firebaseAuth.CurrentUser.UserId;
+            DocumentReference grupoRef = firebaseDB.Collection("users").Document(userId)
+                                                   .Collection("grupos").Document("grupo 1");
+
+            DocumentReference userRef = firebaseDB.Collection("users").Document(userId);
+
+            try
+            {
+                // Obtener el XP actual del usuario
+                DocumentSnapshot userSnapshot = await userRef.GetSnapshotAsync();
+                int xpActual = userSnapshot.Exists && userSnapshot.TryGetValue<int>("xp", out int xp) ? xp : 0;
+
+                // Obtener el nivel actual
+                DocumentSnapshot grupoSnapshot = await grupoRef.GetSnapshotAsync();
+                int nivelActual = grupoSnapshot.Exists && grupoSnapshot.TryGetValue<int>("nivel", out int nivel) ? nivel : 1;
+
+                // Sumar XP y subir de nivel
+                int nuevoXp = xpActual + xpGanadoPorNivel;
+                int nuevoNivel = nivelActual + 1;
+
+                Dictionary<string, object> datosGrupo = new Dictionary<string, object>
+                {
+                    { "nivel", nuevoNivel }
+                };
+
+                Dictionary<string, object> datosUsuario = new Dictionary<string, object>
+                {
+                    { "xp", nuevoXp }
+                };
+
+                // Guardar nivel en grupos/grupo1
+                await grupoRef.SetAsync(datosGrupo, SetOptions.MergeAll);
+
+                // Guardar XP en users/userId
+                await userRef.SetAsync(datosUsuario, SetOptions.MergeAll);
+
+                Debug.Log($"✅ Progreso guardado: Nivel {nuevoNivel}, XP Total {nuevoXp}");
+
+                // Guardar en PlayerPrefs por compatibilidad
+                PlayerPrefs.SetInt("nivelCompletado", nuevoNivel);
+                PlayerPrefs.SetInt("xp", nuevoXp);
+                PlayerPrefs.Save();
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"❌ Error al guardar el progreso: {e.Message}");
+            }
+        }
+        else
+        {
+            Debug.LogError("❌ Usuario no autenticado.");
+        }
+    }
 }
