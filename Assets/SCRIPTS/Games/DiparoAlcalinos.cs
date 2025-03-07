@@ -5,6 +5,7 @@ using System.Collections;
 using System.Collections.Generic;
 using Firebase.Auth;
 using Firebase.Firestore;
+using UnityEngine.SceneManagement;
 
 public class DisparoAlcalinos : MonoBehaviour
 {
@@ -177,6 +178,8 @@ public class DisparoAlcalinos : MonoBehaviour
         textoReporte.text = $"Respondiste correctamente {respuestasCorrectas} de 6 preguntas.";
         Debug.Log($"Juego terminado. Respuestas correctas: {respuestasCorrectas} de 6.");
         GuardarProgresoEnFirebase(respuestasCorrectas);
+        SceneManager.LoadScene("Grupo1");
+
     }
 
     Dictionary<string, string> MezclarDiccionario(Dictionary<string, string> diccionario)
