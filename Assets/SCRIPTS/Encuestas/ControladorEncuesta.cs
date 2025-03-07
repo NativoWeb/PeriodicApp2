@@ -7,6 +7,11 @@ using UnityEngine.Networking; // �A�ADIDO: Necesario para UnityWebRequest!
 using System.Linq;
 using System;
 using Newtonsoft.Json;
+using Firebase.Firestore;
+using Firebase.Extensions;
+using Firebase;
+using UnityEngine.SceneManagement;
+
 
 public class ControladorEncuesta : MonoBehaviour
 {
@@ -33,6 +38,9 @@ public class ControladorEncuesta : MonoBehaviour
     private float dificultadTotalPreguntas = 0f; // Para calcular la dificultad media
     private int cantidadPreguntasRespondidas = 0; // Contador de preguntas respondidas
 
+
+    private FirebaseFirestore firestore;
+
     [System.Serializable]
     public class Pregunta
     {
@@ -42,6 +50,7 @@ public class ControladorEncuesta : MonoBehaviour
         public string respuestaUsuario;
         public ControladorEncuesta.ElementoPreguntas.GrupoPreguntasData grupoPregunta; //  �RUTA CORRECTA para GrupoPreguntasData!
         public float dificultadPregunta; // �A�ADIDO: Para acceder a la dificultad!
+
     }
 
 
@@ -83,24 +92,8 @@ public class ControladorEncuesta : MonoBehaviour
 
         eventosToggleHabilitados = true;
 
-
-        // foreach (Toggle toggle in opcionesToggleUI)
-        // {
-        //     toggle.onValueChanged.RemoveAllListeners();
-        // }
-
-        // for (int i = 0; i < opcionesToggleUI.Length; i++)
-        // {
-        //     int index = i; // Captura el índice correctamente!
-        //     opcionesToggleUI[index].onValueChanged.AddListener((bool isOn) =>
-        //     {
-        //         if (isOn && eventosToggleHabilitados)
-        //         {
-        //             Debug.Log($"Toggle {index} activado");
-        //             //ConfigurarToggleListeners(); // ELIMINA ESTA LLAMADA PROBLEMÁTICA DENTRO DEL LISTENER
-        //         }
-        //     });
-        // }
+        firestore = FirebaseFirestore.DefaultInstance;
+        string userId = PlayerPrefs.GetString("userId", ""); // Obtener el ID del usuario
     }
 
     // M�todo para manejar el temporizador
@@ -176,7 +169,8 @@ public class ControladorEncuesta : MonoBehaviour
             Debug.Log("Encuesta Finalizada");
             textoPreguntaUI.text = "�Encuesta Finalizada!";
             grupoOpcionesUI.enabled = false;
-            EnviarDatosAPrediccion(); // �A�ADIDO: Llamar a EnviarDatosAPrediccion al finalizar la encuesta!
+            SceneManager.LoadScene("EncuestaAprendizaje");
+            //EnviarDatosAPrediccion(); // �A�ADIDO: Llamar a EnviarDatosAPrediccion al finalizar la encuesta!
         }
         Debug.Log("siguientePregunta() finalizado.");
     }
@@ -300,6 +294,7 @@ public class ControladorEncuesta : MonoBehaviour
             Debug.Log("¡Encuesta Finalizada!");
             textoPreguntaUI.text = "¡Encuesta Finalizada!";
             grupoOpcionesUI.enabled = false;
+            SceneManager.LoadScene("EncuestaAprendizaje");
             return;
         }
 
@@ -358,33 +353,6 @@ public class ControladorEncuesta : MonoBehaviour
             Debug.LogWarning("No hay preguntas para aleatorizar o la lista de preguntas es nula.");
         }
     }
-
-    // M�todo para mostrar feedback visual de la respuesta (check o equis)
-    //void MostrarFeedbackRespuesta(bool esCorrecta, int indiceOpcion)
-    //{
-
-    //    if (indiceOpcion < 0 || indiceOpcion >= imagenesCheckRespuestaUI.Length)
-    //    {
-    //        Debug.LogError("�ndice fuera de rango: " + indiceOpcion);
-    //        return;
-    //    }
-
-    //    if (esCorrecta)
-    //    {
-    //        // Mostrar icono de CHECK en la opci�n seleccionada como CORRECTA
-    //        imagenesCheckRespuestaUI[indiceOpcion].gameObject.SetActive(true); // Activar imagen de check para la opci�n correcta
-    //                                                                             // Puedes a�adir aqu� feedback adicional, como cambiar el color del Toggle a verde, etc.
-    //    }
-    //    else
-    //    {
-    //        // Mostrar icono de EQUIS en la opci�n seleccionada como INCORRECTA
-    //        imagenesEquisRespuestaUI[indiceOpcion].gameObject.SetActive(true); // Activar imagen de equis para la opci�n incorrecta
-    //                                                                             // Puedes a�adir aqu� feedback adicional, como cambiar el color del Toggle a rojo, etc.
-
-    //        // Opcional: Mostrar tambi�n la respuesta CORRECTA (puedes decidir si quieres mostrar la correcta aunque falle)
-    //        imagenesCheckRespuestaUI[preguntaActual.indiceRespuestaCorrecta].gameObject.SetActive(true); // Activar imagen de check en la respuesta correcta (para indicar cu�l era)
-    //    }
-    //}
 
     private void ConfigurarToggleListeners()
     {
