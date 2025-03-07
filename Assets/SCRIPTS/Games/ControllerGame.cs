@@ -137,15 +137,38 @@ public class ControllerGame : MonoBehaviour, IDragHandler, IEndDragHandler
         int xpActual = 0; // XP inicial si no existe el campo
         int xpGanado = 100; // 🔹 Ajusta el XP según el nivel
 
-        // Verificar si existen los campos antes de acceder
-        if (snapshotGrupo.Exists)
+        // Verificar si la colección y el documento existen para "grupo 1"
+        if (!snapshotGrupo.Exists)
         {
+            // Si no existe el documento "grupo 1", lo creamos con valores predeterminados
+            await docGrupo.SetAsync(new Dictionary<string, object>
+        {
+            { "nivel", nivelDesbloqueado }
+        });
+
+            Debug.Log("✅ Documento 'grupo 1' creado con nivel predeterminado.");
+        }
+        else
+        {
+            // Si existe, obtenemos el valor del campo "nivel"
             snapshotGrupo.TryGetValue<int>("nivel", out nivelDesbloqueado);
         }
 
+        // Verificar si el documento "usuario" existe
         if (snapshotUsuario.Exists)
         {
+            // Obtener el valor actual de XP
             snapshotUsuario.TryGetValue<int>("xp", out xpActual);
+        }
+        else
+        {
+            // Si no existe, creamos el documento "usuario" con un XP inicial de 0
+            await docUsuario.SetAsync(new Dictionary<string, object>
+        {
+            { "xp", xpActual }
+        });
+
+            Debug.Log("✅ Documento 'usuario' creado con XP inicial.");
         }
 
         // Actualizar nivel en grupo1
