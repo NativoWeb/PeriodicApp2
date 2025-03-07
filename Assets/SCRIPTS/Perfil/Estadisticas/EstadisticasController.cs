@@ -124,9 +124,6 @@ public class EstadisticasController : MonoBehaviour
         // Opcional: Redirigir a la escena de login
         SceneManager.LoadScene("Login"); 
     }
-    // Update is called once per frame
-    void Update()
-    {
-        
-    }
+    
+    
 }
