@@ -20,7 +20,7 @@ public class ControllerGame : MonoBehaviour, IDragHandler, IEndDragHandler
 
     private FirebaseFirestore db;
     private FirebaseAuth auth;
-    private int nivelactual = 1;
+    private int nivelactual = 2;
     void Start()
     {
         rectTransform = GetComponent<RectTransform>();

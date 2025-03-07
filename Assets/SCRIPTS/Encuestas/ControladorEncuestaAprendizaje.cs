@@ -15,7 +15,6 @@ public class ControladorEncuestaAprendizaje : MonoBehaviour
     public float tiempoRestante = 10f;  // Tiempo inicial del temporizador en segundos (10 segundos)
     private bool preguntaFinalizada = false;  // Flag para saber si la pregunta ha sido finalizada
 
-    private FirebaseFirestore firestore;
     private bool eventosToggleHabilitados = false;
 
     [Header("Referencias UI")]
@@ -143,21 +142,29 @@ public class ControladorEncuestaAprendizaje : MonoBehaviour
             Debug.Log("Encuesta Finalizada");
             textoPreguntaUI.text = "¡Encuesta Finalizada!";
             grupoOpcionesUI.enabled = false;
-            panelPreguntas.SetActive(false);
-            panelResultados.SetActive(true);
+            FinalizarEncuesta();
 
-            CanvasGroup cg = panelResultados.GetComponent<CanvasGroup>();
-            if (cg != null)
-            {
-                Debug.Log("CanvasGroup encontrado en panelResultados");
-                cg.alpha = 1;
-                cg.interactable = true;
-                cg.blocksRaycasts = true;
-            }
+            //******************Descomentar a futuro con el server ON*******************************************
 
-            // Calcular y mostrar el resultado final de la encuesta de estilo de aprendizaje
+
+
+            //panelPreguntas.SetActive(false);
+            //panelResultados.SetActive(true);
+
+            //CanvasGroup cg = panelResultados.GetComponent<CanvasGroup>();
+            //if (cg != null)
+            //{
+            //    Debug.Log("CanvasGroup encontrado en panelResultados");
+            //    cg.alpha = 1;
+            //    cg.interactable = true;
+            //    cg.blocksRaycasts = true;
+            //}
+
+            //// Calcular y mostrar el resultado final de la encuesta de estilo de aprendizaje
             CalcularYMostrarResultadoFinal();
 
+
+            //******************Descomentar a futuro con el server ON*******************************************
 
         }
     }
@@ -423,14 +430,13 @@ public class ControladorEncuestaAprendizaje : MonoBehaviour
 
         // Recuperamos el userId almacenado en el login
         string userId = PlayerPrefs.GetString("userId", "");
-        Debug.LogError("OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO" + userId);
         if (string.IsNullOrEmpty(userId))
         {
             Debug.LogError("❌ No se puede actualizar Firestore porque userId es nulo.");
             return;
         }
 
-        DocumentReference docRef = firestore.Collection("users").Document(userId);
+        DocumentReference docRef = db.Collection("users").Document(userId);
 
         docRef.UpdateAsync("EncuestaCompletada", true).ContinueWithOnMainThread(task =>
         {

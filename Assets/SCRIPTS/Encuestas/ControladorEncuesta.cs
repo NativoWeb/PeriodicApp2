@@ -198,7 +198,10 @@ public class ControladorEncuesta : MonoBehaviour
             textoPreguntaUI.text = "�Encuesta Finalizada!";
 
             SceneManager.LoadScene("EncuestaAprendizaje");
-            //grupoOpcionesUI.enabled = false;
+            grupoOpcionesUI.enabled = false;
+
+            //+*********************************************DESCOMENTAR LO ANTES POSIBLE CON AYUDA DE MARYLY*****************************************
+
             // Ocultar panel de preguntas y mostrar resultados
             //EnviarDatosAPrediccion(); // Llamar a EnviarDatosAPrediccion al finalizar la encuesta!
 
@@ -215,6 +218,8 @@ public class ControladorEncuesta : MonoBehaviour
 
             //// Mostrar resultados finales
             //MostrarResultadosFinales();
+
+            //+*********************************************DESCOMENTAR LO ANTES POSIBLE CON AYUDA DE MARYLY*****************************************
 
             Debug.Log("Encuesta Finalizada");
         }
@@ -561,8 +566,7 @@ public class ControladorEncuesta : MonoBehaviour
 
         // Preparar para la siguiente pregunta (puedes decidir cu�ndo avanzar a la siguiente pregunta, por ejemplo, con un bot�n)
         //preguntaActualIndex++; // Incrementar el �ndice para la siguiente pregunta
-        //StartCoroutine(MostrarFeedbackYCambiarPregunta());
-        siguientePregunta();
+        StartCoroutine(MostrarFeedbackYCambiarPregunta());
 
     }
 

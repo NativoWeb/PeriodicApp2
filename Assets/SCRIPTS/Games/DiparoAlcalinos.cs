@@ -30,7 +30,7 @@ public class DisparoAlcalinos : MonoBehaviour
     private int respuestasCorrectas = 0;
     private int totalPreguntas = 6;
     private List<string> listaPreguntas;
-    private int nivelactual = 3;
+    private int nivelactual = 4;
 
 
     private FirebaseAuth firebaseAuth;
