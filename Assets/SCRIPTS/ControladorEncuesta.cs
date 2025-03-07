@@ -7,9 +7,15 @@ using UnityEngine.Networking;
 using System.Linq;
 using System;
 using Newtonsoft.Json;
+using Firebase.Firestore;
+using Firebase.Extensions;
+
+
 
 public class ControladorEncuesta : MonoBehaviour
 {
+    private FirebaseFirestore db;
+
     private List<Pregunta> preguntas;
     private int preguntaActualIndex = 0;        // �ndice de la pregunta actual en la lista aleatoria
     private Pregunta preguntaActual;             // Para guardar la pregunta que se est� mostrando actualmente
@@ -106,6 +112,7 @@ public class ControladorEncuesta : MonoBehaviour
 
     void Start()
     {
+        db = FirebaseFirestore.DefaultInstance;
         CargarPreguntasDesdeJSON();
         AleatorizarPreguntas();
         MostrarPreguntaActual();
@@ -787,8 +794,52 @@ public class ControladorEncuesta : MonoBehaviour
 
         // Actualizar UI
         resultadosTextUI.text = resultados;
+
+        //Guardar en FireStore
+        GuardarResultadosEncuesta();
         
     }
+
+    private void GuardarResultadosEncuesta()
+    {
+        // 1. Preparar datos a guardar
+        float porcentajeAciertos = CalcularPorcentajeAciertos();
+        Dictionary<string, float> porcentajesGrupo = CalcularPorcentajesPorGrupo();
+        int totalAciertos = CalcularTotalAciertos();
+
+        // Construir un diccionario con la información
+        Dictionary<string, object> data = new Dictionary<string, object>();
+
+        // Conversión a double porque Firestore espera double en lugar de float
+        data["prediccionGlobal"] = prediccionGlobal;
+        data["porcentajeAciertos"] = (double)porcentajeAciertos;
+        data["totalAciertos"] = totalAciertos;
+        data["timestamp"] = DateTime.UtcNow.ToString("o"); // o un FieldValue.serverTimestamp
+
+        // 2. Guardar los porcentajes por grupo en un sub-diccionario
+        Dictionary<string, object> porcentajesDic = new Dictionary<string, object>();
+        foreach (var kvp in porcentajesGrupo)
+        {
+            porcentajesDic[kvp.Key] = (double)kvp.Value;
+        }
+        data["porcentajesGrupos"] = porcentajesDic;
+
+        // 3. Escribir en Firestore
+        CollectionReference coleccion = db.Collection("encuestasAprendizaje");
+        coleccion.AddAsync(data).ContinueWithOnMainThread(task =>
+        {
+            if (task.IsCompleted && !task.IsFaulted && !task.IsCanceled)
+            {
+                Debug.Log("Resultados de la encuesta guardados con éxito en Firestore.");
+            }
+            else
+            {
+                Debug.LogError("Error al guardar resultados en Firestore: " + task.Exception);
+            }
+        });
+    }
+
+
 
 
     [Header("Referencias UI")]
