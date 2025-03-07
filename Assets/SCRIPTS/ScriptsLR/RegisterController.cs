@@ -21,17 +21,12 @@ public class RegisterController : MonoBehaviour
 
         // Crear lista de opciones con "Ocupación" como la primera opción
         List<string> opciones = new List<string>() { "Seleccionar una ocupación", "Estudiante", "Profesor" };
-        // Agregar opciones al Dropdown
         roles.AddOptions(opciones);
-        // Asegurar que la opción por defecto sea "Ocupación"
-        roles.value = 0;
-        // Cambiar el color del texto cuando sea "Ocupación"
+        roles.value = 0; // Asegurar que la opción por defecto sea "Seleccionar una ocupación"
         roles.onValueChanged.AddListener(delegate { CambiarColor(); });
-        // Aplicar el color gris al inicio
-        CambiarColor();
+        CambiarColor(); // Aplicar color inicial
 
         /*------------------------------------------------------------------------------------------------------------------*/
-
 
         FirebaseApp.CheckAndFixDependenciesAsync().ContinueWithOnMainThread(task => {
             FirebaseApp app = FirebaseApp.DefaultInstance;
@@ -47,20 +42,11 @@ public class RegisterController : MonoBehaviour
         });
     }
 
-    /*******************************************Funcion para ocupaciones*******************************************/
-
+    /*******************************************Función para cambiar el color del Dropdown*******************************************/
     void CambiarColor()
     {
-        Text label = roles.captionText; // Obtener el texto actual del dropdown
-
-        if (roles.value == 0) // Si está en "Ocupación"
-        {
-            label.color = Color.gray; // Cambiar el color a gris
-        }
-        else
-        {
-            label.color = Color.black; // Restaurar color normal
-        }
+        Text label = roles.captionText;
+        label.color = (roles.value == 0) ? Color.gray : Color.black;
     }
 
     /**************************************************************************************/
@@ -72,38 +58,24 @@ public class RegisterController : MonoBehaviour
 
         if (currentUser != null)
         {
-            // 🔹 Primero verificamos si PlayerPrefs indica que el usuario ya verificó su correo
             if (PlayerPrefs.GetInt("EmailVerified", 0) == 1)
             {
-                Debug.Log("✅ Correo verificado (según PlayerPrefs). Continuando con el registro...");
+                Debug.Log("✅ Correo verificado. Continuando con el registro...");
                 UpdateUserProfile(currentUser, userName);
                 return;
             }
 
-            // 🔹 Si PlayerPrefs no está actualizado, recargamos el usuario desde Firebase
             currentUser.ReloadAsync().ContinueWithOnMainThread(task => {
-                if (task.IsCanceled)
+                if (task.IsCompleted && currentUser.IsEmailVerified)
                 {
-                    Debug.LogError("Error al recargar la información del usuario.");
-                    return;
-                }
-                if (task.IsFaulted)
-                {
-                    Debug.LogError("Error al recargar el usuario: " + task.Exception?.Message);
-                    return;
-                }
-
-                // 🔹 Verificamos si el usuario confirmó el correo después de la recarga
-                if (currentUser.IsEmailVerified)
-                {
-                    Debug.Log("✅ Correo verificado después de recargar Firebase. Registrando usuario...");
-                    PlayerPrefs.SetInt("EmailVerified", 1); // Guardamos la verificación
+                    Debug.Log("✅ Correo verificado después de recarga.");
+                    PlayerPrefs.SetInt("EmailVerified", 1);
                     PlayerPrefs.Save();
                     UpdateUserProfile(currentUser, userName);
                 }
                 else
                 {
-                    Debug.LogError("⚠️ El correo aún no está verificado. Inténtalo nuevamente.");
+                    Debug.LogError("⚠️ El correo aún no está verificado.");
                 }
             });
         }
@@ -113,86 +85,63 @@ public class RegisterController : MonoBehaviour
         }
     }
 
-
-    //if (currentUser != null)
-    //{
-    //    if (currentUser.IsEmailVerified)
-    //    {
-    //        // Actualizar el nombre de usuario
-    //        UpdateUserProfile(currentUser, userName);
-    //    }
-    //    else
-    //    {
-    //        Debug.Log("Por favor, verifica tu correo antes de continuar.");
-    //    }
-    //}
-    //else
-    //{
-    //    Debug.LogError("No se ha encontrado un usuario autenticado.");
-    //}
-
-
     private void UpdateUserProfile(FirebaseUser user, string userName)
     {
-        // Actualizar el nombre de usuario en Firebase
         UserProfile profile = new UserProfile { DisplayName = userName };
         user.UpdateUserProfileAsync(profile).ContinueWithOnMainThread(task => {
-            if (task.IsCanceled)
+            if (task.IsCompleted)
+            {
+                SaveUserData(user);
+                Debug.Log("Perfil actualizado con éxito.");
+            }
+            else
             {
                 Debug.LogError("Error al actualizar el perfil.");
-                return;
             }
-            if (task.IsFaulted)
-            {
-                Debug.LogError("Error al actualizar el perfil: " + task.Exception?.Message);
-                return;
-            }
-
-            // Guardar información adicional si es necesario (por ejemplo, en Firestore)
-            SaveUserData(user);
-
-            // Cambiar a la siguiente escena después de completar el perfil
-            Debug.Log("Perfil actualizado con éxito.");
-            // Aquí podrías cambiar a la escena principal
-            // SceneManager.LoadScene("MainScene");
         });
     }
 
     private void SaveUserData(FirebaseUser user)
-{
-    FirebaseFirestore firestore = FirebaseFirestore.DefaultInstance;
-    DocumentReference docRef = firestore.Collection("users").Document(user.UserId);
+    {
+        FirebaseFirestore firestore = FirebaseFirestore.DefaultInstance;
+        DocumentReference docRef = firestore.Collection("users").Document(user.UserId);
 
-    // Obtener la ocupación seleccionada
-    string ocupacionSeleccionada = roles.options[roles.value].text;
+        // Obtener la ocupación seleccionada
+        string ocupacionSeleccionada = roles.options[roles.value].text;
 
-    Dictionary<string, object> userData = new Dictionary<string, object>
+        Dictionary<string, object> userData = new Dictionary<string, object>
     {
         { "DisplayName", user.DisplayName },
         { "Email", user.Email },
-        { "Ocupacion", ocupacionSeleccionada } // 🔹 Agregar ocupación
+        { "Ocupacion", ocupacionSeleccionada },
+        { "EncuestaCompletada", false } // 🔹 Marcamos la encuesta como no completada inicialmente
     };
 
-    // Usa SetOptions.MergeAll para evitar sobreescribir otros datos existentes
-    docRef.SetAsync(userData, SetOptions.MergeAll).ContinueWithOnMainThread(task => {
-        if (task.IsCanceled)
-        {
-            Debug.LogError("Error al guardar los datos del usuario.");
-            return;
-        }
-        if (task.IsFaulted)
-        {
-            Debug.LogError("Error al guardar los datos: " + task.Exception?.Message);
-            return;
-        }
-        Debug.Log("Datos de usuario guardados en Firestore.");
+        PlayerPrefs.SetString("userId", user.UserId);
+        PlayerPrefs.Save();
 
-        // Cambiar a la siguiente escena después de guardar los datos
-        SceneManager.LoadScene("EcnuestaScen1e");
-    });
-}
+        docRef.SetAsync(userData, SetOptions.MergeAll).ContinueWithOnMainThread(task => {
+            if (task.IsCanceled)
+            {
+                Debug.LogError("Error al guardar los datos del usuario.");
+                return;
+            }
+            if (task.IsFaulted)
+            {
+                Debug.LogError("Error al guardar los datos: " + task.Exception?.Message);
+                return;
+            }
+            Debug.Log("Datos de usuario guardados en Firestore.");
 
-
-
-
+            // 🔹 Redirigir a la escena correcta según la ocupación
+            if (ocupacionSeleccionada == "Estudiante")
+            {
+                SceneManager.LoadScene("EcnuestaScen1e"); // Enviar a la encuesta
+            }
+            else if (ocupacionSeleccionada == "Profesor")
+            {
+                SceneManager.LoadScene("InicioProfesor"); // Enviar a la vista de profesor
+            }
+        });
+    }
 }

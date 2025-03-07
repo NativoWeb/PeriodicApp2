@@ -5,6 +5,11 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using static ControladorEncuesta;
+using Firebase.Firestore;
+using Firebase;
+using Firebase.Extensions; // 👈 Necesario para ContinueWithOnMainThread
+using UnityEngine.SceneManagement;
+using Firebase.Auth;
 
 public class ControladorEncuestaAprendizaje : MonoBehaviour
 {
@@ -15,6 +20,12 @@ public class ControladorEncuestaAprendizaje : MonoBehaviour
     public string respuestaUsuario;
     private bool eventosToggleHabilitados = false;
     private List<string> opcionesAleatorias;
+
+
+    private FirebaseFirestore firestore;
+
+
+    private FirebaseAuth auth;
 
 
     [System.Serializable]
@@ -89,6 +100,21 @@ public class ControladorEncuestaAprendizaje : MonoBehaviour
 
 
         eventosToggleHabilitados = true;
+
+        auth = FirebaseAuth.DefaultInstance;
+        firestore = FirebaseFirestore.DefaultInstance;
+        // Recuperamos el userId almacenado en el login
+        string userId = PlayerPrefs.GetString("userId", "");
+
+        if (string.IsNullOrEmpty(userId))
+        {
+            Debug.LogError("⚠️ No se encontró userId en PlayerPrefs.");
+        }
+        else
+        {
+            Debug.Log($"📌 UserId encontrado: {userId}");
+        }
+
     }
 
     void Update()
@@ -140,6 +166,7 @@ public class ControladorEncuestaAprendizaje : MonoBehaviour
             Debug.Log("Encuesta Finalizada");
             textoPreguntaUI.text = "�Encuesta Finalizada!";
             grupoOpcionesUI.enabled = false;
+            FinalizarEncuesta();
         }
         Debug.Log("siguientePregunta() finalizado.");
     }
@@ -325,30 +352,6 @@ public class ControladorEncuestaAprendizaje : MonoBehaviour
         }
     }
 
-
-    //void ConfigurarToggleListeners()
-    //{
-    //    // Primero limpiamos cualquier listener previo
-    //    foreach (Toggle toggle in opcionesToggleUI)
-    //    {
-    //        toggle.onValueChanged.RemoveAllListeners();
-    //    }
-
-    //    // Luego asignamos un listener que llame a ToggleValueChanged
-    //    for (int i = 0; i < opcionesToggleUI.Length; i++)
-    //    {
-    //        int index = i; // Capturar la variable para usarla dentro del lambda
-    //        opcionesToggleUI[i].onValueChanged.AddListener((bool isOn) =>
-    //        {
-    //            if (isOn)
-    //            {
-    //                // Llamamos a nuestro método cuando se active el toggle
-    //                ToggleValueChanged(opcionesToggleUI[index]);
-    //            }
-    //        });
-    //    }
-    //}
-
     // === NUEVO MÉTODO: Activar/Desactivar la interactividad de los toggles ===
     void ActivarInteractividadToggles(bool activar)
     {
@@ -380,6 +383,34 @@ public class ControladorEncuestaAprendizaje : MonoBehaviour
             // Aquí podrías avanzar a la siguiente pregunta o lo que requieras
             // siguientePregunta() ...
         }
+    }
+
+    public void FinalizarEncuesta()
+    {
+
+        // Recuperamos el userId almacenado en el login
+        string userId = PlayerPrefs.GetString("userId", "");
+        Debug.LogError("OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO" + userId);
+        if (string.IsNullOrEmpty(userId))
+        {
+            Debug.LogError("❌ No se puede actualizar Firestore porque userId es nulo.");
+            return;
+        }
+
+        DocumentReference docRef = firestore.Collection("users").Document(userId);
+
+        docRef.UpdateAsync("EncuestaCompletada", true).ContinueWithOnMainThread(task =>
+        {
+            if (task.IsCompleted)
+            {
+                Debug.Log("✅ EncuestaCompletada actualizado correctamente en Firestore.");
+                SceneManager.LoadScene("Inicio"); // Redirigir al inicio después de completar la encuesta
+            }
+            else
+            {
+                Debug.LogError("❌ Error al actualizar EncuestaCompletada en Firestore.");
+            }
+        });
     }
 
 
