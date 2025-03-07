@@ -9,7 +9,7 @@ using System;
 using Newtonsoft.Json;
 using Firebase.Firestore;
 using Firebase.Extensions;
-
+using UnityEngine.SceneManagement;
 
 
 public class ControladorEncuesta : MonoBehaviour
@@ -215,7 +215,7 @@ public class ControladorEncuesta : MonoBehaviour
             MostrarResultadosFinales();
 
             Debug.Log("Encuesta Finalizada");
-
+            SceneManager.LoadScene("EncuestaAprendizaje");
         }
         Debug.Log("siguientePregunta() finalizado.");
     }
