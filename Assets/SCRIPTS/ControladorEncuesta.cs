@@ -259,10 +259,10 @@ public class ControladorEncuesta : MonoBehaviour
                 }
 
                 // Opcional: Si deseas un total máximo de preguntas, por ejemplo 10, se puede limitar aquí
-                if (preguntas.Count > 10)
-                {
-                    preguntas = preguntas.Take(10).ToList();
-                }
+               // if (preguntas.Count > 10)
+                //{
+                //    preguntas = preguntas.Take(10).ToList();
+                //}
 
                 Debug.Log($"Se cargaron un total de {preguntas.Count} preguntas de todos los grupos.");
             }
