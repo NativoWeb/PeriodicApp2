@@ -7,13 +7,15 @@ using TMPro;
 using Firebase.Firestore;
 using static ControladorEncuesta;
 using Firebase.Extensions;
+using UnityEngine.SceneManagement;
 
 public class ControladorEncuestaAprendizaje : MonoBehaviour
 {
     public Text TextTimer;  // Referencia al componente Text de la UI
     public float tiempoRestante = 10f;  // Tiempo inicial del temporizador en segundos (10 segundos)
     private bool preguntaFinalizada = false;  // Flag para saber si la pregunta ha sido finalizada
-    
+
+    private FirebaseFirestore firestore;
     private bool eventosToggleHabilitados = false;
 
     [Header("Referencias UI")]
@@ -416,6 +418,33 @@ public class ControladorEncuestaAprendizaje : MonoBehaviour
         });
     }
 
+    public void FinalizarEncuesta()
+    {
+
+        // Recuperamos el userId almacenado en el login
+        string userId = PlayerPrefs.GetString("userId", "");
+        Debug.LogError("OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO" + userId);
+        if (string.IsNullOrEmpty(userId))
+        {
+            Debug.LogError("❌ No se puede actualizar Firestore porque userId es nulo.");
+            return;
+        }
+
+        DocumentReference docRef = firestore.Collection("users").Document(userId);
+
+        docRef.UpdateAsync("EncuestaCompletada", true).ContinueWithOnMainThread(task =>
+        {
+            if (task.IsCompleted)
+            {
+                Debug.Log("✅ EncuestaCompletada actualizado correctamente en Firestore.");
+                SceneManager.LoadScene("Inicio"); // Redirigir al inicio después de completar la encuesta
+            }
+            else
+            {
+                Debug.LogError("❌ Error al actualizar EncuestaCompletada en Firestore.");
+            }
+        });
+    }
 
 
 

@@ -196,26 +196,27 @@ public class ControladorEncuesta : MonoBehaviour
         {
             Debug.Log("siguientePregunta(): ¡Encuesta Finalizada! (No hay más preguntas).");
             textoPreguntaUI.text = "�Encuesta Finalizada!";
+
+            SceneManager.LoadScene("EncuestaAprendizaje");
             //grupoOpcionesUI.enabled = false;
             // Ocultar panel de preguntas y mostrar resultados
-            EnviarDatosAPrediccion(); // Llamar a EnviarDatosAPrediccion al finalizar la encuesta!
+            //EnviarDatosAPrediccion(); // Llamar a EnviarDatosAPrediccion al finalizar la encuesta!
 
-            panelPreguntas.SetActive(false);
-            panelResultados.SetActive(true);
+            //panelPreguntas.SetActive(false);
+            //panelResultados.SetActive(true);
 
-            CanvasGroup cg = panelResultados.GetComponent<CanvasGroup>();
-            if (cg != null)
-            {
-                cg.alpha = 1;
-                cg.interactable = true;
-                cg.blocksRaycasts = true;
-            }
+            //CanvasGroup cg = panelResultados.GetComponent<CanvasGroup>();
+            //if (cg != null)
+            //{
+            //    cg.alpha = 1;
+            //    cg.interactable = true;
+            //    cg.blocksRaycasts = true;
+            //}
 
-            // Mostrar resultados finales
-            MostrarResultadosFinales();
+            //// Mostrar resultados finales
+            //MostrarResultadosFinales();
 
             Debug.Log("Encuesta Finalizada");
-            SceneManager.LoadScene("EncuestaAprendizaje");
         }
         Debug.Log("siguientePregunta() finalizado.");
     }
@@ -560,7 +561,8 @@ public class ControladorEncuesta : MonoBehaviour
 
         // Preparar para la siguiente pregunta (puedes decidir cu�ndo avanzar a la siguiente pregunta, por ejemplo, con un bot�n)
         //preguntaActualIndex++; // Incrementar el �ndice para la siguiente pregunta
-        StartCoroutine(MostrarFeedbackYCambiarPregunta());
+        //StartCoroutine(MostrarFeedbackYCambiarPregunta());
+        siguientePregunta();
 
     }
 
@@ -699,7 +701,7 @@ public class ControladorEncuesta : MonoBehaviour
 
 
         // 4. Enviar la solicitud y procesar la respuesta (usando Coroutine)
-        StartCoroutine(EnviarYProcesarPrediccion(request));
+       // StartCoroutine(EnviarYProcesarPrediccion(request));
         Debug.Log("Corutina EnviarYProcesarPrediccion(request) llamada");
     }
 
