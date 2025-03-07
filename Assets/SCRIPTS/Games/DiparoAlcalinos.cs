@@ -30,6 +30,7 @@ public class DisparoAlcalinos : MonoBehaviour
     private int respuestasCorrectas = 0;
     private int totalPreguntas = 6;
     private List<string> listaPreguntas;
+    private int nivelactual = 3;
 
 
     private FirebaseAuth firebaseAuth;
@@ -177,7 +178,7 @@ public class DisparoAlcalinos : MonoBehaviour
         panelReporte.SetActive(true);
         textoReporte.text = $"Respondiste correctamente {respuestasCorrectas} de 6 preguntas.";
         Debug.Log($"Juego terminado. Respuestas correctas: {respuestasCorrectas} de 6.");
-        GuardarProgresoEnFirebase(respuestasCorrectas);
+        GuardarProgresoEnFirebase(nivelactual, respuestasCorrectas);
         SceneManager.LoadScene("Grupo1");
 
     }
@@ -205,8 +206,7 @@ public class DisparoAlcalinos : MonoBehaviour
 
         return diccionarioMezclado;
     }
-
-    private async void GuardarProgresoEnFirebase(int correctas)
+    private async void GuardarProgresoEnFirebase(int nivelActualJugado, int correctas)
     {
         if (firebaseAuth.CurrentUser != null)
         {
@@ -218,39 +218,53 @@ public class DisparoAlcalinos : MonoBehaviour
 
             try
             {
-                // Obtener el XP actual del usuario
+                // Obtener el XP y el nivel más alto registrado en Firestore
                 DocumentSnapshot userSnapshot = await userRef.GetSnapshotAsync();
                 int xpActual = userSnapshot.Exists && userSnapshot.TryGetValue<int>("xp", out int xp) ? xp : 0;
 
-                // Obtener el nivel actual
                 DocumentSnapshot grupoSnapshot = await grupoRef.GetSnapshotAsync();
-                int nivelActual = grupoSnapshot.Exists && grupoSnapshot.TryGetValue<int>("nivel", out int nivel) ? nivel : 1;
+                int nivelAlmacenado = grupoSnapshot.Exists && grupoSnapshot.TryGetValue<int>("nivel", out int nivel) ? nivel : 1;
 
-                // Sumar XP y subir de nivel
+                // Verificar si el nivel jugado es mayor al almacenado
+                bool subirNivel = nivelActualJugado > nivelAlmacenado;
+
                 xpGanadoPorNivel = correctas * 200;
 
                 int nuevoXp = xpActual + xpGanadoPorNivel;
-                int nuevoNivel = nivelActual + 1;
+                int nuevoNivel;
 
-                Dictionary<string, object> datosGrupo = new Dictionary<string, object>
+                Debug.Log(subirNivel);
+                if (subirNivel)
+                {
+                    nuevoNivel = nivelActualJugado;
+                }
+                else
+                {
+                    nuevoNivel = nivelAlmacenado;
+                }
+
+                // Guardar XP en users/userId
+                Dictionary<string, object> datosUsuario = new Dictionary<string, object>
+            {
+                { "xp", nuevoXp }
+            };
+
+                await userRef.SetAsync(datosUsuario, SetOptions.MergeAll);
+
+                if (subirNivel)
+                {
+                    Dictionary<string, object> datosGrupo = new Dictionary<string, object>
                 {
                     { "nivel", nuevoNivel }
                 };
 
-                Dictionary<string, object> datosUsuario = new Dictionary<string, object>
-                {
-                    { "xp", nuevoXp }
-                };
-
-                // Guardar nivel en grupos/grupo1
-                await grupoRef.SetAsync(datosGrupo, SetOptions.MergeAll);
-
-                // Guardar XP en users/userId
-                await userRef.SetAsync(datosUsuario, SetOptions.MergeAll);
+                    // Guardar el nuevo nivel en Firestore
+                    await grupoRef.SetAsync(datosGrupo, SetOptions.MergeAll);
+                }
 
                 Debug.Log($"✅ Progreso guardado: Nivel {nuevoNivel}, XP Total {nuevoXp}");
 
-                // Guardar en PlayerPrefs por compatibilidad
+                // Guardar en PlayerPrefs para uso local
                 PlayerPrefs.SetInt("nivelCompletado", nuevoNivel);
                 PlayerPrefs.SetInt("xp", nuevoXp);
                 PlayerPrefs.Save();
