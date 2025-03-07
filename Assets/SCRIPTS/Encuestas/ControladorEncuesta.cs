@@ -3,18 +3,19 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-using UnityEngine.Networking; // �A�ADIDO: Necesario para UnityWebRequest!
+using UnityEngine.Networking; 
 using System.Linq;
 using System;
 using Newtonsoft.Json;
 using Firebase.Firestore;
 using Firebase.Extensions;
-using Firebase;
-using UnityEngine.SceneManagement;
+
 
 
 public class ControladorEncuesta : MonoBehaviour
 {
+    private FirebaseFirestore db;
+
     private List<Pregunta> preguntas;
     private int preguntaActualIndex = 0;        // �ndice de la pregunta actual en la lista aleatoria
     private Pregunta preguntaActual;             // Para guardar la pregunta que se est� mostrando actualmente
@@ -27,19 +28,49 @@ public class ControladorEncuesta : MonoBehaviour
     public Text TextTimer;  // Referencia al componente Text de la UI
     public float tiempoRestante = 10f;  // Tiempo inicial del temporizador en segundos (10 segundos)
     private bool preguntaFinalizada = false;  // Flag para saber si la pregunta ha sido finalizada (cuando se pasa a la siguiente pregunta)
+    private int prediccionGlobal;
 
     // Variables para registrar el conteo de respuestas correctas por categor�a �A�ADIDO!
     private int correctasAlcalinos = 0;
+    private int correctasAlcalinoterreos = 0;
+    private int correctasFamiliaEscandio = 0;
+    private int correctasFamiliaTitanio = 0;
+    private int correctasFamiliaVanadio = 0;
+    private int correctasFamiliaCromo = 0;
+    private int correctasFamiliaManganeso = 0;
+    private int correctasFamiliaHierro = 0;
+    private int correctasFamiliaCobalto = 0;
+    private int correctasFamiliaNiquel = 0;
+    private int correctasFamiliaCobre = 0;
+    private int correctasFamiliaZinc = 0;
+    private int correctasGrupoBoro = 0;
+    private int correctasGrupoCarbono = 0;
+    private int correctasNitrogenoides = 0;
+    private int correctasCalcogenos = 0;
+    private int correctasHalogenos = 0;
     private int correctasGasesNobles = 0;
-    private int correctasMetaloides = 0;
-    private int correctasTransicion = 0;
-    private int correctasNoMetales = 0;
     private int incorrectasTotales = 0;
     private float dificultadTotalPreguntas = 0f; // Para calcular la dificultad media
     private int cantidadPreguntasRespondidas = 0; // Contador de preguntas respondidas
 
-
-    private FirebaseFirestore firestore;
+    private int totalPreguntasAlcalinos = 0;
+    private int totalPreguntasAlcalinoterreos = 0;
+    private int totalPreguntasFamiliaEscandio = 0;
+    private int totalPreguntasFamiliaTitanio = 0;
+    private int totalPreguntasFamiliaVanadio = 0;
+    private int totalPreguntasFamiliaCromo = 0;
+    private int totalPreguntasFamiliaManganeso = 0;
+    private int totalPreguntasFamiliaHierro = 0;
+    private int totalPreguntasFamiliaCobalto = 0;
+    private int totalPreguntasFamiliaNiquel = 0;
+    private int totalPreguntasFamiliaCobre = 0;
+    private int totalPreguntasFamiliaZinc = 0;
+    private int totalPreguntasGrupoBoro = 0;
+    private int totalPreguntasGrupoCarbono = 0;
+    private int totalPreguntasNitrogenoides = 0;
+    private int totalPreguntasCalcogenos = 0;
+    private int totalPreguntasHalogenos = 0;
+    private int totalPreguntasGasesNobles = 0;
 
     [System.Serializable]
     public class Pregunta
@@ -50,7 +81,6 @@ public class ControladorEncuesta : MonoBehaviour
         public string respuestaUsuario;
         public ControladorEncuesta.ElementoPreguntas.GrupoPreguntasData grupoPregunta; //  �RUTA CORRECTA para GrupoPreguntasData!
         public float dificultadPregunta; // �A�ADIDO: Para acceder a la dificultad!
-
     }
 
 
@@ -82,18 +112,17 @@ public class ControladorEncuesta : MonoBehaviour
 
     void Start()
     {
+        db = FirebaseFirestore.DefaultInstance;
         CargarPreguntasDesdeJSON();
         AleatorizarPreguntas();
         MostrarPreguntaActual();
         desmarcarToggle();
-        ConfigurarToggleListeners(); // DEJA ESTA LLAMADA AL INICIO DE START
+        ConfigurarToggleListeners(); 
 
         ActualizarTextoTiempo();
 
         eventosToggleHabilitados = true;
 
-        firestore = FirebaseFirestore.DefaultInstance;
-        string userId = PlayerPrefs.GetString("userId", ""); // Obtener el ID del usuario
     }
 
     // M�todo para manejar el temporizador
@@ -166,66 +195,76 @@ public class ControladorEncuesta : MonoBehaviour
         else
         {
             Debug.Log("siguientePregunta(): ¡Encuesta Finalizada! (No hay más preguntas).");
-            Debug.Log("Encuesta Finalizada");
             textoPreguntaUI.text = "�Encuesta Finalizada!";
-            grupoOpcionesUI.enabled = false;
-            SceneManager.LoadScene("EncuestaAprendizaje");
-            //EnviarDatosAPrediccion(); // �A�ADIDO: Llamar a EnviarDatosAPrediccion al finalizar la encuesta!
+            //grupoOpcionesUI.enabled = false;
+            // Ocultar panel de preguntas y mostrar resultados
+            EnviarDatosAPrediccion(); // Llamar a EnviarDatosAPrediccion al finalizar la encuesta!
+
+            panelPreguntas.SetActive(false);
+            panelResultados.SetActive(true);
+
+            CanvasGroup cg = panelResultados.GetComponent<CanvasGroup>();
+            if (cg != null)
+            {
+                cg.alpha = 1;
+                cg.interactable = true;
+                cg.blocksRaycasts = true;
+            }
+
+            // Mostrar resultados finales
+            MostrarResultadosFinales();
+
+            Debug.Log("Encuesta Finalizada");
+
         }
         Debug.Log("siguientePregunta() finalizado.");
     }
 
     void CargarPreguntasDesdeJSON()
     {
-        TextAsset archivoJSON = Resources.Load<TextAsset>("preguntas_tabla_periodica");
+        TextAsset archivoJSON = Resources.Load<TextAsset>("preguntas_tabla_periodica_mejores");
         if (archivoJSON != null)
         {
             string jsonString = archivoJSON.text;
-            GrupoPreguntasWrapper wrapper = JsonUtility.FromJson<GrupoPreguntasWrapper>(jsonString); // Paso 1: Deserializar JSON
+            GrupoPreguntasWrapper wrapper = JsonUtility.FromJson<GrupoPreguntasWrapper>(jsonString); // Deserializar el JSON
 
-            if (wrapper != null && wrapper.gruposPreguntas != null) // Validar estructura del JSON
+            if (wrapper != null && wrapper.gruposPreguntas != null)
             {
-                preguntas = new List<Pregunta>(); // Inicializar lista de preguntas
-                System.Random rnd = new System.Random(); // Generador de números aleatorios
+                preguntas = new List<Pregunta>();
+                System.Random rnd = new System.Random();
 
-                foreach (var grupo in wrapper.gruposPreguntas) // Paso 2: Recorrer cada grupo
+                foreach (var grupo in wrapper.gruposPreguntas)
                 {
                     List<Pregunta> preguntasGrupo = new List<Pregunta>();
 
-                    // Paso 3: Recopilar todas las preguntas de los elementos del grupo
+                    // Por cada elemento del grupo, seleccionar una pregunta aleatoria
                     foreach (var elemento in grupo.elementos)
                     {
-                        preguntasGrupo.AddRange(elemento.preguntas);
+                        if (elemento.preguntas != null && elemento.preguntas.Count > 0)
+                        {
+                            // Seleccionar una pregunta aleatoria de este elemento
+                            var preguntaSeleccionada = elemento.preguntas.OrderBy(x => rnd.Next()).First();
+                            preguntasGrupo.Add(preguntaSeleccionada);
+                        }
                     }
 
-                    // Paso 4: Tomar 2 preguntas aleatorias del grupo
-                    if (preguntasGrupo.Count >= 2)
+                    // Si el grupo tiene más de 3 elementos, escoger aleatoriamente 3 preguntas
+                    if (preguntasGrupo.Count > 3)
                     {
-                        List<Pregunta> preguntasAleatoriasGrupo = preguntasGrupo
-                            .OrderBy(x => rnd.Next()) // Aleatorizar
-                            .Take(2) // Tomar 2
-                            .ToList();
-
-                        preguntas.AddRange(preguntasAleatoriasGrupo); // Agregar a la lista global
-                    }
-                    else
-                    {
-                        preguntas.AddRange(preguntasGrupo); // Si hay menos de 2, agregar todas
+                        preguntasGrupo = preguntasGrupo.OrderBy(x => rnd.Next()).Take(3).ToList();
                     }
 
-                    // Paso 5: Detener si ya hay 10 preguntas
-                    if (preguntas.Count >= 10)
-                    {
-                        preguntas = preguntas.Take(10).ToList();
-                        break; // Salir del bucle
-                    }
+                    // Agregar las preguntas seleccionadas de este grupo a la lista global
+                    preguntas.AddRange(preguntasGrupo);
                 }
 
-                // Paso 6: Advertencia si no hay suficientes preguntas
-                if (preguntas.Count < 10)
-                {
-                    Debug.LogWarning($"Solo se cargaron {preguntas.Count} preguntas.");
-                }
+                // Opcional: Si deseas un total máximo de preguntas, por ejemplo 10, se puede limitar aquí
+               // if (preguntas.Count > 10)
+                //{
+                //    preguntas = preguntas.Take(10).ToList();
+                //}
+
+                Debug.Log($"Se cargaron un total de {preguntas.Count} preguntas de todos los grupos.");
             }
             else
             {
@@ -237,6 +276,7 @@ public class ControladorEncuesta : MonoBehaviour
             Debug.LogError("No se encontró el archivo JSON.");
         }
     }
+
 
 
     // M�todo para aleatorizar el orden de las opciones de respuesta y asegurar que la correcta est� entre ellas
@@ -294,7 +334,6 @@ public class ControladorEncuesta : MonoBehaviour
             Debug.Log("¡Encuesta Finalizada!");
             textoPreguntaUI.text = "¡Encuesta Finalizada!";
             grupoOpcionesUI.enabled = false;
-            SceneManager.LoadScene("EncuestaAprendizaje");
             return;
         }
 
@@ -354,7 +393,7 @@ public class ControladorEncuesta : MonoBehaviour
         }
     }
 
-    private void ConfigurarToggleListeners()
+      private void ConfigurarToggleListeners()
     {
         foreach (Toggle toggle in opcionesToggleUI)
         {
@@ -426,36 +465,91 @@ public class ControladorEncuesta : MonoBehaviour
             // Determinar la categor�a de la pregunta actual (asumiendo que tienes una propiedad 'grupo' en tu objeto PreguntaConocimiento) �A�ADIDO!
             string categoriaPregunta = preguntaActual.grupoPregunta.grupo; // Ajusta esto seg�n la estructura de tu objeto PreguntaConocimiento
 
-            // Incrementar el contador de respuestas correctas seg�n la categor�a �A�ADIDO!
+            // Incrementar el contador de respuestas correctas segun la categoria 
             switch (categoriaPregunta)
             {
                 case "Metales Alcalinos (Grupo 1)":
                     correctasAlcalinos++;
+                    totalPreguntasAlcalinos++;
+                    break;
+                case "Metales Alcalinotérreos (Grupo 2)":
+                    correctasAlcalinoterreos++;
+                    totalPreguntasAlcalinoterreos++;
+                    break;
+                case "Familia del Escandio (Grupo 3)": 
+                    correctasFamiliaEscandio++;
+                    totalPreguntasFamiliaEscandio++;
+                    break;
+                case "Familia del Titanio (Grupo 4)":
+                    correctasFamiliaTitanio++;
+                    totalPreguntasFamiliaTitanio++;
+                    break;
+                case "Familia del Vanadio (Grupo 5)":
+                    correctasFamiliaVanadio++;
+                    totalPreguntasFamiliaVanadio++;
+                    break;
+                case "Familia del Cromo (Grupo 6)":
+                    correctasFamiliaCromo++;
+                    totalPreguntasFamiliaCromo++;
+                    break;
+                case "Familia del Manganeso (Grupo 7)":
+                    correctasFamiliaManganeso++;
+                    totalPreguntasFamiliaManganeso++;
+                    break;
+                case "Familia del Hierro (Grupo 8)":
+                    correctasFamiliaHierro++;
+                    totalPreguntasFamiliaHierro++;
+                    break;
+                case "Familia del Cobalto (Grupo 9)":
+                    correctasFamiliaCobalto++;
+                    totalPreguntasFamiliaCobalto++;
+                    break;
+                case "Familia del Níquel (Grupo 10)":
+                    correctasFamiliaNiquel++;
+                    totalPreguntasFamiliaNiquel++;
+                    break;
+                case "Familia del Cobre (Grupo 11)":
+                    correctasFamiliaCobre++;
+                    totalPreguntasFamiliaCobre++;
+                    break;
+                case "Familia del Zinc (Grupo 12)":
+                    correctasFamiliaZinc++;
+                    totalPreguntasFamiliaZinc++;
+                    break;
+                case "Grupo del Boro (Grupo 13)":
+                    correctasGrupoBoro++;
+                    totalPreguntasGrupoBoro++;
+                    break;
+                case "Grupo del Carbono (Grupo 14)":
+                    correctasGrupoCarbono++;
+                    totalPreguntasGrupoCarbono++;
+                    break;
+                case "Nitrogenoides (Grupo 15)":
+                    correctasNitrogenoides++;
+                    totalPreguntasNitrogenoides++;
+                    break;
+                case "Calcógenos (Grupo 16)":
+                    correctasCalcogenos++;
+                    totalPreguntasCalcogenos++;
+                    break;
+                case "Halógenos (Grupo 17)":
+                    correctasHalogenos++;
+                    totalPreguntasHalogenos++;
                     break;
                 case "Gases Nobles (Grupo 18)":
                     correctasGasesNobles++;
-                    break;
-                case "Metaloides": // Ajusta este nombre si es diferente en tus datos
-                    correctasMetaloides++;
-                    break;
-                case "Metales de Transici�n": // Ajusta este nombre si es diferente en tus datos
-                    correctasTransicion++;
-                    break;
-                case "No Metales": // Ajusta este nombre si es diferente en tus datos
-                    correctasNoMetales++;
+                    totalPreguntasGasesNobles++;
                     break;
                 default:
                     Debug.LogWarning($"Categor�a de pregunta no reconocida: {categoriaPregunta}. Ajusta el switch en VerificarRespuesta.");
                     break;
             }
-            // **IMPORTANTE:** Aseg�rate de que los nombres de las categor�as en este `switch` coincidan EXACTAMENTE con los nombres que usas en tus datos de preguntas JSON.
-
         }
         else
         {
             // �Respuesta INCORRECTA!
             Debug.Log("Respuesta Incorrecta");
-            incorrectasTotales++; // �A�ADIDO: Incrementar contador de incorrectas!
+            incorrectasTotales++; // Incrementar contador de incorrectas!
         }
 
         // Registrar la dificultad de la pregunta actual (asumiendo que tienes una propiedad 'dificultadPregunta' en tu objeto PreguntaConocimiento) �A�ADIDO!
@@ -495,7 +589,9 @@ public class ControladorEncuesta : MonoBehaviour
     // Funci�n para calcular el porcentaje de aciertos �A�ADIDO!
     private float CalcularPorcentajeAciertos()
     {
-        int totalCorrectas = correctasAlcalinos + correctasGasesNobles + correctasMetaloides + correctasTransicion + correctasNoMetales;
+        int totalCorrectas = correctasAlcalinos + correctasAlcalinoterreos +  correctasFamiliaEscandio + correctasFamiliaTitanio + correctasFamiliaVanadio + correctasFamiliaCromo
+            + correctasFamiliaManganeso + correctasFamiliaHierro + correctasFamiliaCobalto + correctasFamiliaNiquel + correctasFamiliaCobre + correctasFamiliaZinc + correctasGrupoBoro
+            + correctasGrupoCarbono + correctasNitrogenoides + correctasCalcogenos + correctasHalogenos + correctasGasesNobles;
         int totalRespuestas = totalCorrectas + incorrectasTotales;
         if (totalRespuestas == 0) return 0f; // Evitar divisi�n por cero
         return (float)totalCorrectas / totalRespuestas * 100f;
@@ -508,9 +604,57 @@ public class ControladorEncuesta : MonoBehaviour
         return dificultadTotalPreguntas / cantidadPreguntasRespondidas;
     }
 
+    
+    private float CalcularPorcentajePorGrupo(int correctasGrupo, int totalPreguntasGrupo)
+    {
+        if (totalPreguntasGrupo == 0)
+            return 0f;
+        return (float)correctasGrupo / totalPreguntasGrupo * 100f;
+    }
+
+    private Dictionary<string, float> CalcularPorcentajesPorGrupo()
+    {
+        Dictionary<string, float> porcentajes = new Dictionary<string, float>();
+
+        porcentajes["Metales Alcalinos (Grupo 1)"] = CalcularPorcentajePorGrupo(correctasAlcalinos, totalPreguntasAlcalinos);
+        porcentajes["Metales Alcalinotérreos (Grupo 2)"] = CalcularPorcentajePorGrupo(correctasAlcalinoterreos, totalPreguntasAlcalinoterreos);
+        porcentajes["Familia del Escandio (Grupo 3)"] = CalcularPorcentajePorGrupo(correctasFamiliaEscandio, totalPreguntasFamiliaEscandio);
+        porcentajes["Familia del Titanio (Grupo 4)"] = CalcularPorcentajePorGrupo(correctasFamiliaTitanio, totalPreguntasFamiliaTitanio);
+        porcentajes["Familia del Vanadio (Grupo 5)"] = CalcularPorcentajePorGrupo(correctasFamiliaVanadio, totalPreguntasFamiliaVanadio);
+        porcentajes["Familia del Cromo (Grupo 6)"] = CalcularPorcentajePorGrupo(correctasFamiliaCromo, totalPreguntasFamiliaCromo);
+        porcentajes["Familia del Manganeso (Grupo 7)"] = CalcularPorcentajePorGrupo(correctasFamiliaManganeso, totalPreguntasFamiliaManganeso);
+        porcentajes["Familia del Hierro (Grupo 8)"] = CalcularPorcentajePorGrupo(correctasFamiliaHierro, totalPreguntasFamiliaHierro);
+        porcentajes["Familia del Cobalto (Grupo 9)"] = CalcularPorcentajePorGrupo(correctasFamiliaCobalto, totalPreguntasFamiliaCobalto);
+        porcentajes["Familia del Níquel (Grupo 10)"] = CalcularPorcentajePorGrupo(correctasFamiliaNiquel, totalPreguntasFamiliaNiquel);
+        porcentajes["Familia del Cobre (Grupo 11)"] = CalcularPorcentajePorGrupo(correctasFamiliaCobre, totalPreguntasFamiliaCobre);
+        porcentajes["Familia del Zinc (Grupo 12)"] = CalcularPorcentajePorGrupo(correctasFamiliaZinc, totalPreguntasFamiliaZinc);
+        porcentajes["Grupo del Boro (Grupo 13)"] = CalcularPorcentajePorGrupo(correctasGrupoBoro, totalPreguntasGrupoBoro);
+        porcentajes["Grupo del Carbono (Grupo 14)"] = CalcularPorcentajePorGrupo(correctasGrupoCarbono, totalPreguntasGrupoCarbono);
+        porcentajes["Nitrogenoides (Grupo 15)"] = CalcularPorcentajePorGrupo(correctasNitrogenoides, totalPreguntasNitrogenoides);
+        porcentajes["Calcógenos (Grupo 16)"] = CalcularPorcentajePorGrupo(correctasCalcogenos, totalPreguntasCalcogenos);
+        porcentajes["Halógenos (Grupo 17)"] = CalcularPorcentajePorGrupo(correctasHalogenos, totalPreguntasHalogenos);
+        porcentajes["Gases Nobles (Grupo 18)"] = CalcularPorcentajePorGrupo(correctasGasesNobles, totalPreguntasGasesNobles);
+
+        return porcentajes;
+    }
+
+    // Función para calcular el total de aciertos (sumando todos los grupos)
+    private int CalcularTotalAciertos()
+    {
+        return correctasAlcalinos + correctasAlcalinoterreos + correctasFamiliaEscandio +
+               correctasFamiliaTitanio + correctasFamiliaVanadio + correctasFamiliaCromo +
+               correctasFamiliaManganeso + correctasFamiliaHierro + correctasFamiliaCobalto +
+               correctasFamiliaNiquel + correctasFamiliaCobre + correctasFamiliaZinc +
+               correctasGrupoBoro + correctasGrupoCarbono + correctasNitrogenoides +
+               correctasCalcogenos + correctasHalogenos + correctasGasesNobles;
+    }
+
+
+
     // Funci�n para enviar los datos a la API de Flask y obtener la predicci�n �A�ADIDO!
     private void EnviarDatosAPrediccion()
     {
+        Debug.Log("Entrando a EnviarDatosAPrediccion()");
         // 1. Recopilar los valores de las caracter�sticas
         float porcentajeAciertos = CalcularPorcentajeAciertos();
         float dificultadMedia = CalcularDificultadMedia();
@@ -520,10 +664,23 @@ public class ControladorEncuesta : MonoBehaviour
         {
             {"features", new float[] {
                 correctasAlcalinos,
+                correctasAlcalinoterreos,
+                correctasFamiliaEscandio,
+                correctasFamiliaTitanio,
+                correctasFamiliaVanadio,
+                correctasFamiliaCromo,
+                correctasFamiliaManganeso,
+                correctasFamiliaHierro,
+                correctasFamiliaCobalto,
+                correctasFamiliaNiquel,
+                correctasFamiliaCobre,
+                correctasFamiliaZinc,
+                correctasGrupoBoro,
+                correctasGrupoCarbono,
+                correctasNitrogenoides,
+                correctasCalcogenos,
+                correctasHalogenos,
                 correctasGasesNobles,
-                correctasMetaloides,
-                correctasTransicion,
-                correctasNoMetales,
                 incorrectasTotales,
                 porcentajeAciertos,
                 dificultadMedia
@@ -543,12 +700,15 @@ public class ControladorEncuesta : MonoBehaviour
 
         // 4. Enviar la solicitud y procesar la respuesta (usando Coroutine)
         StartCoroutine(EnviarYProcesarPrediccion(request));
+        Debug.Log("Corutina EnviarYProcesarPrediccion(request) llamada");
     }
 
     // Coroutine para enviar la solicitud y procesar la respuesta de la API �A�ADIDO!
     IEnumerator EnviarYProcesarPrediccion(UnityWebRequest request)
     {
+        Debug.Log("Iniciando EnviarYProcesarPrediccion()");
         yield return request.SendWebRequest(); // Enviar la solicitud y esperar la respuesta
+        Debug.Log($"request.result: {request.result}, error: {request.error}");
 
         if (request.result == UnityWebRequest.Result.ConnectionError || request.result == UnityWebRequest.Result.ProtocolError)
         {
@@ -565,12 +725,12 @@ public class ControladorEncuesta : MonoBehaviour
                 Dictionary<string, object> responseData = JsonConvert.DeserializeObject<Dictionary<string, object>>(request.downloadHandler.text);
                 if (responseData.ContainsKey("prediction"))
                 {
-                    int prediction = Convert.ToInt32(responseData["prediction"]); // Obtener la predicci�n (0 o 1)
+                    prediccionGlobal = Convert.ToInt32(responseData["prediction"]); // Obtener la predicci�n (0 o 1)
 
-                    Debug.Log("Predicci�n de la API: " + prediction);
+                    Debug.Log("Predicci�n de la API: " + prediccionGlobal);
 
                     // **Aqu� puedes usar la 'prediction' (0 o 1) para adaptar tu aplicaci�n**
-                    ProcesarPrediccionDeConocimiento(prediction); // Llama a una funci�n para manejar la predicci�n
+                    ProcesarPrediccionDeConocimiento(prediccionGlobal); // Llama a una funci�n para manejar la predicci�n
 
                 }
                 else if (responseData.ContainsKey("error"))
@@ -615,18 +775,88 @@ public class ControladorEncuesta : MonoBehaviour
         }
     }
 
+    public void MostrarResultadosFinales()
+    {
+        // Calcular datos
+        int totalAciertos = CalcularTotalAciertos();
+        Dictionary<string, float> porcentajes = CalcularPorcentajesPorGrupo();
+
+        // Construir texto
+        string resultados = $"<b>RESULTADOS FINALES</b>\n\n";
+        resultados += $"Aciertos totales: {totalAciertos}/54\n";
+        resultados += $"Predicción del modelo: {(prediccionGlobal == 1 ? "✅ Dominio adecuado" : "❌ Necesita refuerzo")}\n\n";
+
+        resultados += "<b>Detalle por grupos:</b>\n";
+        foreach (var grupo in porcentajes)
+        {
+            resultados += $"{grupo.Key}: {grupo.Value:F1}%\n";
+        }
+
+        // Actualizar UI
+        resultadosTextUI.text = resultados;
+
+        //Guardar en FireStore
+        GuardarResultadosEncuesta();
+        
+    }
+
+    private void GuardarResultadosEncuesta()
+    {
+        // 1. Preparar datos a guardar
+        float porcentajeAciertos = CalcularPorcentajeAciertos();
+        Dictionary<string, float> porcentajesGrupo = CalcularPorcentajesPorGrupo();
+        int totalAciertos = CalcularTotalAciertos();
+
+        // Construir un diccionario con la información
+        Dictionary<string, object> data = new Dictionary<string, object>();
+
+        // Conversión a double porque Firestore espera double en lugar de float
+        data["prediccionGlobal"] = prediccionGlobal;
+        data["porcentajeAciertos"] = (double)porcentajeAciertos;
+        data["totalAciertos"] = totalAciertos;
+        data["timestamp"] = DateTime.UtcNow.ToString("o"); // o un FieldValue.serverTimestamp
+
+        // 2. Guardar los porcentajes por grupo en un sub-diccionario
+        Dictionary<string, object> porcentajesDic = new Dictionary<string, object>();
+        foreach (var kvp in porcentajesGrupo)
+        {
+            porcentajesDic[kvp.Key] = (double)kvp.Value;
+        }
+        data["porcentajesGrupos"] = porcentajesDic;
+
+        // 3. Escribir en Firestore
+        CollectionReference coleccion = db.Collection("encuestasAprendizaje");
+        coleccion.AddAsync(data).ContinueWithOnMainThread(task =>
+        {
+            if (task.IsCompleted && !task.IsFaulted && !task.IsCanceled)
+            {
+                Debug.Log("Resultados de la encuesta guardados con éxito en Firestore.");
+            }
+            else
+            {
+                Debug.LogError("Error al guardar resultados en Firestore: " + task.Exception);
+            }
+        });
+    }
+
+
+
 
     [Header("Referencias UI")]
     public TextMeshProUGUI textoPreguntaUI;
     public ToggleGroup grupoOpcionesUI;
     public Toggle[] opcionesToggleUI;
+    public TextMeshProUGUI NumeroPreguntas;
+    public TextMeshProUGUI resultadosTextUI;
 
     [Header("Colores de Respuesta")]
     public Color colorCorrecto = Color.green;
     public Color colorIncorrecto = Color.red;
     public Color colorNormal = Color.white; // Color por defecto
 
-    [Header("Referencias UI")]
-    public TextMeshProUGUI NumeroPreguntas;
+    [Header("Paneles UI")]
+    public GameObject panelPreguntas; 
+    public GameObject panelResultados; 
+
 
 }
