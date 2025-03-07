@@ -106,6 +106,8 @@ public class RegisterController : MonoBehaviour
         FirebaseFirestore firestore = FirebaseFirestore.DefaultInstance;
         DocumentReference docRef = firestore.Collection("users").Document(user.UserId);
 
+        // Asignar avatar según el nivel
+        string avatarUrl = "Avatares/defecto";  // Ruta de la imagen dentro de Resources
         // Obtener la ocupación seleccionada
         string ocupacionSeleccionada = roles.options[roles.value].text;
 
@@ -114,7 +116,10 @@ public class RegisterController : MonoBehaviour
         { "DisplayName", user.DisplayName },
         { "Email", user.Email },
         { "Ocupacion", ocupacionSeleccionada },
-        { "EncuestaCompletada", false } // 🔹 Marcamos la encuesta como no completada inicialmente
+        { "EncuestaCompletada", false },// 🔹 Marcamos la encuesta como no completada inicialmente
+        { "xp", 0 },
+        { "avatar", avatarUrl }, // Avatar inicial
+        {"Rango", "Novato de laboratorio" }
     };
 
         PlayerPrefs.SetString("userId", user.UserId);
