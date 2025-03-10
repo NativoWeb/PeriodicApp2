@@ -119,19 +119,19 @@ public class RegisterController : MonoBehaviour
 
         // Asignar avatar según el nivel
         string avatarUrl = "Avatares/defecto";  // Ruta de la imagen dentro de Resources
-        // Obtener la ocupación seleccionada
+                                                // Obtener la ocupación seleccionada
         string ocupacionSeleccionada = roles.options[roles.value].text;
 
         Dictionary<string, object> userData = new Dictionary<string, object>
-        {
-            { "DisplayName", user.DisplayName },
-            { "Email", user.Email },
-            { "Ocupacion", ocupacionSeleccionada },
-            { "EncuestaCompletada", false },// 🔹 Marcamos la encuesta como no completada inicialmente
-            { "xp", 0 },
-            { "avatar", avatarUrl }, // Avatar inicial
-            { "Rango", "Novato de laboratorio" }
-        };
+    {
+        { "DisplayName", user.DisplayName },
+        { "Email", user.Email },
+        { "Ocupacion", ocupacionSeleccionada },
+        { "EncuestaCompletada", false }, // 🔹 Marcamos la encuesta como no completada inicialmente
+        { "xp", 0 },
+        { "avatar", avatarUrl }, // Avatar inicial
+        { "Rango", "Novato de laboratorio" }
+    };
 
         PlayerPrefs.SetString("userId", user.UserId);
         PlayerPrefs.Save();
@@ -149,6 +149,9 @@ public class RegisterController : MonoBehaviour
             }
             Debug.Log("Datos de usuario guardados en Firestore.");
 
+            // 🔹 Crear la subcolección "grupos"
+            CrearSubcoleccionGrupos(user.UserId);
+
             // 🔹 Verificar y actualizar rango (aunque esté recién creado)
             VerificarYActualizarRango(user.UserId);
 
@@ -163,6 +166,46 @@ public class RegisterController : MonoBehaviour
             }
         });
     }
+
+    // ✅ FUNCION PARA CREAR LA SUBCOLECCIÓN "grupos"
+    private void CrearSubcoleccionGrupos(string userId)
+    {
+        FirebaseFirestore firestore = FirebaseFirestore.DefaultInstance;
+        CollectionReference gruposRef = firestore.Collection("users").Document(userId).Collection("grupos");
+
+        // Lista de nombres de los 18 grupos (puedes personalizar los nombres)
+        string[] nombresGrupos = new string[]
+        {
+        "Metales Alcalinos", "Metales Alcalinotérreos", "Metales del Grupo del Escandio", "Metales del Grupo del Titanio", "Metales del Grupo del Vanadio", "Metales del Grupo del Cromo",
+        "Metales del Grupo del Manganeso", "Metales del Grupo del Hierro", "Metales del Grupo del Cobalto", "Metales del Grupo del Níquel", "Metales del Grupo del Cobre", "Metales del Grupo del Zinc",
+        "Lantánidos", "Actínidos", "Metaloides", "No Metales", "Halógenos", "Gases Nobles"
+        };
+
+        // Iterar sobre cada grupo para crear el documento con los datos iniciales
+        for (int i = 0; i < nombresGrupos.Length; i++)
+        {
+            string nombreGrupo = nombresGrupos[i];
+            Dictionary<string, object> grupoData = new Dictionary<string, object>
+        {
+            { "nivel", 0 }, // Nivel inicial
+            { "nivel_maximo", 15 }, // Nivel máximo, puedes cambiar este valor según necesidad
+            { "nombre", nombreGrupo },
+            { "ruta_imagen", $"GruposImages/Grupo{i + 1}" } // Ruta de la imagen, ajusta según tu carpeta Resources
+        };
+
+            gruposRef.Document(nombreGrupo).SetAsync(grupoData).ContinueWithOnMainThread(task => {
+                if (task.IsCompletedSuccessfully)
+                {
+                    Debug.Log($"Grupo '{nombreGrupo}' creado correctamente.");
+                }
+                else
+                {
+                    Debug.LogError($"Error al crear grupo '{nombreGrupo}': {task.Exception?.Message}");
+                }
+            });
+        }
+    }
+
 
     // ------------------------- FUNCIÓN PARA VERIFICAR Y ACTUALIZAR RANGO -------------------------
     private void VerificarYActualizarRango(string userId)

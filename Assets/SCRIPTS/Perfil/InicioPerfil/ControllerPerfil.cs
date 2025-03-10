@@ -18,6 +18,7 @@ public class ControllerPerfil : MonoBehaviour
     public Transform content;// donde va el scroll 
     public GameObject buttonPrefab; // boton que se crea cada vez que hay una mision
     public string userId;
+    private string rangoActual; // Rango actualizado del usuario
 
     void Start()
     {
@@ -30,7 +31,7 @@ public class ControllerPerfil : MonoBehaviour
 
         if (!string.IsNullOrEmpty(userId))
         {
-            ObtenerDatosUsuario(userId);//########################## llamado de funcion para datos
+            ObtenerDatosUsuario(userId);
         }
         else
         {
@@ -38,9 +39,24 @@ public class ControllerPerfil : MonoBehaviour
             tmpCorreo.text = "Correo: No encontrado";
         }
 
-        CargarMisioness();// ##################################### llamado de funcion para cargar las misiones dentro del scroll view
+        CargarMisioness();
+
+        ActualizarDatosUsuario();
     }
 
+    /*-------------------------------------------------funcion para actualizar dependiendo el xp-----------------------------------------------------*/
+    public void ActualizarDatosUsuario()
+    {
+        StartCoroutine(ActualizarDatosUsuarioCoroutine());
+    }
+
+    private IEnumerator ActualizarDatosUsuarioCoroutine()
+    {
+        ObtenerDatosUsuario(userId);
+        yield return null; // Para que pueda correrse de manera asíncrona si quieres añadir efectos visuales
+    }
+
+    /*--------------------------------------------------------------------------------------------------------------------------------------------*/
     private string ObtenerAvatarPorRango(string rangos) //############################################# funcion para obtener nivel del usuario en particular
     {
         string avatarPath = string.Empty;
@@ -69,9 +85,11 @@ public class ControllerPerfil : MonoBehaviour
         return avatarPath;
     }
 
-    async void ObtenerDatosUsuario(string userId) //###################################################### traemos los datos para pasarlos a los txt
+    async void ObtenerDatosUsuario(string userId)
     {
-        DocumentReference docRef = db.Collection("users").Document(userId);
+        
+
+    DocumentReference docRef = db.Collection("users").Document(userId);
         DocumentSnapshot snapshot = await docRef.GetSnapshotAsync();
 
         if (snapshot.Exists)
@@ -79,30 +97,35 @@ public class ControllerPerfil : MonoBehaviour
             Debug.Log("Documento encontrado en Firestore");
             string username = snapshot.GetValue<string>("DisplayName");
             string correo = snapshot.GetValue<string>("Email");
-            string rangos = snapshot.GetValue<string>("Rango");
+            string rangos = snapshot.GetValue<string>("Rango"); // El rango actualizado
+            rangoActual = rangos; // Guardar rango globalmente
             int xp = snapshot.GetValue<int>("xp");
-            string avatarUrl = snapshot.GetValue<string>("avatar"); // Recuperar la ruta del avatar
 
-
-            // Obtener la ruta del avatar según el nivel
+            // Obtener la ruta del avatar según el rango
             string avatarPath = ObtenerAvatarPorRango(rangos);
-            Sprite avatarSprite = Resources.Load<Sprite>(avatarPath); // Cargar la imagen desde Resources
-            
+            Sprite avatarSprite = Resources.Load<Sprite>(avatarPath); // Cargar imagen desde Resources
+
             if (avatarSprite != null)
             {
-                avatarImage.sprite = avatarSprite;  // Asignar la imagen al Image
+                avatarImage.sprite = avatarSprite; // Asignar imagen
             }
             else
             {
                 Debug.LogError($"No se encontró el avatar para la ruta: {avatarPath}. Asignando avatar por defecto.");
-                avatarImage.sprite = Resources.Load<Sprite>("Avatares/default");  // Avatar por defecto si no se encuentra
+                avatarImage.sprite = Resources.Load<Sprite>("Avatares/default"); // Avatar por defecto
             }
 
-            Debug.Log($"Nombre de usuario Firestore: {username}");
-            Debug.Log($"Correo Firestore: {correo}");
-
+            // Actualizar textos
             tmpUsername.text = "¡Hola, " + username + "!";
             tmpCorreo.text = "Correo: " + correo;
+
+            // 🔑 Si quieres también mostrar el rango textual, podrías añadir otro TMP_Text para esto (opcional):
+            // tmpRango.text = "Rango: " + rangos;
+
+            // 🔄 Recargar misiones según nuevo rango
+            LimpiarMisiones(); // Elimina misiones anteriores para recargar
+            CargarMisioness(); // Recarga las misiones según nuevo rango
+
         }
         else
         {
@@ -111,6 +134,7 @@ public class ControllerPerfil : MonoBehaviour
             tmpCorreo.text = "Correo: No disponible";
         }
     }
+
 
     // Método para obtener el nivel del usuario desde Firestore
     async Task<string> ObtenerRangoUsuario(string userId) //################################## obtenemos el rango para poder mostrar mision dependiendo el rango de cada usuario en especifico
@@ -135,10 +159,10 @@ public class ControllerPerfil : MonoBehaviour
         }
     }
 
-    public async void CargarMisioness()//############################################# mostramos todo dentro del content del scrollview
+    public async void CargarMisioness()
     {
-        // Obtener el nivel del usuario
-        string rangoUsuario = await ObtenerRangoUsuario(userId);// acá llamamos la funcion para pasarle el rango y poder comparar
+        // ✅ Usar el rango que ya tenemos almacenado
+        string rangoUsuario = rangoActual;
 
         // Filtrar misiones por nivel
         Query misionesQuery = db.Collection("misiones").WhereEqualTo("rangoRequerido", rangoUsuario);
@@ -153,42 +177,32 @@ public class ControllerPerfil : MonoBehaviour
                 string descripcion = document.GetValue<string>("descripcion");
                 int xp = document.GetValue<int>("xp");
                 string rutaEscena = document.GetValue<string>("rutaEscena");
-                string misionID = document.Id; // ID de la misión
+                string misionID = document.Id;
 
-                Debug.Log($"Misión: {titulo}, {descripcion}, XP: {xp}, Escena: {rutaEscena}");
-
-                // Instanciamos el botón para mostrar la misión
+                // Instanciar botón
                 GameObject newButton = Instantiate(buttonPrefab, content);
 
-                // Obtener componentes del botón
+                // Asignar info al botón
                 TextMeshProUGUI[] textComponents = newButton.GetComponentsInChildren<TextMeshProUGUI>();
                 Slider barraProgreso = newButton.GetComponentInChildren<Slider>();
 
-                // Asignamos la información al botón
                 textComponents[0].text = titulo;
                 textComponents[1].text = descripcion;
                 textComponents[2].text = $"XP: {xp}";
 
-                // Asignar evento al botón para cambiar de escena
+                // Asignar evento al botón
                 Button btn = newButton.GetComponent<Button>();
                 if (btn != null)
                 {
                     btn.onClick.AddListener(() => CambiarEscena(rutaEscena));
                 }
-                else
-                {
-                    Debug.LogWarning("El botón no tiene componente Button.");
-                }
 
-                // Cargar el progreso del usuario en la misión
-                await CargarProgreso(userId, misionID, barraProgreso);// acá modificamos el slider
-            }
-            else
-            {
-                Debug.LogWarning("Documento no encontrado.");
+                // Cargar progreso
+                await CargarProgreso(userId, misionID, barraProgreso);
             }
         }
     }
+
 
 
     // Método para cargar el progreso del usuario
@@ -210,6 +224,13 @@ public class ControllerPerfil : MonoBehaviour
         }
     }
 
+    private void LimpiarMisiones()
+    {
+        foreach (Transform child in content)
+        {
+            Destroy(child.gameObject);
+        }
+    }
     void CambiarEscena(string rutaEscena)
     {
         Debug.Log("Intentando cargar la escena: " + rutaEscena);
