@@ -21,7 +21,7 @@ public class ControladorNiveles : MonoBehaviour
     {
         string userId = auth.CurrentUser.UserId;
         DocumentReference docGrupo = db.Collection("users").Document(userId)
-                                      .Collection("grupos").Document("grupo 1");
+                                      .Collection("grupos").Document("Grupo 1");
 
         DocumentSnapshot snapshot = await docGrupo.GetSnapshotAsync();
 

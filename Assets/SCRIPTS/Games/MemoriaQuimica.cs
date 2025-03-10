@@ -12,7 +12,7 @@ public class MemoriaQuimica : MonoBehaviour
     public GameObject botonContinuar;
 
     private int xpGanadoPorNivel = 100; // Ajustable desde el Inspector
-    private int nivelActual = 2; // Asigna manualmente el número de nivel
+    private int nivelActual = 3; // Asigna manualmente el número de nivel
 
     private List<string> elementos = new List<string> { "Litio", "Sodio", "Potasio", "Rubidio", "Cesio", "Francio" };
     private List<string> simbolos = new List<string> { "Li", "Na", "K", "Rb", "Cs", "Fr" };

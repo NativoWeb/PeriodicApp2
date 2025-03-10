@@ -30,7 +30,7 @@ public class DisparoAlcalinos : MonoBehaviour
     private int respuestasCorrectas = 0;
     private int totalPreguntas = 6;
     private List<string> listaPreguntas;
-    private int nivelactual = 3;
+    private int nivelactual = 4;
 
 
     private FirebaseAuth firebaseAuth;
@@ -168,8 +168,9 @@ public class DisparoAlcalinos : MonoBehaviour
 
     IEnumerator MostrarReporteConRetraso()
     {
-        yield return new WaitForSeconds(2);
         MostrarReporte();
+        yield return new WaitForSeconds(5);
+        SceneManager.LoadScene("Grupo1");
     }
 
     void MostrarReporte()
@@ -179,8 +180,6 @@ public class DisparoAlcalinos : MonoBehaviour
         textoReporte.text = $"Respondiste correctamente {respuestasCorrectas} de 6 preguntas.";
         Debug.Log($"Juego terminado. Respuestas correctas: {respuestasCorrectas} de 6.");
         GuardarProgresoEnFirebase(nivelactual, respuestasCorrectas);
-        SceneManager.LoadScene("Grupo1");
-
     }
 
     Dictionary<string, string> MezclarDiccionario(Dictionary<string, string> diccionario)
