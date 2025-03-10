@@ -245,9 +245,9 @@ public class DisparoAlcalinos : MonoBehaviour
 
                 // Guardar XP en users/userId
                 Dictionary<string, object> datosUsuario = new Dictionary<string, object>
-            {
-                { "xp", nuevoXp }
-            };
+                {
+                    { "xp", nuevoXp }
+                };
 
                 await userRef.SetAsync(datosUsuario, SetOptions.MergeAll);
 

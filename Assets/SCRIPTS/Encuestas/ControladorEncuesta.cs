@@ -373,8 +373,6 @@ public class ControladorEncuesta : MonoBehaviour
 
         Debug.Log("Pregunta mostrada correctamente");
 
-        // Actualizar texto del contador
-        NumeroPreguntas.text = $"Pregunta {preguntaActualIndex + 1} de {preguntasAleatorias.Count}";
     }
 
 
