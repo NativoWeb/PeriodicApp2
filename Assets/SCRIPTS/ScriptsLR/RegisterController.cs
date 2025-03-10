@@ -7,6 +7,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using static UnityEditor.PlayerSettings;
 
 public class RegisterController : MonoBehaviour
 {
@@ -14,6 +15,16 @@ public class RegisterController : MonoBehaviour
     public Button completeProfileButton;
     public Dropdown roles;
     private FirebaseAuth auth;
+
+    // -------------------------------------- RANGOS --------------------------------------
+    private Dictionary<string, int> rangos = new Dictionary<string, int>()
+    {
+        { "Novato de laboratorio", 0 },
+        { "Arquitecto molecular", 3000},
+        { "Visionario Cuántico", 9000 },
+        { "Amo del caos químico", 25000 }
+    };
+    // -----------------------------------------------------------------------------------
 
     void Start()
     {
@@ -112,15 +123,15 @@ public class RegisterController : MonoBehaviour
         string ocupacionSeleccionada = roles.options[roles.value].text;
 
         Dictionary<string, object> userData = new Dictionary<string, object>
-    {
-        { "DisplayName", user.DisplayName },
-        { "Email", user.Email },
-        { "Ocupacion", ocupacionSeleccionada },
-        { "EncuestaCompletada", false },// 🔹 Marcamos la encuesta como no completada inicialmente
-        { "xp", 0 },
-        { "avatar", avatarUrl }, // Avatar inicial
-        {"Rango", "Novato de laboratorio" }
-    };
+        {
+            { "DisplayName", user.DisplayName },
+            { "Email", user.Email },
+            { "Ocupacion", ocupacionSeleccionada },
+            { "EncuestaCompletada", false },// 🔹 Marcamos la encuesta como no completada inicialmente
+            { "xp", 0 },
+            { "avatar", avatarUrl }, // Avatar inicial
+            { "Rango", "Novato de laboratorio" }
+        };
 
         PlayerPrefs.SetString("userId", user.UserId);
         PlayerPrefs.Save();
@@ -138,6 +149,9 @@ public class RegisterController : MonoBehaviour
             }
             Debug.Log("Datos de usuario guardados en Firestore.");
 
+            // 🔹 Verificar y actualizar rango (aunque esté recién creado)
+            VerificarYActualizarRango(user.UserId);
+
             // 🔹 Redirigir a la escena correcta según la ocupación
             if (ocupacionSeleccionada == "Estudiante")
             {
@@ -149,4 +163,51 @@ public class RegisterController : MonoBehaviour
             }
         });
     }
+
+    // ------------------------- FUNCIÓN PARA VERIFICAR Y ACTUALIZAR RANGO -------------------------
+    private void VerificarYActualizarRango(string userId)
+    {
+        FirebaseFirestore db = FirebaseFirestore.DefaultInstance;
+        DocumentReference docRef = db.Collection("users").Document(userId);
+
+        docRef.GetSnapshotAsync().ContinueWithOnMainThread(task =>
+        {
+            if (task.IsCompleted)
+            {
+                DocumentSnapshot snapshot = task.Result;
+
+                if (snapshot.Exists && snapshot.ContainsField("xp"))
+                {
+                    int xp = snapshot.GetValue<int>("xp");
+                    string nuevoRango = "Novato de laboratorio";
+
+                    foreach (var rango in rangos)
+                    {
+                        if (xp >= rango.Value)
+                        {
+                            nuevoRango = rango.Key;
+                        }
+                    }
+
+                    string rangoActual = snapshot.ContainsField("Rango") ? snapshot.GetValue<string>("Rango") : "Novato de laboratorio";
+
+                    if (nuevoRango != rangoActual)
+                    {
+                        docRef.UpdateAsync("Rango", nuevoRango).ContinueWithOnMainThread(updateTask =>
+                        {
+                            if (updateTask.IsCompleted)
+                            {
+                                Debug.Log($"✅ Rango actualizado a: {nuevoRango}");
+                            }
+                        });
+                    }
+                }
+            }
+            else
+            {
+                Debug.LogError("Error al verificar el XP del usuario.");
+            }
+        });
+    }
+    // ---------------------------------------------------------------------------------------------
 }
