@@ -33,13 +33,14 @@ public class DisparoAlcalinos : MonoBehaviour
     private int nivelactual = 4;
 
 
-    private FirebaseAuth firebaseAuth;
-    private FirebaseFirestore firebaseDB;
+    private FirebaseFirestore db;
+    private FirebaseAuth auth;
 
     void Start()
     {
-        firebaseAuth = FirebaseAuth.DefaultInstance;
-        firebaseDB = FirebaseFirestore.DefaultInstance;
+        db = FirebaseFirestore.DefaultInstance;
+        auth = FirebaseAuth.DefaultInstance;
+
 
         Debug.Log("Inicializando juego...");
         panelRespuesta.SetActive(false);
@@ -178,7 +179,7 @@ public class DisparoAlcalinos : MonoBehaviour
         panelReporte.SetActive(true);
         textoReporte.text = $"Respondiste correctamente {respuestasCorrectas} de 6 preguntas.";
         Debug.Log($"Juego terminado. Respuestas correctas: {respuestasCorrectas} de 6.");
-        GuardarProgresoEnFirebase(nivelactual, respuestasCorrectas);
+        GuardarProgreso(nivelactual, respuestasCorrectas);
         SceneManager.LoadScene("Grupo1");
 
     }
@@ -206,77 +207,53 @@ public class DisparoAlcalinos : MonoBehaviour
 
         return diccionarioMezclado;
     }
-    private async void GuardarProgresoEnFirebase(int nivelActualJugado, int correctas)
+    public async void GuardarProgreso(int nivelActualJugado, int correctas)
     {
-        if (firebaseAuth.CurrentUser != null)
-        {
-            string userId = firebaseAuth.CurrentUser.UserId;
-            DocumentReference grupoRef = firebaseDB.Collection("users").Document(userId)
-                                                   .Collection("grupos").Document("grupo 1");
-
-            DocumentReference userRef = firebaseDB.Collection("users").Document(userId);
-
-            try
-            {
-                // Obtener el XP y el nivel más alto registrado en Firestore
-                DocumentSnapshot userSnapshot = await userRef.GetSnapshotAsync();
-                int xpActual = userSnapshot.Exists && userSnapshot.TryGetValue<int>("xp", out int xp) ? xp : 0;
-
-                DocumentSnapshot grupoSnapshot = await grupoRef.GetSnapshotAsync();
-                int nivelAlmacenado = grupoSnapshot.Exists && grupoSnapshot.TryGetValue<int>("nivel", out int nivel) ? nivel : 1;
-
-                // Verificar si el nivel jugado es mayor al almacenado
-                bool subirNivel = nivelActualJugado > nivelAlmacenado;
-
-                xpGanadoPorNivel = correctas * 200;
-
-                int nuevoXp = xpActual + xpGanadoPorNivel;
-                int nuevoNivel;
-
-                Debug.Log(subirNivel);
-                if (subirNivel)
-                {
-                    nuevoNivel = nivelActualJugado;
-                }
-                else
-                {
-                    nuevoNivel = nivelAlmacenado;
-                }
-
-                // Guardar XP en users/userId
-                Dictionary<string, object> datosUsuario = new Dictionary<string, object>
-                {
-                    { "xp", nuevoXp }
-                };
-
-                await userRef.SetAsync(datosUsuario, SetOptions.MergeAll);
-
-                if (subirNivel)
-                {
-                    Dictionary<string, object> datosGrupo = new Dictionary<string, object>
-                {
-                    { "nivel", nuevoNivel }
-                };
-
-                    // Guardar el nuevo nivel en Firestore
-                    await grupoRef.SetAsync(datosGrupo, SetOptions.MergeAll);
-                }
-
-                Debug.Log($"✅ Progreso guardado: Nivel {nuevoNivel}, XP Total {nuevoXp}");
-
-                // Guardar en PlayerPrefs para uso local
-                PlayerPrefs.SetInt("nivelCompletado", nuevoNivel);
-                PlayerPrefs.SetInt("xp", nuevoXp);
-                PlayerPrefs.Save();
-            }
-            catch (System.Exception e)
-            {
-                Debug.LogError($"❌ Error al guardar el progreso: {e.Message}");
-            }
-        }
-        else
+        if (auth.CurrentUser == null)
         {
             Debug.LogError("❌ Usuario no autenticado.");
+            return;
+        }
+
+        string userId = auth.CurrentUser.UserId;
+
+        DocumentReference docGrupo = db.Collection("users").Document(userId).Collection("grupos").Document("grupo 1");
+        DocumentReference docUsuario = db.Collection("users").Document(userId);
+
+        try
+        {
+            // Obtener datos actuales
+            DocumentSnapshot snapshotGrupo = await docGrupo.GetSnapshotAsync();
+            DocumentSnapshot snapshotUsuario = await docUsuario.GetSnapshotAsync();
+
+            int nivelAlmacenado = snapshotGrupo.Exists && snapshotGrupo.TryGetValue<int>("nivel", out int nivel) ? nivel : 1;
+            int xpActual = snapshotUsuario.Exists && snapshotUsuario.TryGetValue<int>("xp", out int xp) ? xp : 0;
+
+            int xpGanado = correctas * 200;
+            bool subirNivel = nivelActualJugado > nivelAlmacenado;
+
+            int nuevoNivel = subirNivel ? nivelActualJugado : nivelAlmacenado;
+            int nuevoXp = xpActual + xpGanado;
+
+            // Guardar XP
+            await docUsuario.SetAsync(new Dictionary<string, object> { { "xp", nuevoXp } }, SetOptions.MergeAll);
+
+            // Guardar Nivel si sube
+            if (subirNivel)
+            {
+                await docGrupo.SetAsync(new Dictionary<string, object> { { "nivel", nuevoNivel } }, SetOptions.MergeAll);
+            }
+
+            Debug.Log($"✅ Progreso guardado: Nivel {nuevoNivel}, XP Total {nuevoXp}");
+
+            // Guardar localmente en PlayerPrefs
+            PlayerPrefs.SetInt("nivelCompletado", nuevoNivel);
+            PlayerPrefs.SetInt("xp", nuevoXp);
+            PlayerPrefs.Save();
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"❌ Error al guardar el progreso: {e.Message}");
         }
     }
 }

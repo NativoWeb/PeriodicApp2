@@ -72,7 +72,6 @@ public class GroupManager : MonoBehaviour
     // Crear un botón para cada grupo
     void CreateGroupButton(string groupName, string groupDescription, string gameScene)
     {
-        Debug.Log($"Creando botón para: {groupName}");
         // Instanciar un nuevo botón a partir del prefab
         GameObject newButton = Instantiate(buttonPrefab, content);
         newButton.SetActive(true);
@@ -88,7 +87,6 @@ public class GroupManager : MonoBehaviour
             // Asignar el texto del segundo componente Text (para la descripción)
             buttonTexts[1].text = groupDescription;
 
-            Debug.Log($"Texto del botón asignado: {buttonTexts[0].text} - {buttonTexts[1].text}");
         }
         else
         {
