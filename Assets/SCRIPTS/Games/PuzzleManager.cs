@@ -1,87 +1,100 @@
 ﻿using UnityEngine;
-using UnityEngine.UI;
+using UnityEngine.EventSystems;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 
-public class PuzzleManager : MonoBehaviour
+public class PuzzleManager : MonoBehaviour, IDropHandler
 {
-    public Image imagenADividir;
-    public int filas = 3;
-    public int columnas = 3;
-    public GameObject piezaPrefab;
-    public Transform panelPiezas;
-    public Transform panelTablero;
+    public Transform panelGrid; // Grid donde están las piezas
+    public Button botonContinuar; // Botón de continuar
 
-    private Sprite[,] piezasSprites;
+    // Números atómicos en orden correcto (de mayor a menor)
+    private int[] ordenCorrecto = { 88, 87, 56, 55, 38, 37, 20, 19, 12, 11, 4, 3 };
 
     void Start()
     {
-        if (imagenADividir == null || piezaPrefab == null || panelPiezas == null || panelTablero == null)
-        {
-            Debug.LogError("❌ Asegúrate de asignar todos los objetos en el Inspector.");
-            return;
-        }
-
-        GenerarPiezas();
+        botonContinuar.interactable = false; // Desactivamos el botón
+        DesordenarElementos();
     }
 
-    void GenerarPiezas()
+    void DesordenarElementos()
     {
-        Texture2D texturaOriginal = imagenADividir.sprite.texture;
-        int anchoPieza = texturaOriginal.width / columnas;
-        int altoPieza = texturaOriginal.height / filas;
+        List<Transform> piezas = new List<Transform>();
 
-        piezasSprites = new Sprite[filas, columnas];
-        List<Vector3> posicionesTablero = new List<Vector3>();
-
-        Debug.Log($"🧩 Generando {filas * columnas} piezas...");
-
-        for (int fila = 0; fila < filas; fila++)
+        foreach (Transform pieza in panelGrid)
         {
-            for (int columna = 0; columna < columnas; columna++)
+            piezas.Add(pieza);
+        }
+
+        piezas = piezas.OrderBy(x => Random.value).ToList();
+
+        for (int i = 0; i < piezas.Count; i++)
+        {
+            piezas[i].SetSiblingIndex(i);
+        }
+    }
+
+    public void OnDrop(PointerEventData eventData)
+    {
+        GameObject objetoArrastrado = eventData.pointerDrag;
+        if (objetoArrastrado != null)
+        {
+            objetoArrastrado.transform.SetParent(panelGrid); // Volvemos al Grid
+            objetoArrastrado.transform.SetSiblingIndex(ObtenerIndiceMasCercano(objetoArrastrado));
+        }
+
+        VerificarOrden();
+    }
+
+    int ObtenerIndiceMasCercano(GameObject objeto)
+    {
+        float distanciaMenor = float.MaxValue;
+        int indiceMasCercano = 0;
+
+        for (int i = 0; i < panelGrid.childCount; i++)
+        {
+            float distancia = Vector3.Distance(panelGrid.GetChild(i).position, objeto.transform.position);
+            if (distancia < distanciaMenor)
             {
-                int yInvertido = texturaOriginal.height - (fila + 1) * altoPieza;
-                Rect rect = new Rect(columna * anchoPieza, yInvertido, anchoPieza, altoPieza);
-
-                Texture2D piezaTextura = new Texture2D(anchoPieza, altoPieza);
-                piezaTextura.SetPixels(texturaOriginal.GetPixels((int)rect.x, (int)rect.y, anchoPieza, altoPieza));
-                piezaTextura.Apply();
-
-                Sprite piezaSprite = Sprite.Create(piezaTextura, new Rect(0, 0, anchoPieza, altoPieza), new Vector2(0.5f, 0.5f), 100f);
-                piezasSprites[fila, columna] = piezaSprite;
-
-                GameObject nuevaPieza = Instantiate(piezaPrefab, panelPiezas);
-                nuevaPieza.transform.localPosition = Vector3.zero; // 🔄 Asegurar posición correcta
-                PuzzlePiece puzzlePiece = nuevaPieza.GetComponent<PuzzlePiece>();
-
-                if (puzzlePiece != null)
-                {
-                    Vector3 posicionCorrecta = ObtenerPosicionTablero(fila, columna);
-                    posicionesTablero.Add(posicionCorrecta);
-                    puzzlePiece.ConfigurarPieza(piezaSprite, posicionCorrecta, panelPiezas, panelTablero);
-                }
-                else
-                {
-                    Debug.LogError("❌ El prefab de la pieza no tiene el script 'PuzzlePiece'.");
-                }
+                distanciaMenor = distancia;
+                indiceMasCercano = i;
             }
         }
 
-        // 🔄 Mezclar las posiciones antes de asignarlas
-        posicionesTablero = posicionesTablero.OrderBy(x => Random.value).ToList();
-
-        Debug.Log("✅ Piezas generadas y mezcladas.");
+        return indiceMasCercano;
     }
 
-    Vector3 ObtenerPosicionTablero(int fila, int columna)
+    public void VerificarOrden()
     {
-        int index = fila * columnas + columna;
-        if (index >= panelTablero.childCount)
+        Transform[] piezasEnPanel = panelGrid.GetComponentsInChildren<Transform>()
+                                                .Where(t => t != panelGrid) // Excluye el propio panel
+                                                .ToArray();
+
+        // Obtener los números atómicos en el orden en que están colocadas las piezas
+        List<int> numerosActuales = new List<int>();
+        foreach (Transform pieza in piezasEnPanel)
         {
-            Debug.LogError($"❌ El panelTablero no tiene suficientes espacios. Faltan {index - panelTablero.childCount + 1} elementos.");
-            return Vector3.zero;
+            PuzzlePiece puzzlePiece = pieza.GetComponent<PuzzlePiece>();
+            if (puzzlePiece != null)
+            {
+                numerosActuales.Add(puzzlePiece.numeroAtomico); // Asegúrate de que cada pieza tenga su número
+            }
         }
 
-        return panelTablero.GetChild(index).position;
+        // Comparamos con el orden correcto
+        if (numerosActuales.SequenceEqual(ordenCorrecto))
+        {
+            Debug.Log("✅ ¡Orden correcto!");
+            botonContinuar.interactable = true;
+        }
+        else
+        {
+            Debug.Log("❌ Orden incorrecto. Intenta de nuevo.");
+            botonContinuar.interactable = false;
+        }
     }
+
 }
+

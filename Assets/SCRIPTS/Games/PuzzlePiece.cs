@@ -1,52 +1,56 @@
 ﻿using UnityEngine;
-using UnityEngine.UI;
 using UnityEngine.EventSystems;
 
 public class PuzzlePiece : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler
 {
-    private Image imagen;
-    private Vector3 posicionCorrecta;
-    private Vector3 posicionInicial;
-    private Transform panelPiezas;
-    private Transform tablero;
+    public int numeroAtomico; // Número atómico de la pieza
 
-    void Awake()
-    {
-        imagen = GetComponent<Image>();
-    }
+    private RectTransform rectTransform;
+    private CanvasGroup canvasGroup;
+    private Vector2 posicionInicial;
+    private Transform parentInicial;
 
-    public void ConfigurarPieza(Sprite sprite, Vector3 posicionCorrecta, Transform panelPiezas, Transform tablero)
+    private PuzzleManager puzzleManager;
+
+
+    private void Awake()
     {
-        imagen.sprite = sprite;
-        this.posicionCorrecta = posicionCorrecta;
-        this.panelPiezas = panelPiezas;
-        this.tablero = tablero;
-        this.posicionInicial = transform.position;
+        puzzleManager = Object.FindFirstObjectByType<PuzzleManager>(); // Asegura encontrar el PuzzleManager en la escena
+        rectTransform = GetComponent<RectTransform>();
+        canvasGroup = GetComponent<CanvasGroup>();
     }
 
     public void OnBeginDrag(PointerEventData eventData)
     {
-        transform.SetAsLastSibling();
-        Debug.Log($"🔄 Arrastrando pieza: {name}");
+        posicionInicial = rectTransform.anchoredPosition; // Guarda la posición inicial por si hay que devolverla
+        parentInicial = transform.parent; // Guarda el parent inicial
+
+        canvasGroup.blocksRaycasts = false; // Permite que otras piezas reciban eventos de arrastre
+        transform.SetParent(transform.root); // Evita conflictos con GridLayoutGroup si hay alguno activo
     }
 
     public void OnDrag(PointerEventData eventData)
     {
-        transform.position = Input.mousePosition;
+        rectTransform.anchoredPosition += eventData.delta; // Mueve la pieza mientras se arrastra
     }
 
     public void OnEndDrag(PointerEventData eventData)
     {
-        float distancia = Vector2.Distance(transform.position, posicionCorrecta);
-        if (distancia < 50f)
+        canvasGroup.blocksRaycasts = true; // Reactiva la detección de eventos de raycast
+
+        GameObject objetoSobre = eventData.pointerCurrentRaycast.gameObject;
+
+        if (objetoSobre != null && objetoSobre.CompareTag("Slot")) // Si se suelta sobre un espacio válido
         {
-            transform.position = posicionCorrecta;
-            Debug.Log($"✅ Pieza '{name}' colocada correctamente.");
+            transform.SetParent(objetoSobre.transform);
+            transform.localPosition = Vector3.zero; // Asegura alineación con el slot
         }
         else
         {
-            transform.position = posicionInicial;
-            Debug.Log($"🔄 Pieza '{name}' devuelta a su posición inicial.");
+            rectTransform.anchoredPosition = posicionInicial; // Devuelve la pieza a su posición original
+            transform.SetParent(parentInicial); // Vuelve al parent original si no se colocó en un slot válido
         }
+
+        puzzleManager.VerificarOrden(); // Llama a la verificación después de cada movimiento
     }
 }
