@@ -1,6 +1,6 @@
 using System;
 
-[Serializable] // Permite que Unity reconozca la clase en el Inspector
+//[Serializable] // Permite que Unity reconozca la clase en el Inspector
 public class PreguntaConOpciones
 {
     public string pregunta;
