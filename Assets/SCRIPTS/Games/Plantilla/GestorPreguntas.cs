@@ -10,15 +10,6 @@ using static GestorOraciones;
 
 public class GestorPreguntas : MonoBehaviour
 {
-    [System.Serializable]
-    public class Pregunta
-    {
-        public string oracion;
-        public string respuestaCorrecta;
-        public List<string> opciones;
-    }
-
-
     public TextMeshProUGUI txtPregunta;
     public Toggle[] opciones;
     public Text txtTiempo;
@@ -26,7 +17,6 @@ public class GestorPreguntas : MonoBehaviour
     public BarraProgreso barraProgreso;
     public GameObject panelFinal;
     public TextMeshProUGUI txtResultado;
-
 
     private Dictionary<int, List<PreguntaConOpciones>> preguntasPorNivel = new Dictionary<int, List<PreguntaConOpciones>>();
 
@@ -38,14 +28,12 @@ public class GestorPreguntas : MonoBehaviour
     private float tiempoPorPregunta = 10f;
     private float tiempoRestante;
     private bool preguntaEnCurso = true;
-
     private FirebaseFirestore db;
     private FirebaseAuth auth;
 
     private int nivelSeleccionado;
 
     int nivelActual = 2;
-
 
     void Start()
     {
@@ -84,39 +72,31 @@ public class GestorPreguntas : MonoBehaviour
             MostrarResultadosFinales();
             return;
         }
-
         PreguntaConOpciones preguntaActual = preguntas[indicePreguntaActual];
         txtPregunta.text = preguntaActual.pregunta;
-
         for (int i = 0; i < opciones.Length; i++)
         {
             opciones[i].GetComponentInChildren<TextMeshProUGUI>().text = preguntaActual.opciones[i];
             opciones[i].isOn = false;
             opciones[i].GetComponentInChildren<Image>().color = Color.white;
-
             int index = i;
             opciones[i].onValueChanged.RemoveAllListeners();
             opciones[i].onValueChanged.AddListener(delegate { ValidarRespuesta(index); });
         }
-
         preguntaEnCurso = true;
         StopCoroutine("ActualizarTimer");
         StartCoroutine("Temporizador");
     }
-
     public void ValidarRespuesta(int indiceSeleccionado)
     {
         if (!preguntaEnCurso) return;
         preguntaEnCurso = false;
         StopCoroutine("ActualizarTimer");
-
         PreguntaConOpciones preguntaActual = preguntas[indicePreguntaActual];
         Color verdeCorrecto = new Color(0xAA / 255f, 0xC4 / 255f, 0x3D / 255f);
         Color rojoIncorrecto = new Color(0xC4 / 255f, 0x3E / 255f, 0x3B / 255f);
-
         Color color = (indiceSeleccionado == preguntaActual.indiceCorrecto) ? verdeCorrecto : rojoIncorrecto;
         opciones[indiceSeleccionado].GetComponentInChildren<Image>().color = color;
-
         if (indiceSeleccionado == preguntaActual.indiceCorrecto)
         {
             racha++;
@@ -126,22 +106,17 @@ public class GestorPreguntas : MonoBehaviour
         {
             racha = 0;
         }
-
         txtRacha.text = "" + racha;
-
         if (indicePreguntaActual == preguntas.Count - 1)
         {
             MostrarResultadosFinales();
             return;
         }
-
         StartCoroutine(EsperarYSiguientePregunta());
     }
-
     IEnumerator Temporizador()
     {
         tiempoRestante = tiempoPorPregunta;
-
         while (tiempoRestante > 0)
         {
             if (!preguntaEnCurso) yield break;
@@ -149,7 +124,6 @@ public class GestorPreguntas : MonoBehaviour
             txtTiempo.text = tiempoRestante.ToString("F1");
             yield return null;
         }
-
         if (preguntaEnCurso)
         {
             preguntaEnCurso = false;
@@ -160,7 +134,6 @@ public class GestorPreguntas : MonoBehaviour
             StartCoroutine(EsperarYSiguientePregunta());
         }
     }
-
     IEnumerator EsperarYSiguientePregunta()
     {
         yield return new WaitForSeconds(1.5f);
@@ -168,20 +141,17 @@ public class GestorPreguntas : MonoBehaviour
         barraProgreso.InicializarBarra(preguntas.Count);
         MostrarPregunta();
     }
-
     void MostrarResultadosFinales()
     {
         panelFinal.SetActive(true);
         int experiencia = (respuestasCorrectas * 100) / preguntas.Count;
         txtResultado.text = $"Respuestas correctas: {respuestasCorrectas}/{preguntas.Count}\nExperiencia ganada: {experiencia}XP\nBonificación de racha: {racha * 10}";
     }
-
     public void GuardarYSalir()
     {
         SceneManager.LoadScene("Grupos");
         GuardarProgreso(nivelActual, respuestasCorrectas);
     }
-
     public async void GuardarProgreso(int nivelActualJugado, int correctas)
     {
         if (auth.CurrentUser == null)
@@ -189,18 +159,14 @@ public class GestorPreguntas : MonoBehaviour
             Debug.LogError("❌ Usuario no autenticado.");
             return;
         }
-
         string userId = auth.CurrentUser.UserId;
-
         DocumentReference docGrupo = db.Collection("users").Document(userId).Collection("grupos").Document("grupo 1");
         DocumentReference docUsuario = db.Collection("users").Document(userId);
-
         try
         {
             // Obtener datos actuales
             DocumentSnapshot snapshotGrupo = await docGrupo.GetSnapshotAsync();
             DocumentSnapshot snapshotUsuario = await docUsuario.GetSnapshotAsync();
-
             int nivelAlmacenado = snapshotGrupo.Exists && snapshotGrupo.TryGetValue<int>("nivel", out int nivel) ? nivel : 1;
             int xpActual = snapshotUsuario.Exists && snapshotUsuario.TryGetValue<int>("xp", out int xp) ? xp : 0;
 
@@ -219,15 +185,12 @@ public class GestorPreguntas : MonoBehaviour
 
             // Guardar XP
             await docUsuario.SetAsync(new Dictionary<string, object> { { "xp", nuevoXp } }, SetOptions.MergeAll);
-
             // Guardar Nivel si sube
             if (subirNivel)
             {
                 await docGrupo.SetAsync(new Dictionary<string, object> { { "nivel", nuevoNivel } }, SetOptions.MergeAll);
             }
-
             Debug.Log($"✅ Progreso guardado: Nivel {nuevoNivel}, XP Total {nuevoXp}");
-
             // Guardar localmente en PlayerPrefs
             PlayerPrefs.SetInt("nivelCompletado", nuevoNivel);
             PlayerPrefs.SetInt("xp", nuevoXp);
@@ -369,7 +332,6 @@ public class GestorPreguntas : MonoBehaviour
         };
     }
 }
-
 
 
 //void GenerarPreguntasDesdeIA()

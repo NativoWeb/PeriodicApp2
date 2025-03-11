@@ -52,7 +52,7 @@ public class GestorOraciones : MonoBehaviour
         CargarPreguntas();
 
         // Obtener nivel del usuario desde Firebase
-        CargarPreguntasNivel(nivelSeleccionado);
+        CargarPreguntasNivel(2);
     }
 
 
@@ -209,7 +209,6 @@ public class GestorOraciones : MonoBehaviour
             MostrarResultadosFinales();
             return;
         }
-
         OracionConPalabras preguntaActual = preguntas[indicePreguntaActual];
         txtOracion.text = preguntaActual.oracion;
 
@@ -221,7 +220,6 @@ public class GestorOraciones : MonoBehaviour
             GameObject btn = Instantiate(botonPrefab, contenedorOpciones);
             TextMeshProUGUI txtBtn = btn.GetComponentInChildren<TextMeshProUGUI>();
             txtBtn.text = preguntaActual.opciones[i];
-
             int index = i;
             btn.GetComponent<Button>().onClick.AddListener(() => SeleccionarPalabra(index, btn));
         }
@@ -267,7 +265,6 @@ public class GestorOraciones : MonoBehaviour
     IEnumerator Temporizador()
     {
         tiempoRestante = tiempoPorPregunta;
-
         while (tiempoRestante > 0)
         {
             if (!preguntaEnCurso) yield break;
@@ -275,7 +272,6 @@ public class GestorOraciones : MonoBehaviour
             txtTiempo.text = tiempoRestante.ToString("F1");
             yield return null;
         }
-
         if (preguntaEnCurso)
         {
             preguntaEnCurso = false;
@@ -285,7 +281,6 @@ public class GestorOraciones : MonoBehaviour
             StartCoroutine(EsperarYSiguientePregunta());
         }
     }
-
     IEnumerator EsperarYSiguientePregunta()
     {
         yield return new WaitForSeconds(1.5f);
@@ -293,7 +288,6 @@ public class GestorOraciones : MonoBehaviour
         barraProgreso.InicializarBarra(preguntas.Count);
         MostrarPregunta();
     }
-
     void MostrarResultadosFinales()
     {
         panelFinal.SetActive(true);
@@ -315,18 +309,14 @@ public class GestorOraciones : MonoBehaviour
             Debug.LogError("❌ Usuario no autenticado.");
             return;
         }
-
         string userId = auth.CurrentUser.UserId;
-
         DocumentReference docGrupo = db.Collection("users").Document(userId).Collection("grupos").Document("grupo 1");
         DocumentReference docUsuario = db.Collection("users").Document(userId);
-
         try
         {
             // Obtener datos actuales
             DocumentSnapshot snapshotGrupo = await docGrupo.GetSnapshotAsync();
             DocumentSnapshot snapshotUsuario = await docUsuario.GetSnapshotAsync();
-
             int nivelAlmacenado = snapshotGrupo.Exists && snapshotGrupo.TryGetValue<int>("nivel", out int nivel) ? nivel : 1;
             int xpActual = snapshotUsuario.Exists && snapshotUsuario.TryGetValue<int>("xp", out int xp) ? xp : 0;
 
@@ -345,15 +335,12 @@ public class GestorOraciones : MonoBehaviour
 
             // Guardar XP
             await docUsuario.SetAsync(new Dictionary<string, object> { { "xp", nuevoXp } }, SetOptions.MergeAll);
-
             // Guardar Nivel si sube
             if (subirNivel)
             {
                 await docGrupo.SetAsync(new Dictionary<string, object> { { "nivel", nuevoNivel } }, SetOptions.MergeAll);
             }
-
             Debug.Log($"✅ Progreso guardado: Nivel {nuevoNivel}, XP Total {nuevoXp}");
-
             // Guardar localmente en PlayerPrefs
             PlayerPrefs.SetInt("nivelCompletado", nuevoNivel);
             PlayerPrefs.SetInt("xp", nuevoXp);
@@ -381,10 +368,3 @@ public class GestorOraciones : MonoBehaviour
     }
 
 }
-
-
-
-
-
-
-

@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using Firebase.Auth;
 using Firebase.Firestore;
 using UnityEngine.SceneManagement;
-
 public class DisparoAlcalinos : MonoBehaviour
 {
     [Header("UI Elements")]
@@ -17,14 +16,11 @@ public class DisparoAlcalinos : MonoBehaviour
     public GameObject imagenSeleccion;
     public GameObject panelReporte;
     public TextMeshProUGUI textoReporte;
-
     private Dictionary<string, string> preguntasRespuestas = new Dictionary<string, string>();
     private List<string> preguntasPendientes = new List<string>();
     private string respuestaCorrecta;
     private int preguntasRespondidas = 0;
     private int xpGanadoPorNivel = 1200; // Ajustable desde el Inspector
-
-
     private Dictionary<string, string> preguntasMezcladas;
     private int indicePregunta = 0;
     private int respuestasCorrectas = 0;
@@ -47,14 +43,11 @@ public class DisparoAlcalinos : MonoBehaviour
         imagenSeleccion.SetActive(false);
         panelReporte.SetActive(false);
         InicializarPreguntas();
-
         // Mezclar preguntas y convertir las claves en una lista
         preguntasMezcladas = MezclarDiccionario(preguntasRespuestas);
         listaPreguntas = new List<string>(preguntasMezcladas.Keys);
-
         GenerarPregunta();
     }
-
     void InicializarPreguntas()
     {
         preguntasRespuestas.Add("¿Cuál es el símbolo del Litio?", "Li");
@@ -63,10 +56,8 @@ public class DisparoAlcalinos : MonoBehaviour
         preguntasRespuestas.Add("¿Cuál es el símbolo del Rubidio?", "Rb");
         preguntasRespuestas.Add("¿Cuál es el símbolo del Cesio?", "Cs");
         preguntasRespuestas.Add("¿Cuál es el símbolo del Francio?", "Fr");
-
         ReiniciarPreguntas();
     }
-
     void ReiniciarPreguntas()
     {
         preguntasPendientes = new List<string>(preguntasRespuestas.Keys);
@@ -74,8 +65,6 @@ public class DisparoAlcalinos : MonoBehaviour
         respuestasCorrectas = 0;
         Debug.Log("Preguntas reiniciadas.");
     }
-
-
     void GenerarPregunta()
     {
         if (indicePregunta >= listaPreguntas.Count)
@@ -83,52 +72,40 @@ public class DisparoAlcalinos : MonoBehaviour
             MostrarReporte();
             return;
         }
-
         string preguntaSeleccionada = listaPreguntas[indicePregunta];
         preguntaText.text = preguntaSeleccionada;
         respuestaCorrecta = preguntasMezcladas[preguntaSeleccionada];
-
         Debug.Log($"Pregunta {indicePregunta + 1}: {preguntaSeleccionada} (Correcta: {respuestaCorrecta})");
-
         // Generar opciones aleatorias, incluyendo la correcta
         List<string> opciones = new List<string>(preguntasRespuestas.Values);
-
         // Asegurar que la respuesta correcta esté presente en las opciones
         if (!opciones.Contains(respuestaCorrecta))
         {
             opciones.Add(respuestaCorrecta);
         }
-
         for (int i = 0; i < botonesRespuestas.Length; i++)
         {
             Button botonTemp = botonesRespuestas[i];
             TextMeshProUGUI textoBoton = botonTemp.GetComponentInChildren<TextMeshProUGUI>();
-
             if (textoBoton == null)
             {
                 Debug.LogError($"Error: El botón {i} no tiene un TextMeshProUGUI.");
                 continue;
             }
-
             string textoRespuesta = opciones[i];
             textoBoton.text = textoRespuesta;
             Debug.Log($"Botón {i}: {textoRespuesta}");
-
             botonTemp.onClick.RemoveAllListeners();
             botonTemp.onClick.AddListener(() => VerificarRespuesta(textoRespuesta, botonTemp.transform.position));
         }
-
         indicePregunta++; // Aseguramos que avance a la siguiente pregunta
     }
-
     public void VerificarRespuesta(string respuestaSeleccionada, Vector3 posicionBoton)
     {
         Debug.Log($"Respuesta seleccionada: {respuestaSeleccionada} (Correcta: {respuestaCorrecta})");
         preguntasRespondidas++;
-
         imagenSeleccion.SetActive(true);
         imagenSeleccion.transform.position = posicionBoton;
-
         if (respuestaSeleccionada == respuestaCorrecta)
         {
             textoRespuesta.text = "✅ ¡Correcto!";
@@ -140,10 +117,8 @@ public class DisparoAlcalinos : MonoBehaviour
             textoRespuesta.text = "❌ Incorrecto";
             Debug.Log("❌ Respuesta incorrecta");
         }
-
         panelRespuesta.SetActive(true);
         StartCoroutine(OcultarImagenSeleccion());
-
         if (preguntasRespondidas >= 6)
         {
             StartCoroutine(MostrarReporteConRetraso());
@@ -153,26 +128,22 @@ public class DisparoAlcalinos : MonoBehaviour
             StartCoroutine(DesactivarPanelRespuesta());
         }
     }
-
     IEnumerator OcultarImagenSeleccion()
     {
         yield return new WaitForSeconds(2);
         imagenSeleccion.SetActive(false);
     }
-
     IEnumerator DesactivarPanelRespuesta()
     {
         yield return new WaitForSeconds(2);
         panelRespuesta.SetActive(false);
         GenerarPregunta();
     }
-
     IEnumerator MostrarReporteConRetraso()
     {
         yield return new WaitForSeconds(2);
         MostrarReporte();
     }
-
     void MostrarReporte()
     {
         panelRespuesta.SetActive(false);
@@ -183,12 +154,10 @@ public class DisparoAlcalinos : MonoBehaviour
         SceneManager.LoadScene("Grupo1");
 
     }
-
     Dictionary<string, string> MezclarDiccionario(Dictionary<string, string> diccionario)
     {
         System.Random rng = new System.Random();
         List<string> clavesMezcladas = new List<string>(diccionario.Keys);
-
         // Algoritmo Fisher-Yates para mezclar la lista
         int n = clavesMezcladas.Count;
         while (n > 1)
@@ -197,7 +166,6 @@ public class DisparoAlcalinos : MonoBehaviour
             int k = rng.Next(n + 1);
             (clavesMezcladas[n], clavesMezcladas[k]) = (clavesMezcladas[k], clavesMezcladas[n]);
         }
-
         // Crear un nuevo diccionario con las claves mezcladas pero conservando los valores originales
         Dictionary<string, string> diccionarioMezclado = new Dictionary<string, string>();
         foreach (string clave in clavesMezcladas)
@@ -229,9 +197,16 @@ public class DisparoAlcalinos : MonoBehaviour
             int nivelAlmacenado = snapshotGrupo.Exists && snapshotGrupo.TryGetValue<int>("nivel", out int nivel) ? nivel : 1;
             int xpActual = snapshotUsuario.Exists && snapshotUsuario.TryGetValue<int>("xp", out int xp) ? xp : 0;
 
-            int xpGanado = correctas * 200;
-            bool subirNivel = nivelActualJugado > nivelAlmacenado;
+            int xpGanado = correctas * 100;
 
+            // 🔹 Si el usuario juega un nivel menor al suyo, gana la mitad de XP y NO sube de nivel
+            if (nivelActualJugado <= nivelAlmacenado)
+            {
+                xpGanado /= 2;
+                Debug.Log("🔻 Jugaste un nivel menor, XP reducida a la mitad.");
+            }
+
+            bool subirNivel = nivelActualJugado >= nivelAlmacenado;
             int nuevoNivel = subirNivel ? nivelActualJugado : nivelAlmacenado;
             int nuevoXp = xpActual + xpGanado;
 

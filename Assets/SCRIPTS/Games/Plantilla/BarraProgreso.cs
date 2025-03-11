@@ -7,7 +7,7 @@ public class BarraProgreso : MonoBehaviour
     public Slider slider;
     public TextMeshProUGUI progresoTexto; // Para mostrar "Pregunta X / Total"
 
-    private int totalPreguntas;
+    private int totalPreguntas = 1;
     private int preguntaActual = 0;
 
     public void InicializarBarra(int total)
