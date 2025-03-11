@@ -187,7 +187,7 @@ public class RegisterController : MonoBehaviour
             string nombreGrupo = nombresGrupos[i];
             Dictionary<string, object> grupoData = new Dictionary<string, object>
         {
-            { "nivel", 0 }, // Nivel inicial
+            { "nivel", 1 }, // Nivel inicial
             { "nivel_maximo", 15 }, // Nivel máximo, puedes cambiar este valor según necesidad
             { "nombre", nombreGrupo },
             { "ruta_imagen", $"GruposImages/Grupo{i + 1}" } // Ruta de la imagen, ajusta según tu carpeta Resources

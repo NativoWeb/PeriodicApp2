@@ -3,30 +3,30 @@ using TMPro;
 using Firebase.Firestore;
 using System.Threading.Tasks;
 using UnityEngine.UI;
-using System.Collections;  // Importante para Imagenes
+using System.Collections;
 using UnityEngine.SceneManagement;
+
 public class ControllerPerfil : MonoBehaviour
 {
-    //instanciar la conexion a la bd
+    // Conexión a la base de datos Firestore
     private FirebaseFirestore db;
 
-    //variables de UI unity
+    // Variables de la interfaz de usuario
     public TMP_Text tmpUsername;
     public TMP_Text tmpCorreo;
-    public Image avatarImage;  // Componente Image donde se mostrará el avatar
-    // variables para cargas las misiones
-    public Transform content;// donde va el scroll 
-    public GameObject buttonPrefab; // boton que se crea cada vez que hay una mision
+    public Image avatarImage;
+
+    // Variables para las misiones
+    public Transform content; // Contenedor del scroll de misiones
+    public GameObject buttonPrefab; // Prefab del botón de misión
     public string userId;
-    private string rangoActual; // Rango actualizado del usuario
+    private string rangoActual; // Rango del usuario
 
     void Start()
     {
         Debug.Log("ControllerPerfil Start ejecutándose...");
-
         db = FirebaseFirestore.DefaultInstance;
         userId = PlayerPrefs.GetString("userId", "").Trim();
-
         Debug.Log("UserID en PlayerPrefs: " + userId);
 
         if (!string.IsNullOrEmpty(userId))
@@ -40,11 +40,10 @@ public class ControllerPerfil : MonoBehaviour
         }
 
         CargarMisioness();
-
         ActualizarDatosUsuario();
     }
 
-    /*-------------------------------------------------funcion para actualizar dependiendo el xp-----------------------------------------------------*/
+    // Función para actualizar los datos del usuario
     public void ActualizarDatosUsuario()
     {
         StartCoroutine(ActualizarDatosUsuarioCoroutine());
@@ -53,79 +52,54 @@ public class ControllerPerfil : MonoBehaviour
     private IEnumerator ActualizarDatosUsuarioCoroutine()
     {
         ObtenerDatosUsuario(userId);
-        yield return null; // Para que pueda correrse de manera asíncrona si quieres añadir efectos visuales
+        yield return null; // Permite hacerlo asíncrono
     }
 
-    /*--------------------------------------------------------------------------------------------------------------------------------------------*/
-    private string ObtenerAvatarPorRango(string rangos) //############################################# funcion para obtener nivel del usuario en particular
+    // Devuelve la ruta del avatar según el rango del usuario
+    private string ObtenerAvatarPorRango(string rangos)
     {
-        string avatarPath = string.Empty;
-        if (rangos == "Novato de laboratorio")
-        {
-            avatarPath = "Avatares/nivel1";
-        }
-        else if (rangos == "Arquitecto molecular")
-        {
-            avatarPath = "Avatares/nivel2";
-        }
-        else if (rangos == "Visionario Cuántico")
-        {
-            avatarPath = "Avatares/nivel3";
-        }
-        else if (rangos == "Amo del caos químico")
-        {
-            avatarPath = "Avatares/nivel4";
-        }
-        else
-        {
-            avatarPath = "Avatares/defecto";
-        }
+        string avatarPath = "Avatares/defecto"; // Avatar por defecto
 
-        Debug.Log($"Ruta de avatar por nivel: {avatarPath}");  // Verifica la ruta generada
+        if (rangos == "Novato de laboratorio")
+            avatarPath = "Avatares/nivel1";
+        else if (rangos == "Arquitecto molecular")
+            avatarPath = "Avatares/nivel2";
+        else if (rangos == "Visionario Cuántico")
+            avatarPath = "Avatares/nivel3";
+        else if (rangos == "Amo del caos químico")
+            avatarPath = "Avatares/nivel4";
+
+        Debug.Log($"Ruta de avatar por nivel: {avatarPath}");
         return avatarPath;
     }
 
+    // Obtiene los datos del usuario desde Firestore y actualiza la interfaz
     async void ObtenerDatosUsuario(string userId)
     {
-        
-
-    DocumentReference docRef = db.Collection("users").Document(userId);
+        DocumentReference docRef = db.Collection("users").Document(userId);
         DocumentSnapshot snapshot = await docRef.GetSnapshotAsync();
 
         if (snapshot.Exists)
         {
             Debug.Log("Documento encontrado en Firestore");
+
             string username = snapshot.GetValue<string>("DisplayName");
             string correo = snapshot.GetValue<string>("Email");
-            string rangos = snapshot.GetValue<string>("Rango"); // El rango actualizado
-            rangoActual = rangos; // Guardar rango globalmente
-            int xp = snapshot.GetValue<int>("xp");
+            string rangos = snapshot.GetValue<string>("Rango");
+            rangoActual = rangos; // Guardamos el rango globalmente
 
-            // Obtener la ruta del avatar según el rango
+            // Cargar y asignar avatar
             string avatarPath = ObtenerAvatarPorRango(rangos);
-            Sprite avatarSprite = Resources.Load<Sprite>(avatarPath); // Cargar imagen desde Resources
+            Sprite avatarSprite = Resources.Load<Sprite>(avatarPath) ?? Resources.Load<Sprite>("Avatares/default");
+            avatarImage.sprite = avatarSprite;
 
-            if (avatarSprite != null)
-            {
-                avatarImage.sprite = avatarSprite; // Asignar imagen
-            }
-            else
-            {
-                Debug.LogError($"No se encontró el avatar para la ruta: {avatarPath}. Asignando avatar por defecto.");
-                avatarImage.sprite = Resources.Load<Sprite>("Avatares/default"); // Avatar por defecto
-            }
-
-            // Actualizar textos
+            // Actualizar textos de usuario
             tmpUsername.text = "¡Hola, " + username + "!";
             tmpCorreo.text = "Correo: " + correo;
 
-            // 🔑 Si quieres también mostrar el rango textual, podrías añadir otro TMP_Text para esto (opcional):
-            // tmpRango.text = "Rango: " + rangos;
-
-            // 🔄 Recargar misiones según nuevo rango
-            LimpiarMisiones(); // Elimina misiones anteriores para recargar
-            CargarMisioness(); // Recarga las misiones según nuevo rango
-
+            // Recargar las misiones con el nuevo rango
+            LimpiarMisiones();
+            CargarMisioness();
         }
         else
         {
@@ -134,41 +108,42 @@ public class ControllerPerfil : MonoBehaviour
             tmpCorreo.text = "Correo: No disponible";
         }
     }
-
-
-    // Método para obtener el nivel del usuario desde Firestore
-    async Task<string> ObtenerRangoUsuario(string userId) //################################## obtenemos el rango para poder mostrar mision dependiendo el rango de cada usuario en especifico
+    // Función para actualizar el rango y avatar
+    public async void ActualizarRangoSegunXP(int xp)
     {
-        // Referencia a la colección de usuarios en Firestore
+        string nuevoRango = ObtenerRangoSegunXP(xp); // Obtenemos el rango según el XP
         DocumentReference userRef = db.Collection("users").Document(userId);
 
-        // Obtenemos el documento del usuario
-        DocumentSnapshot userSnap = await userRef.GetSnapshotAsync();
+        // Actualizamos el rango del usuario
+        await userRef.UpdateAsync("Rango", nuevoRango);
+        rangoActual = nuevoRango;
 
-        if (userSnap.Exists)
-        {
-            // Obtenemos el nivel del usuario
-            string rango = userSnap.GetValue<string>("Rango");
-            Debug.Log($"rango del usuario: {rango}");
-            return rango;
-        }
-        else
-        {
-            Debug.LogError("No se encontró el usuario en Firestore.");
-            return ""; // Devolvemos 0 si no se encuentra el usuario
-        }
+        // Actualizamos el avatar y las misiones
+        string avatarPath = ObtenerAvatarPorRango(nuevoRango);
+        Sprite avatarSprite = Resources.Load<Sprite>(avatarPath) ?? Resources.Load<Sprite>("Avatares/default");
+        avatarImage.sprite = avatarSprite;
+
+        LimpiarMisiones();
+        CargarMisioness();
     }
 
+    private string ObtenerRangoSegunXP(int xp)
+    {
+        if (xp >= 3000) return "Amo del caos químico";
+        if (xp >= 2000) return "Visionario Cuántico";
+        if (xp >= 1000) return "Arquitecto molecular";
+        return "Novato de laboratorio";
+    }
+
+
+    // Carga las misiones filtradas por rango del usuario
     public async void CargarMisioness()
     {
-        // ✅ Usar el rango que ya tenemos almacenado
         string rangoUsuario = rangoActual;
 
-        // Filtrar misiones por nivel
         Query misionesQuery = db.Collection("misiones").WhereEqualTo("rangoRequerido", rangoUsuario);
         QuerySnapshot snapshot = await misionesQuery.GetSnapshotAsync();
 
-        // Recorremos las misiones obtenidas
         foreach (DocumentSnapshot document in snapshot.Documents)
         {
             if (document.Exists)
@@ -179,10 +154,10 @@ public class ControllerPerfil : MonoBehaviour
                 string rutaEscena = document.GetValue<string>("rutaEscena");
                 string misionID = document.Id;
 
-                // Instanciar botón
+                // Crear botón de misión
                 GameObject newButton = Instantiate(buttonPrefab, content);
 
-                // Asignar info al botón
+                // Asignar textos al botón
                 TextMeshProUGUI[] textComponents = newButton.GetComponentsInChildren<TextMeshProUGUI>();
                 Slider barraProgreso = newButton.GetComponentInChildren<Slider>();
 
@@ -190,23 +165,21 @@ public class ControllerPerfil : MonoBehaviour
                 textComponents[1].text = descripcion;
                 textComponents[2].text = $"XP: {xp}";
 
-                // Asignar evento al botón
+                // Asignar acción al botón
                 Button btn = newButton.GetComponent<Button>();
                 if (btn != null)
                 {
                     btn.onClick.AddListener(() => CambiarEscena(rutaEscena));
                 }
 
-                // Cargar progreso
+                // Cargar progreso de la misión
                 await CargarProgreso(userId, misionID, barraProgreso);
             }
         }
     }
 
-
-
-    // Método para cargar el progreso del usuario
-    async Task CargarProgreso(string userId, string missionId, Slider barraProgreso) // ################################## función para cargar el slider que esta dentro del botónd de prefabs
+    // Carga el progreso de una misión específica
+    async Task CargarProgreso(string userId, string missionId, Slider barraProgreso)
     {
         DocumentReference docRef = db.Collection("progreso_misiones").Document(userId).Collection("misiones").Document(missionId);
         DocumentSnapshot docSnap = await docRef.GetSnapshotAsync();
@@ -214,16 +187,17 @@ public class ControllerPerfil : MonoBehaviour
         if (docSnap.Exists)
         {
             int progreso = docSnap.GetValue<int>("progreso");
-            barraProgreso.value = progreso / 100f; // Normalizar entre 0 y 1
+            barraProgreso.value = progreso / 100f; // Valor entre 0 y 1
             Debug.Log($"✅ Progreso de {missionId}: {progreso}%");
         }
         else
         {
-            barraProgreso.value = 0f; // Si no existe, empieza en 0
+            barraProgreso.value = 0f;
             Debug.Log($"⚠️ No se encontró progreso para {missionId}, iniciando en 0%");
         }
     }
 
+    // Limpia los botones de misiones anteriores
     private void LimpiarMisiones()
     {
         foreach (Transform child in content)
@@ -231,6 +205,8 @@ public class ControllerPerfil : MonoBehaviour
             Destroy(child.gameObject);
         }
     }
+
+    // Cambia de escena según la ruta proporcionada
     void CambiarEscena(string rutaEscena)
     {
         Debug.Log("Intentando cargar la escena: " + rutaEscena);
@@ -244,6 +220,4 @@ public class ControllerPerfil : MonoBehaviour
             Debug.LogError("❌ ERROR: La escena '" + rutaEscena + "' no está en Build Settings o tiene un nombre incorrecto.");
         }
     }
-
-
 }
