@@ -4,7 +4,6 @@ using Firebase.Firestore;
 using TMPro;
 using UnityEngine.UI;
 using System.Threading.Tasks;
-using System.Collections;
 using Firebase.Extensions;
 using Firebase.Auth;
 using System.Collections.Generic;
@@ -37,6 +36,11 @@ public class EstadisticasController : MonoBehaviour
     // Lista de cuadros de grupo (se asignan manualmente en el inspector)
     public List<CuadroGrupo> cuadrosGrupos;
 
+    // Referencia al Slider en la UI
+    public Slider slider;
+
+    ListenerRegistration listenerRegistro;
+
     // ============================ MÉTODOS PRINCIPALES ============================
 
     void Start()
@@ -45,42 +49,52 @@ public class EstadisticasController : MonoBehaviour
         db = FirebaseFirestore.DefaultInstance;
         userId = PlayerPrefs.GetString("userId", "").Trim();
 
-        StartCoroutine(LoadUserData(userId)); // Cargar datos del usuario
-        CargarNivelesPorGrupoUsuario();      // Cargar niveles por grupo
+        EscucharDatosUsuario(); // Escuchar datos del usuario en tiempo real
+        CargarNivelesPorGrupoUsuario(); // Cargar niveles por grupo
     }
 
-    // ============================ CARGA DE DATOS DE USUARIO ============================
-
-    IEnumerator LoadUserData(string userId)
+    private void OnDestroy()
     {
-        var task = GetUserData(userId);
-        yield return new WaitUntil(() => task.IsCompleted);
+        // Detener el listener cuando se cierre o cambie de escena
+        if (listenerRegistro != null) listenerRegistro.Stop();
     }
 
-    async Task GetUserData(string userId)
+    // ============================ ESCUCHAR DATOS EN TIEMPO REAL ============================
+
+    void EscucharDatosUsuario()
     {
         DocumentReference docRef = db.Collection("users").Document(userId);
-        DocumentSnapshot snapshot = await docRef.GetSnapshotAsync();
 
-        if (snapshot.Exists)
+        listenerRegistro = docRef.Listen(snapshot =>
         {
-            Debug.Log($"Usuario encontrado en Firebase: {userId}");
-
-            string rango = snapshot.GetValue<string>("Rango");
-            string avatarPath = ObtenerAvatarPorRango(rango);
-            Sprite avatarSprite = Resources.Load<Sprite>(avatarPath);
-
-            if (avatarSprite != null)
+            if (snapshot.Exists)
             {
-                avatarImage.sprite = avatarSprite;
+                Debug.Log($"Datos del usuario actualizados en tiempo real: {userId}");
+
+                string rango = snapshot.GetValue<string>("Rango");
+                string avatarPath = ObtenerAvatarPorRango(rango);
+                Sprite avatarSprite = Resources.Load<Sprite>(avatarPath);
+
+                if (avatarSprite != null)
+                {
+                    avatarImage.sprite = avatarSprite;
+                }
+                else
+                {
+                    Debug.LogError($"No se encontró una ruta válida para: {avatarPath}");
+                }
+
+                rangotxt.text = "Su rango es: " + rango + "!";
+
+                // XP para actualizar el slider
+                int xpUsuario = snapshot.GetValue<int>("xp");
+                ActualizarSlider(xpUsuario, rango);
             }
             else
             {
-                Debug.LogError($"No se encontró una ruta válida para: {avatarPath}");
+                Debug.LogError("El usuario no existe en la base de datos.");
             }
-
-            rangotxt.text = "Su rango es: " + rango + "!";
-        }
+        });
     }
 
     // ============================ ASIGNACIÓN DE AVATAR SEGÚN RANGO ============================
@@ -190,5 +204,38 @@ public class EstadisticasController : MonoBehaviour
         {
             Debug.LogError("El panel de logout no está asignado.");
         }
+    }
+
+    // ============================ ACTUALIZAR SLIDER ============================
+
+    public void ActualizarSlider(int xp, string rango)
+    {
+        int xpMin = 0;
+        int xpMax = 1000;
+
+        if (rango == "Novato de laboratorio")
+        {
+            xpMin = 0; xpMax = 1000;
+        }
+        else if (rango == "Arquitecto molecular")
+        {
+            xpMin = 1000; xpMax = 2000;
+        }
+        else if (rango == "Visionario Cuántico")
+        {
+            xpMin = 2000; xpMax = 3000;
+        }
+        else if (rango == "Amo del caos químico")
+        {
+            xpMin = 3000; xpMax = 4000;
+        }
+
+        int rangoXP = xpMax - xpMin;
+        if (rangoXP <= 0) rangoXP = 1; // Evitar división por 0
+
+        float progreso = Mathf.Clamp01((float)(xp - xpMin) / rangoXP);
+        slider.value = progreso;
+
+        Debug.Log($"XP: {xp} | Rango: {rango} | Progreso: {Mathf.RoundToInt(progreso * 100)}%");
     }
 }
