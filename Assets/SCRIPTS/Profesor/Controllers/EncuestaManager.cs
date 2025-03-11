@@ -6,7 +6,6 @@ using Firebase.Extensions;
 using System.Linq;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
-using Firebase.Database;
 
 public class EncuestaManager : MonoBehaviour
 {
@@ -188,24 +187,13 @@ public class EncuestaManager : MonoBehaviour
         if (textosTMP.Length >= 3)
         {
             textosTMP[0].text = titulo;
-            textosTMP[1].text = "" + numeroPreguntas;
-            textosTMP[2].text = codigoAcceso;
+            textosTMP[1].text = $"Preguntas: {numeroPreguntas}";
+            textosTMP[2].text = $"Código: {codigoAcceso}";
         }
         else
         {
             Debug.LogError($"❌ Error: No se encontraron suficientes TMP_Text en {titulo}");
         }
-
-        // Agregar Componente Image si no existe
-        Image fondoTarjeta = nuevaTarjeta.GetComponent<Image>();
-        if (fondoTarjeta == null)
-        {
-            fondoTarjeta = nuevaTarjeta.AddComponent<Image>(); // Añadir Image al GameObject
-        }
-
-        // Asignar color inicial según el estado "activo"
-        fondoTarjeta.color = activo ? new Color(0.7f, 1f, 0.7f, 1f) : new Color(1f, 0.7f, 0.7f, 1f);
-
 
         // Buscar el botón dentro de la tarjeta y agregar el evento
         Button botonVerEncuesta = nuevaTarjeta.GetComponentInChildren<Button>();
@@ -248,23 +236,8 @@ public class EncuestaManager : MonoBehaviour
             if (task.IsCompleted)
             {
                 Debug.Log("✅ Encuesta activada correctamente.");
-
-                // Buscar la tarjeta en la UI y actualizar su color
-                foreach (Transform child in contenedorEncuestas)
-                {
-                    TMP_Text[] textosTMP = child.GetComponentsInChildren<TMP_Text>();
-                    if (textosTMP.Length >= 3 && textosTMP[2].text == txtCodigoEncuesta.text.Replace("Código: ", ""))
-                    {
-                        Image fondoTarjeta = child.GetComponent<Image>();
-                        if (fondoTarjeta != null)
-                        {
-                            fondoTarjeta.color = new Color(0.7f, 1f, 0.7f, 1f); // Color de activa
-                        }
-                        break;
-                    }
-                }
-
                 panelDetallesEncuesta.SetActive(false);
+                CargarEncuestas(); // Recargar para actualizar el color
             }
             else
             {
@@ -272,17 +245,6 @@ public class EncuestaManager : MonoBehaviour
             }
         });
     }
-
-
-
-
-
-
-
-
-
-
-
 
     void DesactivarEncuesta(string encuestaID)
     {
@@ -295,32 +257,16 @@ public class EncuestaManager : MonoBehaviour
         {
             if (task.IsCompleted)
             {
-                Debug.Log("✅ Encuesta desactivada correctamente.");
-
-                // Buscar la tarjeta en la UI y actualizar su color
-                foreach (Transform child in contenedorEncuestas)
-                {
-                    TMP_Text[] textosTMP = child.GetComponentsInChildren<TMP_Text>();
-                    if (textosTMP.Length >= 3 && textosTMP[2].text == txtCodigoEncuesta.text.Replace("Código: ", ""))
-                    {
-                        Image fondoTarjeta = child.GetComponent<Image>();
-                        if (fondoTarjeta != null)
-                        {
-                            fondoTarjeta.color = new Color(1f, 0.7f, 0.7f, 1f); // Color de inactiva
-                        }
-                        break;
-                    }
-                }
-
+                Debug.Log("✅ Encuesta activada correctamente.");
                 panelDetallesEncuesta.SetActive(false);
+                CargarEncuestas(); // Recargar para actualizar el color
             }
             else
             {
-                Debug.LogError("❌ Error al desactivar la encuesta: " + task.Exception);
+                Debug.LogError("❌ Error al activar la encuesta: " + task.Exception);
             }
         });
     }
-
 
 
     public void LimpiarCampos()

@@ -12,7 +12,7 @@ public class MemoriaQuimica : MonoBehaviour
     public GameObject botonContinuar;
 
     private int xpGanadoPorNivel = 100; // Ajustable desde el Inspector
-    private int nivelActual = 3; // Asigna manualmente el número de nivel
+    private int numeroNivel = 2; // Número de nivel ajustable
 
     private List<string> elementos = new List<string> { "Litio", "Sodio", "Potasio", "Rubidio", "Cesio", "Francio" };
     private List<string> simbolos = new List<string> { "Li", "Na", "K", "Rb", "Cs", "Fr" };
@@ -32,7 +32,6 @@ public class MemoriaQuimica : MonoBehaviour
         firebaseDB = FirebaseFirestore.DefaultInstance;
 
         botonContinuar.SetActive(false);
-
 
         for (int i = 0; i < elementos.Count; i++)
         {
@@ -97,7 +96,7 @@ public class MemoriaQuimica : MonoBehaviour
             if (parejasEncontradas == elementos.Count)
             {
                 botonContinuar.SetActive(true);
-                GuardarProgresoEnFirebase(nivelActual);
+                GuardarProgresoEnFirebase();
             }
         }
         else
@@ -130,7 +129,7 @@ public class MemoriaQuimica : MonoBehaviour
         return puedeSeleccionar;
     }
 
-    private async void GuardarProgresoEnFirebase(int nivelActualJugado)
+    private async void GuardarProgresoEnFirebase()
     {
         if (firebaseAuth.CurrentUser != null)
         {
@@ -142,52 +141,37 @@ public class MemoriaQuimica : MonoBehaviour
 
             try
             {
-                // Obtener el XP y el nivel más alto registrado en Firestore
+                // Obtener el XP actual del usuario
                 DocumentSnapshot userSnapshot = await userRef.GetSnapshotAsync();
                 int xpActual = userSnapshot.Exists && userSnapshot.TryGetValue<int>("xp", out int xp) ? xp : 0;
 
+                // Obtener el nivel actual
                 DocumentSnapshot grupoSnapshot = await grupoRef.GetSnapshotAsync();
-                int nivelAlmacenado = grupoSnapshot.Exists && grupoSnapshot.TryGetValue<int>("nivel", out int nivel) ? nivel : 1;
+                int nivelActual = grupoSnapshot.Exists && grupoSnapshot.TryGetValue<int>("nivel", out int nivel) ? nivel : 1;
 
-                // Verificar si el nivel jugado es mayor al almacenado
-                bool subirNivel = nivelActualJugado > nivelAlmacenado;
-
+                // Sumar XP y subir de nivel
                 int nuevoXp = xpActual + xpGanadoPorNivel;
+                int nuevoNivel = nivelActual + 1;
 
-                int nuevoNivel;
-
-                Debug.Log(subirNivel);
-                if (subirNivel)
-                {
-                    nuevoNivel = nivelActualJugado;
-                }
-                else
-                {
-                    nuevoNivel = nivelAlmacenado;
-                }
-
-                // Guardar XP en users/userId
-                Dictionary<string, object> datosUsuario = new Dictionary<string, object>
-            {
-                { "xp", nuevoXp }
-            };
-
-                await userRef.SetAsync(datosUsuario, SetOptions.MergeAll);
-
-                if (subirNivel)
-                {
-                    Dictionary<string, object> datosGrupo = new Dictionary<string, object>
+                Dictionary<string, object> datosGrupo = new Dictionary<string, object>
                 {
                     { "nivel", nuevoNivel }
                 };
 
-                    // Guardar el nuevo nivel en Firestore
-                    await grupoRef.SetAsync(datosGrupo, SetOptions.MergeAll);
-                }
+                Dictionary<string, object> datosUsuario = new Dictionary<string, object>
+                {
+                    { "xp", nuevoXp }
+                };
+
+                // Guardar nivel en grupos/grupo1
+                await grupoRef.SetAsync(datosGrupo, SetOptions.MergeAll);
+
+                // Guardar XP en users/userId
+                await userRef.SetAsync(datosUsuario, SetOptions.MergeAll);
 
                 Debug.Log($"✅ Progreso guardado: Nivel {nuevoNivel}, XP Total {nuevoXp}");
 
-                // Guardar en PlayerPrefs para uso local
+                // Guardar en PlayerPrefs por compatibilidad
                 PlayerPrefs.SetInt("nivelCompletado", nuevoNivel);
                 PlayerPrefs.SetInt("xp", nuevoXp);
                 PlayerPrefs.Save();
