@@ -33,7 +33,7 @@ public class GestorPreguntas : MonoBehaviour
 
     private int nivelSeleccionado;
 
-    int nivelActual = 2;
+    private int nivelActual;
 
     void Start()
     {
@@ -150,7 +150,7 @@ public class GestorPreguntas : MonoBehaviour
     public void GuardarYSalir()
     {
         SceneManager.LoadScene("Grupos");
-        GuardarProgreso(nivelActual, respuestasCorrectas);
+        GuardarProgreso(nivelActual + 1, respuestasCorrectas);
     }
     public async void GuardarProgreso(int nivelActualJugado, int correctas)
     {
@@ -173,7 +173,7 @@ public class GestorPreguntas : MonoBehaviour
             int xpGanado = correctas * 100;
 
             // 🔹 Si el usuario juega un nivel menor al suyo, gana la mitad de XP y NO sube de nivel
-            if (nivelActualJugado <= nivelAlmacenado)
+            if (nivelActualJugado - 1 < nivelAlmacenado)
             {
                 xpGanado /= 2;
                 Debug.Log("🔻 Jugaste un nivel menor, XP reducida a la mitad.");
@@ -182,6 +182,7 @@ public class GestorPreguntas : MonoBehaviour
             bool subirNivel = nivelActualJugado >= nivelAlmacenado;
             int nuevoNivel = subirNivel ? nivelActualJugado : nivelAlmacenado;
             int nuevoXp = xpActual + xpGanado;
+
 
             // Guardar XP
             await docUsuario.SetAsync(new Dictionary<string, object> { { "xp", nuevoXp } }, SetOptions.MergeAll);
