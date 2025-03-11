@@ -10,6 +10,15 @@ using static GestorOraciones;
 
 public class GestorPreguntas : MonoBehaviour
 {
+    [System.Serializable]
+    public class Pregunta
+    {
+        public string oracion;
+        public string respuestaCorrecta;
+        public List<string> opciones;
+    }
+
+
     public TextMeshProUGUI txtPregunta;
     public Toggle[] opciones;
     public Text txtTiempo;
@@ -17,6 +26,7 @@ public class GestorPreguntas : MonoBehaviour
     public BarraProgreso barraProgreso;
     public GameObject panelFinal;
     public TextMeshProUGUI txtResultado;
+
 
     private Dictionary<int, List<PreguntaConOpciones>> preguntasPorNivel = new Dictionary<int, List<PreguntaConOpciones>>();
 
@@ -35,6 +45,7 @@ public class GestorPreguntas : MonoBehaviour
     private int nivelSeleccionado;
 
     int nivelActual = 2;
+
 
     void Start()
     {
