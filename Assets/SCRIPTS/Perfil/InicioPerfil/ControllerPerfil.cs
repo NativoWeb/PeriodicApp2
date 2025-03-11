@@ -31,7 +31,8 @@ public class ControllerPerfil : MonoBehaviour
 
         if (!string.IsNullOrEmpty(userId))
         {
-            ObtenerDatosUsuario(userId);
+            // Escuchamos cambios en el documento de usuario en Firestore
+            EscucharCambiosUsuario(userId);
         }
         else
         {
@@ -40,21 +41,60 @@ public class ControllerPerfil : MonoBehaviour
         }
 
         CargarMisioness();
-        ActualizarDatosUsuario();
+       
     }
 
-    // Función para actualizar los datos del usuario
-    public void ActualizarDatosUsuario()
+    // Función para escuchar cambios en el documento del usuario
+    private void EscucharCambiosUsuario(string userId)
     {
-        StartCoroutine(ActualizarDatosUsuarioCoroutine());
+        DocumentReference docRef = db.Collection("users").Document(userId);
+        docRef.Listen(snapshot =>
+        {
+            if (snapshot.Exists)
+            {
+                Debug.Log("Documento encontrado en Firestore");
+                string username = snapshot.GetValue<string>("DisplayName");
+                string correo = snapshot.GetValue<string>("Email");
+                string rangos = snapshot.GetValue<string>("Rango");
+                int xp = snapshot.GetValue<int>("xp");
+                rangoActual = rangos; // Guardamos el rango globalmente
+                ActualizarRangoSegunXP(xp);
+               
+
+                // Cargar y asignar avatar
+                string avatarPath = ObtenerAvatarPorRango(rangos);
+                Sprite avatarSprite = Resources.Load<Sprite>(avatarPath) ?? Resources.Load<Sprite>("Avatares/default");
+                avatarImage.sprite = avatarSprite;
+
+                // Actualizar textos de usuario
+                tmpUsername.text = "¡Hola, " + username + "!";
+                tmpCorreo.text = "Correo: " + correo;
+
+                // Recargar las misiones con el nuevo rango
+                LimpiarMisiones();
+                CargarMisioness();
+            }
+            else
+            {
+                Debug.LogError("El documento del usuario no existe en Firestore.");
+                tmpUsername.text = "Usuario: No disponible";
+                tmpCorreo.text = "Correo: No disponible";
+            }
+        });
     }
 
-    private IEnumerator ActualizarDatosUsuarioCoroutine()
+    // Función para actualizar el rango y avatar
+    public async void ActualizarRangoSegunXP(int xp)
     {
-        ObtenerDatosUsuario(userId);
-        yield return null; // Permite hacerlo asíncrono
-    }
+        Debug.Log($"XP recibido para actualización de rango: {xp}");
+        string nuevoRango = ObtenerRangoSegunXP(xp); // Obtenemos el rango según el XP
+        DocumentReference userRef = db.Collection("users").Document(userId);
 
+        // Actualizamos el rango del usuario
+        await userRef.UpdateAsync("Rango", nuevoRango);
+        rangoActual = nuevoRango;
+        Debug.Log($"Rango actualizado a: {rangoActual}");
+    }
     // Devuelve la ruta del avatar según el rango del usuario
     private string ObtenerAvatarPorRango(string rangos)
     {
@@ -73,60 +113,6 @@ public class ControllerPerfil : MonoBehaviour
         return avatarPath;
     }
 
-    // Obtiene los datos del usuario desde Firestore y actualiza la interfaz
-    async void ObtenerDatosUsuario(string userId)
-    {
-        DocumentReference docRef = db.Collection("users").Document(userId);
-        DocumentSnapshot snapshot = await docRef.GetSnapshotAsync();
-
-        if (snapshot.Exists)
-        {
-            Debug.Log("Documento encontrado en Firestore");
-
-            string username = snapshot.GetValue<string>("DisplayName");
-            string correo = snapshot.GetValue<string>("Email");
-            string rangos = snapshot.GetValue<string>("Rango");
-            rangoActual = rangos; // Guardamos el rango globalmente
-
-            // Cargar y asignar avatar
-            string avatarPath = ObtenerAvatarPorRango(rangos);
-            Sprite avatarSprite = Resources.Load<Sprite>(avatarPath) ?? Resources.Load<Sprite>("Avatares/default");
-            avatarImage.sprite = avatarSprite;
-
-            // Actualizar textos de usuario
-            tmpUsername.text = "¡Hola, " + username + "!";
-            tmpCorreo.text = "Correo: " + correo;
-
-            // Recargar las misiones con el nuevo rango
-            LimpiarMisiones();
-            CargarMisioness();
-        }
-        else
-        {
-            Debug.LogError("El documento del usuario no existe en Firestore.");
-            tmpUsername.text = "Usuario: No disponible";
-            tmpCorreo.text = "Correo: No disponible";
-        }
-    }
-    // Función para actualizar el rango y avatar
-    public async void ActualizarRangoSegunXP(int xp)
-    {
-        string nuevoRango = ObtenerRangoSegunXP(xp); // Obtenemos el rango según el XP
-        DocumentReference userRef = db.Collection("users").Document(userId);
-
-        // Actualizamos el rango del usuario
-        await userRef.UpdateAsync("Rango", nuevoRango);
-        rangoActual = nuevoRango;
-
-        // Actualizamos el avatar y las misiones
-        string avatarPath = ObtenerAvatarPorRango(nuevoRango);
-        Sprite avatarSprite = Resources.Load<Sprite>(avatarPath) ?? Resources.Load<Sprite>("Avatares/default");
-        avatarImage.sprite = avatarSprite;
-
-        LimpiarMisiones();
-        CargarMisioness();
-    }
-
     private string ObtenerRangoSegunXP(int xp)
     {
         if (xp >= 3000) return "Amo del caos químico";
@@ -135,11 +121,12 @@ public class ControllerPerfil : MonoBehaviour
         return "Novato de laboratorio";
     }
 
-
     // Carga las misiones filtradas por rango del usuario
     public async void CargarMisioness()
     {
+
         string rangoUsuario = rangoActual;
+        Debug.Log($"Cargando misiones para el rango: {rangoUsuario}");
 
         Query misionesQuery = db.Collection("misiones").WhereEqualTo("rangoRequerido", rangoUsuario);
         QuerySnapshot snapshot = await misionesQuery.GetSnapshotAsync();
@@ -151,6 +138,7 @@ public class ControllerPerfil : MonoBehaviour
                 string titulo = document.GetValue<string>("titulo");
                 string descripcion = document.GetValue<string>("descripcion");
                 int xp = document.GetValue<int>("xp");
+               
                 string rutaEscena = document.GetValue<string>("rutaEscena");
                 string misionID = document.Id;
 
