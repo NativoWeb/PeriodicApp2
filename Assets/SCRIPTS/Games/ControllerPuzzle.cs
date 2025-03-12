@@ -2,146 +2,150 @@
 using UnityEngine.UI;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
+using UnityEngine.EventSystems;
 
 public class ControllerPuzzle : MonoBehaviour
 {
+    public List<int> indicesCorrectos = new List<int>();
+    public List<ControllerPieze> piezas = new List<ControllerPieze>();
+
     public Image imagenCompleta;
     public GameObject piezaPrefab;
     public Transform panelPuzzle;
+    public Transform panelPiezasDisponibles;
+    public GameObject celdaPrefab;
+    public Button botonContinuar;
 
-    private GridLayoutGroup layoutGroup; // ✅ Ahora está declarado correctamente
     public int filas = 3;
     public int columnas = 3;
-    private List<ControllerPieze> piezas = new List<ControllerPieze>();
+
+    public List<Transform> celdas = new List<Transform>();
 
     void Start()
     {
-        layoutGroup = panelPuzzle.GetComponent<GridLayoutGroup>(); // ✅ Obtiene el GridLayoutGroup
-        if (layoutGroup != null)
-        {
-            layoutGroup.enabled = false; // 🔴 Desactiva LayoutGroup para evitar la reorganización automática
-        }
-
+        botonContinuar.interactable = false;
+        GenerarCeldas();
         StartCoroutine(PrepararPuzzle());
     }
 
     IEnumerator PrepararPuzzle()
     {
         imagenCompleta.gameObject.SetActive(true);
-        yield return new WaitForSeconds(5f);
+        yield return new WaitForSeconds(1.5f);
         imagenCompleta.gameObject.SetActive(false);
         GenerarPiezas();
     }
 
-    void GenerarPiezas()
+    private void GenerarCeldas()
+    {
+        for (int i = 0; i < filas * columnas; i++)
+        {
+            GameObject nuevaCelda = Instantiate(celdaPrefab, panelPuzzle);
+            nuevaCelda.name = "Celda " + i;
+            celdas.Add(nuevaCelda.transform);
+        }
+    }
+
+    public void GenerarPiezas()
     {
         piezas.Clear();
+        indicesCorrectos.Clear();
 
         float anchoPieza = imagenCompleta.rectTransform.rect.width / columnas;
         float altoPieza = imagenCompleta.rectTransform.rect.height / filas;
 
-        for (int fila = 0; fila < filas; fila++)
+        // Mezclamos los índices antes de generar las piezas
+        List<int> indicesMezclados = Enumerable.Range(0, filas * columnas).OrderBy(x => Random.value).ToList();
+
+        for (int i = 0; i < filas * columnas; i++)
         {
-            for (int columna = 0; columna < columnas; columna++)
+            indicesCorrectos.Add(i);
+
+            // Instancia la pieza en el panel de piezas disponibles
+            GameObject nuevaPieza = Instantiate(piezaPrefab, panelPiezasDisponibles);
+            RectTransform rectTransform = nuevaPieza.GetComponent<RectTransform>();
+
+            rectTransform.sizeDelta = new Vector2(anchoPieza, altoPieza);
+            rectTransform.localScale = Vector3.one;
+            rectTransform.SetAsLastSibling();
+
+            // Cargar la parte de la imagen correcta en la pieza
+            int indiceMezclado = indicesMezclados[i];
+            Sprite spriteRecortado = RecortarSprite(indiceMezclado / columnas, indiceMezclado % columnas, anchoPieza, altoPieza);
+
+            ControllerPieze controller = nuevaPieza.GetComponent<ControllerPieze>();
+            if (controller != null)
             {
-                GameObject nuevaPieza = Instantiate(piezaPrefab, panelPuzzle);
-                RectTransform rectTransform = nuevaPieza.GetComponent<RectTransform>();
-
-                // Asegurar que la pieza pertenece al panelPuzzle
-                nuevaPieza.transform.SetParent(panelPuzzle, false);  // ⚠️ Esto es clave para que quede dentro
-
-                // Ajustar tamaño de la pieza
-                rectTransform.sizeDelta = new Vector2(anchoPieza, altoPieza);
-
-                // Posición correcta en la cuadrícula dentro del panel
-                Vector2 posicionCorrecta = new Vector2(columna * anchoPieza, -fila * altoPieza);
-                rectTransform.anchoredPosition = posicionCorrecta;
-
-                // Obtener el sprite recortado
-                Sprite spriteRecortado = RecortarSprite(fila, columna, anchoPieza, altoPieza);
-
-                ControllerPieze controller = nuevaPieza.GetComponent<ControllerPieze>();
-                if (controller != null)
-                {
-                    controller.Configurar(this, fila * columnas + columna, spriteRecortado);
-                    piezas.Add(controller);
-                }
+                controller.Configurar(this, indiceMezclado, spriteRecortado, panelPiezasDisponibles);
+                controller.indiceActual = -1;
+                piezas.Add(controller);
             }
         }
     }
 
-    IEnumerator MostrarImagenCompletaYMezclar()
+    public Transform ObtenerCeldaBajoCursor(PointerEventData eventData)
     {
-        imagenCompleta.gameObject.SetActive(true);
-        yield return new WaitForSeconds(5);
-        imagenCompleta.gameObject.SetActive(false);
-
-        MezclarPiezas();
-    }
-
-
-    void MezclarPiezas()
-    {
-        for (int i = 0; i < piezas.Count; i++)
+        foreach (Transform celda in celdas)
         {
-            int randomIndex = Random.Range(0, piezas.Count);
-            Vector3 tempPos = piezas[i].transform.position;
-            piezas[i].transform.position = piezas[randomIndex].transform.position;
-            piezas[randomIndex].transform.position = tempPos;
+            RectTransform celdaRect = celda.GetComponent<RectTransform>();
+            if (RectTransformUtility.RectangleContainsScreenPoint(celdaRect, eventData.position))
+            {
+                return celda;
+            }
         }
+        return null;
     }
 
-    public void DesactivarLayout()
+    public void VerificarOrden()
     {
-        if (layoutGroup != null)
-        {
-            layoutGroup.enabled = false;
-            Debug.Log("[ControllerPuzzle] Layout desactivado para permitir movimiento libre.");
-        }
-    }
-
-    public void ActivarLayout()
-    {
-        if (layoutGroup != null)
-        {
-            layoutGroup.enabled = true;
-            Debug.Log("[ControllerPuzzle] Layout restaurado.");
-        }
-    }
-    public void ValidarPuzzle()
-    {
-        bool completado = true;
+        Debug.Log("🔍 Verificando si el puzzle está completo...");
 
         foreach (ControllerPieze pieza in piezas)
         {
-            if (!pieza.EnPosicionCorrecta())
-            {
-                completado = false;
-                break; // Si una pieza está mal, no hace falta seguir verificando
-            }
+            Debug.Log($"🧩 Pieza {pieza.indiceCorrecto} está en {pieza.indiceActual}");
         }
 
-        if (completado)
+        bool esCorrecto = piezas.All(pieza => pieza.indiceActual == pieza.indiceCorrecto);
+
+        if (esCorrecto)
         {
-            Debug.Log("[ControllerPuzzle] 🎉 ¡Puzzle completado correctamente!");
+            Debug.Log("✅ ¡Puzzle completo!");
+            botonContinuar.interactable = true;
         }
         else
         {
-            Debug.Log("[ControllerPuzzle] ❌ Aún hay piezas en posiciones incorrectas.");
+            Debug.Log("❌ Aún hay piezas fuera de lugar.");
+            botonContinuar.interactable = false;
         }
     }
+
 
     private Sprite RecortarSprite(int fila, int columna, float ancho, float alto)
     {
         Texture2D textura = imagenCompleta.sprite.texture;
 
-        int x = (int)(columna * ancho);
-        int y = (int)(textura.height - ((fila + 1) * alto));
+        int x = Mathf.FloorToInt(columna * ancho);
+        int y = Mathf.FloorToInt(textura.height - ((fila + 1) * alto));
 
         Rect rect = new Rect(x, y, ancho, alto);
         Sprite spriteRecortado = Sprite.Create(textura, rect, new Vector2(0.5f, 0.5f));
 
         return spriteRecortado;
+    }
+    public void ActualizarIndices()
+    {
+        Debug.Log("🔄 Actualizando índices de las piezas...");
+
+        for (int i = 0; i < celdas.Count; i++)
+        {
+            ControllerPieze pieza = celdas[i].GetComponentInChildren<ControllerPieze>();
+            if (pieza != null)
+            {
+                pieza.indiceActual = i;  // El índice en la celda es su posición en el puzzle
+                Debug.Log($"🧩 Pieza {pieza.indiceCorrecto} ahora tiene índiceActual = {pieza.indiceActual}");
+            }
+        }
     }
 
 }

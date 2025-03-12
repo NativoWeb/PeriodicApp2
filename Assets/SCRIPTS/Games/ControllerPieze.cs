@@ -2,101 +2,126 @@
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-public class ControllerPieze : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler, IDropHandler
+public class ControllerPieze : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler
 {
-    private Vector3 posicionInicial;
-    private Transform parentInicial;
-    private CanvasGroup canvasGroup;
     private ControllerPuzzle puzzleManager;
-    private ControllerPieze piezaIntercambio;
+    private RectTransform rectTransform;
+    private CanvasGroup canvasGroup;
+    private Vector3 posicionInicial;
+    private Transform panelPiezasDisponibles;
 
     public int indiceCorrecto;
     public int indiceActual;
-    public Image imagen; // Referencia a la imagen de la pieza
+    public Image imagen;
 
-    public void Configurar(ControllerPuzzle puzzle, int indice, Sprite sprite)
+    public void Configurar(ControllerPuzzle puzzle, int indiceCorrecto, Sprite sprite, Transform panelPiezas)
     {
         puzzleManager = puzzle;
-        indiceCorrecto = indice;
-        indiceActual = indice;  // Inicialmente la posición actual es la misma que la correcta
+        this.indiceCorrecto = indiceCorrecto;
+        this.indiceActual = -1; // No está en el grid aún
+        panelPiezasDisponibles = panelPiezas;
 
-        posicionInicial = transform.position;
-        parentInicial = transform.parent;
-
+        rectTransform = GetComponent<RectTransform>();
         canvasGroup = GetComponent<CanvasGroup>() ?? gameObject.AddComponent<CanvasGroup>();
 
-        // Asegurar que la pieza tiene una imagen y no está en blanco
         imagen = GetComponent<Image>();
         if (imagen != null && sprite != null)
         {
             imagen.sprite = sprite;
         }
-        else
-        {
-            Debug.LogError($"[ERROR] La pieza {gameObject.name} no tiene un componente Image o el sprite es nulo.");
-        }
 
-        Debug.Log($"[START] Pieza {gameObject.name} inicializada en posición {posicionInicial}");
+        posicionInicial = rectTransform.position; // Guarda la posición original
     }
 
     public void OnBeginDrag(PointerEventData eventData)
     {
-        Debug.Log($"[OnBeginDrag] Iniciando arrastre de {gameObject.name}");
-
         canvasGroup.blocksRaycasts = false;
-        transform.SetAsLastSibling();
+        posicionInicial = rectTransform.position;
+        transform.SetAsLastSibling(); // Asegurar que siempre quede encima al moverla
     }
 
     public void OnDrag(PointerEventData eventData)
     {
-        transform.position = Input.mousePosition;
+        rectTransform.position = eventData.position;
     }
 
     public void OnEndDrag(PointerEventData eventData)
     {
         canvasGroup.blocksRaycasts = true;
 
-        if (piezaIntercambio != null)
+        Transform celdaDestino = puzzleManager.ObtenerCeldaBajoCursor(eventData);
+
+        if (celdaDestino != null)
         {
-            Debug.Log($"[OnEndDrag] Intercambiando {gameObject.name} con {piezaIntercambio.gameObject.name}");
+            ControllerPieze otraPieza = celdaDestino.GetComponentInChildren<ControllerPieze>();
 
-            // Intercambiar posiciones en la jerarquía
-            Transform tempParent = this.transform.parent;
-            this.transform.SetParent(piezaIntercambio.transform.parent);
-            piezaIntercambio.transform.SetParent(tempParent);
+            if (otraPieza != null && otraPieza != this)
+            {
+                // 🔹 Intercambiar las piezas si hay otra en la celda
+                IntercambiarCon(otraPieza);
+            }
+            else
+            {
+                // 🔹 Si la celda está vacía, mover la pieza allí
+                transform.SetParent(celdaDestino, false);
+                transform.SetSiblingIndex(celdaDestino.GetSiblingIndex());
+                rectTransform.position = celdaDestino.position;
 
-            // Intercambiar índices
-            int tempIndex = indiceActual;
-            indiceActual = piezaIntercambio.indiceActual;
-            piezaIntercambio.indiceActual = tempIndex;
+                // 🔹 Ajustar tamaño en el GridLayoutGroup
+                AjustarPieza(this);
 
-            // Validar si el rompecabezas está completo
-            puzzleManager.ValidarPuzzle();
+                // 🔹 Actualizar índice actual
+                puzzleManager.ActualizarIndices();
+            }
+
+            puzzleManager.VerificarOrden();
         }
         else
         {
-            Debug.Log($"[OnEndDrag] {gameObject.name} regresando a su posición inicial");
-            transform.position = posicionInicial;
-        }
-
-        piezaIntercambio = null;
-    }
-
-    public void OnDrop(PointerEventData eventData)
-    {
-        if (eventData.pointerDrag != null)
-        {
-            ControllerPieze otraPieza = eventData.pointerDrag.GetComponent<ControllerPieze>();
-            if (otraPieza != null && otraPieza != this)
-            {
-                piezaIntercambio = otraPieza;
-                Debug.Log($"[OnDrop] {gameObject.name} detectó que {otraPieza.gameObject.name} fue soltada sobre él.");
-            }
+            // 🔹 Si no está en una celda válida, vuelve a su posición original
+            rectTransform.position = posicionInicial;
         }
     }
 
-    public bool EnPosicionCorrecta()
+
+
+    private void AjustarPieza(ControllerPieze pieza)
     {
-        return Vector3.Distance(transform.position, posicionInicial) < 0.1f;
+        RectTransform rt = pieza.GetComponent<RectTransform>();
+
+        // Ajustar tamaño y anclaje para que se adapte correctamente dentro del GridLayoutGroup
+        rt.offsetMin = Vector2.zero;
+        rt.offsetMax = Vector2.zero;
+        rt.anchorMin = Vector2.zero;
+        rt.anchorMax = Vector2.one;
+        rt.localScale = Vector3.one;
     }
+    private void IntercambiarCon(ControllerPieze otraPieza)
+    {
+        Transform tempParent = this.transform.parent;
+        Transform otraParent = otraPieza.transform.parent;
+
+        // 🔹 Intercambiar los padres de las piezas
+        this.transform.SetParent(otraParent, false);
+        otraPieza.transform.SetParent(tempParent, false);
+
+        // 🔹 Intercambiar posiciones en el GridLayoutGroup
+        int tempSiblingIndex = this.transform.GetSiblingIndex();
+        this.transform.SetSiblingIndex(otraPieza.transform.GetSiblingIndex());
+        otraPieza.transform.SetSiblingIndex(tempSiblingIndex);
+
+        // 🔹 Ajustar tamaño en el GridLayoutGroup
+        AjustarPieza(this);
+        AjustarPieza(otraPieza);
+
+        // 🔹 Actualizar índices después del intercambio
+        puzzleManager.ActualizarIndices();
+
+        // 🔹 Verificar si el puzzle está completo
+        puzzleManager.VerificarOrden();
+    }
+
+
+
+
 }
