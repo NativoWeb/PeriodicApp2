@@ -186,10 +186,13 @@ public class EstadisticasController : MonoBehaviour
     {
         auth.SignOut(); // Cierra sesión en Firebase
         PlayerPrefs.DeleteKey("userId"); // Elimina ID del usuario almacenado
+        PlayerPrefs.DeleteKey("userEmail");
+        PlayerPrefs.DeleteKey("userPassword");
+        PlayerPrefs.SetInt("rememberMe", 0);
         PlayerPrefs.Save();
-
         Debug.Log("Sesión cerrada correctamente");
         SceneManager.LoadScene("Login"); // Redirige a la escena de login
+
     }
 
     // ============================ MOSTRAR PANTALLA DE LOGOUT ============================

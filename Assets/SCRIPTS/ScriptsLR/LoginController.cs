@@ -11,7 +11,9 @@ public class LoginController : MonoBehaviour
 {
     public TMP_InputField emailInput;
     public TMP_InputField passwordInput;
+    public Toggle toggleRememberMe;
     public Button loginButton;
+   
 
     private FirebaseAuth auth;
     private FirebaseFirestore firestore;
@@ -22,6 +24,7 @@ public class LoginController : MonoBehaviour
         auth = FirebaseAuth.DefaultInstance;
         firestore = FirebaseFirestore.DefaultInstance;
 
+        AutoLogin();
         loginButton.onClick.AddListener(OnLoginButtonClick);
     }
 
@@ -54,6 +57,21 @@ public class LoginController : MonoBehaviour
 
             // 🔹 Guardamos el userId en PlayerPrefs
             Debug.Log($"🆔 Guardando userId en PlayerPrefs: {user.UserId}");
+            if (toggleRememberMe.isOn)
+            {
+                PlayerPrefs.SetString("userEmail", email);
+                PlayerPrefs.SetString("userPassword", password);
+                PlayerPrefs.SetInt("rememberMe", 1);
+            }
+            else
+            {
+                PlayerPrefs.DeleteKey("userEmail");
+                PlayerPrefs.DeleteKey("userPassword");
+                PlayerPrefs.SetInt("rememberMe", 0);
+            }
+
+        
+            //datos guardados en playerprefs
             PlayerPrefs.SetString("userId", user.UserId);
             PlayerPrefs.Save();
 
@@ -62,6 +80,39 @@ public class LoginController : MonoBehaviour
             CheckUserStatus(user.UserId);
         });
     }
+
+    /*-------------------------------------------------------------- INICIAR SI DIO REMEMBER ME ---------------------------------------------------------*/
+    void AutoLogin()
+    {
+        if (PlayerPrefs.GetInt("rememberMe") == 1)
+        {
+            string savedEmail = PlayerPrefs.GetString("userEmail");
+            string savedPassword = PlayerPrefs.GetString("userPassword");
+
+            auth.SignInWithEmailAndPasswordAsync(savedEmail, savedPassword).ContinueWithOnMainThread(task =>
+            {
+                if (task.IsCompleted && !task.IsFaulted)
+                {
+                    Debug.Log("✅ Login automático exitoso");
+
+                    FirebaseUser user = task.Result.User;
+
+                    // Guardar UserId por si acaso
+                    PlayerPrefs.SetString("userId", user.UserId);
+                    PlayerPrefs.Save();
+
+                    // ✅ Ahora llamamos a CheckUserStatus para saber a qué escena ir
+                    CheckUserStatus(user.UserId);
+                }
+                else
+                {
+                    Debug.LogError("❌ Error en login automático: " + task.Exception);
+                }
+            });
+        }
+    }
+
+    /*--------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
     private void CheckUserStatus(string userId)
     {

@@ -1,166 +1,153 @@
-using Firebase.Firestore;
-using System.Collections.Generic;
-using UnityEngine;
-using TMPro;
-using Firebase.Extensions;
-using System.Threading.Tasks;
-using UnityEngine.UI;
-using System.Collections;
+using Firebase.Firestore; // Importa la librería para interactuar con Firebase Firestore
+using System.Collections.Generic; // Importa las colecciones genéricas 
+using UnityEngine; // Importa las funcionalidades de Unity
+using TMPro; // Importa TextMesh Pro para trabajar con texto
+using Firebase.Extensions; // Importa extensiones específicas de Firebase
+using System.Threading.Tasks; // Importa para trabajar con tareas asíncronas
+using UnityEngine.UI; // Importa las funcionalidades de UI (interfaz de usuario) de Unity
+using System.Collections; // Importa para trabajar con corutinas (funciones asíncronas dentro de Unity)
 
-public class RankingController: MonoBehaviour
+public class RankingController : MonoBehaviour
 {
-    private FirebaseFirestore db; // Base de datos Firebase
-    private string userId; // ID del usuario actual
+    private FirebaseFirestore db; // Base de datos de Firebase
+    private string userId; // ID del usuario actual (almacenado en PlayerPrefs)
 
     // Referencias a los elementos de la interfaz
-    public TMP_Text posicionText;
-    public TMP_Text Xptext;
-    public TMP_Text UserName;
-    public Image avatarimage;
-    public TMP_Text rangotext;
-
-    public ControllerPerfil controllerPerfil; // Referencia al ControllerPerfil
-
+    public TMP_Text posicionText; // Texto que muestra la posición en el ranking
+    public TMP_Text Xptext; // Texto que muestra los puntos de experiencia (XP) del usuario
+    public TMP_Text UserName; // Texto que muestra el nombre del usuario
+    public Image avatarimage; // Imagen que muestra el avatar del usuario
+    public TMP_Text rangotext; // Texto que muestra el rango del usuario
 
     // Función que se ejecuta al iniciar la escena
     void Start()
     {
-        db = FirebaseFirestore.DefaultInstance; // Conexión a Firebase
-        userId = PlayerPrefs.GetString("userId", "").Trim(); // Obtenemos el ID del usuario guardado
+        db = FirebaseFirestore.DefaultInstance; // Conecta con la base de datos de Firebase
+        userId = PlayerPrefs.GetString("userId", "").Trim(); // Obtiene el ID del usuario guardado en PlayerPrefs
 
         // Si el ID no está vacío, obtenemos la posición y los datos del usuario
         if (!string.IsNullOrEmpty(userId))
         {
-            ObtenerPosicionUsuario(); // Llama la función para saber en qué puesto está el usuario
-            StartCoroutine(LoadUserData(userId)); // Llama la función para cargar los datos del usuario
+            ObtenerPosicionUsuario(); // Llama a la función para obtener la posición del usuario en el ranking
+            StartCoroutine(LoadUserData(userId)); // Llama a la función para cargar los datos del usuario (en corutina para esperar la respuesta de Firebase)
         }
         else
         {
-            // Si no hay usuario guardado, muestra mensaje de error
+            // Si no hay un usuario guardado, muestra mensaje de error
             posicionText.text = "Posición: No disponible";
             Debug.LogError("No se encontró el ID del usuario.");
         }
-        
     }
 
-    
-    // Corrutina que espera a que se carguen los datos del usuario
+    // Corutina que espera a que se carguen los datos del usuario
     IEnumerator LoadUserData(string userId)
     {
-        var task = GetUserData(userId); // Llama a la función de obtener datos
-        yield return new WaitUntil(() => task.IsCompleted); // Espera hasta que termine
+        var task = GetUserData(userId); // Llama a la función GetUserData para obtener los datos del usuario
+        yield return new WaitUntil(() => task.IsCompleted); // Espera hasta que la tarea (obtener los datos) esté completada
     }
 
-    // Función para devolver la ruta del avatar según el rango del usuario
+    // Función que devuelve la ruta del avatar según el rango del usuario
     private string ObtenerAvatarPorRango(string rangos)
     {
         string avatarPath = rangos switch
         {
-            "Novato de laboratorio" => "Avatares/nivel1",
-            "Arquitecto molecular" => "Avatares/nivel2",
-            "Visionario Cuántico" => "Avatares/nivel3",
-            "Amo del caos químico" => "Avatares/nivel4",
-            _ => "Avatares/defecto" // Si no encuentra el rango, pone avatar por defecto
+            "Novato de laboratorio" => "Avatares/nivel1", // Ruta del avatar para el rango "Novato de laboratorio"
+            "Arquitecto molecular" => "Avatares/nivel2", // Ruta del avatar para el rango "Arquitecto molecular"
+            "Visionario Cuántico" => "Avatares/nivel3", // Ruta del avatar para el rango "Visionario Cuántico"
+            "Amo del caos químico" => "Avatares/nivel4", // Ruta del avatar para el rango "Amo del caos químico"
+            _ => "Avatares/defecto" // Si no hay un rango definido, se asigna el avatar por defecto
         };
 
-        Debug.Log($"Ruta de avatar por nivel: {avatarPath}");
-        return avatarPath;
+        Debug.Log($"Ruta de avatar por nivel: {avatarPath}"); // Muestra en consola la ruta del avatar
+        return avatarPath; // Devuelve la ruta del avatar correspondiente
     }
 
     // Función para obtener los datos del usuario desde Firebase
     async Task GetUserData(string userId)
     {
-        DocumentReference docRef = db.Collection("users").Document(userId); // Referencia al usuario
-        DocumentSnapshot snapshot = await docRef.GetSnapshotAsync(); // Obtenemos los datos
+        // Obtiene la referencia al documento del usuario desde Firestore usando su ID
+        DocumentReference docRef = db.Collection("users").Document(userId);
+        // Intenta obtener los datos del usuario
+        DocumentSnapshot snapshot = await docRef.GetSnapshotAsync();
 
-        // Verificamos si el usuario existe
+        // Verifica si el usuario existe en la base de datos
         if (!snapshot.Exists)
         {
+            // Si el usuario no existe, muestra un mensaje de error y asigna valores predeterminados
             Debug.LogError("Usuario no encontrado en la base de datos.");
             UserName.text = "¡Usuario no encontrado!";
             rangotext.text = "Sin rango";
             Xptext.text = "0";
-            return; // Salir de la función si no existe
+            return; // Sale de la función si el usuario no existe
         }
 
-        Debug.Log($"Usuario encontrado en Firebase: {userId}");
+        Debug.Log($"Usuario encontrado en Firebase: {userId}"); // Muestra el ID del usuario encontrado
 
-        // Obtenemos cada dato del usuario (si existe)
+        // Obtiene los valores del usuario (nombre, rango, XP) de Firestore, si existen
         string userName = snapshot.ContainsField("DisplayName") ? snapshot.GetValue<string>("DisplayName") : "Sin nombre";
         string rangos = snapshot.ContainsField("Rango") ? snapshot.GetValue<string>("Rango") : "Sin rango";
         int xp = snapshot.ContainsField("xp") ? snapshot.GetValue<int>("xp") : 0;
 
-        // Mostramos los datos en la pantalla
-        Xptext.text = xp.ToString();
-        UserName.text = "¡Hola " + userName + "!";
-        rangotext.text = "¡" + rangos + "!";
+        // Muestra los datos en la interfaz
+        Xptext.text = xp.ToString(); // Muestra los puntos de experiencia
+        UserName.text = "¡Hola " + userName + "!"; // Muestra el nombre del usuario
+        rangotext.text = "¡" + rangos + "!"; // Muestra el rango del usuario
 
-        // Obtener y asignar la imagen del avatar según el rango
-        string avatarPath = ObtenerAvatarPorRango(rangos);
-        Sprite avatarSprite = Resources.Load<Sprite>(avatarPath);
+        // Obtiene y asigna el avatar correspondiente según el rango
+        string avatarPath = ObtenerAvatarPorRango(rangos); // Obtiene la ruta del avatar según el rango
+        Sprite avatarSprite = Resources.Load<Sprite>(avatarPath); // Carga la imagen del avatar
 
-        // Si encontró la imagen, la muestra. Si no, muestra imagen por defecto
+        // Si encontró la imagen del avatar, la asigna a la interfaz
         if (avatarSprite != null)
         {
             avatarimage.sprite = avatarSprite;
         }
         else
         {
+            // Si no se encuentra el avatar, muestra un avatar por defecto
             Debug.LogError($"No se encontró el avatar para la ruta: {avatarPath}. Asignando avatar por defecto.");
             avatarimage.sprite = Resources.Load<Sprite>("Avatares/default");
         }
-
-        // Llamar a la función para actualizar el rango según el XP obtenido
-        if (controllerPerfil != null)
-        {
-            controllerPerfil.ActualizarRangoSegunXP(xp); // Llama la función con el XP
-        }
-        else
-        {
-            Debug.LogError("ControllerPerfil no está asignado.");
-        }
     }
-
-    // Función para actualizar el rango
-
 
     // Función para obtener la posición del usuario en el ranking
     async void ObtenerPosicionUsuario()
     {
-        // Consulta para obtener los usuarios ordenados por XP (de mayor a menor)
+        // Realiza una consulta para obtener los usuarios ordenados por XP en orden descendente (de mayor a menor)
         Query rankingQuery = db.Collection("users").OrderByDescending("xp");
-        QuerySnapshot snapshot = await rankingQuery.GetSnapshotAsync(); // Obtenemos los datos
+        // Ejecuta la consulta y obtiene los datos
+        QuerySnapshot snapshot = await rankingQuery.GetSnapshotAsync();
 
         // Si no hay usuarios en la base de datos
         if (snapshot.Count == 0)
         {
             Debug.LogWarning("No hay usuarios registrados en la base de datos.");
-            posicionText.text = "Posición: No disponible";
-            return;
+            posicionText.text = "Posición: No disponible"; // Muestra mensaje indicando que no hay usuarios
+            return; // Sale de la función si no hay usuarios
         }
 
-        int posicion = 1; // Empezamos desde la posición 1
-        bool encontrado = false; // Variable para saber si encontramos al usuario
+        int posicion = 1; // Comienza desde la posición 1 en el ranking
+        bool encontrado = false; // Variable para indicar si se encuentra al usuario
 
-        // Recorremos todos los usuarios
+        // Recorre todos los usuarios del ranking
         foreach (DocumentSnapshot doc in snapshot.Documents)
         {
-            // Si el ID coincide con el del usuario actual
+            // Si el ID del documento coincide con el ID del usuario actual
             if (doc.Id == userId)
             {
-                encontrado = true; // Marcamos que lo encontramos
-                posicionText.text = "Posición: #" + posicion; // Mostramos la posición
+                encontrado = true; // Marca que se encontró al usuario
+                posicionText.text = "Posición: #" + posicion; // Muestra la posición en el ranking
                 Debug.Log($"El usuario {userId} está en la posición {posicion} del ranking.");
-                break; // Salimos del ciclo porque ya encontramos al usuario
+                break; // Sale del ciclo ya que se encontró al usuario
             }
-            posicion++; // Sumamos 1 a la posición para el siguiente usuario
+            posicion++; // Incrementa la posición para el siguiente usuario
         }
 
-        // Si no encontramos al usuario
+        // Si no se encontró al usuario
         if (!encontrado)
         {
             Debug.LogError("No se encontró al usuario en el ranking.");
-            posicionText.text = "Posición: No encontrada";
+            posicionText.text = "Posición: No encontrada"; // Muestra un mensaje de error
         }
     }
 }
