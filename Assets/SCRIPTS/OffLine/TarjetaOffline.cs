@@ -4,7 +4,7 @@ using TMPro;
 using System.Collections;
 using System;
 
-public class Tarjeta : MonoBehaviour
+public class TarjetaOffliine: MonoBehaviour
 {
     public string elementoNombre; // 🔹 Se llenarán desde código
     public string elementoSimbolo;
@@ -13,14 +13,14 @@ public class Tarjeta : MonoBehaviour
 
     public TextMeshProUGUI textoTarjeta;
     public Button botonTarjeta;
-    private MemoriaQuimica juego;
+    private MemoriaQuimicaOffline juego;
 
-    public void ConfigurarTarjeta(string nombre, string simbolo, MemoriaQuimica juegoManager)
+    public void ConfigurarTarjeta(string nombre, string simbolo, MemoriaQuimicaOffline juegoManager)
     {
         elementoNombre = nombre;
         elementoSimbolo = simbolo;
-        textoTarjeta.text = "?";  // 🔹 La carta inicia oculta
-        juego = juegoManager;
+        textoTarjeta.text = "?";  // La carta inicia oculta
+        juego = juegoManager; // Asegúrate de usar MemoriaQuimicaOffliine
     }
 
     public void RevelarTarjeta()
@@ -64,5 +64,5 @@ public class Tarjeta : MonoBehaviour
 
         transform.rotation = Quaternion.Euler(0, 0, 0);
     }
-
+    
 }
