@@ -4,17 +4,25 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
+using Firebase.Auth;
 
 public class PuzzleManager : MonoBehaviour, IDropHandler
 {
     public Transform panelGrid; // Grid donde están las piezas
     public Button botonContinuar; // Botón de continuar
 
+    public GuardarProgreso gestorProgreso;
+    private FirebaseAuth auth;
+
+    private int nivelSeleccionado = 12;
+
+
     // Números atómicos en orden correcto (de mayor a menor)
     private int[] ordenCorrecto = { 88, 87, 56, 55, 38, 37, 20, 19, 12, 11, 4, 3 };
 
     void Start()
     {
+        auth = FirebaseAuth.DefaultInstance;
         botonContinuar.interactable = false; // Desactivamos el botón
         DesordenarElementos();
     }
@@ -88,6 +96,14 @@ public class PuzzleManager : MonoBehaviour, IDropHandler
         {
             Debug.Log("✅ ¡Orden correcto!");
             botonContinuar.interactable = true;
+
+            GameObject gestor = GameObject.Find("GestorProgreso");
+            if (gestor == null || auth == null) return;
+
+            GuardarProgreso gp = gestor.GetComponent<GuardarProgreso>();
+            if (gp == null) return;
+
+            gp.GuardarProgresoFirestore(nivelSeleccionado + 1, 12, auth);
         }
         else
         {

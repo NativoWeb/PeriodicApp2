@@ -104,7 +104,7 @@ public class LoginController : MonoBehaviour
             {
                 if (encuestaCompletada)
                 {
-                    SceneManager.LoadScene("Inicio"); // Ir a la vista principal
+                    SceneManager.LoadScene("Grupos"); // Ir a la vista principal
                 }
                 else
                 {
