@@ -10,9 +10,10 @@ public class MemoriaQuimica : MonoBehaviour
     public GameObject tarjetaPrefab;
     public Transform panelCartas;
     public GameObject botonContinuar;
+    public GuardarProgreso gestorProgreso;
 
     private int xpGanadoPorNivel = 100; // Ajustable desde el Inspector
-    private int nivelActual = 3; // Asigna manualmente el número de nivel
+    private int numeroNivel = 2; // Número de nivel ajustable
 
     private List<string> elementos = new List<string> { "Litio", "Sodio", "Potasio", "Rubidio", "Cesio", "Francio" };
     private List<string> simbolos = new List<string> { "Li", "Na", "K", "Rb", "Cs", "Fr" };
@@ -22,17 +23,18 @@ public class MemoriaQuimica : MonoBehaviour
     private Tarjeta segundaSeleccionada;
     private bool puedeSeleccionar = true;
     private int parejasEncontradas = 0;
+    private int nivelSeleccionado = 6;
 
-    private FirebaseAuth firebaseAuth;
-    private FirebaseFirestore firebaseDB;
+
+    private FirebaseAuth auth;
+    private FirebaseFirestore db;
 
     void Start()
     {
-        firebaseAuth = FirebaseAuth.DefaultInstance;
-        firebaseDB = FirebaseFirestore.DefaultInstance;
+        auth = FirebaseAuth.DefaultInstance;
+        db = FirebaseFirestore.DefaultInstance;
 
         botonContinuar.SetActive(false);
-
 
         for (int i = 0; i < elementos.Count; i++)
         {
@@ -97,7 +99,11 @@ public class MemoriaQuimica : MonoBehaviour
             if (parejasEncontradas == elementos.Count)
             {
                 botonContinuar.SetActive(true);
-                GuardarProgresoEnFirebase(nivelActual);
+                GameObject gestor = GameObject.Find("GestorProgreso");
+
+                GuardarProgreso gp = gestor.GetComponent<GuardarProgreso>();
+
+                gp.GuardarProgresoFirestore(nivelSeleccionado + 1, parejasEncontradas, auth);
             }
         }
         else
@@ -130,76 +136,5 @@ public class MemoriaQuimica : MonoBehaviour
         return puedeSeleccionar;
     }
 
-    private async void GuardarProgresoEnFirebase(int nivelActualJugado)
-    {
-        if (firebaseAuth.CurrentUser != null)
-        {
-            string userId = firebaseAuth.CurrentUser.UserId;
-            DocumentReference grupoRef = firebaseDB.Collection("users").Document(userId)
-                                                   .Collection("grupos").Document("grupo 1");
-
-            DocumentReference userRef = firebaseDB.Collection("users").Document(userId);
-
-            try
-            {
-                // Obtener el XP y el nivel más alto registrado en Firestore
-                DocumentSnapshot userSnapshot = await userRef.GetSnapshotAsync();
-                int xpActual = userSnapshot.Exists && userSnapshot.TryGetValue<int>("xp", out int xp) ? xp : 0;
-
-                DocumentSnapshot grupoSnapshot = await grupoRef.GetSnapshotAsync();
-                int nivelAlmacenado = grupoSnapshot.Exists && grupoSnapshot.TryGetValue<int>("nivel", out int nivel) ? nivel : 1;
-
-                // Verificar si el nivel jugado es mayor al almacenado
-                bool subirNivel = nivelActualJugado > nivelAlmacenado;
-
-                int nuevoXp = xpActual + xpGanadoPorNivel;
-
-                int nuevoNivel;
-
-                Debug.Log(subirNivel);
-                if (subirNivel)
-                {
-                    nuevoNivel = nivelActualJugado;
-                }
-                else
-                {
-                    nuevoNivel = nivelAlmacenado;
-                }
-
-                // Guardar XP en users/userId
-                Dictionary<string, object> datosUsuario = new Dictionary<string, object>
-            {
-                { "xp", nuevoXp }
-            };
-
-                await userRef.SetAsync(datosUsuario, SetOptions.MergeAll);
-
-                if (subirNivel)
-                {
-                    Dictionary<string, object> datosGrupo = new Dictionary<string, object>
-                {
-                    { "nivel", nuevoNivel }
-                };
-
-                    // Guardar el nuevo nivel en Firestore
-                    await grupoRef.SetAsync(datosGrupo, SetOptions.MergeAll);
-                }
-
-                Debug.Log($"✅ Progreso guardado: Nivel {nuevoNivel}, XP Total {nuevoXp}");
-
-                // Guardar en PlayerPrefs para uso local
-                PlayerPrefs.SetInt("nivelCompletado", nuevoNivel);
-                PlayerPrefs.SetInt("xp", nuevoXp);
-                PlayerPrefs.Save();
-            }
-            catch (System.Exception e)
-            {
-                Debug.LogError($"❌ Error al guardar el progreso: {e.Message}");
-            }
-        }
-        else
-        {
-            Debug.LogError("❌ Usuario no autenticado.");
-        }
-    }
+    
 }

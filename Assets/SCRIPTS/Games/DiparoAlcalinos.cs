@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using Firebase.Auth;
 using Firebase.Firestore;
 using UnityEngine.SceneManagement;
-
 public class DisparoAlcalinos : MonoBehaviour
 {
     [Header("UI Elements")]
@@ -17,43 +16,43 @@ public class DisparoAlcalinos : MonoBehaviour
     public GameObject imagenSeleccion;
     public GameObject panelReporte;
     public TextMeshProUGUI textoReporte;
+    public GuardarProgreso gestorProgreso;
+
+
 
     private Dictionary<string, string> preguntasRespuestas = new Dictionary<string, string>();
     private List<string> preguntasPendientes = new List<string>();
     private string respuestaCorrecta;
     private int preguntasRespondidas = 0;
     private int xpGanadoPorNivel = 1200; // Ajustable desde el Inspector
-
-
     private Dictionary<string, string> preguntasMezcladas;
     private int indicePregunta = 0;
     private int respuestasCorrectas = 0;
     private int totalPreguntas = 6;
     private List<string> listaPreguntas;
-    private int nivelactual = 4;
+
+    private int nivelSeleccionado = 9;
 
 
-    private FirebaseAuth firebaseAuth;
-    private FirebaseFirestore firebaseDB;
+    private FirebaseFirestore db;
+    private FirebaseAuth auth;
 
     void Start()
     {
-        firebaseAuth = FirebaseAuth.DefaultInstance;
-        firebaseDB = FirebaseFirestore.DefaultInstance;
+        db = FirebaseFirestore.DefaultInstance;
+        auth = FirebaseAuth.DefaultInstance;
+
 
         Debug.Log("Inicializando juego...");
         panelRespuesta.SetActive(false);
         imagenSeleccion.SetActive(false);
         panelReporte.SetActive(false);
         InicializarPreguntas();
-
         // Mezclar preguntas y convertir las claves en una lista
         preguntasMezcladas = MezclarDiccionario(preguntasRespuestas);
         listaPreguntas = new List<string>(preguntasMezcladas.Keys);
-
         GenerarPregunta();
     }
-
     void InicializarPreguntas()
     {
         preguntasRespuestas.Add("¿Cuál es el símbolo del Litio?", "Li");
@@ -62,10 +61,8 @@ public class DisparoAlcalinos : MonoBehaviour
         preguntasRespuestas.Add("¿Cuál es el símbolo del Rubidio?", "Rb");
         preguntasRespuestas.Add("¿Cuál es el símbolo del Cesio?", "Cs");
         preguntasRespuestas.Add("¿Cuál es el símbolo del Francio?", "Fr");
-
         ReiniciarPreguntas();
     }
-
     void ReiniciarPreguntas()
     {
         preguntasPendientes = new List<string>(preguntasRespuestas.Keys);
@@ -73,8 +70,6 @@ public class DisparoAlcalinos : MonoBehaviour
         respuestasCorrectas = 0;
         Debug.Log("Preguntas reiniciadas.");
     }
-
-
     void GenerarPregunta()
     {
         if (indicePregunta >= listaPreguntas.Count)
@@ -82,52 +77,40 @@ public class DisparoAlcalinos : MonoBehaviour
             MostrarReporte();
             return;
         }
-
         string preguntaSeleccionada = listaPreguntas[indicePregunta];
         preguntaText.text = preguntaSeleccionada;
         respuestaCorrecta = preguntasMezcladas[preguntaSeleccionada];
-
         Debug.Log($"Pregunta {indicePregunta + 1}: {preguntaSeleccionada} (Correcta: {respuestaCorrecta})");
-
         // Generar opciones aleatorias, incluyendo la correcta
         List<string> opciones = new List<string>(preguntasRespuestas.Values);
-
         // Asegurar que la respuesta correcta esté presente en las opciones
         if (!opciones.Contains(respuestaCorrecta))
         {
             opciones.Add(respuestaCorrecta);
         }
-
         for (int i = 0; i < botonesRespuestas.Length; i++)
         {
             Button botonTemp = botonesRespuestas[i];
             TextMeshProUGUI textoBoton = botonTemp.GetComponentInChildren<TextMeshProUGUI>();
-
             if (textoBoton == null)
             {
                 Debug.LogError($"Error: El botón {i} no tiene un TextMeshProUGUI.");
                 continue;
             }
-
             string textoRespuesta = opciones[i];
             textoBoton.text = textoRespuesta;
             Debug.Log($"Botón {i}: {textoRespuesta}");
-
             botonTemp.onClick.RemoveAllListeners();
             botonTemp.onClick.AddListener(() => VerificarRespuesta(textoRespuesta, botonTemp.transform.position));
         }
-
         indicePregunta++; // Aseguramos que avance a la siguiente pregunta
     }
-
     public void VerificarRespuesta(string respuestaSeleccionada, Vector3 posicionBoton)
     {
         Debug.Log($"Respuesta seleccionada: {respuestaSeleccionada} (Correcta: {respuestaCorrecta})");
         preguntasRespondidas++;
-
         imagenSeleccion.SetActive(true);
         imagenSeleccion.transform.position = posicionBoton;
-
         if (respuestaSeleccionada == respuestaCorrecta)
         {
             textoRespuesta.text = "✅ ¡Correcto!";
@@ -139,10 +122,8 @@ public class DisparoAlcalinos : MonoBehaviour
             textoRespuesta.text = "❌ Incorrecto";
             Debug.Log("❌ Respuesta incorrecta");
         }
-
         panelRespuesta.SetActive(true);
         StartCoroutine(OcultarImagenSeleccion());
-
         if (preguntasRespondidas >= 6)
         {
             StartCoroutine(MostrarReporteConRetraso());
@@ -152,41 +133,43 @@ public class DisparoAlcalinos : MonoBehaviour
             StartCoroutine(DesactivarPanelRespuesta());
         }
     }
-
     IEnumerator OcultarImagenSeleccion()
     {
         yield return new WaitForSeconds(2);
         imagenSeleccion.SetActive(false);
     }
-
     IEnumerator DesactivarPanelRespuesta()
     {
         yield return new WaitForSeconds(2);
         panelRespuesta.SetActive(false);
         GenerarPregunta();
     }
-
     IEnumerator MostrarReporteConRetraso()
     {
+        yield return new WaitForSeconds(2);
         MostrarReporte();
-        yield return new WaitForSeconds(5);
-        SceneManager.LoadScene("Grupo1");
     }
-
     void MostrarReporte()
     {
         panelRespuesta.SetActive(false);
         panelReporte.SetActive(true);
         textoReporte.text = $"Respondiste correctamente {respuestasCorrectas} de 6 preguntas.";
         Debug.Log($"Juego terminado. Respuestas correctas: {respuestasCorrectas} de 6.");
-        GuardarProgresoEnFirebase(nivelactual, respuestasCorrectas);
-    }
 
+        GameObject gestor = GameObject.Find("GestorProgreso");
+        if (gestor == null || auth == null) return;
+
+        GuardarProgreso gp = gestor.GetComponent<GuardarProgreso>();
+        if (gp == null) return;
+
+        gp.GuardarProgresoFirestore(nivelSeleccionado + 1, respuestasCorrectas, auth);
+        SceneManager.LoadScene("grupo1");
+
+    }
     Dictionary<string, string> MezclarDiccionario(Dictionary<string, string> diccionario)
     {
         System.Random rng = new System.Random();
         List<string> clavesMezcladas = new List<string>(diccionario.Keys);
-
         // Algoritmo Fisher-Yates para mezclar la lista
         int n = clavesMezcladas.Count;
         while (n > 1)
@@ -195,7 +178,6 @@ public class DisparoAlcalinos : MonoBehaviour
             int k = rng.Next(n + 1);
             (clavesMezcladas[n], clavesMezcladas[k]) = (clavesMezcladas[k], clavesMezcladas[n]);
         }
-
         // Crear un nuevo diccionario con las claves mezcladas pero conservando los valores originales
         Dictionary<string, string> diccionarioMezclado = new Dictionary<string, string>();
         foreach (string clave in clavesMezcladas)
@@ -205,77 +187,60 @@ public class DisparoAlcalinos : MonoBehaviour
 
         return diccionarioMezclado;
     }
-    private async void GuardarProgresoEnFirebase(int nivelActualJugado, int correctas)
-    {
-        if (firebaseAuth.CurrentUser != null)
-        {
-            string userId = firebaseAuth.CurrentUser.UserId;
-            DocumentReference grupoRef = firebaseDB.Collection("users").Document(userId)
-                                                   .Collection("grupos").Document("grupo 1");
+    //public async void GuardarProgreso(int nivelActualJugado, int correctas)
+    //{
+    //    if (auth.CurrentUser == null)
+    //    {
+    //        Debug.LogError("❌ Usuario no autenticado.");
+    //        return;
+    //    }
 
-            DocumentReference userRef = firebaseDB.Collection("users").Document(userId);
+    //    string userId = auth.CurrentUser.UserId;
 
-            try
-            {
-                // Obtener el XP y el nivel más alto registrado en Firestore
-                DocumentSnapshot userSnapshot = await userRef.GetSnapshotAsync();
-                int xpActual = userSnapshot.Exists && userSnapshot.TryGetValue<int>("xp", out int xp) ? xp : 0;
+    //    DocumentReference docGrupo = db.Collection("users").Document(userId).Collection("grupos").Document("grupo 1");
+    //    DocumentReference docUsuario = db.Collection("users").Document(userId);
 
-                DocumentSnapshot grupoSnapshot = await grupoRef.GetSnapshotAsync();
-                int nivelAlmacenado = grupoSnapshot.Exists && grupoSnapshot.TryGetValue<int>("nivel", out int nivel) ? nivel : 1;
+    //    try
+    //    {
+    //        Obtener datos actuales
+    //       DocumentSnapshot snapshotGrupo = await docGrupo.GetSnapshotAsync();
+    //        DocumentSnapshot snapshotUsuario = await docUsuario.GetSnapshotAsync();
 
-                // Verificar si el nivel jugado es mayor al almacenado
-                bool subirNivel = nivelActualJugado > nivelAlmacenado;
+    //        int nivelAlmacenado = snapshotGrupo.Exists && snapshotGrupo.TryGetValue<int>("nivel", out int nivel) ? nivel : 1;
+    //        int xpActual = snapshotUsuario.Exists && snapshotUsuario.TryGetValue<int>("xp", out int xp) ? xp : 0;
 
-                xpGanadoPorNivel = correctas * 200;
+    //        int xpGanado = correctas * 100;
 
-                int nuevoXp = xpActual + xpGanadoPorNivel;
-                int nuevoNivel;
+    //         🔹 Si el usuario juega un nivel menor al suyo, gana la mitad de XP y NO sube de nivel
+    //        if (nivelActualJugado <= nivelAlmacenado)
+    //        {
+    //            xpGanado /= 2;
+    //            Debug.Log("🔻 Jugaste un nivel menor, XP reducida a la mitad.");
+    //        }
 
-                Debug.Log(subirNivel);
-                if (subirNivel)
-                {
-                    nuevoNivel = nivelActualJugado;
-                }
-                else
-                {
-                    nuevoNivel = nivelAlmacenado;
-                }
+    //        bool subirNivel = nivelActualJugado >= nivelAlmacenado;
+    //        int nuevoNivel = subirNivel ? nivelActualJugado : nivelAlmacenado;
+    //        int nuevoXp = xpActual + xpGanado;
 
-                // Guardar XP en users/userId
-                Dictionary<string, object> datosUsuario = new Dictionary<string, object>
-            {
-                { "xp", nuevoXp }
-            };
+    //        Guardar XP
+    //        await docUsuario.SetAsync(new Dictionary<string, object> { { "xp", nuevoXp } }, SetOptions.MergeAll);
 
-                await userRef.SetAsync(datosUsuario, SetOptions.MergeAll);
+    //        Guardar Nivel si sube
+    //        if (subirNivel)
+    //        {
+    //            await docGrupo.SetAsync(new Dictionary<string, object> { { "nivel", nuevoNivel } }, SetOptions.MergeAll);
+    //        }
 
-                if (subirNivel)
-                {
-                    Dictionary<string, object> datosGrupo = new Dictionary<string, object>
-                {
-                    { "nivel", nuevoNivel }
-                };
+    //        Debug.Log($"✅ Progreso guardado: Nivel {nuevoNivel}, XP Total {nuevoXp}");
 
-                    // Guardar el nuevo nivel en Firestore
-                    await grupoRef.SetAsync(datosGrupo, SetOptions.MergeAll);
-                }
-
-                Debug.Log($"✅ Progreso guardado: Nivel {nuevoNivel}, XP Total {nuevoXp}");
-
-                // Guardar en PlayerPrefs para uso local
-                PlayerPrefs.SetInt("nivelCompletado", nuevoNivel);
-                PlayerPrefs.SetInt("xp", nuevoXp);
-                PlayerPrefs.Save();
-            }
-            catch (System.Exception e)
-            {
-                Debug.LogError($"❌ Error al guardar el progreso: {e.Message}");
-            }
-        }
-        else
-        {
-            Debug.LogError("❌ Usuario no autenticado.");
-        }
-    }
+    //        Guardar localmente en PlayerPrefs
+    //        PlayerPrefs.SetInt("nivelCompletado", nuevoNivel);
+    //        PlayerPrefs.SetInt("xp", nuevoXp);
+    //        PlayerPrefs.Save();
+    //    }
+    //    catch (System.Exception e)
+    //    {
+    //        Debug.LogError($"❌ Error al guardar el progreso: {e.Message}");
+    //    }
+    //}
 }
