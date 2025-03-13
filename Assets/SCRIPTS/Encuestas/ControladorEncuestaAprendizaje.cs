@@ -21,6 +21,7 @@ public class ControladorEncuestaAprendizaje : MonoBehaviour
     private bool eventosToggleHabilitados = false;
     private List<string> opcionesAleatorias;
 
+    public BarraProgreso barraProgreso;
 
     private FirebaseFirestore firestore;
 
@@ -346,6 +347,7 @@ public class ControladorEncuestaAprendizaje : MonoBehaviour
                 if (isOn)
                 {
                     DesactivarInteractividadOpciones();
+                    barraProgreso.InicializarBarra(preguntas.Count);
                     siguientePregunta();
                 }
             });
