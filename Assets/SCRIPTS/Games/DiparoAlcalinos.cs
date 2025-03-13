@@ -16,6 +16,10 @@ public class DisparoAlcalinos : MonoBehaviour
     public GameObject imagenSeleccion;
     public GameObject panelReporte;
     public TextMeshProUGUI textoReporte;
+    public GuardarProgreso gestorProgreso;
+
+
+
     private Dictionary<string, string> preguntasRespuestas = new Dictionary<string, string>();
     private List<string> preguntasPendientes = new List<string>();
     private string respuestaCorrecta;
@@ -26,7 +30,8 @@ public class DisparoAlcalinos : MonoBehaviour
     private int respuestasCorrectas = 0;
     private int totalPreguntas = 6;
     private List<string> listaPreguntas;
-    private int nivelactual = 4;
+
+    private int nivelSeleccionado = 9;
 
 
     private FirebaseFirestore db;
@@ -150,8 +155,15 @@ public class DisparoAlcalinos : MonoBehaviour
         panelReporte.SetActive(true);
         textoReporte.text = $"Respondiste correctamente {respuestasCorrectas} de 6 preguntas.";
         Debug.Log($"Juego terminado. Respuestas correctas: {respuestasCorrectas} de 6.");
-        GuardarProgreso(nivelactual, respuestasCorrectas);
-        SceneManager.LoadScene("Grupo1");
+
+        GameObject gestor = GameObject.Find("GestorProgreso");
+        if (gestor == null || auth == null) return;
+
+        GuardarProgreso gp = gestor.GetComponent<GuardarProgreso>();
+        if (gp == null) return;
+
+        gp.GuardarProgresoFirestore(nivelSeleccionado + 1, respuestasCorrectas, auth);
+        SceneManager.LoadScene("grupo1");
 
     }
     Dictionary<string, string> MezclarDiccionario(Dictionary<string, string> diccionario)
@@ -175,60 +187,60 @@ public class DisparoAlcalinos : MonoBehaviour
 
         return diccionarioMezclado;
     }
-    public async void GuardarProgreso(int nivelActualJugado, int correctas)
-    {
-        if (auth.CurrentUser == null)
-        {
-            Debug.LogError("❌ Usuario no autenticado.");
-            return;
-        }
+    //public async void GuardarProgreso(int nivelActualJugado, int correctas)
+    //{
+    //    if (auth.CurrentUser == null)
+    //    {
+    //        Debug.LogError("❌ Usuario no autenticado.");
+    //        return;
+    //    }
 
-        string userId = auth.CurrentUser.UserId;
+    //    string userId = auth.CurrentUser.UserId;
 
-        DocumentReference docGrupo = db.Collection("users").Document(userId).Collection("grupos").Document("grupo 1");
-        DocumentReference docUsuario = db.Collection("users").Document(userId);
+    //    DocumentReference docGrupo = db.Collection("users").Document(userId).Collection("grupos").Document("grupo 1");
+    //    DocumentReference docUsuario = db.Collection("users").Document(userId);
 
-        try
-        {
-            // Obtener datos actuales
-            DocumentSnapshot snapshotGrupo = await docGrupo.GetSnapshotAsync();
-            DocumentSnapshot snapshotUsuario = await docUsuario.GetSnapshotAsync();
+    //    try
+    //    {
+    //        Obtener datos actuales
+    //       DocumentSnapshot snapshotGrupo = await docGrupo.GetSnapshotAsync();
+    //        DocumentSnapshot snapshotUsuario = await docUsuario.GetSnapshotAsync();
 
-            int nivelAlmacenado = snapshotGrupo.Exists && snapshotGrupo.TryGetValue<int>("nivel", out int nivel) ? nivel : 1;
-            int xpActual = snapshotUsuario.Exists && snapshotUsuario.TryGetValue<int>("xp", out int xp) ? xp : 0;
+    //        int nivelAlmacenado = snapshotGrupo.Exists && snapshotGrupo.TryGetValue<int>("nivel", out int nivel) ? nivel : 1;
+    //        int xpActual = snapshotUsuario.Exists && snapshotUsuario.TryGetValue<int>("xp", out int xp) ? xp : 0;
 
-            int xpGanado = correctas * 100;
+    //        int xpGanado = correctas * 100;
 
-            // 🔹 Si el usuario juega un nivel menor al suyo, gana la mitad de XP y NO sube de nivel
-            if (nivelActualJugado <= nivelAlmacenado)
-            {
-                xpGanado /= 2;
-                Debug.Log("🔻 Jugaste un nivel menor, XP reducida a la mitad.");
-            }
+    //         🔹 Si el usuario juega un nivel menor al suyo, gana la mitad de XP y NO sube de nivel
+    //        if (nivelActualJugado <= nivelAlmacenado)
+    //        {
+    //            xpGanado /= 2;
+    //            Debug.Log("🔻 Jugaste un nivel menor, XP reducida a la mitad.");
+    //        }
 
-            bool subirNivel = nivelActualJugado >= nivelAlmacenado;
-            int nuevoNivel = subirNivel ? nivelActualJugado : nivelAlmacenado;
-            int nuevoXp = xpActual + xpGanado;
+    //        bool subirNivel = nivelActualJugado >= nivelAlmacenado;
+    //        int nuevoNivel = subirNivel ? nivelActualJugado : nivelAlmacenado;
+    //        int nuevoXp = xpActual + xpGanado;
 
-            // Guardar XP
-            await docUsuario.SetAsync(new Dictionary<string, object> { { "xp", nuevoXp } }, SetOptions.MergeAll);
+    //        Guardar XP
+    //        await docUsuario.SetAsync(new Dictionary<string, object> { { "xp", nuevoXp } }, SetOptions.MergeAll);
 
-            // Guardar Nivel si sube
-            if (subirNivel)
-            {
-                await docGrupo.SetAsync(new Dictionary<string, object> { { "nivel", nuevoNivel } }, SetOptions.MergeAll);
-            }
+    //        Guardar Nivel si sube
+    //        if (subirNivel)
+    //        {
+    //            await docGrupo.SetAsync(new Dictionary<string, object> { { "nivel", nuevoNivel } }, SetOptions.MergeAll);
+    //        }
 
-            Debug.Log($"✅ Progreso guardado: Nivel {nuevoNivel}, XP Total {nuevoXp}");
+    //        Debug.Log($"✅ Progreso guardado: Nivel {nuevoNivel}, XP Total {nuevoXp}");
 
-            // Guardar localmente en PlayerPrefs
-            PlayerPrefs.SetInt("nivelCompletado", nuevoNivel);
-            PlayerPrefs.SetInt("xp", nuevoXp);
-            PlayerPrefs.Save();
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"❌ Error al guardar el progreso: {e.Message}");
-        }
-    }
+    //        Guardar localmente en PlayerPrefs
+    //        PlayerPrefs.SetInt("nivelCompletado", nuevoNivel);
+    //        PlayerPrefs.SetInt("xp", nuevoXp);
+    //        PlayerPrefs.Save();
+    //    }
+    //    catch (System.Exception e)
+    //    {
+    //        Debug.LogError($"❌ Error al guardar el progreso: {e.Message}");
+    //    }
+    //}
 }

@@ -21,10 +21,14 @@ public class ControladorEncuesta : MonoBehaviour
     private List<string> opcionesAleatorias;
     private List<Pregunta> preguntasAleatorias;
     private bool eventosToggleHabilitados = false;
-    public ToggleGroup grupoOpciones    ;
+    public ToggleGroup grupoOpciones;
+
+
+    public BarraProgreso barraProgreso;
 
     // Temporizador variables
     public Text TextTimer;  // Referencia al componente Text de la UI
+    public Text txtRacha;
     public float tiempoRestante = 10f;  // Tiempo inicial del temporizador en segundos (10 segundos)
     private bool preguntaFinalizada = false;  // Flag para saber si la pregunta ha sido finalizada (cuando se pasa a la siguiente pregunta)
 
@@ -37,6 +41,9 @@ public class ControladorEncuesta : MonoBehaviour
     private int incorrectasTotales = 0;
     private float dificultadTotalPreguntas = 0f; // Para calcular la dificultad media
     private int cantidadPreguntasRespondidas = 0; // Contador de preguntas respondidas
+
+    private int racha = 0;
+    private int respuestasCorrectas = 0;
 
 
     private FirebaseFirestore firestore;
@@ -112,31 +119,11 @@ public class ControladorEncuesta : MonoBehaviour
             else  // Verifica que la pregunta a�n no se ha respondido
             {
                 preguntaFinalizada = true; // Evita que el c�digo se ejecute varias veces en un solo frame
-                StartCoroutine(MostrarMismaPreguntaPor5Segundos());
+                StartCoroutine(MostrarFeedbackYCambiarPregunta());
             }
         }
 
     }
-
-    // Corutina para mostrar la misma pregunta por 5 segundos
-    IEnumerator MostrarMismaPreguntaPor5Segundos()
-    {
-        preguntaFinalizada = true;
-        tiempoRestante = 2f;
-        ActualizarTextoTiempo();
-        // Mostrar la misma pregunta y desactivar toggles
-        //textoPreguntaUI.text = preguntaActual.textoPregunta;
-        DesactivarInteractividadOpciones();
-
-        // Desactivar el temporizador por 5 segundos
-        yield return new WaitForSeconds(2f);
-
-        // Pasar a la siguiente pregunta  activar toggles
-        //ActivarInteractividadOpciones();
-        tiempoRestante = 10f;
-        siguientePregunta();
-    }
-
 
     void ActualizarTextoTiempo()
     {
@@ -170,7 +157,7 @@ public class ControladorEncuesta : MonoBehaviour
             textoPreguntaUI.text = "�Encuesta Finalizada!";
             grupoOpcionesUI.enabled = false;
             SceneManager.LoadScene("EncuestaAprendizaje");
-            //EnviarDatosAPrediccion(); // �A�ADIDO: Llamar a EnviarDatosAPrediccion al finalizar la encuesta!
+            EnviarDatosAPrediccion(); // �A�ADIDO: Llamar a EnviarDatosAPrediccion al finalizar la encuesta!
         }
         Debug.Log("siguientePregunta() finalizado.");
     }
@@ -199,11 +186,11 @@ public class ControladorEncuesta : MonoBehaviour
                     }
 
                     // Paso 4: Tomar 2 preguntas aleatorias del grupo
-                    if (preguntasGrupo.Count >= 2)
+                    if (preguntasGrupo.Count >= 5)
                     {
                         List<Pregunta> preguntasAleatoriasGrupo = preguntasGrupo
                             .OrderBy(x => rnd.Next()) // Aleatorizar
-                            .Take(2) // Tomar 2
+                            .Take(5) // Tomar 2
                             .ToList();
 
                         preguntas.AddRange(preguntasAleatoriasGrupo); // Agregar a la lista global
@@ -214,9 +201,9 @@ public class ControladorEncuesta : MonoBehaviour
                     }
 
                     // Paso 5: Detener si ya hay 10 preguntas
-                    if (preguntas.Count >= 10)
+                    if (preguntas.Count >= 54)
                     {
-                        preguntas = preguntas.Take(10).ToList();
+                        preguntas = preguntas.Take(54).ToList();
                         break; // Salir del bucle
                     }
                 }
@@ -321,15 +308,11 @@ public class ControladorEncuesta : MonoBehaviour
             }
         }
 
-        // 7. Reiniciar temporizador
-        tiempoRestante = 10f;
+        // 7. Reiniciar temporizado
         preguntaFinalizada = false;
         eventosToggleHabilitados = true;
 
-        Debug.Log("Pregunta mostrada correctamente");
-
-        // Actualizar texto del contador
-        NumeroPreguntas.text = $"Pregunta {preguntaActualIndex + 1} de {preguntasAleatorias.Count}";
+        barraProgreso.InicializarBarra(preguntas.Count);
     }
 
 
@@ -422,7 +405,12 @@ public class ControladorEncuesta : MonoBehaviour
         {
             // �Respuesta CORRECTA!
             Debug.Log("�Respuesta Correcta!");
-
+            if (indiceOpcionSeleccionada == preguntaActual.indiceRespuestaCorrecta)
+            {
+                racha++;
+                respuestasCorrectas++;
+            }
+            txtRacha.text = "" + racha;
             // Determinar la categor�a de la pregunta actual (asumiendo que tienes una propiedad 'grupo' en tu objeto PreguntaConocimiento) �A�ADIDO!
             string categoriaPregunta = preguntaActual.grupoPregunta.grupo; // Ajusta esto seg�n la estructura de tu objeto PreguntaConocimiento
 
@@ -455,6 +443,8 @@ public class ControladorEncuesta : MonoBehaviour
         {
             // �Respuesta INCORRECTA!
             Debug.Log("Respuesta Incorrecta");
+            racha = 0;
+            txtRacha.text = "" + racha;
             incorrectasTotales++; // �A�ADIDO: Incrementar contador de incorrectas!
         }
 
@@ -472,7 +462,8 @@ public class ControladorEncuesta : MonoBehaviour
 
     IEnumerator MostrarFeedbackYCambiarPregunta()
     {
-        yield return new WaitForSeconds(2f); // Tiempo para ver feedback
+        tiempoRestante = 2f;
+        yield return new WaitForSeconds(1.5f); // Tiempo para ver feedback
         siguientePregunta();
     }
     // M�todo para reactivar la interactividad de las opciones (Toggles) para la siguiente pregunta
@@ -625,8 +616,5 @@ public class ControladorEncuesta : MonoBehaviour
     public Color colorCorrecto = Color.green;
     public Color colorIncorrecto = Color.red;
     public Color colorNormal = Color.white; // Color por defecto
-
-    [Header("Referencias UI")]
-    public TextMeshProUGUI NumeroPreguntas;
 
 }

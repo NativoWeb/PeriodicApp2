@@ -1,14 +1,12 @@
-using UnityEngine;
+Ôªøusing UnityEngine;
 using UnityEngine.Networking;
-using Newtonsoft.Json;  // Si est·s usando Newtonsoft.Json
-
+using Newtonsoft.Json;
 using System.Collections;
 
 public class Api : MonoBehaviour
 {
-    private const string SendGridApiKey = "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";  // Sustituye con tu clave API de SendGrid
+    private const string ResendApiKey = "t6PTE0e2QTRMswZ7iuniOOYt3pA3";  // Sustituye con tu clave API de Resend
 
-    // MÈtodo para enviar correo con cÛdigo de verificaciÛn
     public void SendVerificationEmail(string toEmail, string verificationCode)
     {
         StartCoroutine(SendEmailCoroutine(toEmail, verificationCode));
@@ -16,70 +14,38 @@ public class Api : MonoBehaviour
 
     IEnumerator SendEmailCoroutine(string toEmail, string verificationCode)
     {
-        string emailSubject = "CÛdigo de VerificaciÛn";
-        string emailBody = $"Hola Bienvenido a PeriodicApp, Tu cÛdigo de verificaciÛn es: {verificationCode}";
+        string emailSubject = "C√≥digo de Verificaci√≥n";
+        string emailBody = $"Hola Bienvenido a PeriodicApp, tu c√≥digo de verificaci√≥n es: {verificationCode}";
 
-        // Crear el JSON para la solicitud
+        // JSON para Resend
         var emailData = new
         {
-            personalizations = new[]
-            {
-                new
-                {
-                    to = new[]
-                    {
-                        new
-                        {
-                            email = toEmail
-                        }
-                    },
-                    subject = emailSubject
-                }
-            },
-            from = new
-            {
-                email = "periodicappoficial@gmail.com"  // Sustituye con tu correo de SendGrid
-            },
-            content = new[]
-            {
-                new
-                {
-                    type = "text/plain",
-                    value = emailBody
-                }
-            }
+            from = "periodicappoficial@gmail.com",
+            to = new[] { toEmail },
+            subject = emailSubject,
+            html = $"<p>{emailBody}</p>"
         };
 
-        // Convertir el objeto a JSON
         string emailJson = JsonConvert.SerializeObject(emailData);
 
-        // Crear la solicitud POST
-        using (UnityWebRequest www = new UnityWebRequest("https://api.sendgrid.com/v3/mail/send", "POST"))
+        using (UnityWebRequest www = new UnityWebRequest("https://api.resend.com/emails", "POST"))
         {
             byte[] jsonToSend = System.Text.Encoding.UTF8.GetBytes(emailJson);
             www.uploadHandler = new UploadHandlerRaw(jsonToSend);
             www.downloadHandler = new DownloadHandlerBuffer();
-            www.SetRequestHeader("Authorization", "Bearer " + SendGridApiKey);
+            www.SetRequestHeader("Authorization", "Bearer " + ResendApiKey);
             www.SetRequestHeader("Content-Type", "application/json");
 
-            // Enviar la solicitud y esperar la respuesta
             yield return www.SendWebRequest();
 
-            // Verificar el resultado de la solicitud
             if (www.result == UnityWebRequest.Result.Success)
             {
-                Debug.Log("Correo enviado correctamente.");
+                Debug.Log("‚úÖ Correo enviado correctamente con Resend.");
             }
             else
             {
-                Debug.LogError("Error al enviar el correo: " + www.error);
-                Debug.LogError("Respuesta del servidor: " + www.downloadHandler.text);
-
-                // Mostrar m·s detalles sobre la respuesta de SendGrid
-                if (!string.IsNullOrEmpty(www.downloadHandler.text))
-                {
-                    Debug.LogError("Detalles de la respuesta de SendGrid: " + www.downloadHandler.text);
-                }
+                Debug.LogError("‚ùå Error al enviar el correo: " + www.error);
+                Debug.LogError("üîç Respuesta del servidor: " + www.downloadHandler.text);
             }
         }
     }
