@@ -4,11 +4,13 @@ using UnityEngine.SceneManagement; // Importar SceneManager
 using Firebase.Firestore;
 using Firebase.Auth;
 using System.Threading.Tasks;
+using System.Diagnostics.Tracing;
 public class ControladorNiveles : MonoBehaviour
 {
     public Button[] botonesNiveles; // Asigna los botones en el Inspector
     private FirebaseFirestore db;
     private FirebaseAuth auth;
+    private ListenerRegistration listener; // Guardar referencia al listener
 
     public static int nivelSeleccionado;
 
@@ -17,22 +19,35 @@ public class ControladorNiveles : MonoBehaviour
         db = FirebaseFirestore.DefaultInstance;
         auth = FirebaseAuth.DefaultInstance;
         CargarProgreso();
-        AsignarEventosBotones(); // Llamamos a la función para asignar eventos
+        AsignarEventosBotones();
         AsignarEventosBotonesPlantilla();
+
+        // 🔹 Suscribir listener para detectar cambios en Firestore
+        SuscribirListener();
     }
 
     async void CargarProgreso()
     {
+        if (auth.CurrentUser == null)
+        {
+            Debug.LogError("❌ No hay usuario autenticado.");
+            return;
+        }
+
         string userId = auth.CurrentUser.UserId;
         DocumentReference docGrupo = db.Collection("users").Document(userId)
                                       .Collection("grupos").Document("grupo 1");
+
         DocumentSnapshot snapshot = await docGrupo.GetSnapshotAsync();
         int nivelDesbloqueado = 1; // Nivel por defecto
+
         if (snapshot.Exists && snapshot.TryGetValue<int>("nivel", out int nivelGuardado))
         {
             nivelDesbloqueado = nivelGuardado;
         }
+
         Debug.Log($"🔹 Nivel desbloqueado en Firestore: {nivelDesbloqueado}");
+
         // Activar los botones según el nivel desbloqueado
         for (int i = 0; i < botonesNiveles.Length; i++)
         {
@@ -40,10 +55,38 @@ public class ControladorNiveles : MonoBehaviour
         }
     }
 
+    private void SuscribirListener()
+    {
+        if (auth.CurrentUser == null)
+        {
+            Debug.LogError("❌ No hay usuario autenticado.");
+            return;
+        }
+
+        string userId = auth.CurrentUser.UserId;
+        DocumentReference docGrupo = db.Collection("users").Document(userId)
+                                      .Collection("grupos").Document("grupo 1");
+
+        listener = docGrupo.Listen(snapshot =>
+        {
+            if (snapshot.Exists)
+            {
+                Debug.Log("🔄 Cambio detectado en Firestore. Recargando progreso...");
+                CargarProgreso();
+            }
+        });
+    }
+
+    private void OnDestroy()
+    {
+        // 🔹 Detener el listener cuando el objeto se destruya
+        listener?.Stop();
+    }
+
     void AsignarEventosBotones()
     {
         // Lista de botones específicos a los que se les asignará el evento
-        int[] botonesPermitidos = { 2, 5, 8, 11, 14, 17, 20, 23, 26 };
+        int[] botonesPermitidos = { 2, 5, 8, 11, 14};
 
         for (int i = 0; i < botonesPermitidos.Length; i++)
         {
@@ -70,7 +113,7 @@ public class ControladorNiveles : MonoBehaviour
     void AsignarEventosBotonesPlantilla()
     {
         // Lista de botones específicos a los que se les asignará el evento
-        int[] botonesPermitidos = { 1, 4, 7, 10, 13, 14, 19, 22, 25 };
+        int[] botonesPermitidos = { 1, 4, 7, 10, 13};
 
         for (int i = 0; i < botonesPermitidos.Length; i++)
         {

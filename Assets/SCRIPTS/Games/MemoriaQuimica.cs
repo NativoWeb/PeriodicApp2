@@ -10,6 +10,7 @@ public class MemoriaQuimica : MonoBehaviour
     public GameObject tarjetaPrefab;
     public Transform panelCartas;
     public GameObject botonContinuar;
+    public GuardarProgreso gestorProgreso;
 
     private int xpGanadoPorNivel = 100; // Ajustable desde el Inspector
     private int numeroNivel = 2; // Número de nivel ajustable
@@ -22,14 +23,16 @@ public class MemoriaQuimica : MonoBehaviour
     private Tarjeta segundaSeleccionada;
     private bool puedeSeleccionar = true;
     private int parejasEncontradas = 0;
+    private int nivelSeleccionado = 6;
 
-    private FirebaseAuth firebaseAuth;
-    private FirebaseFirestore firebaseDB;
+
+    private FirebaseAuth auth;
+    private FirebaseFirestore db;
 
     void Start()
     {
-        firebaseAuth = FirebaseAuth.DefaultInstance;
-        firebaseDB = FirebaseFirestore.DefaultInstance;
+        auth = FirebaseAuth.DefaultInstance;
+        db = FirebaseFirestore.DefaultInstance;
 
         botonContinuar.SetActive(false);
 
@@ -96,7 +99,11 @@ public class MemoriaQuimica : MonoBehaviour
             if (parejasEncontradas == elementos.Count)
             {
                 botonContinuar.SetActive(true);
-                GuardarProgresoEnFirebase();
+                GameObject gestor = GameObject.Find("GestorProgreso");
+
+                GuardarProgreso gp = gestor.GetComponent<GuardarProgreso>();
+
+                gp.GuardarProgresoFirestore(nivelSeleccionado + 1, parejasEncontradas, auth);
             }
         }
         else
@@ -129,61 +136,5 @@ public class MemoriaQuimica : MonoBehaviour
         return puedeSeleccionar;
     }
 
-    private async void GuardarProgresoEnFirebase()
-    {
-        if (firebaseAuth.CurrentUser != null)
-        {
-            string userId = firebaseAuth.CurrentUser.UserId;
-            DocumentReference grupoRef = firebaseDB.Collection("users").Document(userId)
-                                                   .Collection("grupos").Document("grupo 1");
-
-            DocumentReference userRef = firebaseDB.Collection("users").Document(userId);
-
-            try
-            {
-                // Obtener el XP actual del usuario
-                DocumentSnapshot userSnapshot = await userRef.GetSnapshotAsync();
-                int xpActual = userSnapshot.Exists && userSnapshot.TryGetValue<int>("xp", out int xp) ? xp : 0;
-
-                // Obtener el nivel actual
-                DocumentSnapshot grupoSnapshot = await grupoRef.GetSnapshotAsync();
-                int nivelActual = grupoSnapshot.Exists && grupoSnapshot.TryGetValue<int>("nivel", out int nivel) ? nivel : 1;
-
-                // Sumar XP y subir de nivel
-                int nuevoXp = xpActual + xpGanadoPorNivel;
-                int nuevoNivel = nivelActual + 1;
-
-                Dictionary<string, object> datosGrupo = new Dictionary<string, object>
-                {
-                    { "nivel", nuevoNivel }
-                };
-
-                Dictionary<string, object> datosUsuario = new Dictionary<string, object>
-                {
-                    { "xp", nuevoXp }
-                };
-
-                // Guardar nivel en grupos/grupo1
-                await grupoRef.SetAsync(datosGrupo, SetOptions.MergeAll);
-
-                // Guardar XP en users/userId
-                await userRef.SetAsync(datosUsuario, SetOptions.MergeAll);
-
-                Debug.Log($"✅ Progreso guardado: Nivel {nuevoNivel}, XP Total {nuevoXp}");
-
-                // Guardar en PlayerPrefs por compatibilidad
-                PlayerPrefs.SetInt("nivelCompletado", nuevoNivel);
-                PlayerPrefs.SetInt("xp", nuevoXp);
-                PlayerPrefs.Save();
-            }
-            catch (System.Exception e)
-            {
-                Debug.LogError($"❌ Error al guardar el progreso: {e.Message}");
-            }
-        }
-        else
-        {
-            Debug.LogError("❌ Usuario no autenticado.");
-        }
-    }
+    
 }
