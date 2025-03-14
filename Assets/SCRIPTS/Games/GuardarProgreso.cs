@@ -39,7 +39,7 @@ public class GuardarProgreso : MonoBehaviour
         }
 
         string userId = auth.CurrentUser.UserId;
-        DocumentReference docGrupo = db.Collection("users").Document(userId).Collection("grupos").Document("grupo 1"); //implementar el grupo del parametro
+        DocumentReference docGrupo = db.Collection("users").Document(userId).Collection("grupos").Document("Metales Alcalinos"); //implementar el grupo del parametro
         DocumentReference docUsuario = db.Collection("users").Document(userId);
 
         try

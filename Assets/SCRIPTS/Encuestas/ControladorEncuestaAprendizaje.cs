@@ -406,7 +406,7 @@ public class ControladorEncuestaAprendizaje : MonoBehaviour
             if (task.IsCompleted)
             {
                 Debug.Log("✅ EncuestaCompletada actualizado correctamente en Firestore.");
-                SceneManager.LoadScene("Inicio"); // Redirigir al inicio después de completar la encuesta
+                SceneManager.LoadScene("Grupos"); // Redirigir al inicio después de completar la encuesta
             }
             else
             {
