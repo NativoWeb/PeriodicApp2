@@ -2,6 +2,7 @@
 using UnityEngine.UI;
 using TMPro;
 using System.Collections;
+using System;
 
 public class Tarjeta : MonoBehaviour
 {
@@ -63,4 +64,5 @@ public class Tarjeta : MonoBehaviour
 
         transform.rotation = Quaternion.Euler(0, 0, 0);
     }
+
 }

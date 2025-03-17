@@ -36,7 +36,7 @@ public class ControladorNiveles : MonoBehaviour
 
         string userId = auth.CurrentUser.UserId;
         DocumentReference docGrupo = db.Collection("users").Document(userId)
-                                      .Collection("grupos").Document("grupo 1");
+                                      .Collection("grupos").Document("Metales Alcalinos");
 
         DocumentSnapshot snapshot = await docGrupo.GetSnapshotAsync();
         int nivelDesbloqueado = 1; // Nivel por defecto
@@ -65,7 +65,7 @@ public class ControladorNiveles : MonoBehaviour
 
         string userId = auth.CurrentUser.UserId;
         DocumentReference docGrupo = db.Collection("users").Document(userId)
-                                      .Collection("grupos").Document("grupo 1");
+                                      .Collection("grupos").Document("Metales Alcalinos");
 
         listener = docGrupo.Listen(snapshot =>
         {
