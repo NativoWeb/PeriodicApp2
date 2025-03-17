@@ -5,6 +5,7 @@ public class vistaController : MonoBehaviour
     [SerializeField] private GameObject InicioPanel = null;
     [SerializeField] private GameObject CrearEncuestaPanel = null;
     [SerializeField] private GameObject IniciarEncuestaPanel = null;
+    [SerializeField] private GameObject RankingPanel = null;
 
     private EncuestaManager encuestaManager; // Referencia al EncuestaManager
 
@@ -19,6 +20,7 @@ public class vistaController : MonoBehaviour
         InicioPanel.SetActive(true);
         CrearEncuestaPanel.SetActive(false);
         IniciarEncuestaPanel.SetActive(false);
+        RankingPanel.SetActive(false);
     }
 
     // Mostrar el panel de creación de encuestas y limpiar los campos
@@ -40,5 +42,14 @@ public class vistaController : MonoBehaviour
     public void IniciarEncuesta()
     {
         IniciarEncuestaPanel.SetActive(true);
+    }
+
+    public void Puntuaciones()
+    {
+        RankingPanel.SetActive(true);
+
+        InicioPanel.SetActive(false);
+        CrearEncuestaPanel.SetActive(false);
+        IniciarEncuestaPanel.SetActive(false);
     }
 }
