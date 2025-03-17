@@ -26,24 +26,22 @@ public class EmailController : MonoBehaviour
 
     void Start()
     {
-        FirebaseApp.CheckAndFixDependenciesAsync().ContinueWithOnMainThread(task => {
-            FirebaseApp app = FirebaseApp.DefaultInstance;
-            if (app != null)
-            {
-                auth = FirebaseAuth.DefaultInstance;
-                firestore = FirebaseFirestore.DefaultInstance;
-                registerButton.onClick.AddListener(OnRegisterButtonClick);
-                verifyButton.onClick.AddListener(OnVerifyButtonClick);
+        // Aseguramos que Firebase esté inicializado desde DbConnexion
+        if (DbConnexion.Instance.IsFirebaseReady())
+        {
+            auth = DbConnexion.Instance.Auth;
+            firestore = DbConnexion.Instance.Firestore;
+            registerButton.onClick.AddListener(OnRegisterButtonClick);
+            verifyButton.onClick.AddListener(OnVerifyButtonClick);
 
-                // Asegurarse de que el panel de verificación esté oculto al inicio
-                verificacionPanel.SetActive(false);
-                registroPanel.SetActive(true);
-            }
-            else
-            {
-                Debug.LogError("Firebase no se ha podido inicializar.");
-            }
-        });
+            // Asegurarse de que el panel de verificación esté oculto al inicio
+            verificacionPanel.SetActive(false);
+            registroPanel.SetActive(true);
+        }
+        else
+        {
+            Debug.LogError("❌ Firebase no está inicializado correctamente.");
+        }
     }
 
     public void OnRegisterButtonClick()

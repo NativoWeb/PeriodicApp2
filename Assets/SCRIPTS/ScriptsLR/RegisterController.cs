@@ -1,5 +1,4 @@
-﻿using Firebase;
-using Firebase.Auth;
+﻿using Firebase.Auth;
 using Firebase.Extensions;
 using Firebase.Firestore;
 using System.Collections.Generic;
@@ -7,14 +6,12 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
-//using static UnityEditor.PlayerSettings;
 
 public class RegisterController : MonoBehaviour
 {
     public TMP_InputField userNameInput;
     public Button completeProfileButton;
     public Dropdown roles;
-    private FirebaseAuth auth;
 
     // -------------------------------------- RANGOS --------------------------------------
     private Dictionary<string, int> rangos = new Dictionary<string, int>()
@@ -37,20 +34,15 @@ public class RegisterController : MonoBehaviour
         roles.onValueChanged.AddListener(delegate { CambiarColor(); });
         CambiarColor(); // Aplicar color inicial
 
-        /*------------------------------------------------------------------------------------------------------------------*/
-
-        FirebaseApp.CheckAndFixDependenciesAsync().ContinueWithOnMainThread(task => {
-            FirebaseApp app = FirebaseApp.DefaultInstance;
-            if (app != null)
-            {
-                auth = FirebaseAuth.DefaultInstance;
-                completeProfileButton.onClick.AddListener(OnCompleteProfileButtonClick);
-            }
-            else
-            {
-                Debug.LogError("Firebase no se ha podido inicializar.");
-            }
-        });
+        // Usar la instancia de DbConnexion para obtener la autenticación
+        if (DbConnexion.Instance.IsFirebaseReady())
+        {
+            completeProfileButton.onClick.AddListener(OnCompleteProfileButtonClick);
+        }
+        else
+        {
+            Debug.LogError("Firebase no está listo.");
+        }
     }
 
     /*******************************************Función para cambiar el color del Dropdown*******************************************/
@@ -65,7 +57,7 @@ public class RegisterController : MonoBehaviour
     public void OnCompleteProfileButtonClick()
     {
         string userName = userNameInput.text;
-        FirebaseUser currentUser = auth.CurrentUser;
+        FirebaseUser currentUser = DbConnexion.Instance.Auth.CurrentUser; // Usar la instancia de DbConnexion para obtener el usuario
 
         if (currentUser != null)
         {
@@ -114,7 +106,7 @@ public class RegisterController : MonoBehaviour
 
     private void SaveUserData(FirebaseUser user)
     {
-        FirebaseFirestore firestore = FirebaseFirestore.DefaultInstance;
+        FirebaseFirestore firestore = DbConnexion.Instance.Firestore; // Usar la instancia de DbConnexion para Firestore
         DocumentReference docRef = firestore.Collection("users").Document(user.UserId);
 
         // Asignar avatar según el nivel
@@ -128,7 +120,7 @@ public class RegisterController : MonoBehaviour
         { "Email", user.Email },
         { "Ocupacion", ocupacionSeleccionada },
         { "EncuestaCompletada", false }, // 🔹 Marcamos la encuesta como no completada inicialmente
-        { "xp", 0 },
+        { "xp", 0 },  // XP inicial en 0
         { "avatar", avatarUrl }, // Avatar inicial
         { "Rango", "Novato de laboratorio" }
     };
@@ -170,15 +162,14 @@ public class RegisterController : MonoBehaviour
     // ✅ FUNCION PARA CREAR LA SUBCOLECCIÓN "grupos"
     private void CrearSubcoleccionGrupos(string userId)
     {
-        FirebaseFirestore firestore = FirebaseFirestore.DefaultInstance;
+        FirebaseFirestore firestore = DbConnexion.Instance.Firestore; // Usar la instancia de DbConnexion para Firestore
         CollectionReference gruposRef = firestore.Collection("users").Document(userId).Collection("grupos");
 
         // Lista de nombres de los 18 grupos (puedes personalizar los nombres)
-        string[] nombresGrupos = new string[]
-        {
-        "Metales Alcalinos", "Metales Alcalinotérreos", "Metales del Grupo del Escandio", "Metales del Grupo del Titanio", "Metales del Grupo del Vanadio", "Metales del Grupo del Cromo",
-        "Metales del Grupo del Manganeso", "Metales del Grupo del Hierro", "Metales del Grupo del Cobalto", "Metales del Grupo del Níquel", "Metales del Grupo del Cobre", "Metales del Grupo del Zinc",
-        "Lantánidos", "Actínidos", "Metaloides", "No Metales", "Halógenos", "Gases Nobles"
+        string[] nombresGrupos = new string[] {
+            "Metales Alcalinos", "Metales Alcalinotérreos", "Metales del Grupo del Escandio", "Metales del Grupo del Titanio", "Metales del Grupo del Vanadio", "Metales del Grupo del Cromo",
+            "Metales del Grupo del Manganeso", "Metales del Grupo del Hierro", "Metales del Grupo del Cobalto", "Metales del Grupo del Níquel", "Metales del Grupo del Cobre", "Metales del Grupo del Zinc",
+            "Lantánidos", "Actínidos", "Metaloides", "No Metales", "Halógenos", "Gases Nobles"
         };
 
         // Iterar sobre cada grupo para crear el documento con los datos iniciales
@@ -186,12 +177,12 @@ public class RegisterController : MonoBehaviour
         {
             string nombreGrupo = nombresGrupos[i];
             Dictionary<string, object> grupoData = new Dictionary<string, object>
-        {
-            { "nivel", 1 }, // Nivel inicial
-            { "nivel_maximo", 15 }, // Nivel máximo, puedes cambiar este valor según necesidad
-            { "nombre", nombreGrupo },
-            { "ruta_imagen", $"GruposImages/Grupo{i + 1}" } // Ruta de la imagen, ajusta según tu carpeta Resources
-        };
+            {
+                { "nivel", 1 }, // Nivel inicial
+                { "nivel_maximo", 15 }, // Nivel máximo, puedes cambiar este valor según necesidad
+                { "nombre", nombreGrupo },
+                { "ruta_imagen", $"GruposImages/Grupo{i + 1}" } // Ruta de la imagen, ajusta según tu carpeta Resources
+            };
 
             gruposRef.Document(nombreGrupo).SetAsync(grupoData).ContinueWithOnMainThread(task => {
                 if (task.IsCompletedSuccessfully)
@@ -206,11 +197,10 @@ public class RegisterController : MonoBehaviour
         }
     }
 
-
     // ------------------------- FUNCIÓN PARA VERIFICAR Y ACTUALIZAR RANGO -------------------------
     private void VerificarYActualizarRango(string userId)
     {
-        FirebaseFirestore db = FirebaseFirestore.DefaultInstance;
+        FirebaseFirestore db = DbConnexion.Instance.Firestore; // Usar la instancia de DbConnexion para Firestore
         DocumentReference docRef = db.Collection("users").Document(userId);
 
         docRef.GetSnapshotAsync().ContinueWithOnMainThread(task =>
@@ -253,4 +243,5 @@ public class RegisterController : MonoBehaviour
         });
     }
     // ---------------------------------------------------------------------------------------------
+
 }

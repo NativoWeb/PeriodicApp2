@@ -19,9 +19,17 @@ public class LoginController : MonoBehaviour
 
     void Start()
     {
-        // Inicializar Firebase Auth y Firestore
-        auth = FirebaseAuth.DefaultInstance;
-        firestore = FirebaseFirestore.DefaultInstance;
+        // Esperar a que Firebase esté listo
+        if (DbConnexion.Instance.IsFirebaseReady())
+        {
+            auth = DbConnexion.Instance.Auth;
+            firestore = DbConnexion.Instance.Firestore;
+        }
+        else
+        {
+            Debug.LogError("❌ Firebase no está listo. Asegúrate de que DbConnexion esté inicializado.");
+            return;
+        }
 
         AutoLogin(); // Intenta login automático
         loginButton.onClick.AddListener(OnLoginButtonClick); // Escuchar botón login
@@ -139,7 +147,7 @@ public class LoginController : MonoBehaviour
             // 🔹 Ir a escena según ocupación
             if (ocupacion == "Estudiante")
             {
-                SceneManager.LoadScene(encuestaCompletada ? "Inicio" : "EcnuestaScen1e");
+                SceneManager.LoadScene(encuestaCompletada ? "Inicio" : "EncuestaScene1");
             }
             else if (ocupacion == "Profesor")
             {
@@ -162,7 +170,7 @@ public class LoginController : MonoBehaviour
             {
                 Debug.Log("📴 ✅ Inicio de sesión sin conexión exitoso.");
 
-                SceneManager.LoadScene("InicioOffline"); 
+                SceneManager.LoadScene("InicioOffline");
             }
             else
             {

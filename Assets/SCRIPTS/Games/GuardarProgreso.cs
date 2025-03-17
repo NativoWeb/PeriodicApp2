@@ -29,9 +29,18 @@ public class GuardarProgreso : MonoBehaviour
         db = FirebaseFirestore.DefaultInstance ?? FirebaseFirestore.DefaultInstance;
     }
 
-
-    public async void GuardarProgresoFirestore(int nivelActualJugado, int correctas, FirebaseAuth auth) //Agregar parametro de grupo
+    // Método modificado con verificación de conexión
+    public async void GuardarProgresoFirestore(int nivelActualJugado, int correctas, FirebaseAuth auth) //Agregar parámetro de grupo
     {
+        // ⚠️ Verificar conexión a Internet
+        if (!ConnectionManager.Instance.IsConnectedToInternet())
+        {
+            Debug.LogWarning("⚠️ No hay conexión a Internet. Se otorgarán 50 XP localmente.");
+            SistemaXP.Instance.AgregarXP(50); // Llama al sistema local de XP
+            return; // No seguir con Firebase
+        }
+
+        // ⚙️ Si hay conexión, continuar con lo que ya tenías
         if (auth.CurrentUser == null)
         {
             Debug.LogError("❌ Usuario no autenticado.");
@@ -39,7 +48,7 @@ public class GuardarProgreso : MonoBehaviour
         }
 
         string userId = auth.CurrentUser.UserId;
-        DocumentReference docGrupo = db.Collection("users").Document(userId).Collection("grupos").Document("grupo 1"); //implementar el grupo del parametro
+        DocumentReference docGrupo = db.Collection("users").Document(userId).Collection("grupos").Document("grupo 1"); // implementar grupo del parámetro
         DocumentReference docUsuario = db.Collection("users").Document(userId);
 
         try
