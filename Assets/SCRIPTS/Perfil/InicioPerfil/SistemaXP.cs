@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System.Drawing.Text;
+using UnityEngine;
 
 public class SistemaXP : MonoBehaviour
 {
@@ -17,13 +18,30 @@ public class SistemaXP : MonoBehaviour
         }
     }
 
-    // Método para agregar XP
-    public void AgregarXP(int cantidadXP)
+    public void AgregarXP(int cantidad)
     {
-        int xpActual = PlayerPrefs.GetInt("xp", 0);
-        xpActual += cantidadXP;
-        PlayerPrefs.SetInt("TempXP", xpActual);
+      
+        Debug.Log($"🟢 XP agregado: {cantidad}");
+
+        // Aquí iría la lógica para sumar XP al jugador.
+       int  xptempactual = PlayerPrefs.GetInt("TempXP", 0);
+        PlayerPrefs.SetInt("TempXP", cantidad + xptempactual);
+
+        // Guardar cambios en PlayerPrefs
         PlayerPrefs.Save();
-        Debug.Log("✅ XP local sumada: " + xpActual);
+
+        Debug.Log($"✅ XP Total ahora: {PlayerPrefs.GetInt("TempXP")}");
+    }
+
+    // ✨ Nuevo método para crear una instancia si no existe
+    public static void CrearInstancia()
+    {
+        if (Instance == null)
+        {
+            GameObject obj = new GameObject("SistemaXP");
+            Instance = obj.AddComponent<SistemaXP>();
+            DontDestroyOnLoad(obj);
+            Debug.Log("✅ Se ha creado una nueva instancia de SistemaXP.");
+        }
     }
 }

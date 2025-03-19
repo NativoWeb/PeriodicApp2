@@ -1,16 +1,16 @@
 ﻿using UnityEngine;
 using UnityEngine.UI;
-using UnityEngine.SceneManagement; // Importar SceneManager
+using UnityEngine.SceneManagement;
 using Firebase.Firestore;
 using Firebase.Auth;
 using System.Threading.Tasks;
-using System.Diagnostics.Tracing;
+
 public class ControladorNiveles : MonoBehaviour
 {
     public Button[] botonesNiveles; // Asigna los botones en el Inspector
     private FirebaseFirestore db;
     private FirebaseAuth auth;
-    private ListenerRegistration listener; // Guardar referencia al listener
+    private ListenerRegistration listener;
 
     public static int nivelSeleccionado;
 
@@ -18,12 +18,25 @@ public class ControladorNiveles : MonoBehaviour
     {
         db = FirebaseFirestore.DefaultInstance;
         auth = FirebaseAuth.DefaultInstance;
-        CargarProgreso();
+
+        if (TieneInternet())
+        {
+            CargarProgreso();
+            SuscribirListener();
+        }
+        else
+        {
+            Debug.LogWarning("⚠ No hay conexión a Internet. Se usará el nivel guardado localmente.");
+            AplicarNivelDesdePlayerPrefs();
+        }
+
         AsignarEventosBotones();
         AsignarEventosBotonesPlantilla();
+    }
 
-        // 🔹 Suscribir listener para detectar cambios en Firestore
-        SuscribirListener();
+    bool TieneInternet()
+    {
+        return Application.internetReachability != NetworkReachability.NotReachable;
     }
 
     async void CargarProgreso()
@@ -39,7 +52,7 @@ public class ControladorNiveles : MonoBehaviour
                                       .Collection("grupos").Document("grupo 1");
 
         DocumentSnapshot snapshot = await docGrupo.GetSnapshotAsync();
-        int nivelDesbloqueado = 1; // Nivel por defecto
+        int nivelDesbloqueado = 1;
 
         if (snapshot.Exists && snapshot.TryGetValue<int>("nivel", out int nivelGuardado))
         {
@@ -47,6 +60,10 @@ public class ControladorNiveles : MonoBehaviour
         }
 
         Debug.Log($"🔹 Nivel desbloqueado en Firestore: {nivelDesbloqueado}");
+
+        // Guardar el nivel en PlayerPrefs por si pierde conexión más tarde
+        PlayerPrefs.SetInt("nivelDesbloqueado", nivelDesbloqueado);
+        PlayerPrefs.Save();
 
         // Activar los botones según el nivel desbloqueado
         for (int i = 0; i < botonesNiveles.Length; i++)
@@ -79,22 +96,20 @@ public class ControladorNiveles : MonoBehaviour
 
     private void OnDestroy()
     {
-        // 🔹 Detener el listener cuando el objeto se destruya
         listener?.Stop();
     }
 
     void AsignarEventosBotones()
     {
-        // Lista de botones específicos a los que se les asignará el evento
-        int[] botonesPermitidos = { 2, 5, 8, 11, 14};
+        int[] botonesPermitidos = { 2, 5, 8, 11, 14 };
 
         for (int i = 0; i < botonesPermitidos.Length; i++)
         {
-            int index = botonesPermitidos[i] - 1; // Convertir a índice (restando 1)
+            int index = botonesPermitidos[i] - 1;
 
-            if (index >= 0 && index < botonesNiveles.Length) // Evitar errores de índice
+            if (index >= 0 && index < botonesNiveles.Length)
             {
-                int nivel = index + 1; // Convertir índice a número de nivel
+                int nivel = index + 1;
                 botonesNiveles[index].onClick.AddListener(() => SeleccionarNivel(nivel));
             }
         }
@@ -102,26 +117,33 @@ public class ControladorNiveles : MonoBehaviour
 
     void SeleccionarNivel(int nivel)
     {
+        if (TieneInternet())
+        {
+            GuardarNivelEnFirestore(nivel);
+        }
+        else
+        {
+            Debug.LogWarning("⚠ No hay conexión a Internet. Nivel guardado localmente.");
+            PlayerPrefs.SetInt("nivelSeleccionado", nivel);
+            PlayerPrefs.Save();
+        }
 
         nivelSeleccionado = nivel;
-        PlayerPrefs.SetInt("nivelSeleccionado", nivel); // Guardar nivel en PlayerPrefs
-        PlayerPrefs.Save(); // Asegurar que se guarde
         Debug.Log($"✅ Nivel {nivel} seleccionado. Cargando escena del quiz...");
-        SceneManager.LoadScene("Oracion"); // Cambiar a la escena del quiz
+        SceneManager.LoadScene("Oracion");
     }
 
     void AsignarEventosBotonesPlantilla()
     {
-        // Lista de botones específicos a los que se les asignará el evento
-        int[] botonesPermitidos = { 1, 4, 7, 10, 13};
+        int[] botonesPermitidos = { 1, 4, 7, 10, 13 };
 
         for (int i = 0; i < botonesPermitidos.Length; i++)
         {
-            int index = botonesPermitidos[i] - 1; // Convertir a índice (restando 1)
+            int index = botonesPermitidos[i] - 1;
 
-            if (index >= 0 && index < botonesNiveles.Length) // Evitar errores de índice
+            if (index >= 0 && index < botonesNiveles.Length)
             {
-                int nivel = index + 1; // Convertir índice a número de nivel
+                int nivel = index + 1;
                 botonesNiveles[index].onClick.AddListener(() => SeleccionarNivelPlantilla(nivel));
             }
         }
@@ -129,11 +151,47 @@ public class ControladorNiveles : MonoBehaviour
 
     void SeleccionarNivelPlantilla(int nivel)
     {
+        if (TieneInternet())
+        {
+            GuardarNivelEnFirestore(nivel);
+        }
+        else
+        {
+            Debug.LogWarning("⚠ No hay conexión a Internet. Nivel guardado localmente.");
+            PlayerPrefs.SetInt("nivelSeleccionado", nivel);
+            PlayerPrefs.Save();
+        }
 
         nivelSeleccionado = nivel;
-        PlayerPrefs.SetInt("nivelSeleccionado", nivel); // Guardar nivel en PlayerPrefs
-        PlayerPrefs.Save(); // Asegurar que se guarde
         Debug.Log($"✅ Nivel {nivel} seleccionado. Cargando escena del quiz...");
-        SceneManager.LoadScene("Plantilla"); // Cambiar a la escena del quiz
+        SceneManager.LoadScene("Plantilla");
+    }
+
+    async void GuardarNivelEnFirestore(int nivel)
+    {
+        if (auth.CurrentUser == null)
+        {
+            Debug.LogError("❌ No hay usuario autenticado.");
+            return;
+        }
+
+        string userId = auth.CurrentUser.UserId;
+        DocumentReference docGrupo = db.Collection("users").Document(userId)
+                                      .Collection("grupos").Document("grupo 1");
+
+        await docGrupo.SetAsync(new { nivel }, SetOptions.MergeAll);
+        Debug.Log($"✅ Nivel {nivel} guardado en Firestore.");
+    }
+
+    void AplicarNivelDesdePlayerPrefs()
+    {
+
+        int nivelDesbloqueado = PlayerPrefs.GetInt("Nivel", 1);
+        Debug.Log($"🔹 Cargando nivel desde PlayerPrefs: {nivelDesbloqueado}");
+
+        for (int i = 0; i < botonesNiveles.Length; i++)
+        {
+            botonesNiveles[i].interactable = (i < nivelDesbloqueado);
+        }
     }
 }

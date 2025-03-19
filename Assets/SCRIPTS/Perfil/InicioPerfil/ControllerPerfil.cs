@@ -43,11 +43,10 @@ public class ControllerPerfil : MonoBehaviour
             {
                 db = DbConnexion.Instance.Firestore;
                 auth = FirebaseAuth.DefaultInstance;
-                currentUser = auth.CurrentUser;
+                string userId = PlayerPrefs.GetString("userId", "").Trim();
 
-                if (currentUser != null)
+                if (userId != null)
                 {
-                    userId = currentUser.UserId;
                     Debug.Log("✅ Usuario autenticado: " + userId);
                     EscucharCambiosUsuario(userId);
                     
@@ -68,10 +67,11 @@ public class ControllerPerfil : MonoBehaviour
         {
             Debug.LogWarning("⚠️ No hay conexión a internet. Cargando datos offline.");
             MostrarDatosOffline();
+            // Imprimir datos de PlayerPrefs al iniciar
+            ImprimirDatosPlayerPrefs();
         }
 
-        // Imprimir datos de PlayerPrefs al iniciar
-        ImprimirDatosPlayerPrefs();
+        
         GameButton.onClick.AddListener(OnGameButtonClick); // Escuchar botón login
     }
     public void OnGameButtonClick()
@@ -81,7 +81,7 @@ public class ControllerPerfil : MonoBehaviour
     // ✅ Mostrar datos guardados en PlayerPrefs (modo offline)
     private void MostrarDatosOffline()
     {
-        string username = PlayerPrefs.GetString("TempUsername", "");
+        string username = PlayerPrefs.GetString("DisplayName", "");
         string correo = PlayerPrefs.GetString("Email", "Correo no disponible");
         string rangos = PlayerPrefs.GetString("TempRango", "");
         int xp = PlayerPrefs.GetInt("xp", 0);
@@ -91,7 +91,7 @@ public class ControllerPerfil : MonoBehaviour
         tmpCorreo.text = "Correo: " + correo;
 
         string avatarPath = ObtenerAvatarPorRango(rangos);
-        Sprite avatarSprite = Resources.Load<Sprite>(avatarPath) ?? Resources.Load<Sprite>("Avatares/default");
+        Sprite avatarSprite = Resources.Load<Sprite>(avatarPath) ?? Resources.Load<Sprite>("Avatares/defecto");
         avatarImage.sprite = avatarSprite;
 
         // Aquí podrías cargar misiones desde una lista guardada o solo dejar los datos personales.
@@ -110,16 +110,28 @@ public class ControllerPerfil : MonoBehaviour
                 string username = snapshot.GetValue<string>("DisplayName");
                 string correo = snapshot.GetValue<string>("Email");
                 string rangos = snapshot.GetValue<string>("Rango");
-                int xp = snapshot.GetValue<int>("xp");
+                int xpFirebase = snapshot.GetValue<int>("xp");
+
+                int xpTemp = PlayerPrefs.GetInt("TempXP", 0); // XP guardado localmente
+
+                // ✅ Comparar XP de Firebase con TempXP y actualizar si es necesario
+                if (xpTemp > 0) // Solo actualizamos si TempXP es mayor a 0
+                {
+                    int nuevoXP = xpFirebase + xpTemp; // Sumar TempXP al XP de Firebase
+                    ActualizarXPEnFirebase(userId, nuevoXP);
+                    PlayerPrefs.SetInt("TempXP", 0); // Resetear TempXP después de la actualización
+                    PlayerPrefs.Save();
+                    Debug.Log($"🔄 XP actualizado en Firebase: {xpFirebase} ➡ {nuevoXP}");
+                }
 
                 rangoActual = rangos;
-                ActualizarRangoSegunXP(xp);
+                ActualizarRangoSegunXP(xpFirebase);
 
                 // Guardar en PlayerPrefs
                 PlayerPrefs.SetString("DisplayName", username);
                 PlayerPrefs.SetString("Email", correo);
                 PlayerPrefs.SetString("Rango", rangos);
-                PlayerPrefs.SetInt("xp", xp);
+                PlayerPrefs.SetInt("xp", xpFirebase);
                 PlayerPrefs.Save();
 
                 // Cargar avatar y datos
@@ -140,6 +152,14 @@ public class ControllerPerfil : MonoBehaviour
             }
         });
     }
+    private async void ActualizarXPEnFirebase(string userId, int nuevoXP)
+    {
+        DocumentReference userRef = db.Collection("users").Document(userId);
+        await userRef.UpdateAsync("xp", nuevoXP);
+        Debug.Log($"✅ XP actualizado en Firebase para el usuario {userId}: {nuevoXP}");
+    }
+
+
 
     // ✅ Cargar misiones según el rango
     public async void CargarMisioness()

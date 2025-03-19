@@ -26,22 +26,47 @@ public class EmailController : MonoBehaviour
 
     void Start()
     {
-        // Aseguramos que Firebase esté inicializado desde DbConnexion
-        if (DbConnexion.Instance.IsFirebaseReady())
-        {
-            auth = DbConnexion.Instance.Auth;
-            firestore = DbConnexion.Instance.Firestore;
-            registerButton.onClick.AddListener(OnRegisterButtonClick);
-            verifyButton.onClick.AddListener(OnVerifyButtonClick);
+        // Asegurarse de que el panel de verificación esté oculto al inicio
+        verificacionPanel.SetActive(false);
+        registroPanel.SetActive(true);
 
-            // Asegurarse de que el panel de verificación esté oculto al inicio
-            verificacionPanel.SetActive(false);
-            registroPanel.SetActive(true);
-        }
-        else
+        // Método para esperar que Firebase inicie antes de continuar
+        StartCoroutine(WaitForFirebase());
+    }
+    private IEnumerator WaitForFirebase()
+    {
+        float tiempoMaximoEspera = 3f; // 🔹 Máximo 3 segundos de espera
+        float tiempoEspera = 0f;
+
+        // Esperar hasta que Firebase esté listo o se agote el tiempo
+        while (!DbConnexion.Instance.IsFirebaseReady())
         {
-            Debug.LogError("❌ Firebase no está inicializado correctamente.");
+            Debug.Log("⏳ Esperando inicialización de Firebase...");
+
+            yield return new WaitForSeconds(0.5f);
+            tiempoEspera += 0.5f;
+
+            if (tiempoEspera >= tiempoMaximoEspera)
+            {
+                Debug.LogError("🚨 Tiempo de espera excedido. Firebase no está listo.");
+                yield break; // 🔹 Salimos del bucle sin continuar
+            }
         }
+
+        Debug.Log("✅ Firebase está listo. Procediendo con LoginController.");
+
+        // Aseguramos que las instancias de autenticación y Firestore estén asignadas correctamente
+        auth = DbConnexion.Instance.Auth;
+        firestore = DbConnexion.Instance.Firestore;
+
+        // Verificamos si los objetos no son nulos antes de proceder
+        if (auth == null || firestore == null)
+        {
+            Debug.LogError("🚨 Error: No se pudo obtener las referencias de Firebase.");
+            yield break;
+        }
+        registerButton.onClick.AddListener(OnRegisterButtonClick);
+        verifyButton.onClick.AddListener(OnVerifyButtonClick);
     }
 
     public void OnRegisterButtonClick()

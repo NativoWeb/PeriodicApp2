@@ -188,6 +188,7 @@ public class EstadisticasController : MonoBehaviour
         PlayerPrefs.DeleteKey("userId"); // Elimina ID del usuario almacenado
         PlayerPrefs.DeleteKey("userEmail");
         PlayerPrefs.DeleteKey("userPassword");
+        PlayerPrefs.DeleteKey("Estadouser");
         PlayerPrefs.DeleteKey("XP");
         PlayerPrefs.SetInt("rememberMe", 0);
         PlayerPrefs.Save();

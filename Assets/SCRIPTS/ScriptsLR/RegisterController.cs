@@ -106,22 +106,25 @@ public class RegisterController : MonoBehaviour
 
     private void SaveUserData(FirebaseUser user)
     {
-        FirebaseFirestore firestore = DbConnexion.Instance.Firestore; // Usar la instancia de DbConnexion para Firestore
+        FirebaseFirestore firestore = DbConnexion.Instance.Firestore; // Obtener instancia de Firestore
         DocumentReference docRef = firestore.Collection("users").Document(user.UserId);
 
-        // Asignar avatar según el nivel
-        string avatarUrl = "Avatares/defecto";  // Ruta de la imagen dentro de Resources
-                                                // Obtener la ocupación seleccionada
+        string avatarUrl = "Avatares/defecto";  // Ruta de avatar por defecto
         string ocupacionSeleccionada = roles.options[roles.value].text;
 
+        // Verificar si existe un usuario temporal
+        bool tieneUsuarioTemporal = PlayerPrefs.HasKey("TempUsername");
+        int xpTemp = PlayerPrefs.GetInt("TempXP", 0); // Obtener XP temporal, si existe
+
+        // Crear datos de usuario
         Dictionary<string, object> userData = new Dictionary<string, object>
     {
         { "DisplayName", user.DisplayName },
         { "Email", user.Email },
         { "Ocupacion", ocupacionSeleccionada },
-        { "EncuestaCompletada", false }, // 🔹 Marcamos la encuesta como no completada inicialmente
-        { "xp", 0 },  // XP inicial en 0
-        { "avatar", avatarUrl }, // Avatar inicial
+        { "EncuestaCompletada", false},
+        { "xp", xpTemp },  // Si tenía XP temporal, lo subimos
+        { "avatar", avatarUrl },
         { "Rango", "Novato de laboratorio" }
     };
 
@@ -129,35 +132,45 @@ public class RegisterController : MonoBehaviour
         PlayerPrefs.Save();
 
         docRef.SetAsync(userData, SetOptions.MergeAll).ContinueWithOnMainThread(task => {
-            if (task.IsCanceled)
+            if (task.IsCanceled || task.IsFaulted)
             {
                 Debug.LogError("Error al guardar los datos del usuario.");
                 return;
             }
-            if (task.IsFaulted)
+
+            Debug.Log("✅ Datos de usuario guardados en Firestore.");
+
+            // 🔹 Si tenía usuario temporal, eliminarlo
+            if (tieneUsuarioTemporal)
             {
-                Debug.LogError("Error al guardar los datos: " + task.Exception?.Message);
-                return;
+                Debug.Log("♻️ Se detectó un usuario temporal. Eliminando datos temporales...");
+                PlayerPrefs.DeleteKey("TempUsername");
+                PlayerPrefs.SetInt("TempXP", 0);
+                PlayerPrefs.DeleteKey("TempOcupacion");
+                PlayerPrefs.DeleteKey("TempAvatar");
+                PlayerPrefs.DeleteKey("TempRango");
+                PlayerPrefs.SetString("Estadouser", "nube");
+                PlayerPrefs.Save();
             }
-            Debug.Log("Datos de usuario guardados en Firestore.");
 
             // 🔹 Crear la subcolección "grupos"
             CrearSubcoleccionGrupos(user.UserId);
 
-            // 🔹 Verificar y actualizar rango (aunque esté recién creado)
+            // 🔹 Verificar y actualizar rango con el nuevo XP
             VerificarYActualizarRango(user.UserId);
 
             // 🔹 Redirigir a la escena correcta según la ocupación
             if (ocupacionSeleccionada == "Estudiante")
             {
-                SceneManager.LoadScene("EcnuestaScen1e"); // Enviar a la encuesta
+                SceneManager.LoadScene("EcnuestaScen1e");
             }
             else if (ocupacionSeleccionada == "Profesor")
             {
-                SceneManager.LoadScene("InicioProfesor"); // Enviar a la vista de profesor
+                SceneManager.LoadScene("InicioProfesor");
             }
         });
     }
+
 
     // ✅ FUNCION PARA CREAR LA SUBCOLECCIÓN "grupos"
     private void CrearSubcoleccionGrupos(string userId)
