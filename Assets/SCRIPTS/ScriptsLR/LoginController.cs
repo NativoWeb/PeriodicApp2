@@ -176,7 +176,7 @@ public class LoginController : MonoBehaviour
             // 🔹 Ir a escena según ocupación
             if (ocupacion == "Estudiante")
             {
-                SceneManager.LoadScene(encuestaCompletada ? "Inicio" : "EncuestaScene1");
+                SceneManager.LoadScene(encuestaCompletada ? "Categorías" : "EncuestaScene1");
             }
             else if (ocupacion == "Profesor")
             {

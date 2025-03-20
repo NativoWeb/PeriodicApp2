@@ -126,8 +126,9 @@ public class RegisterController : MonoBehaviour
         { "xp", xpTemp },  // Si tenía XP temporal, lo subimos
         { "avatar", avatarUrl },
         { "Rango", "Novato de laboratorio" }
+       
     };
-
+        PlayerPrefs.SetString("Estadouser", "nube");
         PlayerPrefs.SetString("userId", user.UserId);
         PlayerPrefs.Save();
 

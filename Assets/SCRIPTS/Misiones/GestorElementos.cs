@@ -50,6 +50,9 @@ public class GestorElementos : MonoBehaviour
 
     void Start()
     {
+        // Guardar el JSON en PlayerPrefs al iniciar
+        CargarYGuardarMisionesEnPlayerPrefs();
+
         CargarElementosDesdeJSON();
 
         // Asignar eventos dinámicamente a cada botón de elemento
@@ -62,7 +65,7 @@ public class GestorElementos : MonoBehaviour
         // Asignar funciones a los botones de navegación
         btnMisiones.onClick.AddListener(MostrarMisiones);
         btnInformacion.onClick.AddListener(MostrarInformacion);
-        btnRegresar.onClick.AddListener(RegresarAlPanelElementos); // <-- Agregar aquí
+        btnRegresar.onClick.AddListener(RegresarAlPanelElementos);
 
         // Mostrar Misiones por defecto
         MostrarMisiones();
@@ -231,7 +234,7 @@ public class GestorElementos : MonoBehaviour
         }
 
         // Guardar el JSON en PlayerPrefs
-        PlayerPrefs.SetString("misiones", jsonFile.text);
+        PlayerPrefs.SetString("misionesJSON", jsonFile.text);
         PlayerPrefs.Save();
         Debug.Log("✅ JSON de misiones guardado en PlayerPrefs.");
     }
