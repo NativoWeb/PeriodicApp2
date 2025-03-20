@@ -1,13 +1,18 @@
 ﻿using UnityEngine;
+using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 using Vuforia;
 
 public class ImageRecognition : MonoBehaviour
 {
     private bool logroDesbloqueado = false;
     public string elementoQuimico; // Se asignará automáticamente
+    private ImageTargetSpawner spawner; // Referencia al script ImageTargetSpawner
 
     void Start()
     {
+        spawner = FindObjectOfType<ImageTargetSpawner>(); // Encuentra el spawner en la escena
+
         var trackable = GetComponent<ObserverBehaviour>();
         if (trackable)
         {
@@ -28,7 +33,7 @@ public class ImageRecognition : MonoBehaviour
 
     void DesbloquearLogro(string elemento)
     {
-        Debug.Log($"🏆 Logro desbloqueado: {elemento}");
-        // Aquí puedes guardar el progreso del jugador
+        Debug.Log("Logro desbloqueado");
+        spawner.botonCompletarMision.interactable = true;
     }
 }

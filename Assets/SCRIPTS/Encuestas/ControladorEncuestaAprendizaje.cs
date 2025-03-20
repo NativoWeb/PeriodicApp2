@@ -130,9 +130,9 @@ public class ControladorEncuestaAprendizaje : MonoBehaviour
             {
                 tiempoRestante -= Time.deltaTime; // Reduce el tiempo
             }
-            else  // Verifica que la pregunta a�n no se ha respondido
+            else  // Verifica que la pregunta a n no se ha respondido
             {
-                preguntaFinalizada = true; // Evita que el c�digo se ejecute varias veces en un solo frame
+                preguntaFinalizada = true; // Evita que el c digo se ejecute varias veces en un solo frame
             }
         }
 
@@ -147,7 +147,7 @@ public class ControladorEncuestaAprendizaje : MonoBehaviour
     {
         Debug.Log($"siguientePregunta() llamado. preguntaActualIndex ANTES de incrementar: {preguntaActualIndex}");
         preguntaFinalizada = true;
-        preguntaActualIndex++; // Incrementamos el �ndice para la siguiente pregunta
+        preguntaActualIndex++; // Incrementamos el  ndice para la siguiente pregunta
 
         Debug.Log($"siguientePregunta() preguntaActualIndex DESPUÉS de incrementar: {preguntaActualIndex}, preguntasAleatorias.Count: {preguntasAleatorias.Count}"); // DEBUG LOG
 
@@ -165,7 +165,7 @@ public class ControladorEncuestaAprendizaje : MonoBehaviour
         {
             Debug.Log("siguientePregunta(): ¡Encuesta Finalizada! (No hay más preguntas).");
             Debug.Log("Encuesta Finalizada");
-            textoPreguntaUI.text = "�Encuesta Finalizada!";
+            textoPreguntaUI.text = " Encuesta Finalizada!";
             grupoOpcionesUI.enabled = false;
             FinalizarEncuesta();
         }
@@ -176,7 +176,7 @@ public class ControladorEncuestaAprendizaje : MonoBehaviour
     {
         foreach (Toggle toggle in opcionesToggleUI)
         {
-            toggle.interactable = true; // Reactiva la interactividad de cada Toggle de opci�n
+            toggle.interactable = true; // Reactiva la interactividad de cada Toggle de opci n
         }
     }
 
@@ -184,7 +184,7 @@ public class ControladorEncuestaAprendizaje : MonoBehaviour
     {
         foreach (Toggle toggle in opcionesToggleUI)
         {
-            toggle.interactable = false; // Desactiva la interactividad de cada Toggle de opci�n
+            toggle.interactable = false; // Desactiva la interactividad de cada Toggle de opci n
         }
     }
 
@@ -240,12 +240,12 @@ public class ControladorEncuestaAprendizaje : MonoBehaviour
         }
         else if (preguntasCategoria != null)
         {
-            foreach(var pregunta in preguntasCategoria)
+            foreach (var pregunta in preguntasCategoria)
             {
-                    pregunta.categoria = nombreCategoria; // Asignar categoría incluso si hay menos de 2
-                }
-                preguntas.AddRange(preguntasCategoria);
+                pregunta.categoria = nombreCategoria; // Asignar categoría incluso si hay menos de 2
             }
+            preguntas.AddRange(preguntasCategoria);
+        }
     }
 
     void AleatorizarPreguntas()
@@ -406,7 +406,7 @@ public class ControladorEncuestaAprendizaje : MonoBehaviour
             if (task.IsCompleted)
             {
                 Debug.Log("✅ EncuestaCompletada actualizado correctamente en Firestore.");
-                SceneManager.LoadScene("Grupos"); // Redirigir al inicio después de completar la encuesta
+                SceneManager.LoadScene("Categorías"); // Redirigir al inicio después de completar la encuesta
             }
             else
             {
