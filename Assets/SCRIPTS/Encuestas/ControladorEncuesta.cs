@@ -533,7 +533,7 @@ public class ControladorEncuesta : MonoBehaviour
 
 
         // 4. Enviar la solicitud y procesar la respuesta (usando Coroutine)
-        StartCoroutine(EnviarYProcesarPrediccion(request));
+        // StartCoroutine(EnviarYProcesarPrediccion(request));
     }
 
     // Coroutine para enviar la solicitud y procesar la respuesta de la API �A�ADIDO!

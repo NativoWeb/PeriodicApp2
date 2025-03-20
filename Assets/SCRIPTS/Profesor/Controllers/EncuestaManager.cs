@@ -6,6 +6,7 @@ using Firebase.Extensions;
 using System.Linq;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
+using Firebase.Auth;
 
 public class EncuestaManager : MonoBehaviour
 {
@@ -33,8 +34,17 @@ public class EncuestaManager : MonoBehaviour
     void Start()
     {
         db = FirebaseFirestore.DefaultInstance;
+
+        // Escuchar cambios en la colección "encuestas"
+        db.Collection("encuestas").Listen(snapshot =>
+        {
+            CargarEncuestas(); // Llamar a la función cuando haya cambios
+        });
+
+        // Cargar encuestas inicialmente
         CargarEncuestas();
     }
+
     public void AgregarPregunta()
     {
         GameObject nuevaPregunta = Instantiate(preguntaPrefab, contenedorPreguntas);
@@ -150,11 +160,14 @@ public class EncuestaManager : MonoBehaviour
             return;
         }
         TMP_Text[] textosTMP = nuevaTarjeta.GetComponentsInChildren<TMP_Text>();
+
+
         if (textosTMP.Length >= 3)
         {
             textosTMP[0].text = titulo;
-            textosTMP[1].text = "" + numeroPreguntas;
-            textosTMP[2].text = codigoAcceso;
+            textosTMP[1].text = titulo;
+            textosTMP[2].text = "" + numeroPreguntas;
+            textosTMP[3].text = codigoAcceso;
         }
         else
         {
@@ -169,7 +182,8 @@ public class EncuestaManager : MonoBehaviour
         }
 
         // Asignar color inicial según el estado "activo"
-        fondoTarjeta.color = activo ? new Color(0.7f, 1f, 0.7f, 1f) : new Color(1f, 0.7f, 0.7f, 1f);
+        fondoTarjeta.color = activo ? new Color(233f / 255f, 246f / 255f, 239f / 255f, 1f) : new Color(254f / 255f, 245f / 255f, 228f / 255f, 1f);
+
 
 
         // Buscar el botón dentro de la tarjeta y agregar el evento
@@ -228,17 +242,6 @@ public class EncuestaManager : MonoBehaviour
             }
         });
     }
-
-
-
-
-
-
-
-
-
-
-
 
     void DesactivarEncuesta(string encuestaID)
     {

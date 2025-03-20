@@ -12,7 +12,7 @@ public class GuardarProgreso : MonoBehaviour
     private FirebaseAuth auth;
     private FirebaseFirestore db;
 
-    private void Awake()
+    private async void Awake()
     {
         if (Instance == null)
         {
@@ -25,26 +25,41 @@ public class GuardarProgreso : MonoBehaviour
             return;
         }
 
-        auth = FirebaseAuth.DefaultInstance ?? FirebaseAuth.DefaultInstance;
-        db = FirebaseFirestore.DefaultInstance ?? FirebaseFirestore.DefaultInstance;
+        // Inicializar Firebase correctamente
+        await FirebaseApp.CheckAndFixDependenciesAsync();
+        auth = FirebaseAuth.DefaultInstance;
+        db = FirebaseFirestore.DefaultInstance;
     }
 
-
-    public async void GuardarProgresoFirestore(int nivelActualJugado, int correctas, FirebaseAuth auth) //Agregar parametro de grupo
+    public async void GuardarProgresoFirestore(int nivelActualJugado, int correctas, FirebaseAuth auth)
     {
-        if (auth.CurrentUser == null)
+        // ⚠️ Verificar conexión a Internet
+        if (ConnectionManager.Instance == null)
         {
-            Debug.LogError("❌ Usuario no autenticado.");
+            Debug.LogError("❌ ConnectionManager no ha sido inicializado.");
+            return;
+        }
+
+        if (!ConnectionManager.Instance.IsConnectedToInternet())
+        {
+            Debug.LogWarning("⚠️ No hay conexión a Internet. Se otorgarán XP localmente.");
+
+            return;
+        }
+
+        // ⚙️ Si hay conexión, continuar con lo que ya tenías
+        if (auth == null || auth.CurrentUser == null)
+        {
+            Debug.LogError("❌ FirebaseAuth no está inicializado o el usuario no ha iniciado sesión.");
             return;
         }
 
         string userId = auth.CurrentUser.UserId;
-        DocumentReference docGrupo = db.Collection("users").Document(userId).Collection("grupos").Document("Metales Alcalinos"); //implementar el grupo del parametro
+        DocumentReference docGrupo = db.Collection("users").Document(userId).Collection("grupos").Document("grupo 1");
         DocumentReference docUsuario = db.Collection("users").Document(userId);
 
         try
         {
-            // Obtener datos actuales
             DocumentSnapshot snapshotGrupo = await docGrupo.GetSnapshotAsync();
             DocumentSnapshot snapshotUsuario = await docUsuario.GetSnapshotAsync();
             int nivelAlmacenado = snapshotGrupo.Exists && snapshotGrupo.TryGetValue<int>("nivel", out int nivel) ? nivel : 1;
@@ -52,7 +67,6 @@ public class GuardarProgreso : MonoBehaviour
 
             int xpGanado = correctas * 100;
 
-            // 🔹 Si el usuario juega un nivel menor al suyo, gana la mitad de XP y NO sube de nivel
             if (nivelActualJugado < nivelAlmacenado)
             {
                 xpGanado /= 2;
@@ -63,10 +77,8 @@ public class GuardarProgreso : MonoBehaviour
             int nuevoNivel = subirNivel ? nivelActualJugado : nivelAlmacenado;
             int nuevoXp = xpActual + xpGanado;
 
-            // Guardar XP
             await docUsuario.SetAsync(new Dictionary<string, object> { { "xp", nuevoXp } }, SetOptions.MergeAll);
 
-            // Guardar Nivel si sube
             if (subirNivel)
             {
                 await docGrupo.SetAsync(new Dictionary<string, object> { { "nivel", nuevoNivel } }, SetOptions.MergeAll);
@@ -74,7 +86,6 @@ public class GuardarProgreso : MonoBehaviour
 
             Debug.Log($"✅ Progreso guardado: Nivel {nuevoNivel}, XP Total {nuevoXp}");
 
-            // Guardar localmente en PlayerPrefs
             PlayerPrefs.SetInt("nivelCompletado", nuevoNivel);
             PlayerPrefs.SetInt("xp", nuevoXp);
             PlayerPrefs.Save();

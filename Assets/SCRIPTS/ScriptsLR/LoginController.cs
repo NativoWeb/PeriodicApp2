@@ -6,6 +6,7 @@ using TMPro; // Importa TMP
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using System.Collections; // usar colleciones como IEnumerator y las corrutinas ( se utilizan para esperar que una acción se cumpla ) 
 
 public class LoginController : MonoBehaviour
 {
@@ -19,13 +20,49 @@ public class LoginController : MonoBehaviour
 
     void Start()
     {
-        // Inicializar Firebase Auth y Firestore
-        auth = FirebaseAuth.DefaultInstance;
-        firestore = FirebaseFirestore.DefaultInstance;
-
-        AutoLogin(); // Intenta login automático
-        loginButton.onClick.AddListener(OnLoginButtonClick); // Escuchar botón login
+        // Método para esperar que Firebase inicie antes de continuar
+        StartCoroutine(WaitForFirebase());
+        
     }
+
+    private IEnumerator WaitForFirebase()
+    {
+        float tiempoMaximoEspera = 10f; // 🔹 Máximo 10 segundos de espera
+        float tiempoEspera = 0f;
+
+        // Esperar hasta que Firebase y StartAppManager estén listos o se agote el tiempo
+        while (!DbConnexion.Instance.IsFirebaseReady() || !StartAppManager.IsReady)
+        {
+            Debug.Log($"⏳ Esperando... Firebase: {DbConnexion.Instance.IsFirebaseReady()}, StartAppManager: {StartAppManager.IsReady}");
+
+            yield return new WaitForSeconds(0.5f);
+            tiempoEspera += 0.5f;
+
+            if (tiempoEspera >= tiempoMaximoEspera)
+            {
+                Debug.LogError($"🚨 Tiempo de espera excedido. Estado final: Firebase: {DbConnexion.Instance.IsFirebaseReady()}, StartAppManager: {StartAppManager.IsReady}");
+                yield break; // 🔹 Salimos del bucle sin continuar
+            }
+        }
+
+        Debug.Log("✅ Firebase y StartAppManager están listos. Procediendo con LoginController.");
+
+        // Aseguramos que las instancias de autenticación y Firestore estén asignadas correctamente
+        auth = DbConnexion.Instance.Auth;
+        firestore = DbConnexion.Instance.Firestore;
+
+        // Verificamos si los objetos no son nulos antes de proceder
+        if (auth == null || firestore == null)
+        {
+            Debug.LogError("🚨 Error: No se pudo obtener las referencias de Firebase.");
+            yield break;
+        }
+
+        // Intenta login automático solo si Firebase y StartAppManager están listos
+        AutoLogin();
+        loginButton.onClick.AddListener(OnLoginButtonClick);
+    }
+
 
     /*------------------------ CUANDO SE OPRIME EL BOTÓN DE LOGIN ------------------------*/
     public void OnLoginButtonClick()
@@ -139,15 +176,7 @@ public class LoginController : MonoBehaviour
             // 🔹 Ir a escena según ocupación
             if (ocupacion == "Estudiante")
             {
-                if (encuestaCompletada)
-                {
-                    SceneManager.LoadScene("Grupos"); // Ir a la vista principal
-                }
-                else
-                {
-                    SceneManager.LoadScene("EcnuestaScen1e"); // Ir a la encuesta
-                }
-                
+                SceneManager.LoadScene(encuestaCompletada ? "Categorías" : "EcnuestaScen1e");
             }
             else if (ocupacion == "Profesor")
             {
@@ -170,7 +199,7 @@ public class LoginController : MonoBehaviour
             {
                 Debug.Log("📴 ✅ Inicio de sesión sin conexión exitoso.");
 
-                SceneManager.LoadScene("InicioOffline"); 
+                SceneManager.LoadScene("Categorías");
             }
             else
             {
@@ -182,4 +211,5 @@ public class LoginController : MonoBehaviour
             Debug.LogError("📴 ❌ No hay datos guardados para inicio de sesión offline.");
         }
     }
+    
 }
