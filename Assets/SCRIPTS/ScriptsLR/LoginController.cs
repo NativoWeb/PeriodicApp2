@@ -176,7 +176,7 @@ public class LoginController : MonoBehaviour
             // 🔹 Ir a escena según ocupación
             if (ocupacion == "Estudiante")
             {
-                SceneManager.LoadScene(encuestaCompletada ? "Categorías" : "EncuestaScene1");
+                SceneManager.LoadScene(encuestaCompletada ? "Categorías" : "EcnuestaScen1e");
             }
             else if (ocupacion == "Profesor")
             {
@@ -199,7 +199,7 @@ public class LoginController : MonoBehaviour
             {
                 Debug.Log("📴 ✅ Inicio de sesión sin conexión exitoso.");
 
-                SceneManager.LoadScene("Inicio");
+                SceneManager.LoadScene("Categorías");
             }
             else
             {
