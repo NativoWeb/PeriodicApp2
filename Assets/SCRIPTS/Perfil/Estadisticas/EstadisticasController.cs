@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using UnityEngine.SceneManagement;
 using Firebase.Firestore;
+using Firebase.Storage;
 using TMPro;
 using UnityEngine.UI;
 using Firebase.Extensions;
@@ -14,6 +15,7 @@ public class EstadisticasController : MonoBehaviour
     // Instancias de Firebase
     private FirebaseAuth auth;
     private FirebaseFirestore db;
+    private FirebaseStorage storage;
 
     // ID del usuario autenticado
     private string userId;
@@ -44,6 +46,7 @@ public class EstadisticasController : MonoBehaviour
     {
         auth = FirebaseAuth.DefaultInstance;
         db = FirebaseFirestore.DefaultInstance;
+        storage = FirebaseStorage.DefaultInstance;
 
         userId = PlayerPrefs.GetString("userId", "").Trim();
 
@@ -191,14 +194,13 @@ public class EstadisticasController : MonoBehaviour
         PlayerPrefs.DeleteKey("userEmail");
         PlayerPrefs.DeleteKey("userPassword");
         PlayerPrefs.DeleteKey("Estadouser");
-        PlayerPrefs.DeleteKey("DisplayName");
         PlayerPrefs.DeleteKey("XP");
         PlayerPrefs.SetInt("rememberMe", 0); 
         PlayerPrefs.DeleteKey("misionesJSON"); // Eliminar datos locales
         PlayerPrefs.Save();
 
         Debug.Log("✅ Sesión cerrada correctamente.");
-        SceneManager.LoadScene("Start");
+        SceneManager.LoadScene("Login");
     }
 
     // ============================ ACTUALIZAR SLIDER ============================
