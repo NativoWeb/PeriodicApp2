@@ -1,39 +1,45 @@
 ﻿using UnityEngine;
-using UnityEngine.SceneManagement;
-using UnityEngine.UI;
 using Vuforia;
 
 public class ImageRecognition : MonoBehaviour
 {
     private bool logroDesbloqueado = false;
-    public string elementoQuimico; // Se asignará automáticamente
-    private ImageTargetSpawner spawner; // Referencia al script ImageTargetSpawner
+    private ObserverBehaviour trackable;
+    private ImageTargetSpawner spawner;
 
     void Start()
     {
-        spawner = FindObjectOfType<ImageTargetSpawner>(); // Encuentra el spawner en la escena
+        spawner = FindObjectOfType<ImageTargetSpawner>();
 
-        var trackable = GetComponent<ObserverBehaviour>();
+        string elemento = "pin_" + PlayerPrefs.GetString("ElementoSeleccionado", "").ToLower();
+
+        trackable = GetComponent<ObserverBehaviour>();
+
         if (trackable)
         {
             trackable.OnTargetStatusChanged += OnImageDetected;
-            elementoQuimico = trackable.TargetName; // Asigna el nombre de la imagen detectada
+        }
+
+        // Si este ImageTarget no es el elemento de la misión, se desactiva
+        if (trackable.TargetName != elemento)
+        {
+            gameObject.SetActive(false);
         }
     }
 
     private void OnImageDetected(ObserverBehaviour observer, TargetStatus status)
     {
-        if (status.Status == Status.TRACKED && !logroDesbloqueado)
+        if (status.Status == Status.TRACKED)
         {
-            Debug.Log($"¡Imagen detectada! {elementoQuimico} desbloqueado.");
+            Debug.Log($"¡Imagen detectada! {trackable.TargetName} desbloqueado.");
             logroDesbloqueado = true;
-            DesbloquearLogro(elementoQuimico);
+            DesbloquearLogro(trackable.TargetName);
         }
     }
 
     void DesbloquearLogro(string elemento)
     {
-        Debug.Log("Logro desbloqueado");
+        Debug.Log($"🏆 Logro desbloqueado: {elemento}");
         spawner.botonCompletarMision.interactable = true;
     }
 }
