@@ -21,6 +21,7 @@ public class ControladorEncuestaAprendizaje : MonoBehaviour
     private bool eventosToggleHabilitados = false;
     private List<string> opcionesAleatorias;
 
+    public BarraProgreso barraProgreso;
 
     private FirebaseFirestore firestore;
 
@@ -105,15 +106,6 @@ public class ControladorEncuestaAprendizaje : MonoBehaviour
         firestore = FirebaseFirestore.DefaultInstance;
         // Recuperamos el userId almacenado en el login
         string userId = PlayerPrefs.GetString("userId", "");
-
-        if (string.IsNullOrEmpty(userId))
-        {
-            Debug.LogError("⚠️ No se encontró userId en PlayerPrefs.");
-        }
-        else
-        {
-            Debug.Log($"📌 UserId encontrado: {userId}");
-        }
 
     }
 
@@ -346,6 +338,7 @@ public class ControladorEncuestaAprendizaje : MonoBehaviour
                 if (isOn)
                 {
                     DesactivarInteractividadOpciones();
+                    barraProgreso.InicializarBarra(preguntas.Count);
                     siguientePregunta();
                 }
             });
@@ -387,30 +380,48 @@ public class ControladorEncuestaAprendizaje : MonoBehaviour
 
     public void FinalizarEncuesta()
     {
-
-        // Recuperamos el userId almacenado en el login
-        string userId = PlayerPrefs.GetString("userId", "");
-        Debug.LogError("OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO" + userId);
-        if (string.IsNullOrEmpty(userId))
+        // Primero, verificamos si hay conexión a Internet
+        if (ConnectionManager.isOnline)
         {
-            Debug.LogError("❌ No se puede actualizar Firestore porque userId es nulo.");
-            return;
+            // Si hay conexión, verificamos si hay un usuario autenticado
+            string userId = PlayerPrefs.GetString("userId", "");
+            Debug.LogError("userId en Firestore: " + userId);
+
+            if (string.IsNullOrEmpty(userId))
+            {
+                // Si no hay un usuario autenticado, mostramos un mensaje de error
+                Debug.LogError("❌ No se puede actualizar Firestore porque el userId es nulo.");
+                return;
+            }
+
+            // Si hay un usuario autenticado, actualizamos en Firestore
+            DocumentReference docRef = firestore.Collection("users").Document(userId);
+            docRef.UpdateAsync("EncuestaCompletada", true).ContinueWithOnMainThread(task =>
+            {
+                if (task.IsCompleted)
+                {
+                    Debug.Log("✅ EncuestaCompletada actualizado correctamente en Firestore.");
+                    SceneManager.LoadScene("Inicio"); // Redirigir al inicio después de completar la encuesta
+                }
+                else
+                {
+                    Debug.LogError("❌ Error al actualizar EncuestaCompletada en Firestore.");
+                }
+            });
         }
-
-        DocumentReference docRef = firestore.Collection("users").Document(userId);
-
-        docRef.UpdateAsync("EncuestaCompletada", true).ContinueWithOnMainThread(task =>
+        else
         {
-            if (task.IsCompleted)
-            {
-                Debug.Log("✅ EncuestaCompletada actualizado correctamente en Firestore.");
-                SceneManager.LoadScene("Inicio"); // Redirigir al inicio después de completar la encuesta
-            }
-            else
-            {
-                Debug.LogError("❌ Error al actualizar EncuestaCompletada en Firestore.");
-            }
-        });
+
+            // Guardamos los datos temporalmente en PlayerPrefs
+            PlayerPrefs.SetInt("TempEncuestaCompletada", 1); // Marcamos la encuesta como completada
+            PlayerPrefs.Save(); // Guardar cambios
+
+            Debug.Log("❌ No hay conexión a Internet, los datos se guardaron localmente.");
+
+            // Mostrar mensaje o redirigir al usuario a la pantalla de espera
+            // Puedes añadir una pantalla de espera o mensaje informando que los datos serán enviados cuando haya conexión
+            SceneManager.LoadScene("Inicio"); // Cambia a la escena offline o donde desees
+        }
     }
 
 

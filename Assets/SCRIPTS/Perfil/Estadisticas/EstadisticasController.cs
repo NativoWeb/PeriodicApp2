@@ -4,44 +4,201 @@ using Firebase.Firestore;
 using TMPro;
 using UnityEngine.UI;
 using System.Threading.Tasks;
-using System.Collections;
 using Firebase.Extensions;
-//using UnityEditor.TerrainTools;
 using Firebase.Auth;
-//using UnityEditor.Search;
+using System.Collections.Generic;
 
 public class EstadisticasController : MonoBehaviour
 {
-    private FirebaseAuth auth;// iniciamos el auth para cerrarlo con el boton de cerrar
-    public FirebaseFirestore db;// instanciamos db
+    // Instancias de Firebase
+    private FirebaseAuth auth;
+    public FirebaseFirestore db;
+
+    // ID del usuario autenticado
     public string userId;
-    
-    //instanciamos variables para poner dentro de unity
+
+    // Elementos de la UI
     public Image avatarImage;
     public TMP_Text rangotxt;
 
-    //panel para cerrar sesion
+    // Panel para cerrar sesión
     [SerializeField] private GameObject m_logoutUI = null;
 
+    // Clase para representar cada cuadro de grupo
+    [System.Serializable]
+    public class CuadroGrupo
+    {
+        public TMP_Text nombreGrupoText;
+        public TMP_Text nivelGrupoText;
+        public Image grupoImagen;
+    }
 
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
+    // Lista de cuadros de grupo (se asignan manualmente en el inspector)
+    public List<CuadroGrupo> cuadrosGrupos;
+
+    // Referencia al Slider en la UI
+    public Slider slider;
+
+    ListenerRegistration listenerRegistro;
+
+    // ============================ MÉTODOS PRINCIPALES ============================
+
     void Start()
     {
         auth = FirebaseAuth.DefaultInstance;
         db = FirebaseFirestore.DefaultInstance;
         userId = PlayerPrefs.GetString("userId", "").Trim();
 
-        // Iniciar la carga de datos de usuario sin perder await
-        StartCoroutine(LoadUserData(userId));
+        EscucharDatosUsuario(); // Escuchar datos del usuario en tiempo real
+        CargarNivelesPorGrupoUsuario(); // Cargar niveles por grupo
     }
 
-    IEnumerator LoadUserData(string userId)
+    private void OnDestroy()
     {
-        var task = GetUserData(userId);
-        yield return new WaitUntil(() => task.IsCompleted);
+        // Detener el listener cuando se cierre o cambie de escena
+        if (listenerRegistro != null) listenerRegistro.Stop();
     }
 
-    //funcion para mostrar el panel y cerrar sesion
+    // ============================ ESCUCHAR DATOS EN TIEMPO REAL ============================
+
+    void EscucharDatosUsuario()
+    {
+        DocumentReference docRef = db.Collection("users").Document(userId);
+
+        listenerRegistro = docRef.Listen(snapshot =>
+        {
+            if (snapshot.Exists)
+            {
+                Debug.Log($"Datos del usuario actualizados en tiempo real: {userId}");
+
+                string rango = snapshot.GetValue<string>("Rango");
+                string avatarPath = ObtenerAvatarPorRango(rango);
+                Sprite avatarSprite = Resources.Load<Sprite>(avatarPath);
+
+                if (avatarSprite != null)
+                {
+                    avatarImage.sprite = avatarSprite;
+                }
+                else
+                {
+                    Debug.LogError($"No se encontró una ruta válida para: {avatarPath}");
+                }
+
+                rangotxt.text = "Su rango es: " + rango + "!";
+
+                // XP para actualizar el slider
+                int xpUsuario = snapshot.GetValue<int>("xp");
+                ActualizarSlider(xpUsuario, rango);
+            }
+            else
+            {
+                Debug.LogError("El usuario no existe en la base de datos.");
+            }
+        });
+    }
+
+    // ============================ ASIGNACIÓN DE AVATAR SEGÚN RANGO ============================
+
+    public string ObtenerAvatarPorRango(string rango)
+    {
+        string avatarPath = rango switch
+        {
+            "Novato de laboratorio" => "Avatares/nivel1",
+            "Arquitecto molecular" => "Avatares/nivel2",
+            "Visionario Cuántico" => "Avatares/nivel3",
+            "Amo del caos químico" => "Avatares/nivel4",
+            _ => "Avatares/defecto"
+        };
+
+        Debug.Log($"Ruta del avatar: {avatarPath}");
+        return avatarPath;
+    }
+
+    // ============================ CARGA DE NIVELES POR GRUPO ============================
+
+    void CargarNivelesPorGrupoUsuario()
+    {
+        if (string.IsNullOrEmpty(userId))
+        {
+            Debug.LogError("Usuario no autenticado.");
+            return;
+        }
+
+        CollectionReference gruposRef = db.Collection("users").Document(userId).Collection("grupos");
+
+        gruposRef.GetSnapshotAsync().ContinueWithOnMainThread(task =>
+        {
+            if (task.IsFaulted || task.IsCanceled)
+            {
+                Debug.LogError("Error al obtener los niveles del usuario.");
+                return;
+            }
+
+            QuerySnapshot snapshot = task.Result;
+            int index = 0;
+
+            Debug.Log($"Cantidad de grupos en Firestore: {snapshot.Count}");
+
+            foreach (DocumentSnapshot document in snapshot.Documents)
+            {
+                if (index >= cuadrosGrupos.Count)
+                {
+                    Debug.LogWarning("Hay más grupos que cuadros disponibles.");
+                    break;
+                }
+
+                string grupoNombre = document.ContainsField("nombre") ? document.GetValue<string>("nombre") : document.Id;
+                int nivel = document.ContainsField("nivel") ? document.GetValue<int>("nivel") : 0;
+                int nivelMaximo = document.ContainsField("nivel_maximo") ? document.GetValue<int>("nivel_maximo") : 1;
+                string rutaImagen = document.ContainsField("ruta_imagen") ? document.GetValue<string>("ruta_imagen") : "GruposImages/default";
+
+                float porcentaje = ((float)nivel / (float)nivelMaximo) * 100f;
+
+                cuadrosGrupos[index].nombreGrupoText.text = grupoNombre;
+                cuadrosGrupos[index].nivelGrupoText.text = Mathf.RoundToInt(porcentaje) + "%";
+
+                Sprite avatarSprite = Resources.Load<Sprite>(rutaImagen);
+                if (avatarSprite != null)
+                {
+                    cuadrosGrupos[index].grupoImagen.sprite = avatarSprite;
+                }
+                else
+                {
+                    Debug.LogWarning($"No se encontró la imagen en la ruta: {rutaImagen}");
+                }
+
+                index++;
+            }
+
+            // Limpiar cuadros restantes si hay menos grupos que cuadros
+            for (int i = index; i < cuadrosGrupos.Count; i++)
+            {
+                cuadrosGrupos[i].nombreGrupoText.text = "";
+                cuadrosGrupos[i].nivelGrupoText.text = "";
+                cuadrosGrupos[i].grupoImagen.sprite = null;
+            }
+        });
+    }
+
+    // ============================ CIERRE DE SESIÓN ============================
+
+    public void Logout()
+    {
+        auth.SignOut(); // Cierra sesión en Firebase
+        PlayerPrefs.DeleteKey("userId"); // Elimina ID del usuario almacenado
+        PlayerPrefs.DeleteKey("userEmail");
+        PlayerPrefs.DeleteKey("userPassword");
+        PlayerPrefs.DeleteKey("Estadouser");
+        PlayerPrefs.DeleteKey("XP");
+        PlayerPrefs.SetInt("rememberMe", 0);
+        PlayerPrefs.Save();
+        Debug.Log("Sesión cerrada correctamente");
+        SceneManager.LoadScene("Login"); // Redirige a la escena de login
+
+    }
+
+    // ============================ MOSTRAR PANTALLA DE LOGOUT ============================
+
     public void showlogout()
     {
         if (m_logoutUI != null)
@@ -53,77 +210,37 @@ public class EstadisticasController : MonoBehaviour
             Debug.LogError("El panel de logout no está asignado.");
         }
     }
-    async Task GetUserData(string userId)
+
+    // ============================ ACTUALIZAR SLIDER ============================
+
+    public void ActualizarSlider(int xp, string rango)
     {
-        DocumentReference docRef = db.Collection("users").Document(userId);
-        DocumentSnapshot snapshot = await docRef.GetSnapshotAsync();
+        int xpMin = 0;
+        int xpMax = 1000;
 
-        if (snapshot.Exists)
+        if (rango == "Novato de laboratorio")
         {
-            Debug.LogAssertion($"Usuario encontrado en firebase : {userId}");
-            string username = snapshot.GetValue<string>("DisplayName");
-            string avatarUrl = snapshot.GetValue<string>("avatar");
-            string rango = snapshot.GetValue<string>("Rango");
-
-            string avatarPath = ObtenerAvatarPorRango(rango);// llamamos función para poder tener una ruta que pasar a la imagen 
-            Sprite avatarSprite = Resources.Load<Sprite>(avatarPath);
-
-            if (avatarSprite != null)
-            {
-                avatarImage.sprite = avatarSprite;
-            }
-            else
-            {
-                Debug.LogError($"no se encontro una ruta valida para : {avatarPath}");
-                avatarImage.sprite = Resources.Load<Sprite>(avatarPath);
-            }
-            rangotxt.text = "Su rango es :" + rango + "!";
-
+            xpMin = 0; xpMax = 1000;
+        }
+        else if (rango == "Arquitecto molecular")
+        {
+            xpMin = 1000; xpMax = 2000;
+        }
+        else if (rango == "Visionario Cuántico")
+        {
+            xpMin = 2000; xpMax = 3000;
+        }
+        else if (rango == "Amo del caos químico")
+        {
+            xpMin = 3000; xpMax = 4000;
         }
 
+        int rangoXP = xpMax - xpMin;
+        if (rangoXP <= 0) rangoXP = 1; // Evitar división por 0
+
+        float progreso = Mathf.Clamp01((float)(xp - xpMin) / rangoXP);
+        slider.value = progreso;
+
+        Debug.Log($"XP: {xp} | Rango: {rango} | Progreso: {Mathf.RoundToInt(progreso * 100)}%");
     }
-
-    public string ObtenerAvatarPorRango(string rango)//############# funcion para obtener la ruta de la imagen que se va a poner dentro de la imagen 
-    {
-     string avatarPath = string.Empty;
-    if (rango == "Novato de laboratorio")
-        {
-            avatarPath = "Avatares/nivel1";
-        }
-   else if (rango == "Arquitecto molecular ")
-        {
-            avatarPath = "Avatares/nivel2";
-        }
-   else if(rango == "Visionario Cuántico")
-        {
-            avatarPath = "Avatares/nivel3";
-        }
-   else if (rango == "Amo del caos químico")
-        {
-            avatarPath = "Avatares/nivel4";
-        }
-   else
-        {
-            avatarPath = "Avatares/defecto";
-        }
-
-        Debug.LogAssertion($"la ruta del avatar es: {avatarPath}");
-
-        return avatarPath;
-    }
-
-   
-    public void Logout() // ################################################################ Método para cerrar sesión
-    {
-        auth.SignOut(); // Cierra la sesión en Firebase
-        PlayerPrefs.DeleteKey("userId"); // Elimina el ID del usuario guardado
-        PlayerPrefs.Save(); // Guarda los cambios
-
-        Debug.Log("Sesión cerrada correctamente");
-
-        // Opcional: Redirigir a la escena de login
-        SceneManager.LoadScene("Login"); 
-    }
-    
-    
 }

@@ -2,15 +2,17 @@
 using Firebase.Auth;
 using Firebase.Extensions;
 using Firebase.Firestore; // Importa Firestore
-using TMPro; // Importa el espacio de nombres de TMP
+using TMPro; // Importa TMP
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using System.Collections; // usar colleciones como IEnumerator y las corrutinas ( se utilizan para esperar que una acción se cumpla ) 
 
 public class LoginController : MonoBehaviour
 {
     public TMP_InputField emailInput;
     public TMP_InputField passwordInput;
+    public Toggle toggleRememberMe;
     public Button loginButton;
 
     private FirebaseAuth auth;
@@ -18,32 +20,73 @@ public class LoginController : MonoBehaviour
 
     void Start()
     {
-        // Inicializar Firebase Auth y Firestore
-        auth = FirebaseAuth.DefaultInstance;
-        firestore = FirebaseFirestore.DefaultInstance;
+        // Método para esperar que Firebase inicie antes de continuar
+        StartCoroutine(WaitForFirebase());
+        
+    }
 
+    private IEnumerator WaitForFirebase()
+    {
+        float tiempoMaximoEspera = 10f; // 🔹 Máximo 10 segundos de espera
+        float tiempoEspera = 0f;
+
+        // Esperar hasta que Firebase y StartAppManager estén listos o se agote el tiempo
+        while (!DbConnexion.Instance.IsFirebaseReady() || !StartAppManager.IsReady)
+        {
+            Debug.Log($"⏳ Esperando... Firebase: {DbConnexion.Instance.IsFirebaseReady()}, StartAppManager: {StartAppManager.IsReady}");
+
+            yield return new WaitForSeconds(0.5f);
+            tiempoEspera += 0.5f;
+
+            if (tiempoEspera >= tiempoMaximoEspera)
+            {
+                Debug.LogError($"🚨 Tiempo de espera excedido. Estado final: Firebase: {DbConnexion.Instance.IsFirebaseReady()}, StartAppManager: {StartAppManager.IsReady}");
+                yield break; // 🔹 Salimos del bucle sin continuar
+            }
+        }
+
+        Debug.Log("✅ Firebase y StartAppManager están listos. Procediendo con LoginController.");
+
+        // Aseguramos que las instancias de autenticación y Firestore estén asignadas correctamente
+        auth = DbConnexion.Instance.Auth;
+        firestore = DbConnexion.Instance.Firestore;
+
+        // Verificamos si los objetos no son nulos antes de proceder
+        if (auth == null || firestore == null)
+        {
+            Debug.LogError("🚨 Error: No se pudo obtener las referencias de Firebase.");
+            yield break;
+        }
+
+        // Intenta login automático solo si Firebase y StartAppManager están listos
+        AutoLogin();
         loginButton.onClick.AddListener(OnLoginButtonClick);
     }
 
+
+    /*------------------------ CUANDO SE OPRIME EL BOTÓN DE LOGIN ------------------------*/
     public void OnLoginButtonClick()
     {
         string email = emailInput.text;
         string password = passwordInput.text;
 
-        SignInUserWithEmail(email, password);
+        SignInUserWithEmail(email, password); // Llama login normal
     }
 
+    /*------------------------ LOGIN CON FIREBASE ------------------------*/
     private void SignInUserWithEmail(string email, string password)
     {
         auth.SignInWithEmailAndPasswordAsync(email, password).ContinueWithOnMainThread(task => {
             if (task.IsCanceled)
             {
-                Debug.LogError("La solicitud fue cancelada.");
+                Debug.LogError("❌ La solicitud fue cancelada.");
+                TryOfflineLogin(email, password); // Intentar login offline
                 return;
             }
             if (task.IsFaulted)
             {
-                Debug.LogError($"Error: {task.Exception?.Message}");
+                Debug.LogError($"❌ Error: {task.Exception?.Message}");
+                TryOfflineLogin(email, password); // Intentar login offline
                 return;
             }
 
@@ -52,17 +95,57 @@ public class LoginController : MonoBehaviour
 
             Debug.Log("✅ Inicio de sesión exitoso! Bienvenido, " + user.Email);
 
-            // 🔹 Guardamos el userId en PlayerPrefs
-            Debug.Log($"🆔 Guardando userId en PlayerPrefs: {user.UserId}");
+            // 🔹 Guardar datos en PlayerPrefs
             PlayerPrefs.SetString("userId", user.UserId);
+            if (toggleRememberMe.isOn)
+            {
+                PlayerPrefs.SetString("userEmail", email);
+                PlayerPrefs.SetString("userPassword", password);
+                PlayerPrefs.SetInt("rememberMe", 1);
+            }
+            else
+            {
+                PlayerPrefs.DeleteKey("userEmail");
+                PlayerPrefs.DeleteKey("userPassword");
+                PlayerPrefs.SetInt("rememberMe", 0);
+            }
             PlayerPrefs.Save();
-
 
             // 🔹 Verificar ocupación y encuesta en Firestore
             CheckUserStatus(user.UserId);
         });
     }
 
+    /*------------------------ LOGIN AUTOMÁTICO CON REMEMBER ME ------------------------*/
+    void AutoLogin()
+    {
+        if (PlayerPrefs.GetInt("rememberMe") == 1)
+        {
+            string savedEmail = PlayerPrefs.GetString("userEmail");
+            string savedPassword = PlayerPrefs.GetString("userPassword");
+
+            auth.SignInWithEmailAndPasswordAsync(savedEmail, savedPassword).ContinueWithOnMainThread(task =>
+            {
+                if (task.IsCompleted && !task.IsFaulted)
+                {
+                    Debug.Log("✅ Login automático exitoso");
+                    FirebaseUser user = task.Result.User;
+                    PlayerPrefs.SetString("userId", user.UserId);
+                    PlayerPrefs.Save();
+
+                    CheckUserStatus(user.UserId); // Ir según ocupación
+                }
+                else
+                {
+                    Debug.LogError("❌ Error en login automático: " + task.Exception);
+                    // Intentar login offline
+                    TryOfflineLogin(savedEmail, savedPassword);
+                }
+            });
+        }
+    }
+
+    /*------------------------ REVISAR STATUS EN FIRESTORE ------------------------*/
     private void CheckUserStatus(string userId)
     {
         DocumentReference docRef = firestore.Collection("users").Document(userId);
@@ -82,39 +165,51 @@ public class LoginController : MonoBehaviour
                 return;
             }
 
-            // Obtener datos de Firestore
+            // Datos Firestore
             string ocupacion = snapshot.GetValue<string>("Ocupacion");
-            bool encuestaCompletada;
-            if (snapshot.ContainsField("EncuestaCompletada"))
-            {
-                encuestaCompletada = snapshot.GetValue<bool>("EncuestaCompletada");
-                Debug.Log($"📌 Estado Encuesta en Firestore: {encuestaCompletada}");
-            }
-            else
-            {
-                Debug.LogWarning("⚠️ Campo EncuestaCompletada no encontrado en Firestore. Asignando false.");
-                encuestaCompletada = false;
-            }
-
+            bool encuestaCompletada = snapshot.ContainsField("EncuestaCompletada")
+                ? snapshot.GetValue<bool>("EncuestaCompletada")
+                : false;
 
             Debug.Log($"📌 Usuario: {ocupacion}, EncuestaCompletada: {encuestaCompletada}");
 
-            // 🔹 Redirigir según el tipo de usuario y estado de la encuesta
+            // 🔹 Ir a escena según ocupación
             if (ocupacion == "Estudiante")
             {
-                if (encuestaCompletada)
-                {
-                    SceneManager.LoadScene("Inicio"); // Ir a la vista principal
-                }
-                else
-                {
-                    SceneManager.LoadScene("EcnuestaScen1e"); // Ir a la encuesta
-                }
+                SceneManager.LoadScene(encuestaCompletada ? "Inicio" : "EncuestaScene1");
             }
             else if (ocupacion == "Profesor")
             {
-                SceneManager.LoadScene("InicioProfesor"); // Ir a la vista del profesor
+                SceneManager.LoadScene("InicioProfesor");
             }
         });
     }
+
+    /*------------------------ LOGIN SIN INTERNET --------------------------------------------------------*/
+    private void TryOfflineLogin(string email, string password)
+    {
+        // Verificar si hay datos guardados y coinciden
+        if (PlayerPrefs.HasKey("userEmail") && PlayerPrefs.HasKey("userPassword") && PlayerPrefs.HasKey("userId"))
+        {
+            string savedEmail = PlayerPrefs.GetString("userEmail");
+            string savedPassword = PlayerPrefs.GetString("userPassword");
+            string savedUserId = PlayerPrefs.GetString("userId");
+
+            if (email == savedEmail && password == savedPassword)
+            {
+                Debug.Log("📴 ✅ Inicio de sesión sin conexión exitoso.");
+
+                SceneManager.LoadScene("Inicio");
+            }
+            else
+            {
+                Debug.LogError("📴 ❌ Datos incorrectos para el inicio de sesión offline.");
+            }
+        }
+        else
+        {
+            Debug.LogError("📴 ❌ No hay datos guardados para inicio de sesión offline.");
+        }
+    }
+    
 }

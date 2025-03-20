@@ -12,6 +12,7 @@ public class ControllerGame : MonoBehaviour, IDragHandler, IEndDragHandler
     private Vector3 posicionInicial;
     private RectTransform rectTransform;
     private CanvasGroup canvasGroup;
+
     private static int emparejamientosCorrectos = 0;
     private static int totalEmparejamientos = 4;
 
@@ -19,6 +20,8 @@ public class ControllerGame : MonoBehaviour, IDragHandler, IEndDragHandler
     private static List<Vector3> posicionesIniciales = new List<Vector3>();
 
     private int xpGanadoPorNivel = 100;
+    private int nivelSeleccionado = 3;
+
     private FirebaseFirestore db;
     private FirebaseAuth auth;
 
@@ -80,7 +83,14 @@ public class ControllerGame : MonoBehaviour, IDragHandler, IEndDragHandler
                     Debug.Log("🎉 Todos los emparejamientos correctos. Activando el botón...");
                     botonContinuar.gameObject.SetActive(true);
 
-                    GuardarProgresoAutomatico();
+                    GameObject gestor = GameObject.Find("GestorProgreso");
+                    if (gestor == null || auth == null) return;
+
+                    GuardarProgreso gp = gestor.GetComponent<GuardarProgreso>();
+                    if (gp == null) return;
+
+                    gp.GuardarProgresoFirestore(nivelSeleccionado + 1, emparejamientosCorrectos, auth); // GUARDAR EN LA BASE DE DATOS
+
                 }
             }
             else
@@ -119,75 +129,6 @@ public class ControllerGame : MonoBehaviour, IDragHandler, IEndDragHandler
             posicionesIniciales[randomIndex] = temp;
         }
     }
-
-    private async void GuardarProgresoAutomatico()
-    {
-        string userId = auth.CurrentUser.UserId;
-
-        // Referencias a Firestore
-        DocumentReference docGrupo = db.Collection("users").Document(userId)
-                                          .Collection("grupos").Document("grupo 1");
-        DocumentReference docUsuario = db.Collection("users").Document(userId);
-
-        // Obtener datos actuales
-        DocumentSnapshot snapshotGrupo = await docGrupo.GetSnapshotAsync();
-        DocumentSnapshot snapshotUsuario = await docUsuario.GetSnapshotAsync();
-
-        int nivelDesbloqueado = 1; // Nivel por defecto si no existe
-        int xpActual = 0; // XP inicial si no existe el campo
-        int xpGanado = 100; // 🔹 Ajusta el XP según el nivel
-
-        // Verificar si la colección y el documento existen para "grupo 1"
-        if (!snapshotGrupo.Exists)
-        {
-            // Si no existe el documento "grupo 1", lo creamos con valores predeterminados
-            await docGrupo.SetAsync(new Dictionary<string, object>
-        {
-            { "nivel", nivelDesbloqueado }
-        });
-
-            Debug.Log("✅ Documento 'grupo 1' creado con nivel predeterminado.");
-        }
-        else
-        {
-            // Si existe, obtenemos el valor del campo "nivel"
-            snapshotGrupo.TryGetValue<int>("nivel", out nivelDesbloqueado);
-        }
-
-        // Verificar si el documento "usuario" existe
-        if (snapshotUsuario.Exists)
-        {
-            // Obtener el valor actual de XP
-            snapshotUsuario.TryGetValue<int>("xp", out xpActual);
-        }
-        else
-        {
-            // Si no existe, creamos el documento "usuario" con un XP inicial de 0
-            await docUsuario.SetAsync(new Dictionary<string, object>
-        {
-            { "xp", xpActual }
-        });
-
-            Debug.Log("✅ Documento 'usuario' creado con XP inicial.");
-        }
-
-        // Actualizar nivel en grupo1
-        await docGrupo.UpdateAsync(new Dictionary<string, object>
-    {
-        { "nivel", nivelDesbloqueado + 1 }
-    });
-
-        // Actualizar XP en usuario
-        await docUsuario.UpdateAsync(new Dictionary<string, object>
-    {
-        { "xp", xpActual + xpGanado }
-    });
-
-        Debug.Log($"✅ Nivel actualizado a {nivelDesbloqueado + 1} en grupo1");
-        Debug.Log($"✅ XP actualizado a {xpActual + xpGanado} en usuario");
-    }
-
-
 
     public void OnContinuarClick()
     {

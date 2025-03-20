@@ -1,163 +1,153 @@
-using Firebase.Firestore;
-using System.Collections.Generic;
-using UnityEngine;
-using TMPro;
-using Firebase.Extensions;
-using System.Threading.Tasks;
-using UnityEngine.UI; // PARA Poner todos loa elementos ui incluyendo imagenes
-using System.Collections;
+using Firebase.Firestore; // Importa la librería para interactuar con Firebase Firestore
+using System.Collections.Generic; // Importa las colecciones genéricas 
+using UnityEngine; // Importa las funcionalidades de Unity
+using TMPro; // Importa TextMesh Pro para trabajar con texto
+using Firebase.Extensions; // Importa extensiones específicas de Firebase
+using System.Threading.Tasks; // Importa para trabajar con tareas asíncronas
+using UnityEngine.UI; // Importa las funcionalidades de UI (interfaz de usuario) de Unity
+using System.Collections; // Importa para trabajar con corutinas (funciones asíncronas dentro de Unity)
 
 public class RankingController : MonoBehaviour
 {
+    private FirebaseFirestore db; // Base de datos de Firebase
+    private string userId; // ID del usuario actual (almacenado en PlayerPrefs)
 
-    private FirebaseFirestore db; // para acceder a la bd
-    private string userId; // para tener el userid y acceder al documento desde la colección
-    
-    //inicializamos las variables a poner dentro de unity
-    public TMP_Text posicionText;  // Texto donde se mostrará la 
-    public TMP_Text Xptext; // donde vamos a mostrar el xp desde la bd
-    public TMP_Text UserName; // mostramos el nombre del usuario
-    public Image avatarimage; // mostrar la imagen
-    public TMP_Text rangotext; // mostramos el rango
+    // Referencias a los elementos de la interfaz
+    public TMP_Text posicionText; // Texto que muestra la posición en el ranking
+    public TMP_Text Xptext; // Texto que muestra los puntos de experiencia (XP) del usuario
+    public TMP_Text UserName; // Texto que muestra el nombre del usuario
+    public Image avatarimage; // Imagen que muestra el avatar del usuario
+    public TMP_Text rangotext; // Texto que muestra el rango del usuario
+
+    // Función que se ejecuta al iniciar la escena
     void Start()
     {
-        db = FirebaseFirestore.DefaultInstance;
-        userId = PlayerPrefs.GetString("userId", "").Trim();  // Obtener el ID del usuario logueado
+        db = FirebaseFirestore.DefaultInstance; // Conecta con la base de datos de Firebase
+        userId = PlayerPrefs.GetString("userId", "").Trim(); // Obtiene el ID del usuario guardado en PlayerPrefs
 
+        // Si el ID no está vacío, obtenemos la posición y los datos del usuario
         if (!string.IsNullOrEmpty(userId))
         {
-            ObtenerPosicionUsuario();// ###################################### FUNCION PARA ORGANIZAR LOS RANKING Y PONERLO EN EL posicionText
+            ObtenerPosicionUsuario(); // Llama a la función para obtener la posición del usuario en el ranking
+            StartCoroutine(LoadUserData(userId)); // Llama a la función para cargar los datos del usuario (en corutina para esperar la respuesta de Firebase)
         }
         else
         {
+            // Si no hay un usuario guardado, muestra mensaje de error
             posicionText.text = "Posición: No disponible";
+            Debug.LogError("No se encontró el ID del usuario.");
         }
-
-        GetUserXp(userId);// ################################# FUNCION PARA TRAER EL XP DEL USUARIO AL Xptext
-                          // Iniciar la carga de datos de usuario sin perder await
-        StartCoroutine(LoadUserData(userId));
     }
+
+    // Corutina que espera a que se carguen los datos del usuario
     IEnumerator LoadUserData(string userId)
     {
-        var task = GetUserData(userId);
-        yield return new WaitUntil(() => task.IsCompleted);
+        var task = GetUserData(userId); // Llama a la función GetUserData para obtener los datos del usuario
+        yield return new WaitUntil(() => task.IsCompleted); // Espera hasta que la tarea (obtener los datos) esté completada
     }
 
-
+    // Función que devuelve la ruta del avatar según el rango del usuario
     private string ObtenerAvatarPorRango(string rangos)
     {
-        string avatarPath = string.Empty;
-        if (rangos == "Novato de laboratorio")
+        string avatarPath = rangos switch
         {
-            avatarPath = "Avatares/nivel1";
+            "Novato de laboratorio" => "Avatares/nivel1", // Ruta del avatar para el rango "Novato de laboratorio"
+            "Arquitecto molecular" => "Avatares/nivel2", // Ruta del avatar para el rango "Arquitecto molecular"
+            "Visionario Cuántico" => "Avatares/nivel3", // Ruta del avatar para el rango "Visionario Cuántico"
+            "Amo del caos químico" => "Avatares/nivel4", // Ruta del avatar para el rango "Amo del caos químico"
+            _ => "Avatares/defecto" // Si no hay un rango definido, se asigna el avatar por defecto
+        };
+
+        Debug.Log($"Ruta de avatar por nivel: {avatarPath}"); // Muestra en consola la ruta del avatar
+        return avatarPath; // Devuelve la ruta del avatar correspondiente
+    }
+
+    // Función para obtener los datos del usuario desde Firebase
+    async Task GetUserData(string userId)
+    {
+        // Obtiene la referencia al documento del usuario desde Firestore usando su ID
+        DocumentReference docRef = db.Collection("users").Document(userId);
+        // Intenta obtener los datos del usuario
+        DocumentSnapshot snapshot = await docRef.GetSnapshotAsync();
+
+        // Verifica si el usuario existe en la base de datos
+        if (!snapshot.Exists)
+        {
+            // Si el usuario no existe, muestra un mensaje de error y asigna valores predeterminados
+            Debug.LogError("Usuario no encontrado en la base de datos.");
+            UserName.text = "¡Usuario no encontrado!";
+            rangotext.text = "Sin rango";
+            Xptext.text = "0";
+            return; // Sale de la función si el usuario no existe
         }
-        else if (rangos == "Arquitecto molecular")
+
+        Debug.Log($"Usuario encontrado en Firebase: {userId}"); // Muestra el ID del usuario encontrado
+
+        // Obtiene los valores del usuario (nombre, rango, XP) de Firestore, si existen
+        string userName = snapshot.ContainsField("DisplayName") ? snapshot.GetValue<string>("DisplayName") : "Sin nombre";
+        string rangos = snapshot.ContainsField("Rango") ? snapshot.GetValue<string>("Rango") : "Sin rango";
+        int xp = snapshot.ContainsField("xp") ? snapshot.GetValue<int>("xp") : 0;
+
+        // Muestra los datos en la interfaz
+        Xptext.text = xp.ToString(); // Muestra los puntos de experiencia
+        UserName.text = "¡Hola " + userName + "!"; // Muestra el nombre del usuario
+        rangotext.text = "¡" + rangos + "!"; // Muestra el rango del usuario
+
+        // Obtiene y asigna el avatar correspondiente según el rango
+        string avatarPath = ObtenerAvatarPorRango(rangos); // Obtiene la ruta del avatar según el rango
+        Sprite avatarSprite = Resources.Load<Sprite>(avatarPath); // Carga la imagen del avatar
+
+        // Si encontró la imagen del avatar, la asigna a la interfaz
+        if (avatarSprite != null)
         {
-            avatarPath = "Avatares/nivel2";
-        }
-        else if (rangos == "Visionario Cuántico")
-        {
-            avatarPath = "Avatares/nivel3";
-        }
-        else if (rangos == "Amo del caos químico")
-        {
-            avatarPath = "Avatares/nivel4";
+            avatarimage.sprite = avatarSprite;
         }
         else
         {
-            avatarPath = "Avatares/defecto";
-        }
-
-        Debug.Log($"Ruta de avatar por nivel: {avatarPath}");  // Verifica la ruta generada
-        return avatarPath;
-    }
-
-    async Task GetUserData(string userId)
-    {
-        DocumentReference docRef = db.Collection("users").Document(userId);
-        DocumentSnapshot snapshot = await docRef.GetSnapshotAsync();
-
-        if (snapshot.Exists)
-        {
-            Debug.Log($"usuario encontrado en firebase : {userId}");
-            string userName = snapshot.GetValue<string>("DisplayName");
-            string rangos = snapshot.GetValue<string>("Rango");
-            //int xp = snapshot.GetValue<int>("xp");
-            string avatarUrl = snapshot.GetValue<string>("avatar");
-            
-
-
-            // obtener la url del avatar dependiendo el rango
-            string avatarPath = ObtenerAvatarPorRango(rangos); // traigo la url de obteneravatar por rango
-            Sprite avatarSprite = Resources.Load<Sprite>(avatarPath); // le pongo la dirección y hhago que vaya a la carpeta resources y lo busque
-
-            if (avatarSprite != null)
-            {
-                avatarimage.sprite = avatarSprite;
-            }
-            else
-            {
-                Debug.LogError($"No se encontró el avatar para la ruta: {avatarPath}. Asignando avatar por defecto.");
-                avatarimage.sprite = Resources.Load<Sprite>("Avatares/default");  // Avatar por defecto si no se encuentra
-
-            }
-
-            UserName.text ="¡Hola " + userName +"!";
-            rangotext.text = "!" + rangos + "!";
-
+            // Si no se encuentra el avatar, muestra un avatar por defecto
+            Debug.LogError($"No se encontró el avatar para la ruta: {avatarPath}. Asignando avatar por defecto.");
+            avatarimage.sprite = Resources.Load<Sprite>("Avatares/default");
         }
     }
-    
-    async void ObtenerPosicionUsuario() // ############################################ FUNCION PARA ORGANIZAR LOS RANKING Y PONERLO EN EL posicionText
+
+    // Función para obtener la posición del usuario en el ranking
+    async void ObtenerPosicionUsuario()
     {
+        // Realiza una consulta para obtener los usuarios ordenados por XP en orden descendente (de mayor a menor)
         Query rankingQuery = db.Collection("users").OrderByDescending("xp");
+        // Ejecuta la consulta y obtiene los datos
         QuerySnapshot snapshot = await rankingQuery.GetSnapshotAsync();
 
-        int posicion = 1; // Empezamos en la posición 1
-
-        foreach (DocumentSnapshot doc in snapshot.Documents)
+        // Si no hay usuarios en la base de datos
+        if (snapshot.Count == 0)
         {
-            if (doc.Id == userId)  // Si encontramos al usuario logueado
-            {
-                posicionText.text = "Posición: #" + posicion;
-                Debug.Log($"El usuario {userId} está en la posición {posicion} del ranking.");
-                return; // Salimos del bucle
-            }
-            posicion++; // Si no es el usuario, aumentamos la posición
+            Debug.LogWarning("No hay usuarios registrados en la base de datos.");
+            posicionText.text = "Posición: No disponible"; // Muestra mensaje indicando que no hay usuarios
+            return; // Sale de la función si no hay usuarios
         }
 
-        // Si no lo encontró en la base de datos
-        posicionText.text = "Posición: No encontrada";
-        Debug.LogError("No se encontró al usuario en el ranking.");
-    }
+        int posicion = 1; // Comienza desde la posición 1 en el ranking
+        bool encontrado = false; // Variable para indicar si se encuentra al usuario
 
-
-
-    void GetUserXp(string userId) // ############################################ FUNCION PARA TRAER EL XP DEL USUARIO AL Xptext
-    {
-        //hacer la referencia a la colleción users  y que vaya y busque el usuario por el id
-        DocumentReference userRef = db.Collection("users").Document(userId);
-
-        // userRef= se ubica dentro de el usuario dentro del collecion, getSnapshotAsync = pide la informacion, ContinueWithOnMainThread 
-        //le dice al código que se siga ejecutando lo demás, el Task define la tarea
-        userRef.GetSnapshotAsync().ContinueWithOnMainThread(Task =>
+        // Recorre todos los usuarios del ranking
+        foreach (DocumentSnapshot doc in snapshot.Documents)
         {
-            // si la tarea es completada y el resultado existe entonces...
-            if (Task.IsCompleted && Task.Result.Exists)
+            // Si el ID del documento coincide con el ID del usuario actual
+            if (doc.Id == userId)
             {
-                // guarde el resultado del resultado de la tarea(task) dentro de variable xp
-                int xp = Task.Result.GetValue<int>("xp");
-
-                //mostrar dentro de el txt en unity
-                Xptext.text = xp.ToString();
+                encontrado = true; // Marca que se encontró al usuario
+                posicionText.text = "Posición: #" + posicion; // Muestra la posición en el ranking
+                Debug.Log($"El usuario {userId} está en la posición {posicion} del ranking.");
+                break; // Sale del ciclo ya que se encontró al usuario
             }
-            else
-            {
-                Debug.LogWarning("Usuario no encontrado ");
-            }
+            posicion++; // Incrementa la posición para el siguiente usuario
+        }
 
-        });
+        // Si no se encontró al usuario
+        if (!encontrado)
+        {
+            Debug.LogError("No se encontró al usuario en el ranking.");
+            posicionText.text = "Posición: No encontrada"; // Muestra un mensaje de error
+        }
     }
-
-   
 }

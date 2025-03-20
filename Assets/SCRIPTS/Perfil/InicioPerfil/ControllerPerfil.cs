@@ -3,148 +3,171 @@ using TMPro;
 using Firebase.Firestore;
 using System.Threading.Tasks;
 using UnityEngine.UI;
-using System.Collections;  // Importante para Imagenes
 using UnityEngine.SceneManagement;
+using Firebase.Auth;
+
 public class ControllerPerfil : MonoBehaviour
 {
-    //instanciar la conexion a la bd
+    // Firebase
     private FirebaseFirestore db;
+    private FirebaseAuth auth;
+    private FirebaseUser currentUser;
 
-    //variables de UI unity
+    // Interfaz
     public TMP_Text tmpUsername;
     public TMP_Text tmpCorreo;
-    public Image avatarImage;  // Componente Image donde se mostrará el avatar
-    // variables para cargas las misiones
-    public Transform content;// donde va el scroll 
-    public GameObject buttonPrefab; // boton que se crea cada vez que hay una mision
+    public Image avatarImage;
+    public Button GameButton;
+
+    // Misiones
+    public Transform content;
+    public GameObject buttonPrefab;
     public string userId;
+    private string rangoActual;
+
+    // Internet
+    private bool hayInternet = false;
 
     void Start()
     {
         Debug.Log("ControllerPerfil Start ejecutándose...");
 
-        db = FirebaseFirestore.DefaultInstance;
-        userId = PlayerPrefs.GetString("userId", "").Trim();
+        // Verificar conexión a internet
+        hayInternet = Application.internetReachability != NetworkReachability.NotReachable;
 
-        Debug.Log("UserID en PlayerPrefs: " + userId);
-
-        if (!string.IsNullOrEmpty(userId))
+        if (hayInternet)
         {
-            ObtenerDatosUsuario(userId);//########################## llamado de funcion para datos
-        }
-        else
-        {
-            tmpUsername.text = "Usuario: No encontrado";
-            tmpCorreo.text = "Correo: No encontrado";
-        }
-
-        CargarMisioness();// ##################################### llamado de funcion para cargar las misiones dentro del scroll view
-    }
-
-    private string ObtenerAvatarPorRango(string rangos) //############################################# funcion para obtener nivel del usuario en particular
-    {
-        string avatarPath = string.Empty;
-        if (rangos == "Novato de laboratorio")
-        {
-            avatarPath = "Avatares/nivel1";
-        }
-        else if (rangos == "Arquitecto molecular")
-        {
-            avatarPath = "Avatares/nivel2";
-        }
-        else if (rangos == "Visionario Cuántico")
-        {
-            avatarPath = "Avatares/nivel3";
-        }
-        else if (rangos == "Amo del caos químico")
-        {
-            avatarPath = "Avatares/nivel4";
-        }
-        else
-        {
-            avatarPath = "Avatares/defecto";
-        }
-
-        Debug.Log($"Ruta de avatar por nivel: {avatarPath}");  // Verifica la ruta generada
-        return avatarPath;
-    }
-
-    async void ObtenerDatosUsuario(string userId) //###################################################### traemos los datos para pasarlos a los txt
-    {
-        DocumentReference docRef = db.Collection("users").Document(userId);
-        DocumentSnapshot snapshot = await docRef.GetSnapshotAsync();
-
-        if (snapshot.Exists)
-        {
-            Debug.Log("Documento encontrado en Firestore");
-            string username = snapshot.GetValue<string>("DisplayName");
-            string correo = snapshot.GetValue<string>("Email");
-            string rangos = snapshot.GetValue<string>("Rango");
-            int xp = snapshot.GetValue<int>("xp");
-            string avatarUrl = snapshot.GetValue<string>("avatar"); // Recuperar la ruta del avatar
-
-
-            // Obtener la ruta del avatar según el nivel
-            string avatarPath = ObtenerAvatarPorRango(rangos);
-            Sprite avatarSprite = Resources.Load<Sprite>(avatarPath); // Cargar la imagen desde Resources
-            
-            if (avatarSprite != null)
+            Debug.Log("✅ Conexión a internet detectada");
+            // Firebase listo
+            if (DbConnexion.Instance.IsFirebaseReady())
             {
-                avatarImage.sprite = avatarSprite;  // Asignar la imagen al Image
+                db = DbConnexion.Instance.Firestore;
+                auth = FirebaseAuth.DefaultInstance;
+                string userId = PlayerPrefs.GetString("userId", "").Trim();
+
+                if (userId != null)
+                {
+                    Debug.Log("✅ Usuario autenticado: " + userId);
+                    EscucharCambiosUsuario(userId);
+                    
+                }
+                else
+                {
+                    Debug.LogError("❌ No hay usuario autenticado");
+                    MostrarDatosOffline();
+                }
             }
             else
             {
-                Debug.LogError($"No se encontró el avatar para la ruta: {avatarPath}. Asignando avatar por defecto.");
-                avatarImage.sprite = Resources.Load<Sprite>("Avatares/default");  // Avatar por defecto si no se encuentra
+                Debug.LogError("❌ Firebase no está listo");
+                MostrarDatosOffline();
             }
-
-            Debug.Log($"Nombre de usuario Firestore: {username}");
-            Debug.Log($"Correo Firestore: {correo}");
-
-            tmpUsername.text = "¡Hola, " + username + "!";
-            tmpCorreo.text = "Correo: " + correo;
         }
         else
         {
-            Debug.LogError("El documento del usuario no existe en Firestore.");
-            tmpUsername.text = "Usuario: No disponible";
-            tmpCorreo.text = "Correo: No disponible";
+            Debug.LogWarning("⚠️ No hay conexión a internet. Cargando datos offline.");
+            MostrarDatosOffline();
+            // Imprimir datos de PlayerPrefs al iniciar
+            ImprimirDatosPlayerPrefs();
         }
+
+        
+        GameButton.onClick.AddListener(OnGameButtonClick); // Escuchar botón login
+    }
+    public void OnGameButtonClick()
+    {
+        SceneManager.LoadScene("grupo1");
+    }
+    // ✅ Mostrar datos guardados en PlayerPrefs (modo offline)
+    private void MostrarDatosOffline()
+    {
+        string username = PlayerPrefs.GetString("DisplayName", "");
+        string correo = PlayerPrefs.GetString("Email", "Correo no disponible");
+        string rangos = PlayerPrefs.GetString("TempRango", "");
+        int xp = PlayerPrefs.GetInt("xp", 0);
+        rangoActual = rangos;
+
+        tmpUsername.text = "¡Hola, " + username + "!";
+        tmpCorreo.text = "Correo: " + correo;
+
+        string avatarPath = ObtenerAvatarPorRango(rangos);
+        Sprite avatarSprite = Resources.Load<Sprite>(avatarPath) ?? Resources.Load<Sprite>("Avatares/defecto");
+        avatarImage.sprite = avatarSprite;
+
+        // Aquí podrías cargar misiones desde una lista guardada o solo dejar los datos personales.
+        // Ejemplo: Mostrar un mensaje de que las misiones no están disponibles offline
+        Debug.LogWarning("Misiones no disponibles en modo offline.");
     }
 
-    // Método para obtener el nivel del usuario desde Firestore
-    async Task<string> ObtenerRangoUsuario(string userId) //################################## obtenemos el rango para poder mostrar mision dependiendo el rango de cada usuario en especifico
+    // ✅ Escuchar cambios en Firestore y guardar en PlayerPrefs
+    private void EscucharCambiosUsuario(string userId)
     {
-        // Referencia a la colección de usuarios en Firestore
+        DocumentReference docRef = db.Collection("users").Document(userId);
+        docRef.Listen(snapshot =>
+        {
+            if (snapshot.Exists)
+            {
+                string username = snapshot.GetValue<string>("DisplayName");
+                string correo = snapshot.GetValue<string>("Email");
+                string rangos = snapshot.GetValue<string>("Rango");
+                int xpFirebase = snapshot.GetValue<int>("xp");
+
+                int xpTemp = PlayerPrefs.GetInt("TempXP", 0); // XP guardado localmente
+
+                // ✅ Comparar XP de Firebase con TempXP y actualizar si es necesario
+                if (xpTemp > 0) // Solo actualizamos si TempXP es mayor a 0
+                {
+                    int nuevoXP = xpFirebase + xpTemp; // Sumar TempXP al XP de Firebase
+                    ActualizarXPEnFirebase(userId, nuevoXP);
+                    PlayerPrefs.SetInt("TempXP", 0); // Resetear TempXP después de la actualización
+                    PlayerPrefs.Save();
+                    Debug.Log($"🔄 XP actualizado en Firebase: {xpFirebase} ➡ {nuevoXP}");
+                }
+
+                rangoActual = rangos;
+                ActualizarRangoSegunXP(xpFirebase);
+
+                // Guardar en PlayerPrefs
+                PlayerPrefs.SetString("DisplayName", username);
+                PlayerPrefs.SetString("Email", correo);
+                PlayerPrefs.SetString("Rango", rangos);
+                PlayerPrefs.SetInt("xp", xpFirebase);
+                PlayerPrefs.Save();
+
+                // Cargar avatar y datos
+                string avatarPath = ObtenerAvatarPorRango(rangos);
+                Sprite avatarSprite = Resources.Load<Sprite>(avatarPath) ?? Resources.Load<Sprite>("Avatares/default");
+                avatarImage.sprite = avatarSprite;
+
+                tmpUsername.text = "¡Hola, " + username + "!";
+                tmpCorreo.text = "Correo: " + correo;
+
+                LimpiarMisiones();
+                CargarMisioness(); // Recargar misiones según rango
+            }
+            else
+            {
+                Debug.LogError("❌ El documento no existe");
+                MostrarDatosOffline();
+            }
+        });
+    }
+    private async void ActualizarXPEnFirebase(string userId, int nuevoXP)
+    {
         DocumentReference userRef = db.Collection("users").Document(userId);
-
-        // Obtenemos el documento del usuario
-        DocumentSnapshot userSnap = await userRef.GetSnapshotAsync();
-
-        if (userSnap.Exists)
-        {
-            // Obtenemos el nivel del usuario
-            string rango = userSnap.GetValue<string>("Rango");
-            Debug.Log($"rango del usuario: {rango}");
-            return rango;
-        }
-        else
-        {
-            Debug.LogError("No se encontró el usuario en Firestore.");
-            return ""; // Devolvemos 0 si no se encuentra el usuario
-        }
+        await userRef.UpdateAsync("xp", nuevoXP);
+        Debug.Log($"✅ XP actualizado en Firebase para el usuario {userId}: {nuevoXP}");
     }
 
-    public async void CargarMisioness()//############################################# mostramos todo dentro del content del scrollview
-    {
-        // Obtener el nivel del usuario
-        string rangoUsuario = await ObtenerRangoUsuario(userId);// acá llamamos la funcion para pasarle el rango y poder comparar
 
-        // Filtrar misiones por nivel
-        Query misionesQuery = db.Collection("misiones").WhereEqualTo("rangoRequerido", rangoUsuario);
+
+    // ✅ Cargar misiones según el rango
+    public async void CargarMisioness()
+    {
+        Debug.Log($"Cargando misiones para el rango: {rangoActual}");
+        Query misionesQuery = db.Collection("misiones").WhereEqualTo("rangoRequerido", rangoActual);
         QuerySnapshot snapshot = await misionesQuery.GetSnapshotAsync();
 
-        // Recorremos las misiones obtenidas
         foreach (DocumentSnapshot document in snapshot.Documents)
         {
             if (document.Exists)
@@ -153,46 +176,27 @@ public class ControllerPerfil : MonoBehaviour
                 string descripcion = document.GetValue<string>("descripcion");
                 int xp = document.GetValue<int>("xp");
                 string rutaEscena = document.GetValue<string>("rutaEscena");
-                string misionID = document.Id; // ID de la misión
+                string misionID = document.Id;
 
-                Debug.Log($"Misión: {titulo}, {descripcion}, XP: {xp}, Escena: {rutaEscena}");
-
-                // Instanciamos el botón para mostrar la misión
                 GameObject newButton = Instantiate(buttonPrefab, content);
-
-                // Obtener componentes del botón
-                TextMeshProUGUI[] textComponents = newButton.GetComponentsInChildren<TextMeshProUGUI>();
+                TextMeshProUGUI[] texts = newButton.GetComponentsInChildren<TextMeshProUGUI>();
                 Slider barraProgreso = newButton.GetComponentInChildren<Slider>();
 
-                // Asignamos la información al botón
-                textComponents[0].text = titulo;
-                textComponents[1].text = descripcion;
-                textComponents[2].text = $"XP: {xp}";
+                texts[0].text = titulo;
+                texts[1].text = descripcion;
+                texts[2].text = $"XP: {xp}";
 
-                // Asignar evento al botón para cambiar de escena
                 Button btn = newButton.GetComponent<Button>();
                 if (btn != null)
-                {
                     btn.onClick.AddListener(() => CambiarEscena(rutaEscena));
-                }
-                else
-                {
-                    Debug.LogWarning("El botón no tiene componente Button.");
-                }
 
-                // Cargar el progreso del usuario en la misión
-                await CargarProgreso(userId, misionID, barraProgreso);// acá modificamos el slider
-            }
-            else
-            {
-                Debug.LogWarning("Documento no encontrado.");
+                await CargarProgreso(userId, misionID, barraProgreso);
             }
         }
     }
 
-
-    // Método para cargar el progreso del usuario
-    async Task CargarProgreso(string userId, string missionId, Slider barraProgreso) // ################################## función para cargar el slider que esta dentro del botónd de prefabs
+    // ✅ Cargar progreso de misión
+    async Task CargarProgreso(string userId, string missionId, Slider barraProgreso)
     {
         DocumentReference docRef = db.Collection("progreso_misiones").Document(userId).Collection("misiones").Document(missionId);
         DocumentSnapshot docSnap = await docRef.GetSnapshotAsync();
@@ -200,29 +204,79 @@ public class ControllerPerfil : MonoBehaviour
         if (docSnap.Exists)
         {
             int progreso = docSnap.GetValue<int>("progreso");
-            barraProgreso.value = progreso / 100f; // Normalizar entre 0 y 1
+            barraProgreso.value = progreso / 100f;
             Debug.Log($"✅ Progreso de {missionId}: {progreso}%");
         }
         else
         {
-            barraProgreso.value = 0f; // Si no existe, empieza en 0
-            Debug.Log($"⚠️ No se encontró progreso para {missionId}, iniciando en 0%");
+            barraProgreso.value = 0f;
+            Debug.Log($"⚠️ Sin progreso registrado para {missionId}");
         }
     }
 
+    // ✅ Actualizar rango
+    public async void ActualizarRangoSegunXP(int xp)
+    {
+        string nuevoRango = ObtenerRangoSegunXP(xp);
+        DocumentReference userRef = db.Collection("users").Document(userId);
+        await userRef.UpdateAsync("Rango", nuevoRango);
+        rangoActual = nuevoRango;
+        Debug.Log($"🔄 Rango actualizado a: {rangoActual}");
+    }
+
+    // ✅ Limpiar misiones anteriores
+    private void LimpiarMisiones()
+    {
+        foreach (Transform child in content)
+        {
+            Destroy(child.gameObject);
+        }
+    }
+
+    // ✅ Cambiar escena
     void CambiarEscena(string rutaEscena)
     {
-        Debug.Log("Intentando cargar la escena: " + rutaEscena);
         if (Application.CanStreamedLevelBeLoaded(rutaEscena))
-        {
-            Debug.Log("Cambiando a la escena: " + rutaEscena);
             SceneManager.LoadScene(rutaEscena);
-        }
         else
-        {
-            Debug.LogError("❌ ERROR: La escena '" + rutaEscena + "' no está en Build Settings o tiene un nombre incorrecto.");
-        }
+            Debug.LogError($"❌ Escena '{rutaEscena}' no encontrada.");
     }
 
+    // ✅ Rango según XP
+    private string ObtenerRangoSegunXP(int xp)
+    {
+        if (xp >= 3000) return "Amo del caos químico";
+        if (xp >= 2000) return "Visionario Cuántico";
+        if (xp >= 1000) return "Arquitecto molecular";
+        return "Novato de laboratorio";
+    }
 
+    // ✅ Avatar según rango
+    private string ObtenerAvatarPorRango(string rangos)
+    {
+        switch (rangos)
+        {
+            case "Novato de laboratorio": return "Avatares/nivel1";
+            case "Arquitecto molecular": return "Avatares/nivel2";
+            case "Visionario Cuántico": return "Avatares/nivel3";
+            case "Amo del caos químico": return "Avatares/nivel4";
+            default: return "Avatares/default";
+        }
+    }
+    public void ImprimirDatosPlayerPrefs()
+    {
+        string username = PlayerPrefs.GetString("TempUsername", "");
+        string ocupacion = PlayerPrefs.GetString("TempOcupacion", "");
+        string rango = PlayerPrefs.GetString("TempRango", "");
+        int encuestaCompletada =PlayerPrefs.GetInt("TempEncuestaCompletada", 0);
+        int xp = PlayerPrefs.GetInt("TempXP", 0);
+
+        Debug.Log("========== DATOS GUARDADOS EN PLAYERPREFS ==========");
+        Debug.Log("Nombre de usuario: " + username);
+        Debug.Log("Ocupación: " + ocupacion);
+        Debug.Log("Rango: " + rango);
+        Debug.Log("XP: " + xp);
+        Debug.Log("estado encuesta: " + encuestaCompletada);
+        Debug.Log("====================================================");
+    }
 }

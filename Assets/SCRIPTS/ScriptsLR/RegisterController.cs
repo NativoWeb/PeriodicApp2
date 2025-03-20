@@ -1,5 +1,4 @@
-﻿using Firebase;
-using Firebase.Auth;
+﻿using Firebase.Auth;
 using Firebase.Extensions;
 using Firebase.Firestore;
 using System.Collections.Generic;
@@ -13,7 +12,16 @@ public class RegisterController : MonoBehaviour
     public TMP_InputField userNameInput;
     public Button completeProfileButton;
     public Dropdown roles;
-    private FirebaseAuth auth;
+
+    // -------------------------------------- RANGOS --------------------------------------
+    private Dictionary<string, int> rangos = new Dictionary<string, int>()
+    {
+        { "Novato de laboratorio", 0 },
+        { "Arquitecto molecular", 3000},
+        { "Visionario Cuántico", 9000 },
+        { "Amo del caos químico", 25000 }
+    };
+    // -----------------------------------------------------------------------------------
 
     void Start()
     {
@@ -26,20 +34,15 @@ public class RegisterController : MonoBehaviour
         roles.onValueChanged.AddListener(delegate { CambiarColor(); });
         CambiarColor(); // Aplicar color inicial
 
-        /*------------------------------------------------------------------------------------------------------------------*/
-
-        FirebaseApp.CheckAndFixDependenciesAsync().ContinueWithOnMainThread(task => {
-            FirebaseApp app = FirebaseApp.DefaultInstance;
-            if (app != null)
-            {
-                auth = FirebaseAuth.DefaultInstance;
-                completeProfileButton.onClick.AddListener(OnCompleteProfileButtonClick);
-            }
-            else
-            {
-                Debug.LogError("Firebase no se ha podido inicializar.");
-            }
-        });
+        // Usar la instancia de DbConnexion para obtener la autenticación
+        if (DbConnexion.Instance.IsFirebaseReady())
+        {
+            completeProfileButton.onClick.AddListener(OnCompleteProfileButtonClick);
+        }
+        else
+        {
+            Debug.LogError("Firebase no está listo.");
+        }
     }
 
     /*******************************************Función para cambiar el color del Dropdown*******************************************/
@@ -54,7 +57,7 @@ public class RegisterController : MonoBehaviour
     public void OnCompleteProfileButtonClick()
     {
         string userName = userNameInput.text;
-        FirebaseUser currentUser = auth.CurrentUser;
+        FirebaseUser currentUser = DbConnexion.Instance.Auth.CurrentUser; // Usar la instancia de DbConnexion para obtener el usuario
 
         if (currentUser != null)
         {
@@ -103,50 +106,155 @@ public class RegisterController : MonoBehaviour
 
     private void SaveUserData(FirebaseUser user)
     {
-        FirebaseFirestore firestore = FirebaseFirestore.DefaultInstance;
+        FirebaseFirestore firestore = DbConnexion.Instance.Firestore; // Obtener instancia de Firestore
         DocumentReference docRef = firestore.Collection("users").Document(user.UserId);
 
-        // Asignar avatar según el nivel
-        string avatarUrl = "Avatares/defecto";  // Ruta de la imagen dentro de Resources
-        // Obtener la ocupación seleccionada
+        string avatarUrl = "Avatares/defecto";  // Ruta de avatar por defecto
         string ocupacionSeleccionada = roles.options[roles.value].text;
 
+        // Verificar si existe un usuario temporal
+        bool tieneUsuarioTemporal = PlayerPrefs.HasKey("TempUsername");
+        int xpTemp = PlayerPrefs.GetInt("TempXP", 0); // Obtener XP temporal, si existe
+
+        // Crear datos de usuario
         Dictionary<string, object> userData = new Dictionary<string, object>
     {
         { "DisplayName", user.DisplayName },
         { "Email", user.Email },
         { "Ocupacion", ocupacionSeleccionada },
-        { "EncuestaCompletada", false },// 🔹 Marcamos la encuesta como no completada inicialmente
-        { "xp", 0 },
-        { "avatar", avatarUrl }, // Avatar inicial
-        {"Rango", "Novato de laboratorio" }
+        { "EncuestaCompletada", false},
+        { "xp", xpTemp },  // Si tenía XP temporal, lo subimos
+        { "avatar", avatarUrl },
+        { "Rango", "Novato de laboratorio" }
     };
 
         PlayerPrefs.SetString("userId", user.UserId);
         PlayerPrefs.Save();
 
         docRef.SetAsync(userData, SetOptions.MergeAll).ContinueWithOnMainThread(task => {
-            if (task.IsCanceled)
+            if (task.IsCanceled || task.IsFaulted)
             {
                 Debug.LogError("Error al guardar los datos del usuario.");
                 return;
             }
-            if (task.IsFaulted)
+
+            Debug.Log("✅ Datos de usuario guardados en Firestore.");
+
+            // 🔹 Si tenía usuario temporal, eliminarlo
+            if (tieneUsuarioTemporal)
             {
-                Debug.LogError("Error al guardar los datos: " + task.Exception?.Message);
-                return;
+                Debug.Log("♻️ Se detectó un usuario temporal. Eliminando datos temporales...");
+                PlayerPrefs.DeleteKey("TempUsername");
+                PlayerPrefs.SetInt("TempXP", 0);
+                PlayerPrefs.DeleteKey("TempOcupacion");
+                PlayerPrefs.DeleteKey("TempAvatar");
+                PlayerPrefs.DeleteKey("TempRango");
+                PlayerPrefs.SetString("Estadouser", "nube");
+                PlayerPrefs.Save();
             }
-            Debug.Log("Datos de usuario guardados en Firestore.");
+
+            // 🔹 Crear la subcolección "grupos"
+            CrearSubcoleccionGrupos(user.UserId);
+
+            // 🔹 Verificar y actualizar rango con el nuevo XP
+            VerificarYActualizarRango(user.UserId);
 
             // 🔹 Redirigir a la escena correcta según la ocupación
             if (ocupacionSeleccionada == "Estudiante")
             {
-                SceneManager.LoadScene("EcnuestaScen1e"); // Enviar a la encuesta
+                SceneManager.LoadScene("EcnuestaScen1e");
             }
             else if (ocupacionSeleccionada == "Profesor")
             {
-                SceneManager.LoadScene("InicioProfesor"); // Enviar a la vista de profesor
+                SceneManager.LoadScene("InicioProfesor");
             }
         });
     }
+
+
+    // ✅ FUNCION PARA CREAR LA SUBCOLECCIÓN "grupos"
+    private void CrearSubcoleccionGrupos(string userId)
+    {
+        FirebaseFirestore firestore = DbConnexion.Instance.Firestore; // Usar la instancia de DbConnexion para Firestore
+        CollectionReference gruposRef = firestore.Collection("users").Document(userId).Collection("grupos");
+
+        // Lista de nombres de los 18 grupos (puedes personalizar los nombres)
+        string[] nombresGrupos = new string[] {
+            "Metales Alcalinos", "Metales Alcalinotérreos", "Metales del Grupo del Escandio", "Metales del Grupo del Titanio", "Metales del Grupo del Vanadio", "Metales del Grupo del Cromo",
+            "Metales del Grupo del Manganeso", "Metales del Grupo del Hierro", "Metales del Grupo del Cobalto", "Metales del Grupo del Níquel", "Metales del Grupo del Cobre", "Metales del Grupo del Zinc",
+            "Lantánidos", "Actínidos", "Metaloides", "No Metales", "Halógenos", "Gases Nobles"
+        };
+
+        // Iterar sobre cada grupo para crear el documento con los datos iniciales
+        for (int i = 0; i < nombresGrupos.Length; i++)
+        {
+            string nombreGrupo = nombresGrupos[i];
+            Dictionary<string, object> grupoData = new Dictionary<string, object>
+            {
+                { "nivel", 1 }, // Nivel inicial
+                { "nivel_maximo", 15 }, // Nivel máximo, puedes cambiar este valor según necesidad
+                { "nombre", nombreGrupo },
+                { "ruta_imagen", $"GruposImages/Grupo{i + 1}" } // Ruta de la imagen, ajusta según tu carpeta Resources
+            };
+
+            gruposRef.Document(nombreGrupo).SetAsync(grupoData).ContinueWithOnMainThread(task => {
+                if (task.IsCompletedSuccessfully)
+                {
+                    Debug.Log($"Grupo '{nombreGrupo}' creado correctamente.");
+                }
+                else
+                {
+                    Debug.LogError($"Error al crear grupo '{nombreGrupo}': {task.Exception?.Message}");
+                }
+            });
+        }
+    }
+
+    // ------------------------- FUNCIÓN PARA VERIFICAR Y ACTUALIZAR RANGO -------------------------
+    private void VerificarYActualizarRango(string userId)
+    {
+        FirebaseFirestore db = DbConnexion.Instance.Firestore; // Usar la instancia de DbConnexion para Firestore
+        DocumentReference docRef = db.Collection("users").Document(userId);
+
+        docRef.GetSnapshotAsync().ContinueWithOnMainThread(task =>
+        {
+            if (task.IsCompleted)
+            {
+                DocumentSnapshot snapshot = task.Result;
+
+                if (snapshot.Exists && snapshot.ContainsField("xp"))
+                {
+                    int xp = snapshot.GetValue<int>("xp");
+                    string nuevoRango = "Novato de laboratorio";
+
+                    foreach (var rango in rangos)
+                    {
+                        if (xp >= rango.Value)
+                        {
+                            nuevoRango = rango.Key;
+                        }
+                    }
+
+                    string rangoActual = snapshot.ContainsField("Rango") ? snapshot.GetValue<string>("Rango") : "Novato de laboratorio";
+
+                    if (nuevoRango != rangoActual)
+                    {
+                        docRef.UpdateAsync("Rango", nuevoRango).ContinueWithOnMainThread(updateTask =>
+                        {
+                            if (updateTask.IsCompleted)
+                            {
+                                Debug.Log($"✅ Rango actualizado a: {nuevoRango}");
+                            }
+                        });
+                    }
+                }
+            }
+            else
+            {
+                Debug.LogError("Error al verificar el XP del usuario.");
+            }
+        });
+    }
+    // ---------------------------------------------------------------------------------------------
+
 }
