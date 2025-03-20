@@ -1,10 +1,11 @@
 ﻿using UnityEngine;
 using TMPro;
+using Firebase;
 using Firebase.Firestore;
+using Firebase.Auth;
 using System.Threading.Tasks;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
-using Firebase.Auth;
 
 public class ControllerPerfil : MonoBehaviour
 {
@@ -22,15 +23,20 @@ public class ControllerPerfil : MonoBehaviour
     // Misiones
     public Transform content;
     public GameObject buttonPrefab;
-    public string userId;
+    private string userId;
     private string rangoActual;
 
     // Internet
     private bool hayInternet = false;
 
-    void Start()
+    async void Start()
     {
         Debug.Log("ControllerPerfil Start ejecutándose...");
+
+        // Inicializar Firebase
+        await FirebaseApp.CheckAndFixDependenciesAsync();
+        db = FirebaseFirestore.DefaultInstance;
+        auth = FirebaseAuth.DefaultInstance;
 
         // Verificar conexión a internet
         hayInternet = Application.internetReachability != NetworkReachability.NotReachable;
@@ -38,28 +44,17 @@ public class ControllerPerfil : MonoBehaviour
         if (hayInternet)
         {
             Debug.Log("✅ Conexión a internet detectada");
-            // Firebase listo
-            if (DbConnexion.Instance.IsFirebaseReady())
-            {
-                db = DbConnexion.Instance.Firestore;
-                auth = FirebaseAuth.DefaultInstance;
-                string userId = PlayerPrefs.GetString("userId", "").Trim();
+            currentUser = auth.CurrentUser;
+            userId = PlayerPrefs.GetString("userId", "").Trim();
 
-                if (userId != null)
-                {
-                    Debug.Log("✅ Usuario autenticado: " + userId);
-                    EscucharCambiosUsuario(userId);
-                    
-                }
-                else
-                {
-                    Debug.LogError("❌ No hay usuario autenticado");
-                    MostrarDatosOffline();
-                }
+            if (!string.IsNullOrEmpty(userId))
+            {
+                Debug.Log("✅ Usuario autenticado: " + userId);
+                EscucharCambiosUsuario(userId);
             }
             else
             {
-                Debug.LogError("❌ Firebase no está listo");
+                Debug.LogError("❌ No hay usuario autenticado");
                 MostrarDatosOffline();
             }
         }
@@ -67,18 +62,13 @@ public class ControllerPerfil : MonoBehaviour
         {
             Debug.LogWarning("⚠️ No hay conexión a internet. Cargando datos offline.");
             MostrarDatosOffline();
-            // Imprimir datos de PlayerPrefs al iniciar
             ImprimirDatosPlayerPrefs();
         }
 
         
-        GameButton.onClick.AddListener(OnGameButtonClick); // Escuchar botón login
     }
-    public void OnGameButtonClick()
-    {
-        SceneManager.LoadScene("grupo1");
-    }
-    // ✅ Mostrar datos guardados en PlayerPrefs (modo offline)
+
+  
     private void MostrarDatosOffline()
     {
         string username = PlayerPrefs.GetString("DisplayName", "");
@@ -93,13 +83,8 @@ public class ControllerPerfil : MonoBehaviour
         string avatarPath = ObtenerAvatarPorRango(rangos);
         Sprite avatarSprite = Resources.Load<Sprite>(avatarPath) ?? Resources.Load<Sprite>("Avatares/defecto");
         avatarImage.sprite = avatarSprite;
-
-        // Aquí podrías cargar misiones desde una lista guardada o solo dejar los datos personales.
-        // Ejemplo: Mostrar un mensaje de que las misiones no están disponibles offline
-        Debug.LogWarning("Misiones no disponibles en modo offline.");
     }
 
-    // ✅ Escuchar cambios en Firestore y guardar en PlayerPrefs
     private void EscucharCambiosUsuario(string userId)
     {
         DocumentReference docRef = db.Collection("users").Document(userId);
@@ -143,7 +128,7 @@ public class ControllerPerfil : MonoBehaviour
                 tmpCorreo.text = "Correo: " + correo;
 
                 LimpiarMisiones();
-                CargarMisioness(); // Recargar misiones según rango
+                CargarMisiones(); // Recargar misiones según rango
             }
             else
             {
@@ -158,11 +143,7 @@ public class ControllerPerfil : MonoBehaviour
         await userRef.UpdateAsync("xp", nuevoXP);
         Debug.Log($"✅ XP actualizado en Firebase para el usuario {userId}: {nuevoXP}");
     }
-
-
-
-    // ✅ Cargar misiones según el rango
-    public async void CargarMisioness()
+    public async void CargarMisiones()
     {
         Debug.Log($"Cargando misiones para el rango: {rangoActual}");
         Query misionesQuery = db.Collection("misiones").WhereEqualTo("rangoRequerido", rangoActual);
@@ -195,7 +176,6 @@ public class ControllerPerfil : MonoBehaviour
         }
     }
 
-    // ✅ Cargar progreso de misión
     async Task CargarProgreso(string userId, string missionId, Slider barraProgreso)
     {
         DocumentReference docRef = db.Collection("progreso_misiones").Document(userId).Collection("misiones").Document(missionId);
@@ -205,26 +185,21 @@ public class ControllerPerfil : MonoBehaviour
         {
             int progreso = docSnap.GetValue<int>("progreso");
             barraProgreso.value = progreso / 100f;
-            Debug.Log($"✅ Progreso de {missionId}: {progreso}%");
         }
         else
         {
             barraProgreso.value = 0f;
-            Debug.Log($"⚠️ Sin progreso registrado para {missionId}");
         }
     }
 
-    // ✅ Actualizar rango
     public async void ActualizarRangoSegunXP(int xp)
     {
         string nuevoRango = ObtenerRangoSegunXP(xp);
         DocumentReference userRef = db.Collection("users").Document(userId);
         await userRef.UpdateAsync("Rango", nuevoRango);
         rangoActual = nuevoRango;
-        Debug.Log($"🔄 Rango actualizado a: {rangoActual}");
     }
 
-    // ✅ Limpiar misiones anteriores
     private void LimpiarMisiones()
     {
         foreach (Transform child in content)
@@ -233,15 +208,11 @@ public class ControllerPerfil : MonoBehaviour
         }
     }
 
-    // ✅ Cambiar escena
     void CambiarEscena(string rutaEscena)
     {
         if (Application.CanStreamedLevelBeLoaded(rutaEscena))
             SceneManager.LoadScene(rutaEscena);
-        else
-            Debug.LogError($"❌ Escena '{rutaEscena}' no encontrada.");
     }
-
     // ✅ Rango según XP
     private string ObtenerRangoSegunXP(int xp)
     {
@@ -268,7 +239,7 @@ public class ControllerPerfil : MonoBehaviour
         string username = PlayerPrefs.GetString("TempUsername", "");
         string ocupacion = PlayerPrefs.GetString("TempOcupacion", "");
         string rango = PlayerPrefs.GetString("TempRango", "");
-        int encuestaCompletada =PlayerPrefs.GetInt("TempEncuestaCompletada", 0);
+        int encuestaCompletada = PlayerPrefs.GetInt("TempEncuestaCompletada", 0);
         int xp = PlayerPrefs.GetInt("TempXP", 0);
 
         Debug.Log("========== DATOS GUARDADOS EN PLAYERPREFS ==========");
@@ -280,3 +251,5 @@ public class ControllerPerfil : MonoBehaviour
         Debug.Log("====================================================");
     }
 }
+
+

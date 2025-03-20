@@ -57,6 +57,8 @@ public class RegisterController : MonoBehaviour
     public void OnCompleteProfileButtonClick()
     {
         string userName = userNameInput.text;
+        PlayerPrefs.SetString("DisplayName", userName);
+        PlayerPrefs.Save();
         FirebaseUser currentUser = DbConnexion.Instance.Auth.CurrentUser; // Usar la instancia de DbConnexion para obtener el usuario
 
         if (currentUser != null)
@@ -126,8 +128,9 @@ public class RegisterController : MonoBehaviour
         { "xp", xpTemp },  // Si tenía XP temporal, lo subimos
         { "avatar", avatarUrl },
         { "Rango", "Novato de laboratorio" }
+       
     };
-
+        PlayerPrefs.SetString("Estadouser", "nube");
         PlayerPrefs.SetString("userId", user.UserId);
         PlayerPrefs.Save();
 
