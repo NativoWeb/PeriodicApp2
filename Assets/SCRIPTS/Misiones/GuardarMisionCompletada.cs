@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 public class GuardarMisionCompletada : MonoBehaviour
 {
     public Button botonCompletarMision; // Asigna el botón desde el Inspector
-    public Transform contenedorMisiones; // Asigna el contenedor de misiones en el Inspector
+    //public Transform contenedorMisiones; // Asigna el contenedor de misiones en el Inspector
 
     private FirebaseAuth auth;
     private FirebaseFirestore db;

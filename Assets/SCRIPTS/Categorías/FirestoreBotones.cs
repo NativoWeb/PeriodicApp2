@@ -8,6 +8,8 @@ public class CategoriaBotones : MonoBehaviour
 {
     public Transform contenedorBotones; // Contenedor en el Scroll View
     public GameObject prefabBoton; // Prefab del botón
+    public TextMeshProUGUI NombreUsuarioTMP;
+
 
     public TextMeshProUGUI tituloTMP;
     public TextMeshProUGUI nombreTMP;
@@ -36,9 +38,13 @@ public class CategoriaBotones : MonoBehaviour
 
     void Start()
     {
+        
         Debug.Log("📌 Cargando categorías...");
         botonCambiarEscena.interactable = false; // Desactivar botón hasta que se seleccione una categoría
         CargarCategorias();
+        string username = PlayerPrefs.GetString("DisplayName", "");
+        NombreUsuarioTMP.text = username;
+
     }
 
     void CargarCategorias()
