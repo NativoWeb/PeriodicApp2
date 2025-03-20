@@ -1,27 +1,31 @@
-using UnityEngine;
+Ôªøusing UnityEngine;
 using UnityEngine.SceneManagement;
 using Firebase.Firestore;
+using Firebase.Storage;
 using TMPro;
 using UnityEngine.UI;
-using System.Threading.Tasks;
 using Firebase.Extensions;
 using Firebase.Auth;
+using System.Text;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 public class EstadisticasController : MonoBehaviour
 {
     // Instancias de Firebase
     private FirebaseAuth auth;
-    public FirebaseFirestore db;
+    private FirebaseFirestore db;
+    private FirebaseStorage storage;
 
     // ID del usuario autenticado
-    public string userId;
+    private string userId;
 
     // Elementos de la UI
     public Image avatarImage;
     public TMP_Text rangotxt;
+    public Slider slider;
 
-    // Panel para cerrar sesiÛn
+    // Panel para cerrar sesi√≥n
     [SerializeField] private GameObject m_logoutUI = null;
 
     // Clase para representar cada cuadro de grupo
@@ -33,29 +37,25 @@ public class EstadisticasController : MonoBehaviour
         public Image grupoImagen;
     }
 
-    // Lista de cuadros de grupo (se asignan manualmente en el inspector)
     public List<CuadroGrupo> cuadrosGrupos;
+    private ListenerRegistration listenerRegistro;
 
-    // Referencia al Slider en la UI
-    public Slider slider;
-
-    ListenerRegistration listenerRegistro;
-
-    // ============================ M…TODOS PRINCIPALES ============================
+    // ============================ M√âTODOS PRINCIPALES ============================
 
     void Start()
     {
         auth = FirebaseAuth.DefaultInstance;
         db = FirebaseFirestore.DefaultInstance;
+        storage = FirebaseStorage.DefaultInstance;
+
         userId = PlayerPrefs.GetString("userId", "").Trim();
 
-        EscucharDatosUsuario(); // Escuchar datos del usuario en tiempo real
-        CargarNivelesPorGrupoUsuario(); // Cargar niveles por grupo
+        EscucharDatosUsuario();
+        CargarNivelesPorGrupoUsuario();
     }
 
     private void OnDestroy()
     {
-        // Detener el listener cuando se cierre o cambie de escena
         if (listenerRegistro != null) listenerRegistro.Stop();
     }
 
@@ -69,24 +69,16 @@ public class EstadisticasController : MonoBehaviour
         {
             if (snapshot.Exists)
             {
-                Debug.Log($"Datos del usuario actualizados en tiempo real: {userId}");
+                Debug.Log($"Datos del usuario actualizados: {userId}");
 
                 string rango = snapshot.GetValue<string>("Rango");
                 string avatarPath = ObtenerAvatarPorRango(rango);
                 Sprite avatarSprite = Resources.Load<Sprite>(avatarPath);
 
-                if (avatarSprite != null)
-                {
-                    avatarImage.sprite = avatarSprite;
-                }
-                else
-                {
-                    Debug.LogError($"No se encontrÛ una ruta v·lida para: {avatarPath}");
-                }
+                if (avatarSprite != null) avatarImage.sprite = avatarSprite;
+                else Debug.LogError($"No se encontr√≥ la ruta: {avatarPath}");
 
                 rangotxt.text = "Su rango es: " + rango + "!";
-
-                // XP para actualizar el slider
                 int xpUsuario = snapshot.GetValue<int>("xp");
                 ActualizarSlider(xpUsuario, rango);
             }
@@ -95,23 +87,6 @@ public class EstadisticasController : MonoBehaviour
                 Debug.LogError("El usuario no existe en la base de datos.");
             }
         });
-    }
-
-    // ============================ ASIGNACI”N DE AVATAR SEG⁄N RANGO ============================
-
-    public string ObtenerAvatarPorRango(string rango)
-    {
-        string avatarPath = rango switch
-        {
-            "Novato de laboratorio" => "Avatares/nivel1",
-            "Arquitecto molecular" => "Avatares/nivel2",
-            "Visionario Cu·ntico" => "Avatares/nivel3",
-            "Amo del caos quÌmico" => "Avatares/nivel4",
-            _ => "Avatares/defecto"
-        };
-
-        Debug.Log($"Ruta del avatar: {avatarPath}");
-        return avatarPath;
     }
 
     // ============================ CARGA DE NIVELES POR GRUPO ============================
@@ -137,15 +112,9 @@ public class EstadisticasController : MonoBehaviour
             QuerySnapshot snapshot = task.Result;
             int index = 0;
 
-            Debug.Log($"Cantidad de grupos en Firestore: {snapshot.Count}");
-
             foreach (DocumentSnapshot document in snapshot.Documents)
             {
-                if (index >= cuadrosGrupos.Count)
-                {
-                    Debug.LogWarning("Hay m·s grupos que cuadros disponibles.");
-                    break;
-                }
+                if (index >= cuadrosGrupos.Count) break;
 
                 string grupoNombre = document.ContainsField("nombre") ? document.GetValue<string>("nombre") : document.Id;
                 int nivel = document.ContainsField("nivel") ? document.GetValue<int>("nivel") : 0;
@@ -158,19 +127,12 @@ public class EstadisticasController : MonoBehaviour
                 cuadrosGrupos[index].nivelGrupoText.text = Mathf.RoundToInt(porcentaje) + "%";
 
                 Sprite avatarSprite = Resources.Load<Sprite>(rutaImagen);
-                if (avatarSprite != null)
-                {
-                    cuadrosGrupos[index].grupoImagen.sprite = avatarSprite;
-                }
-                else
-                {
-                    Debug.LogWarning($"No se encontrÛ la imagen en la ruta: {rutaImagen}");
-                }
+                if (avatarSprite != null) cuadrosGrupos[index].grupoImagen.sprite = avatarSprite;
+                else Debug.LogWarning($"No se encontr√≥ la imagen: {rutaImagen}");
 
                 index++;
             }
 
-            // Limpiar cuadros restantes si hay menos grupos que cuadros
             for (int i = index; i < cuadrosGrupos.Count; i++)
             {
                 cuadrosGrupos[i].nombreGrupoText.text = "";
@@ -180,21 +142,98 @@ public class EstadisticasController : MonoBehaviour
         });
     }
 
-    // ============================ CIERRE DE SESI”N ============================
+    // ============================ CIERRE DE SESI√ìN ============================
 
-    public void Logout()
+    // ========== üöÄ M√âTODO PARA SUBIR JSON A FIRESTORE ==========
+    private async Task SubirMisionesJSON()
     {
-        auth.SignOut(); // Cierra sesiÛn en Firebase
+        if (string.IsNullOrEmpty(userId))
+        {
+            Debug.LogError("‚ùå No hay usuario autenticado.");
+            return;
+        }
+
+        string jsonMisiones = PlayerPrefs.GetString("misionesJSON", "{}"); // Obtener el JSON de PlayerPrefs
+
+        if (jsonMisiones == "{}")
+        {
+            Debug.LogWarning("‚ö†Ô∏è No hay datos de misiones guardados.");
+            return;
+        }
+
+        // Convertir JSON a Dictionary para Firestore
+        Dictionary<string, object> data = new Dictionary<string, object>
+        {
+            { "misiones", jsonMisiones },
+            { "timestamp", FieldValue.ServerTimestamp }
+        };
+
+        // Subir a Firestore dentro del documento del usuario
+        DocumentReference userDoc = db.Collection("users").Document(userId);
+
+        await userDoc.SetAsync(data, SetOptions.MergeAll).ContinueWithOnMainThread(task =>
+        {
+            if (task.IsCompleted)
+            {
+                Debug.Log("‚úÖ Misiones JSON guardadas en Firestore.");
+            }
+            else
+            {
+                Debug.LogError("‚ùå Error al guardar el JSON en Firestore: " + task.Exception);
+            }
+        });
+    }
+
+    // ========== üöÄ CIERRE DE SESI√ìN + SUBIR JSON ==========
+    public async void Logout()
+    {
+        await SubirMisionesJSON(); // Guardar el JSON antes de cerrar sesi√≥n
+
+        auth.SignOut();
         PlayerPrefs.DeleteKey("userId"); // Elimina ID del usuario almacenado
         PlayerPrefs.DeleteKey("userEmail");
         PlayerPrefs.DeleteKey("userPassword");
         PlayerPrefs.DeleteKey("Estadouser");
         PlayerPrefs.DeleteKey("XP");
-        PlayerPrefs.SetInt("rememberMe", 0);
+        PlayerPrefs.SetInt("rememberMe", 0); 
+        PlayerPrefs.DeleteKey("misionesJSON"); // Eliminar datos locales
         PlayerPrefs.Save();
-        Debug.Log("SesiÛn cerrada correctamente");
-        SceneManager.LoadScene("Login"); // Redirige a la escena de login
 
+        Debug.Log("‚úÖ Sesi√≥n cerrada correctamente.");
+        SceneManager.LoadScene("Login");
+    }
+
+    // ============================ ACTUALIZAR SLIDER ============================
+
+    public void ActualizarSlider(int xp, string rango)
+    {
+        int xpMin = 0, xpMax = 1000;
+
+        switch (rango)
+        {
+            case "Novato de laboratorio": xpMin = 0; xpMax = 1000; break;
+            case "Arquitecto molecular": xpMin = 1000; xpMax = 2000; break;
+            case "Visionario Cu√°ntico": xpMin = 2000; xpMax = 3000; break;
+            case "Amo del caos qu√≠mico": xpMin = 3000; xpMax = 4000; break;
+        }
+
+        int rangoXP = xpMax - xpMin;
+        float progreso = Mathf.Clamp01((float)(xp - xpMin) / rangoXP);
+        slider.value = progreso;
+
+        Debug.Log($"XP: {xp} | Rango: {rango} | Progreso: {Mathf.RoundToInt(progreso * 100)}%");
+    }
+
+    private string ObtenerAvatarPorRango(string rango)
+    {
+        switch (rango)
+        {
+            case "Novato de laboratorio": return "Avatares/nivel1";
+            case "Arquitecto molecular": return "Avatares/nivel2";
+            case "Visionario Cu√°ntico": return "Avatares/defecto";
+            case "Amo del caos qu√≠mico": return "Avatares/nivel4";
+            default: return "Avatars/default";
+        }
     }
 
     // ============================ MOSTRAR PANTALLA DE LOGOUT ============================
@@ -207,40 +246,8 @@ public class EstadisticasController : MonoBehaviour
         }
         else
         {
-            Debug.LogError("El panel de logout no est· asignado.");
+            Debug.LogError("El panel de logout no est√° asignado.");
         }
     }
 
-    // ============================ ACTUALIZAR SLIDER ============================
-
-    public void ActualizarSlider(int xp, string rango)
-    {
-        int xpMin = 0;
-        int xpMax = 1000;
-
-        if (rango == "Novato de laboratorio")
-        {
-            xpMin = 0; xpMax = 1000;
-        }
-        else if (rango == "Arquitecto molecular")
-        {
-            xpMin = 1000; xpMax = 2000;
-        }
-        else if (rango == "Visionario Cu·ntico")
-        {
-            xpMin = 2000; xpMax = 3000;
-        }
-        else if (rango == "Amo del caos quÌmico")
-        {
-            xpMin = 3000; xpMax = 4000;
-        }
-
-        int rangoXP = xpMax - xpMin;
-        if (rangoXP <= 0) rangoXP = 1; // Evitar divisiÛn por 0
-
-        float progreso = Mathf.Clamp01((float)(xp - xpMin) / rangoXP);
-        slider.value = progreso;
-
-        Debug.Log($"XP: {xp} | Rango: {rango} | Progreso: {Mathf.RoundToInt(progreso * 100)}%");
-    }
 }
