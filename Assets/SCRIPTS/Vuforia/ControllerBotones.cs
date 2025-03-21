@@ -7,6 +7,7 @@ public class ControllerBotones : MonoBehaviour
     public GameObject PanelRegresarUI;
     public GameObject PanelBotonUI;
     public Button botonCompletarMision;
+    public Button Regresar;
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
@@ -21,8 +22,9 @@ public class ControllerBotones : MonoBehaviour
         }
         else if (ruta == "Misiones")
         {
+            PanelRegresarUI.SetActive(true);
             PanelBotonUI.SetActive(true);
-            PanelRegresarUI.SetActive(false);
+            botonCompletarMision.interactable = false;
         }
     }
 }

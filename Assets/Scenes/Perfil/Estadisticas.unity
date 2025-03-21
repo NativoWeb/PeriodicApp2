@@ -4691,9 +4691,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cf0741235e1b4e648a51aaa068641eed, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  userId: 
   avatarImage: {fileID: 438490328}
   rangotxt: {fileID: 476742250}
+  slider: {fileID: 1214946055}
   m_logoutUI: {fileID: 1314312038}
   cuadrosGrupos:
   - nombreGrupoText: {fileID: 796150815}
@@ -4750,7 +4750,6 @@ MonoBehaviour:
   - nombreGrupoText: {fileID: 1950561530}
     nivelGrupoText: {fileID: 583590080}
     grupoImagen: {fileID: 1907011027}
-  slider: {fileID: 1214946055}
 --- !u!1 &796150813
 GameObject:
   m_ObjectHideFlags: 0
@@ -9662,8 +9661,8 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 785711986}
         m_TargetAssemblyTypeName: cambiarescena, Assembly-CSharp
-        m_MethodName: siguienteEscena
-        m_Mode: 5
+        m_MethodName: VuforiaDesdeInicio
+        m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
           m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine

@@ -126,6 +126,9 @@ public class GestorElementos : MonoBehaviour
         txtEstado.text = elementoJson["estado"].Value;
         txtDescripcion.text = elementoJson["descripcion"].Value;
 
+        //Guardar numero atomico del elemento para que vuforia solo pueda escanear ese elemento
+        PlayerPrefs.SetString("NumeroAtomico", elementoJson["numero_atomico"].Value);
+
         LimpiarMisiones();
 
         foreach (JSONNode nivelJson in elementoJson["niveles"].AsArray)
