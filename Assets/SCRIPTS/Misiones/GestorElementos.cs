@@ -111,7 +111,6 @@ public class GestorElementos : MonoBehaviour
 
         if (!json.HasKey("misiones") || !json["misiones"].HasKey(elementoSeleccionado))
         {
-            Debug.LogError($"No se encontraron misiones para el elemento {elementoSeleccionado}.");
             return;
         }
 
