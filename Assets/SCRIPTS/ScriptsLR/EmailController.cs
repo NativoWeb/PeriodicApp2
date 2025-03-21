@@ -1,11 +1,9 @@
-﻿using Firebase;
-using Firebase.Auth;
-using Firebase.Extensions;
-using Firebase.Firestore;
+﻿using UnityEngine;
 using TMPro;
-using UnityEngine;
-using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using UnityEngine.SceneManagement;
+using Firebase.Auth;
+using UnityEngine.Networking;
 using System.Collections;
 
 public class EmailController : MonoBehaviour
@@ -13,6 +11,7 @@ public class EmailController : MonoBehaviour
     public TMP_InputField emailInput;
     public TMP_InputField passwordInput;
     public TMP_InputField confirmPasswordInput;
+    public TMP_InputField verificationCodeInput;
     public Button registerButton;
     public Button verifyButton;
     public TMP_Text verificationMessage;
@@ -21,50 +20,17 @@ public class EmailController : MonoBehaviour
     public GameObject verificacionPanel;  // Panel de verificación
 
     private FirebaseAuth auth;
-    private FirebaseFirestore firestore;
-    private FirebaseUser currentUser;
+    private string generatedCode;
+    private string registeredEmail;
+    private string registeredPassword;
 
     void Start()
     {
-        // Asegurarse de que el panel de verificación esté oculto al inicio
+        auth = FirebaseAuth.DefaultInstance;
+
         verificacionPanel.SetActive(false);
         registroPanel.SetActive(true);
 
-        // Método para esperar que Firebase inicie antes de continuar
-        StartCoroutine(WaitForFirebase());
-    }
-    private IEnumerator WaitForFirebase()
-    {
-        float tiempoMaximoEspera = 3f; // 🔹 Máximo 3 segundos de espera
-        float tiempoEspera = 0f;
-
-        // Esperar hasta que Firebase esté listo o se agote el tiempo
-        while (!DbConnexion.Instance.IsFirebaseReady())
-        {
-            Debug.Log("⏳ Esperando inicialización de Firebase...");
-
-            yield return new WaitForSeconds(0.5f);
-            tiempoEspera += 0.5f;
-
-            if (tiempoEspera >= tiempoMaximoEspera)
-            {
-                Debug.LogError("🚨 Tiempo de espera excedido. Firebase no está listo.");
-                yield break; // 🔹 Salimos del bucle sin continuar
-            }
-        }
-
-        Debug.Log("✅ Firebase está listo. Procediendo con LoginController.");
-
-        // Aseguramos que las instancias de autenticación y Firestore estén asignadas correctamente
-        auth = DbConnexion.Instance.Auth;
-        firestore = DbConnexion.Instance.Firestore;
-
-        // Verificamos si los objetos no son nulos antes de proceder
-        if (auth == null || firestore == null)
-        {
-            Debug.LogError("🚨 Error: No se pudo obtener las referencias de Firebase.");
-            yield break;
-        }
         registerButton.onClick.AddListener(OnRegisterButtonClick);
         verifyButton.onClick.AddListener(OnVerifyButtonClick);
     }
@@ -77,92 +43,61 @@ public class EmailController : MonoBehaviour
 
         if (password != confirmPassword)
         {
-            Debug.LogError("❌ Las contraseñas no coinciden.");
+            verificationMessage.text = "Las contraseñas no coinciden.";
             return;
         }
 
-        // Crear usuario con correo y contraseña
-        CreateUserWithEmail(email, password);
-    }
+        registeredEmail = email;
+        registeredPassword = password;
 
-    private void CreateUserWithEmail(string email, string password)
-    {
-        auth.CreateUserWithEmailAndPasswordAsync(email, password).ContinueWithOnMainThread(task => {
-            if (task.IsCanceled || task.IsFaulted)
-            {
-                Debug.LogError("❌ Error al registrar usuario: " + task.Exception?.Message);
-                return;
-            }
+        // Generar código de verificación aleatorio
+        generatedCode = Random.Range(100000, 999999).ToString();
 
-            // Usuario registrado exitosamente
-            currentUser = auth.CurrentUser;
+        // Llamar a la API para enviar el correo
+        FindObjectOfType<Api>().SendVerificationEmail(email, generatedCode);
 
-            // Enviar correo de verificación
-            SendVerificationEmail();
-        });
-    }
+        verificationMessage.text = "Se ha enviado un código de verificación a tu correo.";
 
-    private void SendVerificationEmail()
-    {
-        if (currentUser != null)
-        {
-            currentUser.SendEmailVerificationAsync().ContinueWithOnMainThread(task => {
-                if (task.IsCanceled || task.IsFaulted)
-                {
-                    Debug.LogError("❌ Error al enviar el correo de verificación: " + task.Exception?.Message);
-                    return;
-                }
-
-                Debug.Log("✅ Correo de verificación enviado.");
-
-                // Mostrar el mensaje en el TMP_Text
-                verificationMessage.text = "📩 Se ha enviado un correo de verificación. Por favor, revisa tu bandeja de entrada y haz clic en el enlace.";
-
-                // 🔄 Cambiar de panel: Ocultar el de registro y mostrar el de verificación
-                registroPanel.SetActive(false);
-                verificacionPanel.SetActive(true);
-            });
-        }
-        else
-        {
-            Debug.LogError("❌ No hay un usuario autenticado.");
-        }
+        // Cambiar al panel de verificación
+        registroPanel.SetActive(false);
+        verificacionPanel.SetActive(true);
     }
 
     public void OnVerifyButtonClick()
     {
-        StartCoroutine(VerifyEmailRoutine());
+        string userCode = verificationCodeInput.text;
+
+        if (userCode == generatedCode)
+        {
+            verificationMessage.text = "Codigo de verificación exitoso.";
+            RegisterUserInFirebase(registeredEmail, registeredPassword);
+            StartCoroutine(registrar());
+        }
+        else
+        {
+            verificationMessage.text = "Código incorrecto. Verifica e intenta de nuevo.";
+        }
     }
 
-    private IEnumerator VerifyEmailRoutine()
+    private void RegisterUserInFirebase(string email, string password)
     {
-        verificationMessage.text = "🔄 Verificando email...";
-        verifyButton.interactable = false;
-
-        while (true)
+        auth.CreateUserWithEmailAndPasswordAsync(email, password).ContinueWith(task =>
         {
-            Debug.Log("🔄 Recargando usuario...");
-            var reloadTask = currentUser.ReloadAsync();
-            yield return new WaitUntil(() => reloadTask.IsCompleted);
-
-            if (reloadTask.IsFaulted)
+            if (task.IsCompleted && !task.IsFaulted)
             {
-                Debug.LogError($"❌ Error al recargar usuario: {reloadTask.Exception?.Message}");
-                verificationMessage.text = "⚠️ Error al verificar el correo. Intenta nuevamente.";
-                verifyButton.interactable = true;
-                yield break;
+                Debug.Log("✅ Usuario registrado en Firebase.");
             }
-
-            Debug.Log($"🔍 Estado de verificación: {currentUser.IsEmailVerified}");
-
-            if (currentUser.IsEmailVerified)
+            else
             {
-                Debug.Log("✅ Email verificado correctamente. Avanzando a la siguiente escena...");
-                SceneManager.LoadScene("Registrar");
-                yield break;
+                verificationMessage.text = "Codigo de verificación incorrecto.";
+                Debug.LogError("❌ Error al registrar usuario en Firebase: " + task.Exception);
             }
+        });
+    }
 
-            yield return new WaitForSeconds(3);
-        }
+    IEnumerator registrar()
+    {
+        yield return new WaitForSeconds(2f);
+        SceneManager.LoadScene("Registrar");
     }
 }

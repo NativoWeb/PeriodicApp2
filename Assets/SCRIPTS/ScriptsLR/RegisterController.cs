@@ -73,19 +73,10 @@ public class RegisterController : MonoBehaviour
             return;
         }
 
-        currentUser.ReloadAsync().ContinueWithOnMainThread(task => {
-            if (task.IsCompleted && currentUser.IsEmailVerified)
-            {
-                Debug.Log("✅ Correo verificado después de recarga.");
-                PlayerPrefs.SetInt("EmailVerified", 1);
-                PlayerPrefs.Save();
+                //PlayerPrefs.SetInt("EmailVerified", 1);
+                //PlayerPrefs.Save();
                 UpdateUserProfile(currentUser, userName);
-            }
-            else
-            {
-                Debug.LogError("⚠️ El correo aún no está verificado.");
-            }
-        });
+           
     }
 
     private void UpdateUserProfile(FirebaseUser user, string userName)
