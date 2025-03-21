@@ -76,6 +76,8 @@ public class LoginController : MonoBehaviour
             Debug.Log("✅ Inicio de sesión exitoso: " + user.Email);
 
             PlayerPrefs.SetString("userId", user.UserId);
+
+            //guardar el Display name para luego mostrarlo nuevamente
             PlayerPrefs.SetString("DisplayName", user.DisplayName);
 
             if (toggleRememberMe.isOn)

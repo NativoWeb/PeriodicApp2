@@ -252,11 +252,6 @@ public class ControllerPerfil : MonoBehaviour
         Debug.Log("====================================================");
     }
 
-    public void VuforiaDesdeInicio()
-    {
-        PlayerPrefs.SetString("CargarVuforia", "Inicio");
-        SceneManager.LoadScene("SampleScene");
-    }
 }
 
 

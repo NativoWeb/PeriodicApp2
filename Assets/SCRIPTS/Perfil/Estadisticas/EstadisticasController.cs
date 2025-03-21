@@ -190,6 +190,7 @@ public class EstadisticasController : MonoBehaviour
 
         //string estadouser = PlayerPrefs.GetString("Estadouser", "");
 
+
         //PlayerPrefs.DeleteKey("userId"); // Elimina ID del usuario almacenado
         //PlayerPrefs.DeleteKey("userEmail");
         //PlayerPrefs.DeleteKey("userPassword");
