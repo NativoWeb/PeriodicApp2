@@ -13,6 +13,8 @@ public class RegisterController : MonoBehaviour
     public TMP_InputField userNameInput;
     public Button completeProfileButton;
     public Dropdown roles;
+    [SerializeField] private GameObject m_OcupacionUI = null;// Activar Lista ocupación 
+    private string ocupacionSelecionada; // para actualizar 
 
     private FirebaseAuth auth;
     private FirebaseFirestore db;
@@ -43,6 +45,17 @@ public class RegisterController : MonoBehaviour
         else
         {
             Debug.LogError("Firebase no está listo o no hay usuario autenticado.");
+        }
+        // verificamos que tenga ocupacion guardada y mostramos o no el panel
+        string Tempocupacion = PlayerPrefs.GetString("TempOcupacion", "").Trim();
+
+        if (Tempocupacion != "")
+        {
+            m_OcupacionUI.SetActive(false);
+        }
+        else
+        {
+            m_OcupacionUI.SetActive(true);
         }
     }
 
@@ -109,18 +122,28 @@ public class RegisterController : MonoBehaviour
         string userId = user.UserId;
         DocumentReference docRef = db.Collection("users").Document(userId);
 
-        string avatarUrl = "Avatares/defecto";
-        string ocupacionSeleccionada = roles.options[roles.value].text;
+        string avatarUrl = "Avatares/defecto";  
 
         bool tieneUsuarioTemporal = PlayerPrefs.HasKey("TempUsername");
+        bool encuestaCompletada = PlayerPrefs.GetInt("TempEncuestaCompletada", 0) == 1;
         int xpTemp = PlayerPrefs.GetInt("TempXP", 0);
 
-        Dictionary<string, object> userData = new Dictionary<string, object>
+        if (tieneUsuarioTemporal)
+        {
+            ocupacionSelecionada = PlayerPrefs.GetString("TempOcupacion", "");
+        }
+        else
+        {
+            ocupacionSelecionada = roles.options[roles.value].text;
+        }
+
+
+            Dictionary<string, object> userData = new Dictionary<string, object>
     {
         { "DisplayName", user.DisplayName },
         { "Email", user.Email },
-        { "Ocupacion", ocupacionSeleccionada },
-        { "EncuestaCompletada", false },
+        { "Ocupacion", ocupacionSelecionada },
+        { "EncuestaCompletada", encuestaCompletada },
         { "xp", xpTemp },
         { "avatar", avatarUrl },
         { "Rango", "Novato de laboratorio" }
@@ -150,14 +173,7 @@ public class RegisterController : MonoBehaviour
             VerificarYActualizarRango(userId);
             await SubirMisionesJSON(userId);
 
-            if (ocupacionSeleccionada == "Estudiante")
-            {
-                SceneManager.LoadScene("EcnuestaScen1e");
-            }
-            else if (ocupacionSeleccionada == "Profesor")
-            {
-                SceneManager.LoadScene("InicioProfesor");
-            }
+            SceneManager.LoadScene("Login");
         }
         catch (System.Exception e)
         {
