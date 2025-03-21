@@ -31,6 +31,7 @@ public class ControllerPerfil : MonoBehaviour
 
     async void Start()
     {
+
         Debug.Log("ControllerPerfil Start ejecutándose...");
 
         // Inicializar Firebase
@@ -249,6 +250,12 @@ public class ControllerPerfil : MonoBehaviour
         Debug.Log("XP: " + xp);
         Debug.Log("estado encuesta: " + encuestaCompletada);
         Debug.Log("====================================================");
+    }
+
+    public void VuforiaDesdeInicio()
+    {
+        PlayerPrefs.SetString("CargarVuforia", "Inicio");
+        SceneManager.LoadScene("SampleScene");
     }
 }
 

@@ -217,6 +217,10 @@ public class GestorElementos : MonoBehaviour
         // Guardar el estado de la misión antes de cambiar de escena
         PlayerPrefs.SetString("ElementoSeleccionado", elemento);
         PlayerPrefs.SetInt("MisionActual", idMision);
+        if (idMision == 1)
+        {
+            PlayerPrefs.SetString("CargarVuforia", "Misiones");
+        }
         PlayerPrefs.Save();
 
         // Cargar la escena de la misión
