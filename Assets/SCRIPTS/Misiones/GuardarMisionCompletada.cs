@@ -93,6 +93,7 @@ public class GuardarMisionCompletada : MonoBehaviour
             if (Application.internetReachability != NetworkReachability.NotReachable)
             {
                 SumarXPFirebase(xpGanado);
+
             }
             else
             {
