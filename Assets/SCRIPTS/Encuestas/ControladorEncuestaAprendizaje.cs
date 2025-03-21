@@ -389,31 +389,60 @@ public class ControladorEncuestaAprendizaje : MonoBehaviour
 
     public void FinalizarEncuesta()
     {
-
-        // Recuperamos el userId almacenado en el login
-        string userId = PlayerPrefs.GetString("userId", "");
-        Debug.LogError("OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO" + userId);
-        if (string.IsNullOrEmpty(userId))
+        if (TieneConexion())
         {
-            Debug.LogError("❌ No se puede actualizar Firestore porque userId es nulo.");
-            return;
+            // Si hay conexión, actualiza en Firestore
+            string userId = PlayerPrefs.GetString("userId", "");
+            Debug.LogError("UserId: " + userId);
+
+            if (string.IsNullOrEmpty(userId))
+            {
+                Debug.LogError("❌ No se puede actualizar Firestore porque userId es nulo.");
+                return;
+            }
+
+            DocumentReference docRef = firestore.Collection("users").Document(userId);
+
+            docRef.UpdateAsync("EncuestaCompletada", true).ContinueWithOnMainThread(task =>
+            {
+                if (task.IsCompleted)
+                {
+                    Debug.Log("✅ EncuestaCompletada actualizado correctamente en Firestore.");
+                }
+                else
+                {
+                    Debug.LogError("❌ Error al actualizar EncuestaCompletada en Firestore.");
+                }
+
+                SceneManager.LoadScene("Categorías");
+            });
         }
-
-        DocumentReference docRef = firestore.Collection("users").Document(userId);
-
-        docRef.UpdateAsync("EncuestaCompletada", true).ContinueWithOnMainThread(task =>
+        else
         {
-            if (task.IsCompleted)
-            {
-                Debug.Log("✅ EncuestaCompletada actualizado correctamente en Firestore.");
-                SceneManager.LoadScene("Categorías"); // Redirigir al inicio después de completar la encuesta
-            }
-            else
-            {
-                Debug.LogError("❌ Error al actualizar EncuestaCompletada en Firestore.");
-            }
-        });
+            // Si no hay conexión, guarda en PlayerPrefs y cambia de escena
+            Debug.LogWarning("⚠ No hay conexión WiFi, guardando en PlayerPrefs.");
+            PlayerPrefs.SetInt("EncuestaCompletada", 1);
+            PlayerPrefs.Save();
+            SceneManager.LoadScene("Categorías");
+        }
     }
+
+    private bool TieneConexion()
+    {
+        try
+        {
+            using (var client = new System.Net.WebClient())
+            using (client.OpenRead("http://www.google.com"))
+            {
+                return true;
+            }
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
 
 
     [Header("Referencias UI")]

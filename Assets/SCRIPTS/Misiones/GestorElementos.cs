@@ -51,8 +51,6 @@ public class GestorElementos : MonoBehaviour
     void Start()
     {
         // Guardar el JSON en PlayerPrefs al iniciar
-        CargarYGuardarMisionesEnPlayerPrefs();
-
         CargarElementosDesdeJSON();
 
         // Asignar eventos dinámicamente a cada botón de elemento
@@ -85,27 +83,43 @@ public class GestorElementos : MonoBehaviour
 
     void CargarElementosDesdeJSON()
     {
-        TextAsset jsonFile = Resources.Load<TextAsset>("misiones");
-        if (jsonFile == null)
+        string jsonString = PlayerPrefs.GetString("misionesJSON", "");
+
+        if (string.IsNullOrEmpty(jsonString))
         {
-            Debug.LogError("No se encontró el archivo JSON en Resources.");
+            TextAsset jsonFile = Resources.Load<TextAsset>("misiones");
+            if (jsonFile != null)
+            {
+                jsonString = jsonFile.text;
+                PlayerPrefs.SetString("misionesJSON", jsonString); // Guardar en PlayerPrefs para futuras cargas
+                PlayerPrefs.Save();
+            }
+            else
+            {
+                Debug.LogError("No se encontró el archivo JSON en Resources.");
+                return;
+            }
+        }
+
+        var json = JSON.Parse(jsonString);
+
+        if (json == null)
+        {
+            Debug.LogError("El JSON es inválido o no se pudo parsear.");
             return;
         }
 
-        var json = JSON.Parse(jsonFile.text);
         if (!json.HasKey("misiones") || !json["misiones"].HasKey(elementoSeleccionado))
         {
+            Debug.LogError($"No se encontraron misiones para el elemento {elementoSeleccionado}.");
             return;
         }
 
         var elementoJson = json["misiones"][elementoSeleccionado];
 
-        // **Cargar Datos del Panel Principal**
         txtSimbolo.text = elementoJson["simbolo"].Value;
         txtNombre.text = elementoJson["nombre"].Value;
         txtNumeroAtomico.text = "Número Atómico: " + elementoJson["numero_atomico"].AsInt;
-
-        // **Cargar Información del Elemento**
         txtMasaAtomica.text = elementoJson["masa_atomica"].Value;
         txtPuntoFusion.text = elementoJson["punto_fusion"].Value + "°C";
         txtPuntoEbullicion.text = elementoJson["punto_ebullicion"].Value + "°C";
@@ -113,8 +127,8 @@ public class GestorElementos : MonoBehaviour
         txtEstado.text = elementoJson["estado"].Value;
         txtDescripcion.text = elementoJson["descripcion"].Value;
 
-        // **Cargar Misiones**
         LimpiarMisiones();
+
         foreach (JSONNode nivelJson in elementoJson["niveles"].AsArray)
         {
             Mision mision = new Mision
@@ -128,14 +142,13 @@ public class GestorElementos : MonoBehaviour
                 completada = nivelJson["completada"].AsBool,
                 xp = nivelJson["xp"].AsInt,
                 mensajeCompletada = nivelJson["mensajeCompletada"].Value,
-                rutaEscena = nivelJson["rutaescena"].Value // Nueva asignación
+                rutaEscena = nivelJson["rutaescena"].Value
             };
 
             CrearPrefabMision(mision);
         }
-
-        Debug.Log($"Información y misiones del elemento '{elementoSeleccionado}' cargadas correctamente.");
     }
+
 
     void LimpiarMisiones()
     {
@@ -221,21 +234,5 @@ public class GestorElementos : MonoBehaviour
 
         // Cargar la escena de la misión
         SceneManager.LoadScene(nombreEscena);
-    }
-
-    public static void CargarYGuardarMisionesEnPlayerPrefs()
-    {
-        // Cargar el JSON desde Resources
-        TextAsset jsonFile = Resources.Load<TextAsset>("misiones");
-        if (jsonFile == null)
-        {
-            Debug.LogError("❌ No se encontró el archivo JSON en Resources.");
-            return;
-        }
-
-        // Guardar el JSON en PlayerPrefs
-        PlayerPrefs.SetString("misionesJSON", jsonFile.text);
-        PlayerPrefs.Save();
-        Debug.Log("✅ JSON de misiones guardado en PlayerPrefs.");
     }
 }
