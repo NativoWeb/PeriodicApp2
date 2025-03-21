@@ -97,6 +97,8 @@ public class LoginController : MonoBehaviour
 
             // 🔹 Guardar datos en PlayerPrefs
             PlayerPrefs.SetString("userId", user.UserId);
+
+            //guardar el Display name para luego mostrarlo nuevamente
             PlayerPrefs.SetString("DisplayName", user.DisplayName);
 
             if (toggleRememberMe.isOn)

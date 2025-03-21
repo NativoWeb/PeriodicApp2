@@ -142,7 +142,7 @@ public class EstadisticasController : MonoBehaviour
     // ============================ CIERRE DE SESIÓN ============================
 
     // ========== 🚀 MÉTODO PARA SUBIR JSON A FIRESTORE ==========
-    private async Task SubirMisionesJSON()
+    public async Task SubirMisionesJSON()
     {
         if (string.IsNullOrEmpty(userId))
         {
@@ -187,10 +187,18 @@ public class EstadisticasController : MonoBehaviour
         await SubirMisionesJSON(); // Guardar el JSON antes de cerrar sesión
 
         auth.SignOut();
+        //PlayerPrefs.DeleteKey("userId"); // Elimina ID del usuario almacenado
+        //PlayerPrefs.DeleteKey("userEmail");
+        //PlayerPrefs.DeleteKey("userPassword");
+        //PlayerPrefs.DeleteKey("Estadouser");
+        //PlayerPrefs.DeleteKey("XP");
+        //PlayerPrefs.SetInt("rememberMe", 0); 
+        //PlayerPrefs.DeleteKey("misionesJSON"); // Eliminar datos locales
         PlayerPrefs.DeleteAll();
         PlayerPrefs.Save();
+
         Debug.Log("✅ Sesión cerrada correctamente.");
-        SceneManager.LoadScene("Login");
+        SceneManager.LoadScene("Start");
     }
 
     // ============================ ACTUALIZAR SLIDER ============================
