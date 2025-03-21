@@ -1,7 +1,6 @@
 ﻿using UnityEngine;
 using UnityEngine.SceneManagement;
 using Firebase.Firestore;
-using Firebase.Storage;
 using TMPro;
 using UnityEngine.UI;
 using Firebase.Extensions;
@@ -15,7 +14,6 @@ public class EstadisticasController : MonoBehaviour
     // Instancias de Firebase
     private FirebaseAuth auth;
     private FirebaseFirestore db;
-    private FirebaseStorage storage;
 
     // ID del usuario autenticado
     private string userId;
@@ -144,7 +142,7 @@ public class EstadisticasController : MonoBehaviour
     // ============================ CIERRE DE SESIÓN ============================
 
     // ========== 🚀 MÉTODO PARA SUBIR JSON A FIRESTORE ==========
-    private async Task SubirMisionesJSON()
+    public async Task SubirMisionesJSON()
     {
         if (string.IsNullOrEmpty(userId))
         {
