@@ -10,4 +10,10 @@ public class cambiarescena : MonoBehaviour
     {
         SceneManager.LoadScene(nombre);
     }
+
+    public void VuforiaDesdeInicio()
+    {
+        PlayerPrefs.SetString("CargarVuforia", "Inicio");
+        SceneManager.LoadScene("SampleScene");
+    }
 }

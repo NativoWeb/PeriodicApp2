@@ -6,6 +6,8 @@ using System.Collections.Generic;
 using Firebase.Auth;
 using Firebase.Firestore;
 using System.Threading.Tasks;
+using Firebase.Extensions;
+using System.Drawing.Text;
 
 public class GuardarMisionCompletada : MonoBehaviour
 {
@@ -14,20 +16,32 @@ public class GuardarMisionCompletada : MonoBehaviour
 
     private FirebaseAuth auth;
     private FirebaseFirestore db;
+    private string userId;
+
 
     void Start()
     {
-        auth = FirebaseAuth.DefaultInstance;
-        db = FirebaseFirestore.DefaultInstance;
+            auth = FirebaseAuth.DefaultInstance;
+            db = FirebaseFirestore.DefaultInstance;
 
-        if (botonCompletarMision != null)
-        {
-            botonCompletarMision.onClick.AddListener(MarcarMisionComoCompletada);
-        }
-        else
-        {
-            Debug.LogError("❌ botonCompletarMision no está asignado en el Inspector.");
-        }
+            var user = auth.CurrentUser;
+            if (user != null)
+            {
+                userId = user.UserId;
+            }
+            else
+            {
+                Debug.LogError("❌ No hay usuario autenticado en Start.");
+            }
+
+            if (botonCompletarMision != null)
+            {
+                botonCompletarMision.onClick.AddListener(MarcarMisionComoCompletada);
+            }
+            else
+            {
+                Debug.LogError("❌ botonCompletarMision no está asignado en el Inspector.");
+            }
     }
 
     public void MarcarMisionComoCompletada()
@@ -50,7 +64,7 @@ public class GuardarMisionCompletada : MonoBehaviour
         ActualizarMisionEnJSON(elemento, idMision);
     }
 
-    void ActualizarMisionEnJSON(string elemento, int idMision)
+    private async void ActualizarMisionEnJSON(string elemento, int idMision)
     {
         string jsonString = PlayerPrefs.GetString("misionesJSON", "");
         if (string.IsNullOrEmpty(jsonString))
@@ -92,6 +106,7 @@ public class GuardarMisionCompletada : MonoBehaviour
             // Verificar conexión a Internet
             if (Application.internetReachability != NetworkReachability.NotReachable)
             {
+                await SubirMisionesJSON();
                 SumarXPFirebase(xpGanado);
 
             }
@@ -145,5 +160,44 @@ public class GuardarMisionCompletada : MonoBehaviour
         {
             Debug.LogError($"❌ Error al actualizar XP en Firebase: {e.Message}");
         }
+    }
+
+    public async Task SubirMisionesJSON()
+    {
+        if (string.IsNullOrEmpty(userId))
+        {
+            Debug.LogError("❌ No hay usuario autenticado.");
+            return;
+        }
+
+        string jsonMisiones = PlayerPrefs.GetString("misionesJSON", "{}"); // Obtener el JSON de PlayerPrefs
+
+        if (jsonMisiones == "{}")
+        {
+            Debug.LogWarning("⚠️ No hay datos de misiones guardados.");
+            return;
+        }
+
+        // Convertir JSON a Dictionary para Firestore
+        Dictionary<string, object> data = new Dictionary<string, object>
+        {
+            { "misiones", jsonMisiones },
+            { "timestamp", FieldValue.ServerTimestamp }
+        };
+
+        // Subir a Firestore dentro del documento del usuario
+        DocumentReference userDoc = db.Collection("users").Document(userId);
+
+        await userDoc.SetAsync(data, SetOptions.MergeAll).ContinueWithOnMainThread(task =>
+        {
+            if (task.IsCompleted)
+            {
+                Debug.Log("✅ Misiones JSON guardadas en Firestore.");
+            }
+            else
+            {
+                Debug.LogError("❌ Error al guardar el JSON en Firestore: " + task.Exception);
+            }
+        });
     }
 }

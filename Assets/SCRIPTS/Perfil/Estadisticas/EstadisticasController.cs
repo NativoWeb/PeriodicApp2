@@ -14,7 +14,6 @@ public class EstadisticasController : MonoBehaviour
     // Instancias de Firebase
     private FirebaseAuth auth;
     private FirebaseFirestore db;
-  
 
     // ID del usuario autenticado
     private string userId;
@@ -143,7 +142,7 @@ public class EstadisticasController : MonoBehaviour
     // ============================ CIERRE DE SESIÓN ============================
 
     // ========== 🚀 MÉTODO PARA SUBIR JSON A FIRESTORE ==========
-    private async Task SubirMisionesJSON()
+    public async Task SubirMisionesJSON()
     {
         if (string.IsNullOrEmpty(userId))
         {
@@ -188,6 +187,10 @@ public class EstadisticasController : MonoBehaviour
         await SubirMisionesJSON(); // Guardar el JSON antes de cerrar sesión
 
         auth.SignOut();
+
+        //string estadouser = PlayerPrefs.GetString("Estadouser", "");
+
+
         //PlayerPrefs.DeleteKey("userId"); // Elimina ID del usuario almacenado
         //PlayerPrefs.DeleteKey("userEmail");
         //PlayerPrefs.DeleteKey("userPassword");
@@ -196,6 +199,8 @@ public class EstadisticasController : MonoBehaviour
         //PlayerPrefs.SetInt("rememberMe", 0); 
         //PlayerPrefs.DeleteKey("misionesJSON"); // Eliminar datos locales
         PlayerPrefs.DeleteAll();
+
+        //PlayerPrefs.SetString("Estadouser", estadouser);
         PlayerPrefs.Save();
 
         Debug.Log("✅ Sesión cerrada correctamente.");

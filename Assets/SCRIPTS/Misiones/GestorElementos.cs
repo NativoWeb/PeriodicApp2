@@ -111,7 +111,6 @@ public class GestorElementos : MonoBehaviour
 
         if (!json.HasKey("misiones") || !json["misiones"].HasKey(elementoSeleccionado))
         {
-            Debug.LogError($"No se encontraron misiones para el elemento {elementoSeleccionado}.");
             return;
         }
 
@@ -126,6 +125,9 @@ public class GestorElementos : MonoBehaviour
         txtElectronegatividad.text = elementoJson["electronegatividad"].Value;
         txtEstado.text = elementoJson["estado"].Value;
         txtDescripcion.text = elementoJson["descripcion"].Value;
+
+        //Guardar numero atomico del elemento para que vuforia solo pueda escanear ese elemento
+        PlayerPrefs.SetString("NumeroAtomico", elementoJson["numero_atomico"].Value);
 
         LimpiarMisiones();
 
@@ -230,6 +232,10 @@ public class GestorElementos : MonoBehaviour
         // Guardar el estado de la misión antes de cambiar de escena
         PlayerPrefs.SetString("ElementoSeleccionado", elemento);
         PlayerPrefs.SetInt("MisionActual", idMision);
+        if (idMision == 1)
+        {
+            PlayerPrefs.SetString("CargarVuforia", "Misiones");
+        }
         PlayerPrefs.Save();
 
         // Cargar la escena de la misión

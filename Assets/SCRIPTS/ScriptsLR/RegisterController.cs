@@ -13,8 +13,8 @@ public class RegisterController : MonoBehaviour
     public TMP_InputField userNameInput;
     public Button completeProfileButton;
     public Dropdown roles;
-    [SerializeField] private GameObject m_OcupacionUI = null;
-    private string ocupacionSeleccionada;
+    [SerializeField] private GameObject m_OcupacionUI = null;// Activar Lista ocupación 
+    private string ocupacionSelecionada; // para actualizar 
 
     private FirebaseAuth auth;
     private FirebaseFirestore db;
@@ -26,8 +26,6 @@ public class RegisterController : MonoBehaviour
         { "Visionario Cuántico", 9000 },
         { "Amo del caos químico", 25000 }
     };
-
-   
 
     void Start()
     {
@@ -48,9 +46,8 @@ public class RegisterController : MonoBehaviour
         {
             Debug.LogError("Firebase no está listo o no hay usuario autenticado.");
         }
-
-        //mostrar o no el panel de elegir ocupación 
-        string Tempocupacion = PlayerPrefs.GetString("TempOcupacion", ""); 
+        // verificamos que tenga ocupacion guardada y mostramos o no el panel
+        string Tempocupacion = PlayerPrefs.GetString("TempOcupacion", "").Trim();
 
         if (Tempocupacion != "")
         {
@@ -60,10 +57,7 @@ public class RegisterController : MonoBehaviour
         {
             m_OcupacionUI.SetActive(true);
         }
-
     }
-
-    
 
     void CambiarColor()
     {
@@ -128,33 +122,27 @@ public class RegisterController : MonoBehaviour
         string userId = user.UserId;
         DocumentReference docRef = db.Collection("users").Document(userId);
 
-        string avatarUrl = "Avatares/defecto";
+        string avatarUrl = "Avatares/defecto";  
 
         bool tieneUsuarioTemporal = PlayerPrefs.HasKey("TempUsername");
+        bool encuestaCompletada = PlayerPrefs.GetInt("TempEncuestaCompletada", 0) == 1;
+        int xpTemp = PlayerPrefs.GetInt("TempXP", 0);
 
-        // verificamos si tiene usuario temporal para ver si ya selecciono ocupación 
         if (tieneUsuarioTemporal)
         {
-             ocupacionSeleccionada = PlayerPrefs.GetString("TempOcupacion", "").Trim();
+            ocupacionSelecionada = PlayerPrefs.GetString("TempOcupacion", "");
         }
         else
         {
-           
-            ocupacionSeleccionada = roles.options[roles.value].text;
+            ocupacionSelecionada = roles.options[roles.value].text;
         }
 
-        // obtener el xp guardado en playerprefs y guardar
-        int xpTemp = PlayerPrefs.GetInt("TempXP", 0);
 
-        // Obtener el estado de la encuesta desde PlayerPrefs
-        bool encuestaCompletada = PlayerPrefs.GetInt("TempEncuestaCompletada", 0) == 1;
-
-
-        Dictionary<string, object> userData = new Dictionary<string, object>
+            Dictionary<string, object> userData = new Dictionary<string, object>
     {
         { "DisplayName", user.DisplayName },
         { "Email", user.Email },
-        { "Ocupacion", ocupacionSeleccionada },
+        { "Ocupacion", ocupacionSelecionada },
         { "EncuestaCompletada", encuestaCompletada },
         { "xp", xpTemp },
         { "avatar", avatarUrl },
@@ -174,10 +162,10 @@ public class RegisterController : MonoBehaviour
             {
                 PlayerPrefs.DeleteKey("TempUsername");
                 PlayerPrefs.SetInt("TempXP", 0);
+                PlayerPrefs.DeleteKey("TempOcupacion");
                 PlayerPrefs.DeleteKey("TempAvatar");
                 PlayerPrefs.DeleteKey("TempRango");
                 PlayerPrefs.SetString("Estadouser", "nube");
-
                 PlayerPrefs.Save();
             }
 
@@ -192,6 +180,7 @@ public class RegisterController : MonoBehaviour
             Debug.LogError($"Error al guardar datos del usuario: {e.Message}");
         }
     }
+
 
     private void CrearSubcoleccionGrupos(string userId)
     {

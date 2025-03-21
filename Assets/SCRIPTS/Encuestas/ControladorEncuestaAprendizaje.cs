@@ -18,6 +18,10 @@ public class ControladorEncuestaAprendizaje : MonoBehaviour
     public float tiempoRestante = 10f;  // Tiempo inicial del temporizador en segundos (10 segundos)
     private bool preguntaFinalizada = false;  // Flag para saber si la pregunta ha sido finalizada (cuando se pasa a la siguiente pregunta
     public string respuestaUsuario;
+
+    // Internet
+    private bool hayInternet = false;
+
     private bool eventosToggleHabilitados = false;
     private List<string> opcionesAleatorias;
 
@@ -389,7 +393,10 @@ public class ControladorEncuestaAprendizaje : MonoBehaviour
 
     public void FinalizarEncuesta()
     {
-        if (TieneConexion())
+        // Verificar conexión a internet
+        hayInternet = Application.internetReachability != NetworkReachability.NotReachable;
+
+        if (hayInternet)
         {
             // Si hay conexión, actualiza en Firestore
             string userId = PlayerPrefs.GetString("userId", "");
@@ -427,23 +434,21 @@ public class ControladorEncuestaAprendizaje : MonoBehaviour
         }
     }
 
-    private bool TieneConexion()
-    {
-        try
-        {
-            using (var client = new System.Net.WebClient())
-            using (client.OpenRead("http://www.google.com"))
-            {
-                return true;
-            }
-        }
-        catch
-        {
-            return false;
-        }
-    }
-
-
+    //private bool TieneConexion()
+    //{
+    //    try
+    //    {
+    //        using (var client = new System.Net.WebClient())
+    //        using (client.OpenRead("http://www.google.com"))
+    //        {
+    //            return true;
+    //        }
+    //    }
+    //    catch
+    //    {
+    //        return false;
+    //    }
+    //}
 
     [Header("Referencias UI")]
     public ToggleGroup grupoOpcionesUI;
