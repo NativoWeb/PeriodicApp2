@@ -137,7 +137,6 @@ public class RegisterController : MonoBehaviour
             ocupacionSelecionada = roles.options[roles.value].text;
         }
 
-
             Dictionary<string, object> userData = new Dictionary<string, object>
     {
         { "DisplayName", user.DisplayName },

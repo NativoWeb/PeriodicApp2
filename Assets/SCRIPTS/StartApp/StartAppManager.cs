@@ -2,11 +2,17 @@
 using UnityEngine.SceneManagement;
 using System.Collections;
 using System.Collections.Generic;
+using TMPro;
 
 public class StartAppManager : MonoBehaviour
 {
     public static bool IsReady = false; // 🔹 Bandera para indicar si terminó
     private bool yaVerificado = false; // 🔹 Evita ejecuciones repetidas
+                                       // pop up para el usuario
+    public TMP_Text GuardardatosUI;
+
+    [SerializeField] private GameObject m_GuardardatosUI = null;
+    
 
     void Start()
     {
@@ -53,6 +59,11 @@ public class StartAppManager : MonoBehaviour
         else
         {
             Debug.Log("🆕 No se encontró usuario temporal. Creando usuario provisional...");
+
+            //  acá se pone el activar el panel que le muestra el txt que le va a decir que la proxima vez que entre online se tiene que regitrar para vincular el progreso a una cuenta ##############################
+
+            // y le coloco un Btn de "Ok" para que continue e ingrese a inicioOffline a el modo off despues de crear el temp user ####################################################
+
             CreateTemporaryUser();
             LoadSceneIfNotAlready("InicioOffline");
         }
@@ -71,6 +82,9 @@ public class StartAppManager : MonoBehaviour
         if (IsTemporaryUserSaved())
         {
             Debug.Log("📝 Datos temporales encontrados. Enviando a Registro.");
+           // acá voy a poner el ativar el panel que muestra el texto diciendole que se registre para subir todo el progreso a la nube#####################################################
+
+           // y le coloco un btn de "Ok" para que continue e ingrese a email a registrarse ####################################################
             LoadSceneIfNotAlready("Email");
         }
         else
