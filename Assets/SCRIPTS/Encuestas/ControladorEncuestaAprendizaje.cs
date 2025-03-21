@@ -421,7 +421,7 @@ public class ControladorEncuestaAprendizaje : MonoBehaviour
         {
             // Si no hay conexión, guarda en PlayerPrefs y cambia de escena
             Debug.LogWarning("⚠ No hay conexión WiFi, guardando en PlayerPrefs.");
-            PlayerPrefs.SetInt("EncuestaCompletada", 1);
+            PlayerPrefs.SetInt("TempEncuestaCompletada", 1);
             PlayerPrefs.Save();
             SceneManager.LoadScene("Categorías");
         }

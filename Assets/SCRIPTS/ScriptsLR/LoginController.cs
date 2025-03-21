@@ -113,6 +113,8 @@ public class LoginController : MonoBehaviour
                 PlayerPrefs.DeleteKey("userPassword");
                 PlayerPrefs.SetInt("rememberMe", 0);
             }
+            PlayerPrefs.SetString("Estadouser", "nube");
+
             PlayerPrefs.Save();
 
             // 🔹 Verificar ocupación y encuesta en Firestore
@@ -135,6 +137,7 @@ public class LoginController : MonoBehaviour
                     Debug.Log("✅ Login automático exitoso");
                     FirebaseUser user = task.Result.User;
                     PlayerPrefs.SetString("userId", user.UserId);
+                    PlayerPrefs.SetString("Estadouser", "nube");
                     PlayerPrefs.Save();
 
                     CheckUserStatus(user.UserId); // Ir según ocupación
@@ -181,7 +184,7 @@ public class LoginController : MonoBehaviour
             if (ocupacion == "Estudiante")
             {
                 SceneManager.LoadScene(encuestaCompletada ? "Categorías" : "EcnuestaScen1e");
-            }
+            }0
             else if (ocupacion == "Profesor")
             {
                 SceneManager.LoadScene("InicioProfesor");
