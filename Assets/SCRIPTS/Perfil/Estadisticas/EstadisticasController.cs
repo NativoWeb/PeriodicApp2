@@ -199,7 +199,7 @@ public class EstadisticasController : MonoBehaviour
         PlayerPrefs.Save();
 
         Debug.Log("✅ Sesión cerrada correctamente.");
-        SceneManager.LoadScene("Login");
+        SceneManager.LoadScene("Start");
     }
 
     // ============================ ACTUALIZAR SLIDER ============================
