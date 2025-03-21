@@ -6,11 +6,11 @@ public class ScanearElemento : MonoBehaviour
 {
     private ObserverBehaviour trackable;
 
-    private ControllerBotones ControladoBotones;
+    private ControllerBotones ControladorBotones;
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
-        ControladoBotones = FindAnyObjectByType<ControllerBotones>();
+        ControladorBotones = FindAnyObjectByType<ControllerBotones>();
 
         string elemento = PlayerPrefs.GetString("NumeroAtomico", "").Trim() + "_" + PlayerPrefs.GetString("ElementoSeleccionado", "").Trim();
         string ruta = PlayerPrefs.GetString("CargarVuforia", "");
@@ -45,6 +45,7 @@ public class ScanearElemento : MonoBehaviour
     void DesbloquearLogro(string elemento)
     {
         Debug.Log($"🏆 Logro desbloqueado: {elemento}");
-        ControladoBotones.botonCompletarMision.interactable = true;
+        ControladorBotones.PanelBotonUI.SetActive(true);
+        ControladorBotones.botonCompletarMision.interactable = true;
     }
 }

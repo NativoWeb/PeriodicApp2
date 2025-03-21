@@ -23,7 +23,7 @@ public class ControllerBotones : MonoBehaviour
         else if (ruta == "Misiones")
         {
             PanelRegresarUI.SetActive(true);
-            PanelBotonUI.SetActive(true);
+            PanelBotonUI.SetActive(false);
             botonCompletarMision.interactable = false;
         }
     }
