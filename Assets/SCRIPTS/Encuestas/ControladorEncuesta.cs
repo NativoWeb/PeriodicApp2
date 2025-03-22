@@ -34,10 +34,15 @@ public class ControladorEncuesta : MonoBehaviour
 
     // Variables para registrar el conteo de respuestas correctas por categor�a �A�ADIDO!
     private int correctasAlcalinos = 0;
-    private int correctasGasesNobles = 0;
+    private int correctasMetalesAlcalinotérreos = 0;
+    private int correctasLantanidos = 0;
+    private int correctasActinoides = 0;
+    private int correctasMetalesPostansicionales = 0;
     private int correctasMetaloides = 0;
     private int correctasTransicion = 0;
     private int correctasNoMetales = 0;
+    private int correctasGasesNobles = 0;
+    private int correctasPropiedadesDesconocidas = 0;
     private int incorrectasTotales = 0;
     private float dificultadTotalPreguntas = 0f; // Para calcular la dificultad media
     private int cantidadPreguntasRespondidas = 0; // Contador de preguntas respondidas
@@ -164,7 +169,7 @@ public class ControladorEncuesta : MonoBehaviour
 
     void CargarPreguntasDesdeJSON()
     {
-        TextAsset archivoJSON = Resources.Load<TextAsset>("preguntas_tabla_periodica");
+        TextAsset archivoJSON = Resources.Load<TextAsset>("preguntas_tabla_periodica_categorias1");
         if (archivoJSON != null)
         {
             string jsonString = archivoJSON.text;
@@ -229,7 +234,15 @@ public class ControladorEncuesta : MonoBehaviour
     // M�todo para aleatorizar el orden de las opciones de respuesta y asegurar que la correcta est� entre ellas
     List<string> AleatorizarOpciones(List<string> opciones, int indiceCorrecto)
     {
-        List<string> opcionesAleatorias = new List<string>(opciones); // Copia las opciones originales
+        List<string> opcionesAleatorias = new List<string>(opciones); // Copia de la lista original
+
+        // Verificar que indiceCorrecto sea válido
+        if (indiceCorrecto < 0 || indiceCorrecto >= opcionesAleatorias.Count)
+        {
+            Debug.LogError("Índice de respuesta correcta fuera de rango: " + indiceCorrecto + ". Se asignará el índice 0 por defecto.");
+            indiceCorrecto = 0; // O manejar el error de otra forma
+        }
+
         string respuestaCorrecta = opcionesAleatorias[indiceCorrecto]; // Guarda la respuesta correcta
 
         // Algoritmo de Fisher-Yates para aleatorizar la lista
@@ -241,24 +254,25 @@ public class ControladorEncuesta : MonoBehaviour
             opcionesAleatorias[i] = temp;
         }
 
-        // Asegurar que la respuesta correcta est� siempre presente en las opciones aleatorizadas (esto es importante!)
+        // Asegurar que la respuesta correcta está presente en las opciones aleatorizadas
         if (!opcionesAleatorias.Contains(respuestaCorrecta))
         {
-            opcionesAleatorias[0] = respuestaCorrecta; // Si por alguna raz�n no est�, la coloca en la primera posici�n (puedes cambiar la posici�n si quieres)
+            opcionesAleatorias[0] = respuestaCorrecta;
         }
         return opcionesAleatorias;
     }
 
+
     void desmarcarToggle()
     {
-        Debug.Log("desmarcarToggle() llamado"); // AÑADIDO DEBUG LOG
+        //Debug.Log("desmarcarToggle() llamado"); // AÑADIDO DEBUG LOG
         foreach (Toggle toggle in opcionesToggleUI)
         {
             toggle.isOn = false;
             toggle.interactable = true;
-            Debug.Log($"Toggle '{toggle.name}' isOn: {toggle.isOn}"); // AÑADIDO DEBUG LOG
+            //Debug.Log($"Toggle '{toggle.name}' isOn: {toggle.isOn}"); // AÑADIDO DEBUG LOG
         }
-        Debug.Log("desmarcarToggle() finalizado"); // AÑADIDO DEBUG LOG
+        //Debug.Log("desmarcarToggle() finalizado"); // AÑADIDO DEBUG LOG
     }
 
 
@@ -420,17 +434,32 @@ public class ControladorEncuesta : MonoBehaviour
                 case "Metales Alcalinos (Grupo 1)":
                     correctasAlcalinos++;
                     break;
-                case "Gases Nobles (Grupo 18)":
-                    correctasGasesNobles++;
+                case "Metales Alcalinotérreos":
+                    correctasMetalesAlcalinotérreos++;
+                    break;
+                case "Metales de Transición":
+                    correctasTransicion++;
+                    break;
+                case "Lantánidos":
+                    correctasLantanidos++;
+                    break;
+                case "Actinoides":
+                    correctasActinoides++;
                     break;
                 case "Metaloides": // Ajusta este nombre si es diferente en tus datos
                     correctasMetaloides++;
                     break;
-                case "Metales de Transici�n": // Ajusta este nombre si es diferente en tus datos
-                    correctasTransicion++;
+                case "Metales postransicionales": // Ajusta este nombre si es diferente en tus datos
+                    correctasMetalesPostansicionales++;
                     break;
                 case "No Metales": // Ajusta este nombre si es diferente en tus datos
                     correctasNoMetales++;
+                    break;
+                case "Propiedades desconocidas":
+                    correctasPropiedadesDesconocidas++;
+                    break;
+                case "Gases Nobles": 
+                    correctasGasesNobles++;
                     break;
                 default:
                     Debug.LogWarning($"Categor�a de pregunta no reconocida: {categoriaPregunta}. Ajusta el switch en VerificarRespuesta.");
@@ -486,7 +515,8 @@ public class ControladorEncuesta : MonoBehaviour
     // Funci�n para calcular el porcentaje de aciertos �A�ADIDO!
     private float CalcularPorcentajeAciertos()
     {
-        int totalCorrectas = correctasAlcalinos + correctasGasesNobles + correctasMetaloides + correctasTransicion + correctasNoMetales;
+        int totalCorrectas = correctasAlcalinos + correctasMetalesAlcalinotérreos + correctasLantanidos + correctasActinoides + correctasGasesNobles 
+            + correctasMetaloides + correctasMetalesPostansicionales +  correctasTransicion + correctasNoMetales + correctasPropiedadesDesconocidas;
         int totalRespuestas = totalCorrectas + incorrectasTotales;
         if (totalRespuestas == 0) return 0f; // Evitar divisi�n por cero
         return (float)totalCorrectas / totalRespuestas * 100f;
@@ -499,112 +529,69 @@ public class ControladorEncuesta : MonoBehaviour
         return dificultadTotalPreguntas / cantidadPreguntasRespondidas;
     }
 
-    // Funci�n para enviar los datos a la API de Flask y obtener la predicci�n �A�ADIDO!
+ 
+    // Coroutine para enviar la solicitud y procesar la respuesta de la API �A�ADIDO!
     private void EnviarDatosAPrediccion()
     {
-        // 1. Recopilar los valores de las caracter�sticas
+        // 1. Recopilar los valores de las características
         float porcentajeAciertos = CalcularPorcentajeAciertos();
         float dificultadMedia = CalcularDificultadMedia();
 
-        // 2. Crear un objeto JSON con las caracter�sticas
-        Dictionary<string, object> jsonData = new Dictionary<string, object>()
+        // Las características deben coincidir con el orden y cantidad usado durante el entrenamiento.
+        float[] features = new float[] {
+        correctasAlcalinos,
+        correctasMetalesAlcalinotérreos,
+        correctasTransicion,
+        correctasLantanidos,
+        correctasActinoides,
+        correctasMetaloides,
+        correctasMetalesPostansicionales,
+        correctasNoMetales,
+        correctasPropiedadesDesconocidas,
+        correctasGasesNobles,
+        incorrectasTotales,
+        //porcentajeAciertos,
+        dificultadMedia
+    };
+
+        // 2. Llamar al modelo de Barracuda
+        ModeloAI modeloAI = GetComponent<ModeloAI>(); // Asumiendo que ModeloAI está en el mismo GameObject
+        if (modeloAI != null)
         {
-            {"features", new float[] {
-                correctasAlcalinos,
-                correctasGasesNobles,
-                correctasMetaloides,
-                correctasTransicion,
-                correctasNoMetales,
-                incorrectasTotales,
-                porcentajeAciertos,
-                dificultadMedia
-            }}
-        };
-
-        string jsonDataString = JsonConvert.SerializeObject(jsonData); // Usar Newtonsoft.Json para serializar a JSON
-
-        // 3. Crear la solicitud UnityWebRequest
-        string apiURL = "http://127.0.0.1:5000/predict"; // **�Aseg�rate de que la URL sea correcta!** (localhost:5000 es para pruebas locales)
-        UnityWebRequest request = new UnityWebRequest(apiURL, "POST");
-        byte[] bodyRaw = System.Text.Encoding.UTF8.GetBytes(jsonDataString);
-        request.uploadHandler = new UploadHandlerRaw(bodyRaw);
-        request.downloadHandler = new DownloadHandlerBuffer(); // Descargar la respuesta en buffer
-        request.SetRequestHeader("Content-Type", "application/json"); // Establecer el Content-Type en el header
-
-
-        // 4. Enviar la solicitud y procesar la respuesta (usando Coroutine)
-        // StartCoroutine(EnviarYProcesarPrediccion(request));
-    }
-
-    // Coroutine para enviar la solicitud y procesar la respuesta de la API �A�ADIDO!
-    IEnumerator EnviarYProcesarPrediccion(UnityWebRequest request)
-    {
-        yield return request.SendWebRequest(); // Enviar la solicitud y esperar la respuesta
-
-        if (request.result == UnityWebRequest.Result.ConnectionError || request.result == UnityWebRequest.Result.ProtocolError)
-        {
-            Debug.LogError("Error de UnityWebRequest: " + request.error);
-            // Manejar el error de conexi�n o protocolo (ej: mostrar un mensaje de error en la UI)
+            float[] predictionResult = modeloAI.RunInference(features);
+            // Por ejemplo, si el modelo devuelve un valor entre 0 y 1, puedes usar un umbral de 0.5
+            int prediction = (predictionResult[0] > 0.5f) ? 1 : 0;
+            Debug.Log("Predicción de Barracuda: " + prediction);
+            ProcesarPrediccionDeConocimiento(predictionResult);
         }
         else
         {
-            Debug.Log("Respuesta de la API Recibida: " + request.downloadHandler.text);
-
-            // Procesar la respuesta JSON (usando Newtonsoft.Json)
-            try
-            {
-                Dictionary<string, object> responseData = JsonConvert.DeserializeObject<Dictionary<string, object>>(request.downloadHandler.text);
-                if (responseData.ContainsKey("prediction"))
-                {
-                    int prediction = Convert.ToInt32(responseData["prediction"]); // Obtener la predicci�n (0 o 1)
-
-                    Debug.Log("Predicci�n de la API: " + prediction);
-
-                    // **Aqu� puedes usar la 'prediction' (0 o 1) para adaptar tu aplicaci�n**
-                    ProcesarPrediccionDeConocimiento(prediction); // Llama a una funci�n para manejar la predicci�n
-
-                }
-                else if (responseData.ContainsKey("error"))
-                {
-                    Debug.LogError("Error en la respuesta de la API: " + responseData["error"]);
-                    // Manejar el error de la API (ej: mostrar un mensaje de error en la UI)
-                }
-                else
-                {
-                    Debug.LogWarning("Respuesta de la API en formato inesperado: " + request.downloadHandler.text);
-                }
-            }
-            catch (JsonException e)
-            {
-                Debug.LogError("Error al parsear JSON de la respuesta de la API: " + e.Message);
-                Debug.Log("Texto de respuesta completo: " + request.downloadHandler.text); // Imprimir el texto completo para depuraci�n
-                // Manejar el error de parsing JSON (ej: mostrar un mensaje de error en la UI)
-            }
+            Debug.LogError("No se encontró el componente ModeloAI");
         }
-
-        request.Dispose(); // Liberar recursos de UnityWebRequest
     }
+
 
     // Funci�n para procesar la predicci�n de conocimiento (0 o 1) recibida de la API �A�ADIDO!
-    private void ProcesarPrediccionDeConocimiento(int prediction)
+    public void ProcesarPrediccionDeConocimiento(float[] predictions)
     {
-        if (prediction == 1)
+        // Definir un umbral para considerar que el usuario conoce la categoría
+        float umbral = 0.5f;
+
+        for (int i = 0; i < predictions.Length; i++)
         {
-            Debug.Log("�El modelo predice que el usuario CONOCE el concepto!");
-            // **Aqu� puedes implementar l�gica para usuarios que 'conocen' el concepto:**
-            // - Aumentar la dificultad de las preguntas siguientes
-            // - Ofrecer contenido m�s avanzado
-            // - Desbloquear niveles o contenido adicional
-        }
-        else
-        {
-            Debug.Log("El modelo predice que el usuario NO CONOCE el concepto.");
-            // **Aqu� puedes implementar l�gica para usuarios que 'no conocen' el concepto:**
-            // - Reducir la dificultad de las preguntas siguientes
-            // - Ofrecer recursos de repaso o explicaciones
-            // - Recomendar recursos educativos usando ContentRecommendationSystem (�pr�ximo paso!)
+            // Convertir el valor a porcentaje
+            float porcentaje = predictions[i] * 100f;
+            if (predictions[i] > umbral)
+            {
+                Debug.Log($"El usuario CONOCE el concepto del Grupo {i + 1} ({porcentaje:F2}%).");
+            }
+            else
+            {
+                Debug.Log($"El usuario NO CONOCE el concepto del Grupo {i + 1} ({porcentaje:F2}%).");
+            }
         }
     }
+
 
 
     [Header("Referencias UI")]
