@@ -14,7 +14,7 @@ public class Api : MonoBehaviour
         StartCoroutine(SendEmailCoroutine(email, code));
     }
 
-    public IEnumerator SendEmailCoroutine(string email, string code)
+    private IEnumerator SendEmailCoroutine(string email, string code)
     {
         string jsonPayload = "{ " +
             "\"from\": { \"email\": \"periodicappoficial@gmail.com\" }, " +
@@ -35,7 +35,6 @@ public class Api : MonoBehaviour
             "\" }] " +
         "}";
 
-
         using (UnityWebRequest request = new UnityWebRequest(url, "POST"))
         {
             byte[] bodyRaw = Encoding.UTF8.GetBytes(jsonPayload);
@@ -44,11 +43,20 @@ public class Api : MonoBehaviour
             request.SetRequestHeader("Authorization", "Bearer " + apiKey);
             request.SetRequestHeader("Content-Type", "application/json");
 
+            Debug.Log("📨 Enviando correo a: " + email);
+
             yield return request.SendWebRequest();
 
             if (request.result == UnityWebRequest.Result.Success)
             {
                 Debug.Log("✅ Correo enviado con éxito: " + request.downloadHandler.text);
+
+                // 🔄 Esperar unos segundos antes de cambiar de escena
+                yield return new WaitForSeconds(2f);
+
+                // ⏭️ Ir a la escena de verificación
+                Debug.Log("⏭️ Cambiando a la escena de verificación...");
+                SceneManager.LoadScene("Registrar");
             }
             else
             {

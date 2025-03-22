@@ -86,8 +86,8 @@ public class RegisterController : MonoBehaviour
             return;
         }
 
-                //PlayerPrefs.SetInt("EmailVerified", 1);
-                //PlayerPrefs.Save();
+                PlayerPrefs.SetInt("EmailVerified", 1);
+                PlayerPrefs.Save();
                 UpdateUserProfile(currentUser, userName);
            
     }
@@ -164,7 +164,7 @@ public class RegisterController : MonoBehaviour
             VerificarYActualizarRango(userId);
             await SubirMisionesJSON(userId);
 
-            SceneManager.LoadScene("Login");
+            SceneManager.LoadScene("Start");
         }
         catch (System.Exception e)
         {
