@@ -18,7 +18,7 @@ public class StartAppManager : MonoBehaviour
     {
         Debug.Log("⌛ Verificando conexión a Internet...");
         StartCoroutine(CheckInternetConnection());
-        ImprimirDatosPlayerPrefs();
+   
     }
 
     // 🔹 Corrutina para verificar conexión
@@ -133,7 +133,7 @@ public class StartAppManager : MonoBehaviour
         PlayerPrefs.SetInt("TempXP", 0);
         PlayerPrefs.SetString("TempAvatar", avatarUrl);
         PlayerPrefs.SetString("TempRango", "Novato de laboratorio");
-        //PlayerPrefs.SetString("Estadouser", "local");
+        PlayerPrefs.SetString("Estadouser", "local");
         PlayerPrefs.SetInt("Nivel", 1);
         PlayerPrefs.SetInt("TempEncuestaCompletada", encuestaCompletada ? 1 : 0);
 
@@ -142,20 +142,4 @@ public class StartAppManager : MonoBehaviour
         Debug.Log("✅ Usuario provisional creado: " + username);
     }
 
-    public void ImprimirDatosPlayerPrefs()
-    {
-        string username = PlayerPrefs.GetString("TempUsername", "");
-        string ocupacion = PlayerPrefs.GetString("TempOcupacion", "");
-        string rango = PlayerPrefs.GetString("TempRango", "");
-        int encuestaCompletada = PlayerPrefs.GetInt("TempEncuestaCompletada", 0);
-        int xp = PlayerPrefs.GetInt("TempXP", 0);
-
-        Debug.Log("========== DATOS GUARDADOS EN PLAYERPREFS ==========");
-        Debug.Log("Nombre de usuario: " + username);
-        Debug.Log("Ocupación: " + ocupacion);
-        Debug.Log("Rango: " + rango);
-        Debug.Log("XP: " + xp);
-        Debug.Log("estado encuesta: " + encuestaCompletada);
-        Debug.Log("====================================================");
-    }
 }
