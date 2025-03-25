@@ -86,19 +86,10 @@ public class RegisterController : MonoBehaviour
             return;
         }
 
-        currentUser.ReloadAsync().ContinueWithOnMainThread(task => {
-            if (task.IsCompleted && currentUser.IsEmailVerified)
-            {
-                Debug.Log("✅ Correo verificado después de recarga.");
                 PlayerPrefs.SetInt("EmailVerified", 1);
                 PlayerPrefs.Save();
                 UpdateUserProfile(currentUser, userName);
-            }
-            else
-            {
-                Debug.LogError("⚠️ El correo aún no está verificado.");
-            }
-        });
+           
     }
 
     private void UpdateUserProfile(FirebaseUser user, string userName)
@@ -137,6 +128,7 @@ public class RegisterController : MonoBehaviour
             ocupacionSelecionada = roles.options[roles.value].text;
         }
 
+
             Dictionary<string, object> userData = new Dictionary<string, object>
     {
         { "DisplayName", user.DisplayName },
@@ -172,7 +164,7 @@ public class RegisterController : MonoBehaviour
             VerificarYActualizarRango(userId);
             await SubirMisionesJSON(userId);
 
-            SceneManager.LoadScene("Login");
+            SceneManager.LoadScene("Start");
         }
         catch (System.Exception e)
         {

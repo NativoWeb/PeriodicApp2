@@ -12,18 +12,21 @@ public class StartAppManager : MonoBehaviour
     public TMP_Text GuardardatosUI;
 
     [SerializeField] private GameObject m_GuardardatosUI = null;
-    
+
 
     void Start()
     {
         Debug.Log("⌛ Verificando conexión a Internet...");
         StartCoroutine(CheckInternetConnection());
+        ImprimirDatosPlayerPrefs();
     }
 
     // 🔹 Corrutina para verificar conexión
     IEnumerator CheckInternetConnection()
     {
-        yield return new WaitForSeconds(1f); // Esperar un segundo antes de validar
+        yield return new WaitForSeconds(0); // Esperar un segundo antes de validar
+
+        Debug.Log("MEDFGSFDHDRHRDFGTHGSD.");
 
         if (Application.internetReachability == NetworkReachability.NotReachable)
         {
@@ -82,10 +85,10 @@ public class StartAppManager : MonoBehaviour
         if (IsTemporaryUserSaved())
         {
             Debug.Log("📝 Datos temporales encontrados. Enviando a Registro.");
-           // acá voy a poner el ativar el panel que muestra el texto diciendole que se registre para subir todo el progreso a la nube#####################################################
 
-           // y le coloco un btn de "Ok" para que continue e ingrese a email a registrarse ####################################################
-            LoadSceneIfNotAlready("Email");
+            SceneManager.LoadScene("Email");
+
+            //LoadSceneIfNotAlready("Email");
         }
         else
         {
@@ -130,13 +133,29 @@ public class StartAppManager : MonoBehaviour
         PlayerPrefs.SetInt("TempXP", 0);
         PlayerPrefs.SetString("TempAvatar", avatarUrl);
         PlayerPrefs.SetString("TempRango", "Novato de laboratorio");
-        PlayerPrefs.SetString("EstadoUser", "local");
+        //PlayerPrefs.SetString("Estadouser", "local");
         PlayerPrefs.SetInt("Nivel", 1);
         PlayerPrefs.SetInt("TempEncuestaCompletada", encuestaCompletada ? 1 : 0);
-
 
         PlayerPrefs.Save();
 
         Debug.Log("✅ Usuario provisional creado: " + username);
+    }
+
+    public void ImprimirDatosPlayerPrefs()
+    {
+        string username = PlayerPrefs.GetString("TempUsername", "");
+        string ocupacion = PlayerPrefs.GetString("TempOcupacion", "");
+        string rango = PlayerPrefs.GetString("TempRango", "");
+        int encuestaCompletada = PlayerPrefs.GetInt("TempEncuestaCompletada", 0);
+        int xp = PlayerPrefs.GetInt("TempXP", 0);
+
+        Debug.Log("========== DATOS GUARDADOS EN PLAYERPREFS ==========");
+        Debug.Log("Nombre de usuario: " + username);
+        Debug.Log("Ocupación: " + ocupacion);
+        Debug.Log("Rango: " + rango);
+        Debug.Log("XP: " + xp);
+        Debug.Log("estado encuesta: " + encuestaCompletada);
+        Debug.Log("====================================================");
     }
 }

@@ -7,59 +7,57 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using System.Collections;
+using System.Text;
+using UnityEngine.Networking;
 
 public class EmailController : MonoBehaviour
 {
     public TMP_InputField emailInput;
     public TMP_InputField passwordInput;
     public TMP_InputField confirmPasswordInput;
+    public TMP_InputField verificationCodeInput;
     public Button registerButton;
     public Button verifyButton;
     public TMP_Text verificationMessage;
-
-    public GameObject registroPanel;  // Panel de registro
-    public GameObject verificacionPanel;  // Panel de verificación
+    public GameObject registroPanel;
+    public GameObject verificacionPanel;
 
     private FirebaseAuth auth;
     private FirebaseFirestore firestore;
     private FirebaseUser currentUser;
+    private string generatedCode;
+    private string userEmail;
+
+    private const string apiKey = "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";  // Reemplaza con tu API Key de Brevo
+    private const string url = "https://api.brevo.com/v3/smtp/email";
 
     void Start()
     {
-        // Asegurarse de que el panel de verificación esté oculto al inicio
         verificacionPanel.SetActive(false);
         registroPanel.SetActive(true);
-
-        // Método para esperar que Firebase inicie antes de continuar
         StartCoroutine(WaitForFirebase());
     }
+
     private IEnumerator WaitForFirebase()
     {
-        float tiempoMaximoEspera = 3f; // 🔹 Máximo 3 segundos de espera
+        float tiempoMaximoEspera = 3f;
         float tiempoEspera = 0f;
 
-        // Esperar hasta que Firebase esté listo o se agote el tiempo
         while (!DbConnexion.Instance.IsFirebaseReady())
         {
-            Debug.Log("⏳ Esperando inicialización de Firebase...");
-
             yield return new WaitForSeconds(0.5f);
             tiempoEspera += 0.5f;
 
             if (tiempoEspera >= tiempoMaximoEspera)
             {
                 Debug.LogError("🚨 Tiempo de espera excedido. Firebase no está listo.");
-                yield break; // 🔹 Salimos del bucle sin continuar
+                yield break;
             }
         }
 
-        Debug.Log("✅ Firebase está listo. Procediendo con LoginController.");
-
-        // Aseguramos que las instancias de autenticación y Firestore estén asignadas correctamente
         auth = DbConnexion.Instance.Auth;
         firestore = DbConnexion.Instance.Firestore;
 
-        // Verificamos si los objetos no son nulos antes de proceder
         if (auth == null || firestore == null)
         {
             Debug.LogError("🚨 Error: No se pudo obtener las referencias de Firebase.");
@@ -81,7 +79,6 @@ public class EmailController : MonoBehaviour
             return;
         }
 
-        // Crear usuario con correo y contraseña
         CreateUserWithEmail(email, password);
     }
 
@@ -94,75 +91,75 @@ public class EmailController : MonoBehaviour
                 return;
             }
 
-            // Usuario registrado exitosamente
             currentUser = auth.CurrentUser;
-
-            // Enviar correo de verificación
-            SendVerificationEmail();
+            userEmail = email;
+            generatedCode = Random.Range(100000, 999999).ToString();
+            SendVerificationEmail(userEmail, generatedCode);
         });
     }
 
-    private void SendVerificationEmail()
+    private void SendVerificationEmail(string email, string code)
     {
-        if (currentUser != null)
+        StartCoroutine(SendEmailCoroutine(email, code));
+    }
+
+    private IEnumerator SendEmailCoroutine(string email, string code)
+    {
+        string jsonPayload = "{ " +
+                    "\"sender\": { \"name\": \"PeriodicApp\", \"email\": \"periodicappoficial@gmail.com\" }, " +
+                    "\"to\": [{ \"email\": \"" + email + "\", \"name\": \"Usuario\" }], " +
+                    "\"subject\": \"🔐 Código de Verificación - PeriodicApp\", " +
+                    "\"htmlContent\": \"" +
+                    "<div style='font-family: Arial, sans-serif; text-align: center; background-color: #f4f4f4; padding: 20px;'>" +
+                        "<div style='max-width: 500px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);'>" +
+                            "<h2 style='color: #332C85;'>🔐 Código de Verificación</h2>" +
+                            "<p style='font-size: 16px; color: #333;'>¡Hola! Gracias por registrarte en <strong>PeriodicApp</strong>. Para continuar, usa el siguiente código de verificación:</p>" +
+                            "<div style='font-size: 24px; font-weight: bold; color: #ffffff; background: #332C85; padding: 10px; display: inline-block; border-radius: 5px; margin: 10px 0;'>" +
+                                code + "</div>" +
+                            "<p style='font-size: 14px; color: #666;'>Este código expirará en 10 minutos.</p>" +
+                            "<hr style='border: none; border-top: 1px solid #ddd; margin: 20px 0;'>" +
+                            "<p style='font-size: 12px; color: #777;'>Si no solicitaste este código, puedes ignorar este mensaje.</p>" +
+                        "</div>" +
+                    "</div>" +
+                    "\" }";
+
+        using (UnityWebRequest request = new UnityWebRequest(url, "POST"))
         {
-            currentUser.SendEmailVerificationAsync().ContinueWithOnMainThread(task => {
-                if (task.IsCanceled || task.IsFaulted)
-                {
-                    Debug.LogError("❌ Error al enviar el correo de verificación: " + task.Exception?.Message);
-                    return;
-                }
+            byte[] bodyRaw = Encoding.UTF8.GetBytes(jsonPayload);
+            request.uploadHandler = new UploadHandlerRaw(bodyRaw);
+            request.downloadHandler = new DownloadHandlerBuffer();
+            request.SetRequestHeader("api-key", apiKey);
+            request.SetRequestHeader("Content-Type", "application/json");
 
-                Debug.Log("✅ Correo de verificación enviado.");
+            yield return request.SendWebRequest();
 
-                // Mostrar el mensaje en el TMP_Text
-                verificationMessage.text = "📩 Se ha enviado un correo de verificación. Por favor, revisa tu bandeja de entrada y haz clic en el enlace.";
-
-                // 🔄 Cambiar de panel: Ocultar el de registro y mostrar el de verificación
+            if (request.result == UnityWebRequest.Result.Success)
+            {
+                Debug.Log("✅ Correo enviado con éxito");
                 registroPanel.SetActive(false);
                 verificacionPanel.SetActive(true);
-            });
-        }
-        else
-        {
-            Debug.LogError("❌ No hay un usuario autenticado.");
+            }
+            else
+            {
+                Debug.LogError("❌ Error al enviar el correo: " + request.responseCode + " - " + request.error);
+                Debug.LogError("❌ Respuesta: " + request.downloadHandler.text);
+            }
         }
     }
 
     public void OnVerifyButtonClick()
     {
-        StartCoroutine(VerifyEmailRoutine());
-    }
-
-    private IEnumerator VerifyEmailRoutine()
-    {
-        verificationMessage.text = "🔄 Verificando email...";
-        verifyButton.interactable = false;
-
-        while (true)
+        Debug.Log(generatedCode);
+        Debug.Log(verificationCodeInput.text);
+        if (verificationCodeInput.text == generatedCode)
         {
-            Debug.Log("🔄 Recargando usuario...");
-            var reloadTask = currentUser.ReloadAsync();
-            yield return new WaitUntil(() => reloadTask.IsCompleted);
-
-            if (reloadTask.IsFaulted)
-            {
-                Debug.LogError($"❌ Error al recargar usuario: {reloadTask.Exception?.Message}");
-                verificationMessage.text = "⚠️ Error al verificar el correo. Intenta nuevamente.";
-                verifyButton.interactable = true;
-                yield break;
-            }
-
-            Debug.Log($"🔍 Estado de verificación: {currentUser.IsEmailVerified}");
-
-            if (currentUser.IsEmailVerified)
-            {
-                Debug.Log("✅ Email verificado correctamente. Avanzando a la siguiente escena...");
-                SceneManager.LoadScene("Registrar");
-                yield break;
-            }
-
-            yield return new WaitForSeconds(3);
+            Debug.Log("✅ Código verificado correctamente. Avanzando a la siguiente escena...");
+            SceneManager.LoadScene("Registrar");
+        }
+        else
+        {
+            Debug.LogError("❌ Código incorrecto. Intenta de nuevo.");
+            verificationMessage.text = "⚠️ Código incorrecto. Intenta nuevamente.";
         }
     }
 }

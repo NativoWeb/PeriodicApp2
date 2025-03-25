@@ -18,13 +18,15 @@ public class Logout : MonoBehaviour
     }
     public void logout() // ################################################################ Método para cerrar sesión
     {
+       // await SubirMisionesJSON(); ponerlo apenas se pueda URGENTE
         auth.SignOut(); // Cierra la sesión en Firebase
-        PlayerPrefs.DeleteKey("userId"); // Elimina el ID del usuario guardado
+        PlayerPrefs.DeleteAll(); // Elimina el ID del usuario guardado
         PlayerPrefs.Save(); // Guarda los cambios
 
         Debug.Log("Sesión cerrada correctamente");
 
         // Opcional: Redirigir a la escena de login
-        SceneManager.LoadScene("Login");
+        SceneManager.LoadScene("Start");
     }
+
 }
