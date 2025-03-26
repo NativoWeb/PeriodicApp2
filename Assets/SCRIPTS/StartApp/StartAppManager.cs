@@ -8,10 +8,7 @@ public class StartAppManager : MonoBehaviour
 {
     public static bool IsReady = false; // 🔹 Bandera para indicar si terminó
     private bool yaVerificado = false; // 🔹 Evita ejecuciones repetidas
-                                       // pop up para el usuario
-    public TMP_Text GuardardatosUI;
-
-    [SerializeField] private GameObject m_GuardardatosUI = null;
+   
 
 
     void Start()
@@ -26,7 +23,6 @@ public class StartAppManager : MonoBehaviour
     {
         yield return new WaitForSeconds(0); // Esperar un segundo antes de validar
 
-        Debug.Log("MEDFGSFDHDRHRDFGTHGSD.");
 
         if (Application.internetReachability == NetworkReachability.NotReachable)
         {
@@ -62,10 +58,6 @@ public class StartAppManager : MonoBehaviour
         else
         {
             Debug.Log("🆕 No se encontró usuario temporal. Creando usuario provisional...");
-
-            //  acá se pone el activar el panel que le muestra el txt que le va a decir que la proxima vez que entre online se tiene que regitrar para vincular el progreso a una cuenta ##############################
-
-            // y le coloco un Btn de "Ok" para que continue e ingrese a inicioOffline a el modo off despues de crear el temp user ####################################################
 
             CreateTemporaryUser();
             LoadSceneIfNotAlready("InicioOffline");
@@ -111,11 +103,11 @@ public class StartAppManager : MonoBehaviour
     // Verificar si hay datos de usuario temporal guardados
     bool IsTemporaryUserSaved()
     {
-        return PlayerPrefs.HasKey("TempUsername") &&
+        return PlayerPrefs.HasKey("DisplayName") &&
                PlayerPrefs.HasKey("TempOcupacion") &&
                PlayerPrefs.HasKey("TempXP") &&
                PlayerPrefs.HasKey("TempAvatar") &&
-               PlayerPrefs.HasKey("TempRango") &&
+               PlayerPrefs.HasKey("Rango") &&
                PlayerPrefs.HasKey("TempEncuestaCompletada");
     }
 
@@ -124,21 +116,21 @@ public class StartAppManager : MonoBehaviour
     {
         string username = "tempUser_" + Random.Range(1000, 9999).ToString();
         string ocupacionSeleccionada = "Otro"; // Por defecto
-        string avatarUrl = "Avatares/defecto"; // Por defecto
+        string avatarUrl = "Avatares/nivel1"; // Por defecto
         bool encuestaCompletada = false;
 
         // Guardar datos en PlayerPrefs
-        PlayerPrefs.SetString("TempUsername", username);
-        PlayerPrefs.SetString("TempOcupacion", ocupacionSeleccionada);
-        PlayerPrefs.SetInt("TempXP", 0);
+        PlayerPrefs.SetString("DisplayName", username);
         PlayerPrefs.SetString("TempAvatar", avatarUrl);
-        PlayerPrefs.SetString("TempRango", "Novato de laboratorio");
-        PlayerPrefs.SetString("Estadouser", "local");
+        PlayerPrefs.SetString("Rango", "Novato de laboratorio");
+        PlayerPrefs.SetInt("TempXP", 0);
+        PlayerPrefs.SetInt("posicion", 0);
+        PlayerPrefs.SetString("TempOcupacion", ocupacionSeleccionada);
         PlayerPrefs.SetInt("Nivel", 1);
         PlayerPrefs.SetInt("TempEncuestaCompletada", encuestaCompletada ? 1 : 0);
 
+        PlayerPrefs.SetString("Estadouser", "local");
         PlayerPrefs.Save();
-
         Debug.Log("✅ Usuario provisional creado: " + username);
     }
 
