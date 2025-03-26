@@ -24,7 +24,7 @@ public class CategoriaBotones : MonoBehaviour
     List<Categoria> categorias = new List<Categoria>
 {
     new Categoria("Metales Alcalinos", "¡Prepárate para la reactividad extrema! ¿Podrás dominar estos metales explosivos?", "Escena_Alcalinos"),
-    new Categoria("Metales Alcalinotérreos", "¡Más estables, pero igual de sorprendentes! Descubre su papel esencial en la química.", "Escena_Alcalinoterreos"),
+    new Categoria("Metales Alcalinotérreos", "¡Más estables, pero igual de sorprendentes! Descubre su papel esencial en la química.", "Escena_Alcalinos"),
     new Categoria("Metales de Transición", "¡Los maestros del cambio! Explora los metales que forman los colores más vibrantes.", "Escena_Transicionales"),
     new Categoria("Metales Postransicionales", "¡Menos famosos, pero igual de útiles! ¿Cuánto sabes de estos metales versátiles?", "Escena_Postransicionales"),
     new Categoria("Metaloides", "¡Ni metal ni no metal! Atrévete a jugar con los elementos más enigmáticos.", "Escena_Metaloides"),
