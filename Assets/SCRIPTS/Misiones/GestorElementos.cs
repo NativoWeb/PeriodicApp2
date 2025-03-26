@@ -231,6 +231,7 @@ public class GestorElementos : MonoBehaviour
 
         // Guardar el estado de la misión antes de cambiar de escena
         PlayerPrefs.SetString("ElementoSeleccionado", elemento);
+        PlayerPrefs.SetString("SimboloElemento", txtSimbolo.text);
         PlayerPrefs.SetInt("MisionActual", idMision);
         if (idMision == 1)
         {
