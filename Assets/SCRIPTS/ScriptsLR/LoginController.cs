@@ -8,9 +8,11 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using System.Collections;
+using System.Text.RegularExpressions;
 
 public class LoginController : MonoBehaviour
 {
+
     /* -----------------  Necesario para restablecer contraseña  ----------------- */
     public Button btnResetPassword;
     public Button btnSendReset; // Botón para enviar el correo
@@ -230,6 +232,8 @@ public class LoginController : MonoBehaviour
             });
         }
     }
+
+
 
     /* -----------------  MÉTODOS PARA BLOQUEAR USUARIO  ----------------- */
     private void LockUser()
