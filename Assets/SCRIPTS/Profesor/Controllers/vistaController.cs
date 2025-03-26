@@ -6,6 +6,8 @@ public class vistaController : MonoBehaviour
     [SerializeField] private GameObject CrearEncuestaPanel = null;
     [SerializeField] private GameObject IniciarEncuestaPanel = null;
     [SerializeField] private GameObject RankingPanel = null;
+    [SerializeField] private GameObject Perfil = null;
+
 
     private EncuestaManager encuestaManager; // Referencia al EncuestaManager
 

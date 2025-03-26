@@ -16,7 +16,7 @@ public class CategoriaBotones : MonoBehaviour
     public TextMeshProUGUI descripcionTMP;
     public Button botonCambiarEscena; // Botón para cambiar de escena
 
-    private string juegoEscenaActual;
+    public string juegoEscenaActual;
     private Button botonSeleccionado;
     private Color colorNormal = Color.gray;
     private Color colorSeleccionado = new Color(81f / 255f, 178f / 255f, 124f / 255f); // #51B27C
@@ -94,6 +94,7 @@ public class CategoriaBotones : MonoBehaviour
         nombreTMP.text = categoria.Titulo;
         descripcionTMP.text = categoria.Descripcion;
         juegoEscenaActual = categoria.Escena;
+        PlayerPrefs.SetString("juegoEscenaActual", categoria.Escena);
 
         botonCambiarEscena.interactable = true;
         botonCambiarEscena.onClick.RemoveAllListeners();
@@ -107,6 +108,7 @@ public class CategoriaBotones : MonoBehaviour
 
         if (!string.IsNullOrEmpty(juegoEscenaActual))
         {
+            PlayerPrefs.SetString("CategoriaSeleccionada", nombreTMP.text);
             SceneManager.LoadScene(juegoEscenaActual);
         }
         else
