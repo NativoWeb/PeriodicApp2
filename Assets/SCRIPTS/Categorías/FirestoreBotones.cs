@@ -25,16 +25,15 @@ public class CategoriaBotones : MonoBehaviour
 {
     new Categoria("Metales Alcalinos", "¡Prepárate para la reactividad extrema! ¿Podrás dominar estos metales explosivos?", "Escena_Alcalinos"),
     new Categoria("Metales Alcalinotérreos", "¡Más estables, pero igual de sorprendentes! Descubre su papel esencial en la química.", "Escena_Alcalinos"),
-    new Categoria("Metales de Transición", "¡Los maestros del cambio! Explora los metales que forman los colores más vibrantes.", "Escena_Transicionales"),
-    new Categoria("Metales Postransicionales", "¡Menos famosos, pero igual de útiles! ¿Cuánto sabes de estos metales versátiles?", "Escena_Postransicionales"),
-    new Categoria("Metaloides", "¡Ni metal ni no metal! Atrévete a jugar con los elementos más enigmáticos.", "Escena_Metaloides"),
-    new Categoria("No Metales Reactivos", "¡Elementos esenciales para la vida! Descubre su impacto en nuestro mundo.", "Escena_NoMetales"),
-    new Categoria("Gases Nobles", "¡Silenciosos pero poderosos! ¿Podrás jugar con los elementos más estables?", "Escena_GasesNobles"),
-    new Categoria("Lantánidos", "¡Los metales raros que hacen posible la tecnología moderna! ¿Aceptas el reto?", "Escena_Lantanidos"),
-    new Categoria("Actínidos", "¡La energía del futuro! Juega con los elementos más radioactivos y misteriosos.", "Escena_Actinidos"),
-    new Categoria("Elementos Desconocidos", "¡Aventúrate en lo desconocido! ¿Cuánto sabes de estos elementos misteriosos?", "Escena_Desconocidos")
+    new Categoria("Metales de Transición", "¡Los maestros del cambio! Explora los metales que forman los colores más vibrantes.", "Escena_Alcalinos"),
+    new Categoria("Metales Postransicionales", "¡Menos famosos, pero igual de útiles! ¿Cuánto sabes de estos metales versátiles?", "Escena_Alcalinos"),
+    new Categoria("Metaloides", "¡Ni metal ni no metal! Atrévete a jugar con los elementos más enigmáticos.", "Escena_Alcalinos"),
+    new Categoria("No Metales Reactivos", "¡Elementos esenciales para la vida! Descubre su impacto en nuestro mundo.", "Escena_Alcalinos"),
+    new Categoria("Gases Nobles", "¡Silenciosos pero poderosos! ¿Podrás jugar con los elementos más estables?", "Escena_Alcalinos"),
+    new Categoria("Lantánidos", "¡Los metales raros que hacen posible la tecnología moderna! ¿Aceptas el reto?", "Escena_Alcalinos"),
+    new Categoria("Actínidos", "¡La energía del futuro! Juega con los elementos más radioactivos y misteriosos.", "Escena_Alcalinos"),
+    new Categoria("Elementos Desconocidos", "¡Aventúrate en lo desconocido! ¿Cuánto sabes de estos elementos misteriosos?", "Escena_Alcalinos")
 };
-
 
     void Start()
     {
