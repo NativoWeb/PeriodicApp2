@@ -377,12 +377,10 @@ public class LoginController : MonoBehaviour
             string savedEmail = PlayerPrefs.GetString("userEmail");
             string savedPassword = PlayerPrefs.GetString("userPassword");
             string savedUserId = PlayerPrefs.GetString("userId");
-
             if (email == savedEmail && password == savedPassword)
             {
                 txtError.text = "Inicio de sesion sin conexión exitoso.";
-                Debug.Log("📴 ✅ Inicio de sesión sin conexión exitoso.");
-                SceneManager.LoadScene("Categorías");
+                txtError.color = Color.green;
             }
             else if (email == savedEmail && password != savedPassword)
             {

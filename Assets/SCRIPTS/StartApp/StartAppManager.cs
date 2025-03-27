@@ -13,7 +13,7 @@ public class StartAppManager : MonoBehaviour
 
     void Start()
     {
-        Debug.Log("⌛ Verificando conexión a Internet...");
+        //Verifica su hay conexion a internet
         StartCoroutine(CheckInternetConnection());
    
     }
@@ -26,12 +26,12 @@ public class StartAppManager : MonoBehaviour
 
         if (Application.internetReachability == NetworkReachability.NotReachable)
         {
-            Debug.Log("❌ No hay conexión a internet. Verificando usuario temporal...");
+            // si no hay internet, verifica si tiene un usuario temporal creado previamente
             HandleOfflineMode();
         }
         else
         {
-            Debug.Log("🌍 Conexión a internet detectada. Verificando datos guardados...");
+            //si hay internet verifica si tiene datos guardados previamente del offline
             HandleOnlineMode();
         }
     }
@@ -47,18 +47,25 @@ public class StartAppManager : MonoBehaviour
 
         if (estadoUsuario == "nube")
         {
-            Debug.Log("☁️ Usuario autenticado en la nube. Permitiendo acceso offline.");
             LoadSceneIfNotAlready("Login");
         }
         else if (IsTemporaryUserSaved())
         {
-            Debug.Log("✅ Usuario temporal encontrado. Enviando a Inicio.");
-            LoadSceneIfNotAlready("Inicio");
+            string ocupacion = PlayerPrefs.GetString("TempOcupacion");
+
+
+            if (ocupacion == "Profesor")
+            {
+                LoadSceneIfNotAlready("InicioProfesor");
+            }
+            else if (ocupacion == "Estudiante")
+            {
+                LoadSceneIfNotAlready("Categorías");
+            }
+
         }
         else
         {
-            Debug.Log("🆕 No se encontró usuario temporal. Creando usuario provisional...");
-
             CreateTemporaryUser();
             LoadSceneIfNotAlready("InicioOffline");
         }
@@ -74,17 +81,13 @@ public class StartAppManager : MonoBehaviour
 
         yaVerificado = true;
 
-        if (IsTemporaryUserSaved())
-        {
-            Debug.Log("📝 Datos temporales encontrados. Enviando a Registro.");
-
+        if (IsTemporaryUserSaved()) // si hay datos encontrados del offline, se envia a registro para subirlo a la BD
+        {             
             SceneManager.LoadScene("Email");
 
-            //LoadSceneIfNotAlready("Email");
         }
-        else
+        else //Si no tiene datos temporales lo manda a login
         {
-            Debug.Log("🔑 No hay datos temporales. Enviando a Login.");
             LoadSceneIfNotAlready("Login");
         }
 
@@ -131,7 +134,6 @@ public class StartAppManager : MonoBehaviour
 
         PlayerPrefs.SetString("Estadouser", "local");
         PlayerPrefs.Save();
-        Debug.Log("✅ Usuario provisional creado: " + username);
     }
 
 }
