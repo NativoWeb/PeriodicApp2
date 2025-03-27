@@ -37,6 +37,7 @@ public class GestorElementos : MonoBehaviour
     public TextMeshProUGUI txtElectronegatividad;
     public TextMeshProUGUI txtEstado;
     public TextMeshProUGUI txtDescripcion;
+    public TextMeshProUGUI txtTitulo;
 
     [Header("Botón de Regreso")]
     public Button btnRegresar;
@@ -48,6 +49,7 @@ public class GestorElementos : MonoBehaviour
     void Start()
     {
         Debug.Log("Iniciando GestorElementos...");
+        txtTitulo.text = PlayerPrefs.GetString("CategoriaSeleccionada", "");
         CargarJSON();
         CargarElementosDesdeJSON();
         btnMisiones.onClick.AddListener(MostrarMisiones);
