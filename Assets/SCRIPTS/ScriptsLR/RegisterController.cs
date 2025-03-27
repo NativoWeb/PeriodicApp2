@@ -10,6 +10,8 @@ using UnityEngine.UI;
 
 public class RegisterController : MonoBehaviour
 {
+    public TMP_Text txtMensaje;
+
     public TMP_InputField userNameInput;
     public Button completeProfileButton;
     public Dropdown roles;
@@ -29,6 +31,10 @@ public class RegisterController : MonoBehaviour
 
     void Start()
     {
+
+        txtMensaje.text = "";
+
+
         auth = FirebaseAuth.DefaultInstance;
         db = FirebaseFirestore.DefaultInstance;
 
@@ -75,7 +81,23 @@ public class RegisterController : MonoBehaviour
             return;
         }
 
+        // Validar que el usuario haya seleccionado un rol válido
+        if (roles.value == 0)
+        {
+            txtMensaje.text = "Debes seleccionar una ocupación antes de continuar.";
+            txtMensaje.color = Color.red;
+            return;
+        }
+
         string userName = userNameInput.text;
+
+        if (userName.Equals(""))
+        {
+            txtMensaje.text = "Debes Ingresar un nombre de usuario antes de continuar";
+            txtMensaje.color = Color.red;
+            return;
+        }
+
         PlayerPrefs.SetString("DisplayName", userName);
         PlayerPrefs.Save();
 

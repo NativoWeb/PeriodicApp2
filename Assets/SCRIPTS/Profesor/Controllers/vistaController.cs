@@ -54,4 +54,15 @@ public class vistaController : MonoBehaviour
         CrearEncuestaPanel.SetActive(false);
         IniciarEncuestaPanel.SetActive(false);
     }
+
+    public void MostrarPerfil()
+    {
+        Perfil.SetActive(true);
+        
+        RankingPanel.SetActive(false);
+        InicioPanel.SetActive(false);
+        CrearEncuestaPanel.SetActive(false);
+        IniciarEncuestaPanel.SetActive(false);
+
+    }
 }
