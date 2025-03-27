@@ -1,3 +1,4 @@
+using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI; // Importante para trabajar con botones
@@ -22,9 +23,19 @@ public class VerificarEncuestas : MonoBehaviour
                 SceneManager.LoadScene("Categorías");
         }
 
+
         // Desactivar botones si la encuesta ya fue realizada
         botonAprendizaje.interactable = !estadoencuestaaprendizaje;
         botonConocimiento.interactable = !estadoencuestaconocimiento;
+        if (botonAprendizaje.interactable ==false)
+        {
+            botonAprendizaje.GetComponentInChildren <TMP_Text>().color = Color.white;
+        }
+        else if (botonConocimiento.interactable == false)
+        {
+            botonConocimiento.GetComponentInChildren<TMP_Text>().color = Color.white;
+        }
+
 
     }
 

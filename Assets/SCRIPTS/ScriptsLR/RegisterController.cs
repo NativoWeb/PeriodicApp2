@@ -16,6 +16,7 @@ public class RegisterController : MonoBehaviour
     public Button completeProfileButton;
     public Dropdown roles;
     [SerializeField] private GameObject m_OcupacionUI = null;// Activar Lista ocupación 
+
     private string ocupacionSelecionada; // para actualizar 
 
     private FirebaseAuth auth;
@@ -31,10 +32,6 @@ public class RegisterController : MonoBehaviour
 
     void Start()
     {
-
-        txtMensaje.text = "";
-
-
         auth = FirebaseAuth.DefaultInstance;
         db = FirebaseFirestore.DefaultInstance;
 
@@ -81,8 +78,9 @@ public class RegisterController : MonoBehaviour
             return;
         }
 
+        bool ocupacion = PlayerPrefs.HasKey("TempOcupacion");
         // Validar que el usuario haya seleccionado un rol válido
-        if (roles.value == 0)
+        if (roles.value == 0 && !ocupacion)
         {
             txtMensaje.text = "Debes seleccionar una ocupación antes de continuar.";
             txtMensaje.color = Color.red;
@@ -90,8 +88,7 @@ public class RegisterController : MonoBehaviour
         }
 
         string userName = userNameInput.text;
-
-        if (userName.Equals(""))
+        if (userName.Equals("") )
         {
             txtMensaje.text = "Debes Ingresar un nombre de usuario antes de continuar";
             txtMensaje.color = Color.red;
@@ -108,10 +105,10 @@ public class RegisterController : MonoBehaviour
             return;
         }
 
-                PlayerPrefs.SetInt("EmailVerified", 1);
-                PlayerPrefs.Save();
-                UpdateUserProfile(currentUser, userName);
-           
+        PlayerPrefs.SetInt("EmailVerified", 1);
+        PlayerPrefs.Save();
+        UpdateUserProfile(currentUser, userName);
+
     }
 
     private void UpdateUserProfile(FirebaseUser user, string userName)
@@ -135,32 +132,40 @@ public class RegisterController : MonoBehaviour
         string userId = user.UserId;
         DocumentReference docRef = db.Collection("users").Document(userId);
 
-        string avatarUrl = "Avatares/defecto";  
+        string avatarUrl = "Avatares/defecto";
 
-        bool tieneUsuarioTemporal = PlayerPrefs.HasKey("TempUsername");
-        bool encuestaCompletada = PlayerPrefs.GetInt("TempEncuestaCompletada", 0) == 1;
+        bool tieneUsuarioTemporal = PlayerPrefs.HasKey("TempOcupacion");
+
+        // verificar encuestas-----------------
+        bool estadoencuestaaprendizaje = PlayerPrefs.GetInt("EstadoEncuestaAprendizaje", 0) == 1;
+        bool estadoencuestaconocimiento = PlayerPrefs.GetInt("EstadoEncuestaConocimiento", 0) == 1;
+        //-------------------------------------
         int xpTemp = PlayerPrefs.GetInt("TempXP", 0);
 
         if (tieneUsuarioTemporal)
         {
             ocupacionSelecionada = PlayerPrefs.GetString("TempOcupacion", "");
+            Debug.Log($"la ocupacion seleccionada antes de guardar en firebase es : {ocupacionSelecionada}");
         }
         else
         {
             ocupacionSelecionada = roles.options[roles.value].text;
+            Debug.Log($"la ocupacion seleccionada antes de guardar en firebase es : {ocupacionSelecionada}");
         }
 
 
-            Dictionary<string, object> userData = new Dictionary<string, object>
+        Dictionary<string, object> userData = new Dictionary<string, object>
     {
         { "DisplayName", user.DisplayName },
         { "Email", user.Email },
         { "Ocupacion", ocupacionSelecionada },
-        { "EncuestaCompletada", encuestaCompletada },
+        { "EstadoEncuestaAprendizaje", estadoencuestaaprendizaje },
+        { "EstadoEncuestaConocimiento", estadoencuestaconocimiento },
         { "xp", xpTemp },
         { "avatar", avatarUrl },
         { "Rango", "Novato de laboratorio" }
     };
+
 
         PlayerPrefs.SetString("Estadouser", "nube");
         PlayerPrefs.SetString("userId", userId);
@@ -173,11 +178,11 @@ public class RegisterController : MonoBehaviour
 
             if (tieneUsuarioTemporal)
             {
-                PlayerPrefs.DeleteKey("TempUsername");
+                PlayerPrefs.DeleteKey("DisplayName");
                 PlayerPrefs.SetInt("TempXP", 0);
                 PlayerPrefs.DeleteKey("TempOcupacion");
                 PlayerPrefs.DeleteKey("TempAvatar");
-                PlayerPrefs.DeleteKey("TempRango");
+                PlayerPrefs.DeleteKey("Rango");
                 PlayerPrefs.SetString("Estadouser", "nube");
                 PlayerPrefs.Save();
             }
@@ -185,6 +190,8 @@ public class RegisterController : MonoBehaviour
             CrearSubcoleccionGrupos(userId);
             VerificarYActualizarRango(userId);
             await SubirMisionesJSON(userId);
+
+
 
             SceneManager.LoadScene("Start");
         }
@@ -259,7 +266,7 @@ public class RegisterController : MonoBehaviour
 
     private async Task SubirMisionesJSON(string userId)
     {
-        string jsonMisiones = PlayerPrefs.GetString("misionesJSON", "{}");
+        string jsonMisiones = PlayerPrefs.GetString("misionesCategoriasJSON", "{}");
 
         if (jsonMisiones == "{}")
         {

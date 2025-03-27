@@ -40,7 +40,7 @@ public class EmailController : MonoBehaviour
     private string userEmail;
 
     // Lista de dominios permitidos
-    private string[] allowedDomains = { "gmail.com", "outlook.com", "outlook.es", "yahoo.com", "hotmail.com", "icloud.com", "aol.com", "zoho.com", "mail.com"};
+    private string[] allowedDomains = {"gmail.com", "outlook.com", "outlook.es", "yahoo.com", "hotmail.com", "icloud.com", "aol.com", "zoho.com", "mail.com"};
 
     private const string apiKey = "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";  // Reemplaza con tu API Key de Brevo
     private const string url = "https://api.brevo.com/v3/smtp/email";
@@ -93,6 +93,7 @@ public class EmailController : MonoBehaviour
 
     void ShowRequirements(string text)
     {
+        txtMessage.text = "";
         requirementsPanel.SetActive(true);
     }
 
