@@ -13,7 +13,7 @@ public class StartAppManager : MonoBehaviour
 
     void Start()
     {
-        //Verifica su hay conexion a internet
+        Debug.Log("⌛ Verificando conexión a Internet...");
         StartCoroutine(CheckInternetConnection());
    
     }
@@ -26,12 +26,12 @@ public class StartAppManager : MonoBehaviour
 
         if (Application.internetReachability == NetworkReachability.NotReachable)
         {
-            // si no hay internet, verifica si tiene un usuario temporal creado previamente
+            Debug.Log("❌ No hay conexión a internet. Verificando usuario temporal...");
             HandleOfflineMode();
         }
         else
         {
-            //si hay internet verifica si tiene datos guardados previamente del offline
+            Debug.Log("🌍 Conexión a internet detectada. Verificando datos guardados...");
             HandleOnlineMode();
         }
     }
@@ -47,25 +47,31 @@ public class StartAppManager : MonoBehaviour
 
         if (estadoUsuario == "nube")
         {
+            Debug.Log("☁️ Usuario autenticado en la nube. Permitiendo acceso offline.");
             LoadSceneIfNotAlready("Login");
         }
         else if (IsTemporaryUserSaved())
         {
-            string ocupacion = PlayerPrefs.GetString("TempOcupacion");
+            Debug.Log("✅ Usuario temporal encontrado. Enviando a Inicio.");
+            // Validar el estado de ambas encuestas para pasar a scena 
 
+            bool estadoencuestaaprendizaje = PlayerPrefs.GetInt("EstadoEncuestaAprendizaje", 0) == 1;
+            bool estadoencuestaconocimiento = PlayerPrefs.GetInt("EstadoEncuestaConocimiento", 0) == 1;
 
-            if (ocupacion == "Profesor")
+            if (estadoencuestaaprendizaje == true && estadoencuestaconocimiento == true)
             {
-                LoadSceneIfNotAlready("InicioProfesor");
+                SceneManager.LoadScene("Categorías");
             }
-            else if (ocupacion == "Estudiante")
+            else
             {
-                LoadSceneIfNotAlready("Categorías");
+                SceneManager.LoadScene("SeleccionarEncuesta");
             }
-
+            
         }
         else
         {
+            Debug.Log("🆕 No se encontró usuario temporal. Creando usuario provisional...");
+
             CreateTemporaryUser();
             LoadSceneIfNotAlready("InicioOffline");
         }
@@ -81,13 +87,17 @@ public class StartAppManager : MonoBehaviour
 
         yaVerificado = true;
 
-        if (IsTemporaryUserSaved()) // si hay datos encontrados del offline, se envia a registro para subirlo a la BD
-        {             
+        if (IsTemporaryUserSaved())
+        {
+            Debug.Log("📝 Datos temporales encontrados. Enviando a Registro.");
+
             SceneManager.LoadScene("Email");
 
+            //LoadSceneIfNotAlready("Email");
         }
-        else //Si no tiene datos temporales lo manda a login
+        else
         {
+            Debug.Log("🔑 No hay datos temporales. Enviando a Login.");
             LoadSceneIfNotAlready("Login");
         }
 
@@ -106,12 +116,11 @@ public class StartAppManager : MonoBehaviour
     // Verificar si hay datos de usuario temporal guardados
     bool IsTemporaryUserSaved()
     {
-        return PlayerPrefs.HasKey("DisplayName") &&
+        return //PlayerPrefs.HasKey("DisplayName") &&
                PlayerPrefs.HasKey("TempOcupacion") &&
                PlayerPrefs.HasKey("TempXP") &&
-               PlayerPrefs.HasKey("TempAvatar") &&
-               PlayerPrefs.HasKey("Rango") &&
-               PlayerPrefs.HasKey("TempEncuestaCompletada");
+               PlayerPrefs.HasKey("TempAvatar");
+               //PlayerPrefs.HasKey("Rango");
     }
 
     // Crear y guardar usuario temporal en PlayerPrefs
@@ -124,16 +133,17 @@ public class StartAppManager : MonoBehaviour
 
         // Guardar datos en PlayerPrefs
         PlayerPrefs.SetString("DisplayName", username);
+        PlayerPrefs.SetString("TempOcupacion", ocupacionSeleccionada);
+        PlayerPrefs.SetInt("TempXP", 0);
         PlayerPrefs.SetString("TempAvatar", avatarUrl);
         PlayerPrefs.SetString("Rango", "Novato de laboratorio");
-        PlayerPrefs.SetInt("TempXP", 0);
+        PlayerPrefs.SetInt("EstadoEncuestaAprendizaje", encuestaCompletada ? 1 : 0);
+        PlayerPrefs.SetInt("EstadoEncuestaConocimiento", encuestaCompletada ? 1 : 0);
         PlayerPrefs.SetInt("posicion", 0);
-        PlayerPrefs.SetString("TempOcupacion", ocupacionSeleccionada);
         PlayerPrefs.SetInt("Nivel", 1);
-        PlayerPrefs.SetInt("TempEncuestaCompletada", encuestaCompletada ? 1 : 0);
-
         PlayerPrefs.SetString("Estadouser", "local");
         PlayerPrefs.Save();
+        Debug.Log("✅ Usuario provisional creado: " + username);
     }
 
 }

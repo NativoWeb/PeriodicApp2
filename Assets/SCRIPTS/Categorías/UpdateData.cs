@@ -65,29 +65,31 @@ public class UpdateData : MonoBehaviour
             currentUser = auth.CurrentUser;
             userId = currentUser.UserId;
 
-            bool encuestacompletada = PlayerPrefs.GetInt("TempEncuestaCompletada", 0) == 1;
+            bool estadoencuestaaprendizaje = PlayerPrefs.GetInt("EstadoEncuestaAprendizaje", 0) == 1;
+            bool estadoencuestaconocimiento = PlayerPrefs.GetInt("EstadoEncuestaConocimiento", 0) == 1;
 
-            if (encuestacompletada == false || encuestacompletada == true)
-            {
+            ActualizarEstadoEncuestaAprendizaje(userId, estadoencuestaaprendizaje);
+            ActualizarEstadoEncuestaConocimiento(userId, estadoencuestaconocimiento);
 
-                Debug.Log("Actualizando encuesta completada... Desde UpdateData");
-                ActualizarEstadoEncuesta(userId, encuestacompletada);
-
-            }
-
-                ActualizarXPEnFirebase(userId);
+            ActualizarXPEnFirebase(userId);
         }
         
     }
 
 
-    private async void ActualizarEstadoEncuesta(string userId, bool estadoencuesta) // ------------------------------------------------
+    private async void ActualizarEstadoEncuestaAprendizaje(string userId, bool estadoencuesta) // ------------------------------------------------
     {
         DocumentReference userRef = db.Collection("users").Document(userId);
-        await userRef.UpdateAsync("EncuestaCompletada", estadoencuesta);
-        Debug.Log($"✅ Estado de la encuesta... {userId}: {estadoencuesta} desde UpdateData");
+        await userRef.UpdateAsync("EstadoEncuestaAprendizaje", estadoencuesta);
+        Debug.Log($"✅ Estado de la encuesta Aprendizaje... {userId}: {estadoencuesta} desde UpdateData");
     }
 
+    private async void ActualizarEstadoEncuestaConocimiento(string userId, bool estadoencuesta) // ------------------------------------------------
+    {
+        DocumentReference userRef = db.Collection("users").Document(userId);
+        await userRef.UpdateAsync("EstadoEncuestaConocimiento", estadoencuesta);
+        Debug.Log($"✅ Estado de la encuesta Conocimiento... {userId}: {estadoencuesta} desde UpdateData");
+    }
 
 
     private async void ActualizarXPEnFirebase(string userId)

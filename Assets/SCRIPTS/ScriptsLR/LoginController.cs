@@ -353,15 +353,18 @@ public class LoginController : MonoBehaviour
             }
 
             string ocupacion = snapshot.GetValue<string>("Ocupacion");
-            bool encuestaCompletada = snapshot.ContainsField("EncuestaCompletada")
-                ? snapshot.GetValue<bool>("EncuestaCompletada")
-                : false;
+            bool encuestaCompletada = snapshot.ContainsField("EncuestaCompletada") ? snapshot.GetValue<bool>("EncuestaCompletada"): false;
 
-            Debug.Log($"📌 Usuario: {ocupacion}, EncuestaCompletada: {encuestaCompletada}");
+            bool estadoencuestaaprendizaje = snapshot.ContainsField("EstadoEncuestaAprendizaje");
+            bool estadoencuestaconocimiento = snapshot.ContainsField("EstadoEncuestaConocimiento");
+              
+
+            Debug.Log($"📌 Usuario: {ocupacion}, Estado Encuesta Aprendizaje: {estadoencuestaaprendizaje}, Estado Encuesta Conocimiento: {estadoencuestaconocimiento}");
 
             if (ocupacion == "Estudiante")
             {
-                SceneManager.LoadScene(encuestaCompletada ? "Categorías" : "EcnuestaScen1e");
+                SceneManager.LoadScene("SeleccionarEncuesta");
+     
             }
             else if (ocupacion == "Profesor")
             {
@@ -377,10 +380,25 @@ public class LoginController : MonoBehaviour
             string savedEmail = PlayerPrefs.GetString("userEmail");
             string savedPassword = PlayerPrefs.GetString("userPassword");
             string savedUserId = PlayerPrefs.GetString("userId");
+
             if (email == savedEmail && password == savedPassword)
             {
                 txtError.text = "Inicio de sesion sin conexión exitoso.";
-                txtError.color = Color.green;
+                Debug.Log("📴 ✅ Inicio de sesión sin conexión exitoso.");
+
+                bool estadoencuestaaprendizaje = PlayerPrefs.GetInt("EstadoEncuestaAprendizaje", 0) == 1;
+                bool estadoencuestaconocimiento = PlayerPrefs.GetInt("EstadoEncuestaConocimiento", 0) == 1;
+
+                if (estadoencuestaaprendizaje == true && estadoencuestaconocimiento == true)
+                {
+                    SceneManager.LoadScene("Categorías");
+                }
+                else
+                {
+                    SceneManager.LoadScene("SeleccionarEncuesta");
+                }
+
+
             }
             else if (email == savedEmail && password != savedPassword)
             {

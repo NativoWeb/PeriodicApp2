@@ -54,15 +54,16 @@ public class RankingController : MonoBehaviour
     private void MostrarDatosOffline()
     {
         string username = PlayerPrefs.GetString("DisplayName", "");
-        string rangos = PlayerPrefs.GetString("Rango", "");
+        string rangos = PlayerPrefs.GetString("Rango", "Novato de laboratorio");
         int xp = PlayerPrefs.GetInt("TempXP", 0);
         int posicion = PlayerPrefs.GetInt("posicion", 0);
-        rangotext.text = rangos;
+       
 
         // mostrar datos del usuario en la interfaz 
         UserName.text = "¡Hola, " + username + "!";
         posicionText.text = $" # {posicion}";
         Xptext.text = xp.ToString();
+        rangotext.text = rangos;
 
         string avatarPath = ObtenerAvatarPorRango(rangos);
         Sprite avatarSprite = Resources.Load<Sprite>(avatarPath) ?? Resources.Load<Sprite>("Avatares/defecto");
