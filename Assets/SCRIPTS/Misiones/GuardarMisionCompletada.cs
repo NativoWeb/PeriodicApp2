@@ -7,7 +7,7 @@ using Firebase.Auth;
 using Firebase.Firestore;
 using System.Threading.Tasks;
 using Firebase.Extensions;
-using System.Drawing.Text;
+
 
 public class GuardarMisionCompletada : MonoBehaviour
 {

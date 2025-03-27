@@ -1,4 +1,4 @@
-﻿using System.Drawing.Text;
+﻿
 using UnityEngine;
 
 public class SistemaXP : MonoBehaviour
