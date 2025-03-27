@@ -240,9 +240,9 @@ public class ControllerPerfil : MonoBehaviour
     }
     public void ImprimirDatosPlayerPrefs()
     {
-        string username = PlayerPrefs.GetString("TempUsername", "");
+        string username = PlayerPrefs.GetString("DisplayName", "");
         string ocupacion = PlayerPrefs.GetString("TempOcupacion", "");
-        string rango = PlayerPrefs.GetString("TempRango", "");
+        string rango = PlayerPrefs.GetString("Rango", "");
         int encuestaCompletada = PlayerPrefs.GetInt("TempEncuestaCompletada", 0);
         int xp = PlayerPrefs.GetInt("TempXP", 0);
 

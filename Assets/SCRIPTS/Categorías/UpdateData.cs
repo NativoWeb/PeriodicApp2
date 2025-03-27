@@ -67,14 +67,8 @@ public class UpdateData : MonoBehaviour
 
             bool encuestacompletada = PlayerPrefs.GetInt("TempEncuestaCompletada", 0) == 1;
 
-            if (encuestacompletada == false || encuestacompletada == true)
-            {
-
                 Debug.Log("Actualizando encuesta completada... Desde UpdateData");
                 ActualizarEstadoEncuesta(userId, encuestacompletada);
-
-            }
-
                 ActualizarXPEnFirebase(userId);
         }
         

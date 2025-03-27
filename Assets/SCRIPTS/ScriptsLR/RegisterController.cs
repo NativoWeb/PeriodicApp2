@@ -14,6 +14,7 @@ public class RegisterController : MonoBehaviour
     public Button completeProfileButton;
     public Dropdown roles;
     [SerializeField] private GameObject m_OcupacionUI = null;// Activar Lista ocupación 
+
     private string ocupacionSelecionada; // para actualizar 
 
     private FirebaseAuth auth;
@@ -115,13 +116,16 @@ public class RegisterController : MonoBehaviour
 
         string avatarUrl = "Avatares/defecto";  
 
-        bool tieneUsuarioTemporal = PlayerPrefs.HasKey("TempUsername");
+        bool tieneUsuarioTemporal = PlayerPrefs.HasKey("DisplayName");
+
         bool encuestaCompletada = PlayerPrefs.GetInt("TempEncuestaCompletada", 0) == 1;
+
         int xpTemp = PlayerPrefs.GetInt("TempXP", 0);
 
         if (tieneUsuarioTemporal)
         {
-            ocupacionSelecionada = PlayerPrefs.GetString("TempOcupacion", "");
+            ocupacionSelecionada = PlayerPrefs.GetString("TempOcupacion", " ");
+            Debug.Log($"la ocupacion seleccionada antes de guardar en firebase es : {ocupacionSelecionada}");
         }
         else
         {
@@ -140,6 +144,7 @@ public class RegisterController : MonoBehaviour
         { "Rango", "Novato de laboratorio" }
     };
 
+       
         PlayerPrefs.SetString("Estadouser", "nube");
         PlayerPrefs.SetString("userId", userId);
         PlayerPrefs.Save();
@@ -151,11 +156,11 @@ public class RegisterController : MonoBehaviour
 
             if (tieneUsuarioTemporal)
             {
-                PlayerPrefs.DeleteKey("TempUsername");
+                PlayerPrefs.DeleteKey("DisplayName");
                 PlayerPrefs.SetInt("TempXP", 0);
                 PlayerPrefs.DeleteKey("TempOcupacion");
                 PlayerPrefs.DeleteKey("TempAvatar");
-                PlayerPrefs.DeleteKey("TempRango");
+                PlayerPrefs.DeleteKey("Rango");
                 PlayerPrefs.SetString("Estadouser", "nube");
                 PlayerPrefs.Save();
             }
@@ -163,6 +168,8 @@ public class RegisterController : MonoBehaviour
             CrearSubcoleccionGrupos(userId);
             VerificarYActualizarRango(userId);
             await SubirMisionesJSON(userId);
+
+           
 
             SceneManager.LoadScene("Start");
         }

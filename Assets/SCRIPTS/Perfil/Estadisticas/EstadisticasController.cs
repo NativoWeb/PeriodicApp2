@@ -70,7 +70,7 @@ public class EstadisticasController : MonoBehaviour
     private void MostrarDatosOffline()
     {
         string username = PlayerPrefs.GetString("DisplayName", "");
-        string rangos = PlayerPrefs.GetString("Rango", "");
+        string rangos = PlayerPrefs.GetString("Rango", "Novato de laboratorio");
         int xp = PlayerPrefs.GetInt("TempXP", 0);
       
 
