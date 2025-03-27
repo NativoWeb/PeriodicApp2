@@ -9,12 +9,23 @@ using UnityEngine.UI;
 using System.Collections;
 using System.Text;
 using UnityEngine.Networking;
+using Vuforia;
+using System.Text.RegularExpressions;
+using System;
 
 public class EmailController : MonoBehaviour
 {
-    public TMP_InputField emailInput;
+
+    /* -----------------  VALIDAR CONTRASEÑA  ----------------- */
+
     public TMP_InputField passwordInput;
     public TMP_InputField confirmPasswordInput;
+    public GameObject requirementsPanel;  // Panel con los requisitos
+    public TMP_Text minLengthText, uppercaseText, lowercaseText, specialCharText; // Textos de cada requisito
+    public TMP_Text txtMessage;
+
+
+    public TMP_InputField emailInput;
     public TMP_InputField verificationCodeInput;
     public Button registerButton;
     public Button verifyButton;
@@ -28,11 +39,20 @@ public class EmailController : MonoBehaviour
     private string generatedCode;
     private string userEmail;
 
+    // Lista de dominios permitidos
+    private string[] allowedDomains = { "gmail.com", "outlook.com", "outlook.es", "yahoo.com", "hotmail.com", "icloud.com", "aol.com", "zoho.com", "mail.com"};
+
     private const string apiKey = "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";  // Reemplaza con tu API Key de Brevo
     private const string url = "https://api.brevo.com/v3/smtp/email";
 
     void Start()
     {
+        /* -----------------  VALIDAR CONTRASEÑA----------------- */
+        passwordInput.onSelect.AddListener(ShowRequirements);
+        passwordInput.onValueChanged.AddListener(ValidatePassword);
+        passwordInput.onDeselect.AddListener(HideRequirements);
+        requirementsPanel.SetActive(false);
+
         verificacionPanel.SetActive(false);
         registroPanel.SetActive(true);
         StartCoroutine(WaitForFirebase());
@@ -67,19 +87,116 @@ public class EmailController : MonoBehaviour
         verifyButton.onClick.AddListener(OnVerifyButtonClick);
     }
 
+
+
+    /* -----------------  MÉTODOS PARA VALIDAR CONTRASEÑA----------------- */
+
+    void ShowRequirements(string text)
+    {
+        requirementsPanel.SetActive(true);
+    }
+
+    void HideRequirements(string text)
+    {
+        requirementsPanel.SetActive(false);
+    }
+
+    void ValidatePassword(string password)
+    {
+        // Expresiones regulares para cada criterio
+        bool hasMinLength = password.Length >= 6;
+        bool hasUppercase = Regex.IsMatch(password, "[A-Z]");
+        bool hasLowercase = Regex.IsMatch(password, "[a-z]");
+        bool hasSpecialChar = Regex.IsMatch(password, @"[\^\$\*\.\[\]\{\}\(\)\?\""!@#%&/\\,><':;|_~`]");
+
+        // Cambiar color según validación
+        minLengthText.color = hasMinLength ? Color.green : Color.red;
+        uppercaseText.color = hasUppercase ? Color.green : Color.red;
+        lowercaseText.color = hasLowercase ? Color.green : Color.red;
+        specialCharText.color = hasSpecialChar ? Color.green : Color.red;
+    }
+
+
     public void OnRegisterButtonClick()
     {
-        string email = emailInput.text;
+        string email = emailInput.text.Trim();
         string password = passwordInput.text;
         string confirmPassword = confirmPasswordInput.text;
 
-        if (password != confirmPassword)
+        // Verificar si los campos están vacíos
+        if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(password) || string.IsNullOrEmpty(confirmPassword))
         {
-            Debug.LogError("❌ Las contraseñas no coinciden.");
+            txtMessage.text = "Por favor, completa todos los campos.";
+            txtMessage.color = Color.red;
             return;
         }
 
+        // Validar el formato del correo
+        if (!IsValidEmail(email))
+        {
+            txtMessage.text = "El correo ingresado no tiene un formato válido.";
+            txtMessage.color = Color.red;
+            return;
+        }
+
+        // Validar si el dominio es permitido
+        if (!IsAllowedDomain(email))
+        {
+            txtMessage.text = "El dominio del correo es invalido.";
+            txtMessage.color = Color.red;
+            return;
+        }
+
+        txtMessage.text = "Correo válido.";
+        txtMessage.color = Color.green;
+
+        // Verificar si las contraseñas coinciden
+        if (password != confirmPassword)
+        {
+            txtMessage.text = "Las contraseñas no coinciden.";
+            txtMessage.color = Color.red;
+            return;
+        }
+
+        // Validar contraseña
+        bool hasMinLength = password.Length >= 6;
+        bool hasUppercase = Regex.IsMatch(password, "[A-Z]");
+        bool hasLowercase = Regex.IsMatch(password, "[a-z]");
+        bool hasSpecialChar = Regex.IsMatch(password, @"[\^\$\*\.\[\]\{\}\(\)\?\""!@#%&/\\,><':;|_~`]");
+
+        if (!hasMinLength || !hasUppercase || !hasLowercase || !hasSpecialChar)
+        {
+            txtMessage.text = "La contraseña no cumple con los requisitos solicitados.";
+            txtMessage.color = Color.red;
+            return;
+        }
+
+        // Si todo está correcto, registrar usuario
+        txtMessage.text = "Registrando usuario...";
+        txtMessage.color = Color.green;
         CreateUserWithEmail(email, password);
+    }
+
+    // Método para validar el formato del correo electrónico
+    private bool IsValidEmail(string email)
+    {
+        string emailPattern = @"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$";
+        return Regex.IsMatch(email, emailPattern);
+    }
+
+    // Método para validar si el dominio del correo es permitido
+    private bool IsAllowedDomain(string email)
+    {
+        string domain = email.Split('@')[1]; // Extrae el dominio después del '@'
+
+        foreach (string allowedDomain in allowedDomains)
+        {
+            if (domain.Equals(allowedDomain, StringComparison.OrdinalIgnoreCase))
+            {
+                return true; // El dominio es válido
+            }
+        }
+        return false; // El dominio no está en la lista permitida
     }
 
     private void CreateUserWithEmail(string email, string password)
@@ -87,13 +204,16 @@ public class EmailController : MonoBehaviour
         auth.CreateUserWithEmailAndPasswordAsync(email, password).ContinueWithOnMainThread(task => {
             if (task.IsCanceled || task.IsFaulted)
             {
-                Debug.LogError("❌ Error al registrar usuario: " + task.Exception?.Message);
+                txtMessage.text = "Correo electronico en uso.";
+                txtMessage.color = Color.red;
                 return;
             }
 
             currentUser = auth.CurrentUser;
             userEmail = email;
-            generatedCode = Random.Range(100000, 999999).ToString();
+
+            System.Random random = new System.Random();
+            generatedCode = random.Next(100000, 999999).ToString();
             SendVerificationEmail(userEmail, generatedCode);
         });
     }
@@ -135,14 +255,16 @@ public class EmailController : MonoBehaviour
 
             if (request.result == UnityWebRequest.Result.Success)
             {
-                Debug.Log("✅ Correo enviado con éxito");
+                verificationMessage.text = "Ingresa el código que te enviamos a tu correo.";
+                Color warningColor = new Color(1f, 0.65f, 0f); // Naranja fuerte
+                verificationMessage.color = warningColor;
                 registroPanel.SetActive(false);
                 verificacionPanel.SetActive(true);
             }
             else
             {
-                Debug.LogError("❌ Error al enviar el correo: " + request.responseCode + " - " + request.error);
-                Debug.LogError("❌ Respuesta: " + request.downloadHandler.text);
+                Debug.LogError("Error al enviar el correo: " + request.responseCode + " - " + request.error);
+                Debug.LogError("Respuesta: " + request.downloadHandler.text);
             }
         }
     }
@@ -153,13 +275,13 @@ public class EmailController : MonoBehaviour
         Debug.Log(verificationCodeInput.text);
         if (verificationCodeInput.text == generatedCode)
         {
-            Debug.Log("✅ Código verificado correctamente. Avanzando a la siguiente escena...");
+            verificationMessage.text = "Código verificado correctamente. Avanzando a la siguiente escena...";
+            verificationMessage.color = Color.green;
             SceneManager.LoadScene("Registrar");
         }
         else
         {
-            Debug.LogError("❌ Código incorrecto. Intenta de nuevo.");
-            verificationMessage.text = "⚠️ Código incorrecto. Intenta nuevamente.";
+            verificationMessage.text = "Código incorrecto. Intenta nuevamente.";
         }
     }
 }

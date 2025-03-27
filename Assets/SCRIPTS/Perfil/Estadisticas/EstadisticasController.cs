@@ -23,6 +23,8 @@ public class EstadisticasController : MonoBehaviour
     public TMP_Text rangotxt;
     public Slider slider;
 
+    // internet
+    private bool hayInternet = false;
     // Panel para cerrar sesión
     [SerializeField] private GameObject m_logoutUI = null;
 
@@ -44,11 +46,41 @@ public class EstadisticasController : MonoBehaviour
     {
         auth = FirebaseAuth.DefaultInstance;
         db = FirebaseFirestore.DefaultInstance;
+        
+        hayInternet = Application.internetReachability != NetworkReachability.NotReachable;// verficamos si hay wifi 
 
-        userId = PlayerPrefs.GetString("userId", "").Trim();
+        if (hayInternet)
+        {
+            userId = PlayerPrefs.GetString("userId", "").Trim();
+            EscucharDatosUsuario();
+            CargarNivelesPorGrupoUsuario();
 
-        EscucharDatosUsuario();
-        CargarNivelesPorGrupoUsuario();
+        } else if(hayInternet && string.IsNullOrEmpty(userId))
+        {
+            Debug.Log("Usuario no autenticado, cargando datos offline");
+            MostrarDatosOffline();
+        }
+        else
+        {
+            Debug.Log("Usuario no autenticado, cargando datos offline");
+            MostrarDatosOffline();
+        }
+        
+    }
+    private void MostrarDatosOffline()
+    {
+        string username = PlayerPrefs.GetString("DisplayName", "");
+        string rangos = PlayerPrefs.GetString("Rango", "");
+        int xp = PlayerPrefs.GetInt("TempXP", 0);
+      
+
+        // mostrar datos del usuario en la interfaz 
+        rangotxt.text = rangos;
+
+        string avatarPath = ObtenerAvatarPorRango(rangos);
+        Sprite avatarSprite = Resources.Load<Sprite>(avatarPath) ?? Resources.Load<Sprite>("Avatares/defecto");
+
+        avatarImage.sprite = avatarSprite;
     }
 
     private void OnDestroy()
@@ -76,6 +108,7 @@ public class EstadisticasController : MonoBehaviour
                 else Debug.LogError($"No se encontró la ruta: {avatarPath}");
 
                 rangotxt.text = "Su rango es: " + rango + "!";
+
                 int xpUsuario = snapshot.GetValue<int>("xp");
                 ActualizarSlider(xpUsuario, rango);
             }
@@ -150,7 +183,7 @@ public class EstadisticasController : MonoBehaviour
             return;
         }
 
-        string jsonMisiones = PlayerPrefs.GetString("misionesJSON", "{}"); // Obtener el JSON de PlayerPrefs
+        string jsonMisiones = PlayerPrefs.GetString("misionesCategoriasJSON", "{}"); // Obtener el JSON de PlayerPrefs
 
         if (jsonMisiones == "{}")
         {

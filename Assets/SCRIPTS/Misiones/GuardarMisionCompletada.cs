@@ -7,7 +7,7 @@ using Firebase.Auth;
 using Firebase.Firestore;
 using System.Threading.Tasks;
 using Firebase.Extensions;
-
+//using System.Drawing.Text;
 
 public class GuardarMisionCompletada : MonoBehaviour
 {
@@ -66,7 +66,7 @@ public class GuardarMisionCompletada : MonoBehaviour
 
     private async void ActualizarMisionEnJSON(string elemento, int idMision)
     {
-        string jsonString = PlayerPrefs.GetString("misionesJSON", "");
+        string jsonString = PlayerPrefs.GetString("misionesCategoriasJSON", "");
         if (string.IsNullOrEmpty(jsonString))
         {
             Debug.LogError("❌ No se encontró el JSON en PlayerPrefs.");
@@ -74,24 +74,34 @@ public class GuardarMisionCompletada : MonoBehaviour
         }
 
         var json = JSON.Parse(jsonString);
-        if (!json.HasKey("misiones") || !json["misiones"].HasKey(elemento))
+        if (!json.HasKey("Misiones_Categorias") || !json["Misiones_Categorias"].HasKey("Categorias"))
         {
-            Debug.LogError($"❌ No se encontró el elemento '{elemento}' en el JSON.");
+            Debug.LogError("❌ Estructura del JSON incorrecta o faltan claves principales.");
             return;
         }
 
-        var niveles = json["misiones"][elemento]["niveles"].AsArray;
+        var categorias = json["Misiones_Categorias"]["Categorias"];
+        string categoriaSeleccionada = PlayerPrefs.GetString("CategoriaSeleccionada", "");
+
+        if (!categorias.HasKey(categoriaSeleccionada) || !categorias[categoriaSeleccionada].HasKey("Elementos") ||
+            !categorias[categoriaSeleccionada]["Elementos"].HasKey(elemento))
+        {
+            Debug.LogError($"❌ No se encontró la categoría '{categoriaSeleccionada}' o el elemento '{elemento}' en el JSON.");
+            return;
+        }
+
+        var elementoJson = categorias[categoriaSeleccionada]["Elementos"][elemento];
+        var misiones = elementoJson["misiones"].AsArray;
         bool cambioRealizado = false;
         int xpGanado = 0;
 
-        for (int i = 0; i < niveles.Count; i++)
+        for (int i = 0; i < misiones.Count; i++)
         {
-            var nivel = niveles[i];
-
-            if (nivel["id"].AsInt == idMision)
+            var mision = misiones[i];
+            if (mision["id"].AsInt == idMision)
             {
-                nivel["completada"] = true;
-                xpGanado = nivel["xp"].AsInt; // Obtener el XP de la misión
+                mision["completada"] = true;
+                xpGanado = mision["xp"].AsInt; // Obtener el XP de la misión
                 cambioRealizado = true;
                 break;
             }
@@ -99,7 +109,7 @@ public class GuardarMisionCompletada : MonoBehaviour
 
         if (cambioRealizado)
         {
-            PlayerPrefs.SetString("misionesJSON", json.ToString());
+            PlayerPrefs.SetString("misionesCategoriasJSON", json.ToString());
             PlayerPrefs.Save();
             Debug.Log($"✅ JSON actualizado para la misión {idMision} del elemento {elemento}: {json}");
 
@@ -108,7 +118,6 @@ public class GuardarMisionCompletada : MonoBehaviour
             {
                 await SubirMisionesJSON();
                 SumarXPFirebase(xpGanado);
-
             }
             else
             {
@@ -170,7 +179,7 @@ public class GuardarMisionCompletada : MonoBehaviour
             return;
         }
 
-        string jsonMisiones = PlayerPrefs.GetString("misionesJSON", "{}"); // Obtener el JSON de PlayerPrefs
+        string jsonMisiones = PlayerPrefs.GetString("misionesCategoriasJSON", "{}"); // Obtener el JSON de PlayerPrefs
 
         if (jsonMisiones == "{}")
         {
