@@ -10,6 +10,8 @@ using UnityEngine.UI;
 
 public class RegisterController : MonoBehaviour
 {
+    public TMP_Text txtMensaje;
+
     public TMP_InputField userNameInput;
     public Button completeProfileButton;
     public Dropdown roles;
@@ -76,7 +78,23 @@ public class RegisterController : MonoBehaviour
             return;
         }
 
+        bool ocupacion = PlayerPrefs.HasKey("TempOcupacion");
+        // Validar que el usuario haya seleccionado un rol válido
+        if (roles.value == 0 && !ocupacion)
+        {
+            txtMensaje.text = "Debes seleccionar una ocupación antes de continuar.";
+            txtMensaje.color = Color.red;
+            return;
+        }
+
         string userName = userNameInput.text;
+        if (userName.Equals("") )
+        {
+            txtMensaje.text = "Debes Ingresar un nombre de usuario antes de continuar";
+            txtMensaje.color = Color.red;
+            return;
+        }
+
         PlayerPrefs.SetString("DisplayName", userName);
         PlayerPrefs.Save();
 
@@ -87,10 +105,10 @@ public class RegisterController : MonoBehaviour
             return;
         }
 
-                PlayerPrefs.SetInt("EmailVerified", 1);
-                PlayerPrefs.Save();
-                UpdateUserProfile(currentUser, userName);
-           
+        PlayerPrefs.SetInt("EmailVerified", 1);
+        PlayerPrefs.Save();
+        UpdateUserProfile(currentUser, userName);
+
     }
 
     private void UpdateUserProfile(FirebaseUser user, string userName)
@@ -114,9 +132,9 @@ public class RegisterController : MonoBehaviour
         string userId = user.UserId;
         DocumentReference docRef = db.Collection("users").Document(userId);
 
-        string avatarUrl = "Avatares/defecto";  
+        string avatarUrl = "Avatares/defecto";
 
-        bool tieneUsuarioTemporal = PlayerPrefs.HasKey("DisplayName");
+        bool tieneUsuarioTemporal = PlayerPrefs.HasKey("TempOcupacion");
 
         // verificar encuestas-----------------
         bool estadoencuestaaprendizaje = PlayerPrefs.GetInt("EstadoEncuestaAprendizaje", 0) == 1;
@@ -126,7 +144,7 @@ public class RegisterController : MonoBehaviour
 
         if (tieneUsuarioTemporal)
         {
-            ocupacionSelecionada = PlayerPrefs.GetString("TempOcupacion", " ");
+            ocupacionSelecionada = PlayerPrefs.GetString("TempOcupacion", "");
             Debug.Log($"la ocupacion seleccionada antes de guardar en firebase es : {ocupacionSelecionada}");
         }
         else
@@ -136,7 +154,7 @@ public class RegisterController : MonoBehaviour
         }
 
 
-            Dictionary<string, object> userData = new Dictionary<string, object>
+        Dictionary<string, object> userData = new Dictionary<string, object>
     {
         { "DisplayName", user.DisplayName },
         { "Email", user.Email },
@@ -148,7 +166,7 @@ public class RegisterController : MonoBehaviour
         { "Rango", "Novato de laboratorio" }
     };
 
-       
+
         PlayerPrefs.SetString("Estadouser", "nube");
         PlayerPrefs.SetString("userId", userId);
         PlayerPrefs.Save();
@@ -173,7 +191,7 @@ public class RegisterController : MonoBehaviour
             VerificarYActualizarRango(userId);
             await SubirMisionesJSON(userId);
 
-           
+
 
             SceneManager.LoadScene("Start");
         }
@@ -248,7 +266,7 @@ public class RegisterController : MonoBehaviour
 
     private async Task SubirMisionesJSON(string userId)
     {
-        string jsonMisiones = PlayerPrefs.GetString("misionesJSON", "{}");
+        string jsonMisiones = PlayerPrefs.GetString("misionesCategoriasJSON", "{}");
 
         if (jsonMisiones == "{}")
         {

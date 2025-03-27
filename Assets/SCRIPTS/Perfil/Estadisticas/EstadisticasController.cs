@@ -233,7 +233,7 @@ public class EstadisticasController : MonoBehaviour
         //PlayerPrefs.DeleteKey("misionesJSON"); // Eliminar datos locales
         PlayerPrefs.DeleteAll();
 
-        //PlayerPrefs.SetString("Estadouser", estadouser);
+       //PlayerPrefs.SetString("Estadouser", estadouser);
         PlayerPrefs.Save();
 
         Debug.Log("✅ Sesión cerrada correctamente.");

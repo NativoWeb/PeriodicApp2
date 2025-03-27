@@ -31,8 +31,8 @@ public class CategoriaBotones : MonoBehaviour
     new Categoria("No Metales Reactivos", "¡Elementos esenciales para la vida! Descubre su impacto en nuestro mundo.", "Escena_Alcalinos"),
     new Categoria("Gases Nobles", "¡Silenciosos pero poderosos! ¿Podrás jugar con los elementos más estables?", "Escena_Alcalinos"),
     new Categoria("Lantánidos", "¡Los metales raros que hacen posible la tecnología moderna! ¿Aceptas el reto?", "Escena_Alcalinos"),
-    new Categoria("Actínidos", "¡La energía del futuro! Juega con los elementos más radioactivos y misteriosos.", "Escena_Alcalinos"),
-    new Categoria("Elementos Desconocidos", "¡Aventúrate en lo desconocido! ¿Cuánto sabes de estos elementos misteriosos?", "Escena_Alcalinos")
+    new Categoria("Actínoides", "¡La energía del futuro! Juega con los elementos más radioactivos y misteriosos.", "Escena_Alcalinos"),
+    new Categoria("Propiedades Desconocidas", "¡Aventúrate en lo desconocido! ¿Cuánto sabes de estos elementos misteriosos?", "Escena_Alcalinos")
 };
 
     void Start()

@@ -107,19 +107,7 @@ public class ControladorEncuestaAprendizaje : MonoBehaviour
         eventosToggleHabilitados = true;
 
         auth = FirebaseAuth.DefaultInstance;
-        firestore = FirebaseFirestore.DefaultInstance;
-
-        // Recuperamos el userId almacenado en el login
-        string userId = PlayerPrefs.GetString("userId", "");
-
-        if (string.IsNullOrEmpty(userId))
-        {
-            Debug.LogError("⚠️ No se encontró userId en PlayerPrefs.");
-        }
-        else
-        {
-            Debug.Log($"📌 UserId encontrado: {userId}");
-        }
+        firestore = FirebaseFirestore.DefaultInstance;       
 
     }
 
