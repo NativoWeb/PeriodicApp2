@@ -161,7 +161,23 @@ public class ControladorEncuesta : MonoBehaviour
             Debug.Log("Encuesta Finalizada");
             textoPreguntaUI.text = "�Encuesta Finalizada!";
             grupoOpcionesUI.enabled = false;
-            SceneManager.LoadScene("EncuestaAprendizaje");
+
+            PlayerPrefs.SetInt("EstadoEncuestaConocimiento", 1);
+
+            bool estadoencuestaaprendizaje = PlayerPrefs.GetInt("EstadoEncuestaAprendizaje", 0) == 1;
+            bool estadoencuestaconocimiento = PlayerPrefs.GetInt("EstadoEncuestaConocimiento", 0) == 1;
+
+
+            // Validar el estado de ambas encuestas para pasar a scena 
+            if (estadoencuestaaprendizaje == true && estadoencuestaconocimiento == true)
+            {
+                SceneManager.LoadScene("Categorías");
+            }
+            else
+            {
+                SceneManager.LoadScene("SeleccionarEncuesta");
+            }
+
             EnviarDatosAPrediccion(); // �A�ADIDO: Llamar a EnviarDatosAPrediccion al finalizar la encuesta!
         }
         Debug.Log("siguientePregunta() finalizado.");
@@ -295,7 +311,21 @@ public class ControladorEncuesta : MonoBehaviour
             Debug.Log("¡Encuesta Finalizada!");
             textoPreguntaUI.text = "¡Encuesta Finalizada!";
             grupoOpcionesUI.enabled = false;
-            SceneManager.LoadScene("EncuestaAprendizaje");
+            PlayerPrefs.SetInt("EstadoEncuestaConocimiento", 1);
+
+            bool estadoencuestaaprendizaje = PlayerPrefs.GetInt("EstadoEncuestaAprendizaje", 0) == 1;
+            bool estadoencuestaconocimiento = PlayerPrefs.GetInt("EstadoEncuestaConocimiento", 0) == 1;
+
+
+            // Validar el estado de ambas encuestas para pasar a scena 
+            if (estadoencuestaaprendizaje == true && estadoencuestaconocimiento == true)
+            {
+                SceneManager.LoadScene("Categorías");
+            }else
+            {
+                SceneManager.LoadScene("SeleccionarEncuesta");
+            }
+                
             return;
         }
 

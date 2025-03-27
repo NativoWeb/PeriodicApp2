@@ -118,8 +118,10 @@ public class RegisterController : MonoBehaviour
 
         bool tieneUsuarioTemporal = PlayerPrefs.HasKey("DisplayName");
 
-        bool encuestaCompletada = PlayerPrefs.GetInt("TempEncuestaCompletada", 0) == 1;
-
+        // verificar encuestas-----------------
+        bool estadoencuestaaprendizaje = PlayerPrefs.GetInt("EstadoEncuestaAprendizaje", 0) == 1;
+        bool estadoencuestaconocimiento = PlayerPrefs.GetInt("EstadoEncuestaConocimiento", 0) == 1;
+        //-------------------------------------
         int xpTemp = PlayerPrefs.GetInt("TempXP", 0);
 
         if (tieneUsuarioTemporal)
@@ -130,6 +132,7 @@ public class RegisterController : MonoBehaviour
         else
         {
             ocupacionSelecionada = roles.options[roles.value].text;
+            Debug.Log($"la ocupacion seleccionada antes de guardar en firebase es : {ocupacionSelecionada}");
         }
 
 
@@ -138,7 +141,8 @@ public class RegisterController : MonoBehaviour
         { "DisplayName", user.DisplayName },
         { "Email", user.Email },
         { "Ocupacion", ocupacionSelecionada },
-        { "EncuestaCompletada", encuestaCompletada },
+        { "EstadoEncuestaAprendizaje", estadoencuestaaprendizaje },
+        { "EstadoEncuestaConocimiento", estadoencuestaconocimiento },
         { "xp", xpTemp },
         { "avatar", avatarUrl },
         { "Rango", "Novato de laboratorio" }

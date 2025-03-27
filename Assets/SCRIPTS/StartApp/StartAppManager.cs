@@ -53,7 +53,20 @@ public class StartAppManager : MonoBehaviour
         else if (IsTemporaryUserSaved())
         {
             Debug.Log("✅ Usuario temporal encontrado. Enviando a Inicio.");
-            LoadSceneIfNotAlready("Inicio");
+            // Validar el estado de ambas encuestas para pasar a scena 
+
+            bool estadoencuestaaprendizaje = PlayerPrefs.GetInt("EstadoEncuestaAprendizaje", 0) == 1;
+            bool estadoencuestaconocimiento = PlayerPrefs.GetInt("EstadoEncuestaConocimiento", 0) == 1;
+
+            if (estadoencuestaaprendizaje == true && estadoencuestaconocimiento == true)
+            {
+                SceneManager.LoadScene("Categorías");
+            }
+            else
+            {
+                SceneManager.LoadScene("SeleccionarEncuesta");
+            }
+            
         }
         else
         {
@@ -103,12 +116,11 @@ public class StartAppManager : MonoBehaviour
     // Verificar si hay datos de usuario temporal guardados
     bool IsTemporaryUserSaved()
     {
-        return PlayerPrefs.HasKey("DisplayName") &&
+        return //PlayerPrefs.HasKey("DisplayName") &&
                PlayerPrefs.HasKey("TempOcupacion") &&
                PlayerPrefs.HasKey("TempXP") &&
-               PlayerPrefs.HasKey("TempAvatar") &&
-               PlayerPrefs.HasKey("Rango") &&
-               PlayerPrefs.HasKey("TempEncuestaCompletada");
+               PlayerPrefs.HasKey("TempAvatar");
+               //PlayerPrefs.HasKey("Rango");
     }
 
     // Crear y guardar usuario temporal en PlayerPrefs
@@ -121,14 +133,14 @@ public class StartAppManager : MonoBehaviour
 
         // Guardar datos en PlayerPrefs
         PlayerPrefs.SetString("DisplayName", username);
+        PlayerPrefs.SetString("TempOcupacion", ocupacionSeleccionada);
+        PlayerPrefs.SetInt("TempXP", 0);
         PlayerPrefs.SetString("TempAvatar", avatarUrl);
         PlayerPrefs.SetString("Rango", "Novato de laboratorio");
-        PlayerPrefs.SetInt("TempXP", 0);
+        PlayerPrefs.SetInt("EstadoEncuestaAprendizaje", encuestaCompletada ? 1 : 0);
+        PlayerPrefs.SetInt("EstadoEncuestaConocimiento", encuestaCompletada ? 1 : 0);
         PlayerPrefs.SetInt("posicion", 0);
-        PlayerPrefs.SetString("TempOcupacion", ocupacionSeleccionada);
         PlayerPrefs.SetInt("Nivel", 1);
-        PlayerPrefs.SetInt("TempEncuestaCompletada", encuestaCompletada ? 1 : 0);
-
         PlayerPrefs.SetString("Estadouser", "local");
         PlayerPrefs.Save();
         Debug.Log("✅ Usuario provisional creado: " + username);
