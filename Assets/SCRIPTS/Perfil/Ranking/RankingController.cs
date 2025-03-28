@@ -19,26 +19,56 @@ public class RankingController : MonoBehaviour
     public Image avatarimage; // Imagen que muestra el avatar del usuario
     public TMP_Text rangotext; // Texto que muestra el rango del usuario
 
-    // Función que se ejecuta al iniciar la escena
+    // internet
+    private bool hayInternet = false;
+
     void Start()
     {
         db = FirebaseFirestore.DefaultInstance; // Conecta con la base de datos de Firebase
         userId = PlayerPrefs.GetString("userId", "").Trim(); // Obtiene el ID del usuario guardado en PlayerPrefs
 
-        // Si el ID no está vacío, obtenemos la posición y los datos del usuario
-        if (!string.IsNullOrEmpty(userId))
+        // Verificar conexión a internet
+        hayInternet = Application.internetReachability != NetworkReachability.NotReachable;
+        if (hayInternet)
         {
-            ObtenerPosicionUsuario(); // Llama a la función para obtener la posición del usuario en el ranking
-            StartCoroutine(LoadUserData(userId)); // Llama a la función para cargar los datos del usuario (en corutina para esperar la respuesta de Firebase)
+            Debug.Log("Conexion a internet exitosa... Desde rankingcontroller");
+            // Si el ID no está vacío, obtenemos la posición y los datos del usuario
+            if (!string.IsNullOrEmpty(userId))
+            {
+                ObtenerPosicionUsuario(); // Llama a la función para obtener la posición del usuario en el ranking
+                StartCoroutine(LoadUserData(userId)); // Llama a la función para cargar los datos del usuario (en corutina para esperar la respuesta de Firebase)
+            }
+            else
+            {
+                Debug.Log("Usuario no autenticado, mostrando datos offline");
+                MostrarDatosOffline();
+            }
+
         }
         else
         {
-            // Si no hay un usuario guardado, muestra mensaje de error
-            posicionText.text = "Posición: No disponible";
-            Debug.LogError("No se encontró el ID del usuario.");
+            Debug.Log("Sin conexion a internet, mostrando datos offline");
+            MostrarDatosOffline();
         }
     }
+    private void MostrarDatosOffline()
+    {
+        string username = PlayerPrefs.GetString("DisplayName", "");
+        string rangos = PlayerPrefs.GetString("Rango", "");
+        int xp = PlayerPrefs.GetInt("TempXP", 0);
+        int posicion = PlayerPrefs.GetInt("posicion", 0);
+        rangotext.text = rangos;
 
+        // mostrar datos del usuario en la interfaz 
+        UserName.text = "¡Hola, " + username + "!";
+        posicionText.text = $" # {posicion}";
+        Xptext.text = xp.ToString();
+
+        string avatarPath = ObtenerAvatarPorRango(rangos);
+        Sprite avatarSprite = Resources.Load<Sprite>(avatarPath) ?? Resources.Load<Sprite>("Avatares/defecto");
+
+        avatarimage.sprite = avatarSprite;
+    }
     // Corutina que espera a que se carguen los datos del usuario
     IEnumerator LoadUserData(string userId)
     {
@@ -135,8 +165,9 @@ public class RankingController : MonoBehaviour
             // Si el ID del documento coincide con el ID del usuario actual
             if (doc.Id == userId)
             {
-                encontrado = true; // Marca que se encontró al usuario
+                encontrado = true; // Marca que se encontró al usuario-
                 posicionText.text = "Posición: #" + posicion; // Muestra la posición en el ranking
+                PlayerPrefs.SetInt("posicion", posicion); // guardo posición para mostrarla offline --------------------------------
                 Debug.Log($"El usuario {userId} está en la posición {posicion} del ranking.");
                 break; // Sale del ciclo ya que se encontró al usuario
             }

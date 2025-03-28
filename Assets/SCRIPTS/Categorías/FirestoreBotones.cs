@@ -16,7 +16,7 @@ public class CategoriaBotones : MonoBehaviour
     public TextMeshProUGUI descripcionTMP;
     public Button botonCambiarEscena; // Botón para cambiar de escena
 
-    private string juegoEscenaActual;
+    public string juegoEscenaActual;
     private Button botonSeleccionado;
     private Color colorNormal = Color.gray;
     private Color colorSeleccionado = new Color(81f / 255f, 178f / 255f, 124f / 255f); // #51B27C
@@ -24,7 +24,7 @@ public class CategoriaBotones : MonoBehaviour
     List<Categoria> categorias = new List<Categoria>
 {
     new Categoria("Metales Alcalinos", "¡Prepárate para la reactividad extrema! ¿Podrás dominar estos metales explosivos?", "Escena_Alcalinos"),
-    new Categoria("Metales Alcalinotérreos", "¡Más estables, pero igual de sorprendentes! Descubre su papel esencial en la química.", "Escena_Alcalinoterreos"),
+    new Categoria("Metales Alcalinotérreos", "¡Más estables, pero igual de sorprendentes! Descubre su papel esencial en la química.", "Escena_Alcalinos"),
     new Categoria("Metales de Transición", "¡Los maestros del cambio! Explora los metales que forman los colores más vibrantes.", "Escena_Transicionales"),
     new Categoria("Metales Postransicionales", "¡Menos famosos, pero igual de útiles! ¿Cuánto sabes de estos metales versátiles?", "Escena_Postransicionales"),
     new Categoria("Metaloides", "¡Ni metal ni no metal! Atrévete a jugar con los elementos más enigmáticos.", "Escena_Metaloides"),
@@ -94,6 +94,7 @@ public class CategoriaBotones : MonoBehaviour
         nombreTMP.text = categoria.Titulo;
         descripcionTMP.text = categoria.Descripcion;
         juegoEscenaActual = categoria.Escena;
+        PlayerPrefs.SetString("juegoEscenaActual", categoria.Escena);
 
         botonCambiarEscena.interactable = true;
         botonCambiarEscena.onClick.RemoveAllListeners();
@@ -107,6 +108,7 @@ public class CategoriaBotones : MonoBehaviour
 
         if (!string.IsNullOrEmpty(juegoEscenaActual))
         {
+            PlayerPrefs.SetString("CategoriaSeleccionada", nombreTMP.text);
             SceneManager.LoadScene(juegoEscenaActual);
         }
         else

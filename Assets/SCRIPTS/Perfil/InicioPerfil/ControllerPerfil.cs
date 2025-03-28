@@ -16,7 +16,6 @@ public class ControllerPerfil : MonoBehaviour
 
     // Interfaz
     public TMP_Text tmpUsername;
-    public TMP_Text tmpCorreo;
     public Image avatarImage;
     public Button GameButton;
 
@@ -32,7 +31,7 @@ public class ControllerPerfil : MonoBehaviour
     async void Start()
     {
 
-        Debug.Log("ControllerPerfil Start ejecutándose...");
+        Debug.Log("ControllerPerfil ejecutándose...");
 
         // Inicializar Firebase
         await FirebaseApp.CheckAndFixDependenciesAsync();
@@ -73,16 +72,17 @@ public class ControllerPerfil : MonoBehaviour
     private void MostrarDatosOffline()
     {
         string username = PlayerPrefs.GetString("DisplayName", "");
-        string correo = PlayerPrefs.GetString("Email", "Correo no disponible");
-        string rangos = PlayerPrefs.GetString("TempRango", "");
+        string rangos = PlayerPrefs.GetString("Rango", "");
         int xp = PlayerPrefs.GetInt("xp", 0);
         rangoActual = rangos;
 
+        // mostrar datos del usuario en la interfaz 
         tmpUsername.text = "¡Hola, " + username + "!";
-        tmpCorreo.text = "Correo: " + correo;
+        
 
         string avatarPath = ObtenerAvatarPorRango(rangos);
         Sprite avatarSprite = Resources.Load<Sprite>(avatarPath) ?? Resources.Load<Sprite>("Avatares/defecto");
+
         avatarImage.sprite = avatarSprite;
     }
 
@@ -94,7 +94,6 @@ public class ControllerPerfil : MonoBehaviour
             if (snapshot.Exists)
             {
                 string username = snapshot.GetValue<string>("DisplayName");
-                string correo = snapshot.GetValue<string>("Email");
                 string rangos = snapshot.GetValue<string>("Rango");
                 int xpFirebase = snapshot.GetValue<int>("xp");
 
@@ -113,20 +112,23 @@ public class ControllerPerfil : MonoBehaviour
                 rangoActual = rangos;
                 ActualizarRangoSegunXP(xpFirebase);
 
-                // Guardar en PlayerPrefs
-                PlayerPrefs.SetString("DisplayName", username);
-                PlayerPrefs.SetString("Email", correo);
-                PlayerPrefs.SetString("Rango", rangos);
-                PlayerPrefs.SetInt("xp", xpFirebase);
-                PlayerPrefs.Save();
 
                 // Cargar avatar y datos
                 string avatarPath = ObtenerAvatarPorRango(rangos);
                 Sprite avatarSprite = Resources.Load<Sprite>(avatarPath) ?? Resources.Load<Sprite>("Avatares/default");
-                avatarImage.sprite = avatarSprite;
 
-                tmpUsername.text = "¡Hola, " + username + "!";
-                tmpCorreo.text = "Correo: " + correo;
+                avatarImage.sprite = avatarSprite;// información que se muestra del usuario en la interfaz ----------------------------------------------------
+
+
+                // Guardar en PlayerPrefs
+                PlayerPrefs.SetString("DisplayName", username);
+                PlayerPrefs.SetString("Rango", rangos);
+                PlayerPrefs.SetInt("xp", xpFirebase);
+                PlayerPrefs.SetString("Avatar", avatarPath);
+                PlayerPrefs.Save();
+
+                tmpUsername.text = "¡Hola, " + username + "!"; // información que se muestra del usuario en la interfaz ----------------------------------------------------
+              
 
                 LimpiarMisiones();
                 CargarMisiones(); // Recargar misiones según rango
@@ -144,6 +146,7 @@ public class ControllerPerfil : MonoBehaviour
         await userRef.UpdateAsync("xp", nuevoXP);
         Debug.Log($"✅ XP actualizado en Firebase para el usuario {userId}: {nuevoXP}");
     }
+
     public async void CargarMisiones()
     {
         Debug.Log($"Cargando misiones para el rango: {rangoActual}");

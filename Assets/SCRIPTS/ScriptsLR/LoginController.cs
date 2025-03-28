@@ -1,4 +1,5 @@
-﻿using Firebase;
+﻿using System.Linq;  // Asegura que esté incluido
+using Firebase;
 using Firebase.Auth;
 using Firebase.Extensions;
 using Firebase.Firestore;
@@ -7,13 +8,30 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using System.Collections;
+using System.Text.RegularExpressions;
 
 public class LoginController : MonoBehaviour
 {
+
+    /* -----------------  Necesario para restablecer contraseña  ----------------- */
+    public Button btnResetPassword;
+    public Button btnSendReset; // Botón para enviar el correo
+    public TMP_InputField emailResetInput;
+    public TMP_Text txtResetStatus;
+    public GameObject PanelRestablecerUI;
+    public GameObject PanelLogin;
+
+    /* -----------------  Necesario para intentos erroneos  ----------------- */
+    private int failedAttempts = 0;
+    private const int maxAttempts = 3;
+    private const int lockoutTime = 10; // 5 minutos en segundos
+
+
     public TMP_InputField emailInput;
     public TMP_InputField passwordInput;
     public Toggle toggleRememberMe;
     public Button loginButton;
+    public TMP_Text txtError;
 
     private FirebaseAuth auth;
     private FirebaseFirestore firestore;
@@ -21,6 +39,9 @@ public class LoginController : MonoBehaviour
     void Start()
     {
         StartCoroutine(WaitForFirebase());
+        btnResetPassword.onClick.AddListener(MostrarPanelRestablecer);
+        btnSendReset.onClick.AddListener(OnSendResetClick);
+        CheckLockoutStatus(); // Verifica si el usuario está bloqueado
     }
 
     private IEnumerator WaitForFirebase()
@@ -30,13 +51,13 @@ public class LoginController : MonoBehaviour
 
         while (!DbConnexion.Instance.IsFirebaseReady() || !StartAppManager.IsReady)
         {
-            Debug.Log($"⏳ Esperando... Firebase: {DbConnexion.Instance.IsFirebaseReady()}, StartAppManager: {StartAppManager.IsReady}");
+            Debug.Log($"Esperando... Firebase: {DbConnexion.Instance.IsFirebaseReady()}, StartAppManager: {StartAppManager.IsReady}");
             yield return new WaitForSeconds(0.5f);
             tiempoEspera += 0.5f;
 
             if (tiempoEspera >= tiempoMaximoEspera)
             {
-                Debug.LogError("🚨 Tiempo de espera excedido.");
+                Debug.LogError("Tiempo de espera excedido.");
                 yield break;
             }
         }
@@ -46,7 +67,7 @@ public class LoginController : MonoBehaviour
 
         if (auth == null || firestore == null)
         {
-            Debug.LogError("🚨 Error: No se pudo obtener las referencias de Firebase.");
+            Debug.LogError("Error: No se pudo obtener las referencias de Firebase.");
             yield break;
         }
 
@@ -56,9 +77,80 @@ public class LoginController : MonoBehaviour
 
     public void OnLoginButtonClick()
     {
+        if (IsLockedOut())
+        {
+            txtError.text = $"Demasiados intentos fallidos. Intenta en {GetRemainingLockoutTime()} segundos.";
+            return;
+        }
+
         string email = emailInput.text;
         string password = passwordInput.text;
         SignInUserWithEmail(email, password);
+    }
+
+    private void MostrarPanelRestablecer()
+    {
+        PanelLogin.SetActive(false);
+        PanelRestablecerUI.SetActive(true);
+        txtResetStatus.text = ""; // Limpiar mensaje anterior
+        emailResetInput.text = ""; // Limpiar campo de texto
+    }
+    public void OnSendResetClick()
+    {
+        string email = emailResetInput.text.Trim();
+
+        if (string.IsNullOrEmpty(email))
+        {
+            ShowMessage("Ingresa tu correo.", Color.red);
+            return;
+        }
+
+        // 🔹 Limpiar mensajes previos antes de verificar
+        ShowMessage("Verificando correo...", Color.yellow);
+
+        // 🔍 Verificar si el correo está registrado en Firebase Firestore
+        firestore.Collection("users").WhereEqualTo("Email", email).GetSnapshotAsync().ContinueWithOnMainThread(task =>
+        {
+            if (task.IsFaulted || task.IsCanceled)
+            {
+                ShowMessage("Error de conexión. Inténtalo de nuevo.", Color.red);
+                return;
+            }
+
+            QuerySnapshot snapshot = task.Result;
+
+            if (!snapshot.Documents.Any())
+            {
+                ShowMessage("Correo no registrado.", Color.red);
+                return;
+            }
+
+            // 📩 Si el correo existe, enviar el enlace de restablecimiento
+            auth.SendPasswordResetEmailAsync(email).ContinueWithOnMainThread(resetTask =>
+            {
+                if (resetTask.IsCanceled || resetTask.IsFaulted)
+                {
+                    ShowMessage("Error al enviar el correo. Verifica el email.", Color.red);
+                    return;
+                }
+
+                ShowMessage("¡Correo enviado! Revisa tu bandeja de entrada.", Color.green);
+                StartCoroutine(HideResetPanelAfterDelay(3));
+            });
+        });
+    }
+
+    private void ShowMessage(string message, Color color)
+    {
+        txtResetStatus.text = message;
+        txtResetStatus.color = color;
+    }
+
+    private IEnumerator HideResetPanelAfterDelay(float seconds)
+    {
+        yield return new WaitForSeconds(seconds);
+        PanelLogin.SetActive(true);
+        PanelRestablecerUI.SetActive(false);
     }
 
     private void SignInUserWithEmail(string email, string password)
@@ -67,18 +159,33 @@ public class LoginController : MonoBehaviour
         {
             if (task.IsCanceled || task.IsFaulted)
             {
-                Debug.LogError("❌ Error en inicio de sesión.");
+                failedAttempts++;
+
+                txtError.text = "El usuario o la contraseña no son correctas. Inténtelo de nuevo." + "\n\n Intentos restantes: " + (maxAttempts - failedAttempts);
+                PlayerPrefs.SetInt("FailedAttempts", failedAttempts);
+
+                if (failedAttempts >= maxAttempts)
+                {
+                    LockUser();
+                    return;
+                }
+
                 TryOfflineLogin(email, password);
                 return;
             }
+
+            // ✅ Inicio de sesión exitoso: restablecer intentos
+            failedAttempts = 0;
+            PlayerPrefs.SetInt("failedAttempts", 0);
+            PlayerPrefs.DeleteKey("LockoutTime");
+            PlayerPrefs.Save();
 
             FirebaseUser user = task.Result.User;
             Debug.Log("✅ Inicio de sesión exitoso: " + user.Email);
 
             PlayerPrefs.SetString("userId", user.UserId);
-
-            //guardar el Display name para luego mostrarlo nuevamente
             PlayerPrefs.SetString("DisplayName", user.DisplayName);
+            PlayerPrefs.SetString("Estadouser", "nube");
 
             if (toggleRememberMe.isOn)
             {
@@ -92,10 +199,8 @@ public class LoginController : MonoBehaviour
                 PlayerPrefs.DeleteKey("userPassword");
                 PlayerPrefs.SetInt("rememberMe", 0);
             }
-            PlayerPrefs.SetString("Estadouser", "nube");
             PlayerPrefs.Save();
 
-            // 🔹 Verificar y descargar misiones antes de continuar
             CheckAndDownloadMisiones(user.UserId);
         });
     }
@@ -127,6 +232,71 @@ public class LoginController : MonoBehaviour
             });
         }
     }
+
+
+
+    /* -----------------  MÉTODOS PARA BLOQUEAR USUARIO  ----------------- */
+    private void LockUser()
+    {
+        int lockoutEndTime = GetCurrentUnixTimestamp() + lockoutTime;
+        PlayerPrefs.SetInt("LockoutTime", lockoutEndTime);
+        PlayerPrefs.Save();
+        txtError.text = $"⏳ Demasiados intentos fallidos. Intenta en {lockoutTime} segundos.";
+        emailInput.interactable = false;
+        passwordInput.interactable = false;
+        loginButton.interactable = false;
+        StartCoroutine(UnlockUserAfterDelay(lockoutTime));
+    }
+
+    private bool IsLockedOut()
+    {
+        if (!PlayerPrefs.HasKey("LockoutTime"))
+            return false;
+
+        int lockoutEndTime = PlayerPrefs.GetInt("LockoutTime");
+        int currentTime = GetCurrentUnixTimestamp();
+
+        return currentTime < lockoutEndTime;
+    }
+
+    private int GetRemainingLockoutTime()
+    {
+        int lockoutEndTime = PlayerPrefs.GetInt("LockoutTime");
+        int currentTime = GetCurrentUnixTimestamp();
+        return Mathf.Max(0, lockoutEndTime - currentTime);
+    }
+
+    private IEnumerator UnlockUserAfterDelay(int seconds)
+    {
+        yield return new WaitForSeconds(seconds);
+        PlayerPrefs.DeleteKey("LockoutTime");
+        PlayerPrefs.SetInt("failedAttempts", 0);
+        PlayerPrefs.Save();
+        failedAttempts = 0;
+        emailInput.interactable = true;
+        passwordInput.interactable = true;
+        loginButton.interactable = true;
+        txtError.text = "";
+    }
+
+    private int GetCurrentUnixTimestamp()
+    {
+        return (int)(System.DateTime.UtcNow.Subtract(new System.DateTime(1970, 1, 1))).TotalSeconds;
+    }
+
+    private void CheckLockoutStatus()
+    {
+        if (IsLockedOut())
+        {
+            int remainingTime = GetRemainingLockoutTime();
+            txtError.text = $"Demasiados intentos fallidos. Intenta en {remainingTime} segundos.";
+            emailInput.interactable = false;
+            passwordInput.interactable = false;
+            loginButton.interactable = false;
+            StartCoroutine(UnlockUserAfterDelay(remainingTime));
+        }
+    }
+
 
     /* ------------------------ 🔥 NUEVA FUNCIÓN PARA DESCARGAR MISIONES 🔥 ------------------------ */
     private void CheckAndDownloadMisiones(string userId)
@@ -210,10 +380,11 @@ public class LoginController : MonoBehaviour
 
             if (email == savedEmail && password == savedPassword)
             {
+                txtError.text = "Inicio de sesion sin conexión exitoso.";
                 Debug.Log("📴 ✅ Inicio de sesión sin conexión exitoso.");
                 SceneManager.LoadScene("Categorías");
             }
-            else
+            else if (email == savedEmail && password != savedPassword)
             {
                 Debug.LogError("📴 ❌ Datos incorrectos para el inicio de sesión offline.");
             }
