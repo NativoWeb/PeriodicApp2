@@ -9,6 +9,7 @@ using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using System.Collections;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 
 public class LoginController : MonoBehaviour
 {
@@ -356,18 +357,15 @@ public class LoginController : MonoBehaviour
             }
 
             string ocupacion = snapshot.GetValue<string>("Ocupacion");
-            bool encuestaCompletada = snapshot.ContainsField("EncuestaCompletada") ? snapshot.GetValue<bool>("EncuestaCompletada"): false;
+            bool encuestaCompletada = snapshot.ContainsField("EncuestaCompletada")
+                ? snapshot.GetValue<bool>("EncuestaCompletada")
+                : false;
 
-            bool estadoencuestaaprendizaje = snapshot.ContainsField("EstadoEncuestaAprendizaje");
-            bool estadoencuestaconocimiento = snapshot.ContainsField("EstadoEncuestaConocimiento");
-              
-
-            Debug.Log($"📌 Usuario: {ocupacion}, Estado Encuesta Aprendizaje: {estadoencuestaaprendizaje}, Estado Encuesta Conocimiento: {estadoencuestaconocimiento}");
+            Debug.Log($"📌 Usuario: {ocupacion}, EncuestaCompletada: {encuestaCompletada}");
 
             if (ocupacion == "Estudiante")
             {
-                SceneManager.LoadScene("SeleccionarEncuesta");
-     
+                SceneManager.LoadScene(encuestaCompletada ? "Categorías" : "EcnuestaScen1e");
             }
             else if (ocupacion == "Profesor")
             {
@@ -378,30 +376,16 @@ public class LoginController : MonoBehaviour
 
     private void TryOfflineLogin(string email, string password)
     {
+
         if (PlayerPrefs.HasKey("userEmail") && PlayerPrefs.HasKey("userPassword") && PlayerPrefs.HasKey("userId"))
         {
             string savedEmail = PlayerPrefs.GetString("userEmail");
             string savedPassword = PlayerPrefs.GetString("userPassword");
             string savedUserId = PlayerPrefs.GetString("userId");
-
             if (email == savedEmail && password == savedPassword)
             {
                 txtError.text = "Inicio de sesion sin conexión exitoso.";
-                Debug.Log("📴 ✅ Inicio de sesión sin conexión exitoso.");
-
-                bool estadoencuestaaprendizaje = PlayerPrefs.GetInt("EstadoEncuestaAprendizaje", 0) == 1;
-                bool estadoencuestaconocimiento = PlayerPrefs.GetInt("EstadoEncuestaConocimiento", 0) == 1;
-
-                if (estadoencuestaaprendizaje == true && estadoencuestaconocimiento == true)
-                {
-                    SceneManager.LoadScene("Categorías");
-                }
-                else
-                {
-                    SceneManager.LoadScene("SeleccionarEncuesta");
-                }
-
-
+                txtError.color = Color.green;
             }
             else if (email == savedEmail && password != savedPassword)
             {
@@ -413,4 +397,7 @@ public class LoginController : MonoBehaviour
             Debug.LogError("📴 ❌ No hay datos guardados para inicio de sesión offline.");
         }
     }
+
+    
+
 }

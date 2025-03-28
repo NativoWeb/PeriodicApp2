@@ -24,12 +24,25 @@ public class EmailController : MonoBehaviour
     public TMP_Text minLengthText, uppercaseText, lowercaseText, specialCharText; // Textos de cada requisito
     public TMP_Text txtMessage;
 
+    public Texture2D imagenActiva;
+    public Texture2D imagenInactiva;
+
+
+
+    public RawImage Caracteres;
+    public RawImage Mayusculas;
+    public RawImage Minusculas;
+    public RawImage Especiales;
+
+
 
     public TMP_InputField emailInput;
     public TMP_InputField verificationCodeInput;
     public Button registerButton;
     public Button verifyButton;
+    public Button editButton;
     public TMP_Text verificationMessage;
+    public TMP_Text CorreoMessage;
     public GameObject registroPanel;
     public GameObject verificacionPanel;
 
@@ -111,10 +124,14 @@ public class EmailController : MonoBehaviour
         bool hasSpecialChar = Regex.IsMatch(password, @"[\^\$\*\.\[\]\{\}\(\)\?\""!@#%&/\\,><':;|_~`]");
 
         // Cambiar color según validación
-        minLengthText.color = hasMinLength ? Color.green : Color.red;
-        uppercaseText.color = hasUppercase ? Color.green : Color.red;
-        lowercaseText.color = hasLowercase ? Color.green : Color.red;
-        specialCharText.color = hasSpecialChar ? Color.green : Color.red;
+        minLengthText.color = hasMinLength ? Color.green : Color.white;
+        Caracteres.texture = hasMinLength ? imagenActiva : imagenInactiva;
+        uppercaseText.color = hasUppercase ? Color.green : Color.white;
+        Mayusculas.texture = hasUppercase ? imagenActiva : imagenInactiva;
+        lowercaseText.color = hasLowercase ? Color.green : Color.white;
+        Minusculas.texture = hasLowercase ? imagenActiva : imagenInactiva;
+        specialCharText.color = hasSpecialChar ? Color.green : Color.white;
+        Especiales.texture = hasSpecialChar ? imagenActiva : imagenInactiva;
     }
 
 
@@ -260,7 +277,11 @@ public class EmailController : MonoBehaviour
                 Color warningColor = new Color(1f, 0.65f, 0f); // Naranja fuerte
                 verificationMessage.color = warningColor;
                 registroPanel.SetActive(false);
+                CorreoMessage.text = "Correo enviado a: " + email;
+                CorreoMessage.color = Color.white;
+                editButton.onClick.AddListener(VolverEmail);
                 verificacionPanel.SetActive(true);
+                
             }
             else
             {
@@ -268,6 +289,14 @@ public class EmailController : MonoBehaviour
                 Debug.LogError("Respuesta: " + request.downloadHandler.text);
             }
         }
+    }
+
+    void VolverEmail()
+    {
+        verificacionPanel.SetActive(false);
+        registroPanel.SetActive(true);
+        emailInput.text = "";
+        passwordInput.text = passwordInput.text;
     }
 
     public void OnVerifyButtonClick()
