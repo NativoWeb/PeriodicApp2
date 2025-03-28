@@ -167,6 +167,7 @@ public class ControladorEncuesta : MonoBehaviour
             bool estadoencuestaaprendizaje = PlayerPrefs.GetInt("EstadoEncuestaAprendizaje", 0) == 1;
             bool estadoencuestaconocimiento = PlayerPrefs.GetInt("EstadoEncuestaConocimiento", 0) == 1;
 
+            EnviarDatosAPrediccion(); // �A�ADIDO: Llamar a EnviarDatosAPrediccion al finalizar la encuesta!
 
             // Validar el estado de ambas encuestas para pasar a scena 
             if (estadoencuestaaprendizaje == true && estadoencuestaconocimiento == true)
@@ -178,7 +179,6 @@ public class ControladorEncuesta : MonoBehaviour
                 SceneManager.LoadScene("SeleccionarEncuesta");
             }
 
-            EnviarDatosAPrediccion(); // �A�ADIDO: Llamar a EnviarDatosAPrediccion al finalizar la encuesta!
         }
         Debug.Log("siguientePregunta() finalizado.");
     }
@@ -559,13 +559,14 @@ public class ControladorEncuesta : MonoBehaviour
         return dificultadTotalPreguntas / cantidadPreguntasRespondidas;
     }
 
- 
+
     // Coroutine para enviar la solicitud y procesar la respuesta de la API �A�ADIDO!
     private void EnviarDatosAPrediccion()
     {
         // 1. Recopilar los valores de las características
         float porcentajeAciertos = CalcularPorcentajeAciertos();
         float dificultadMedia = CalcularDificultadMedia();
+
 
         // Las características deben coincidir con el orden y cantidad usado durante el entrenamiento.
         float[] features = new float[] {
@@ -580,16 +581,17 @@ public class ControladorEncuesta : MonoBehaviour
         correctasPropiedadesDesconocidas,
         correctasGasesNobles,
         incorrectasTotales,
-        //porcentajeAciertos,
         dificultadMedia
     };
+
+        // Guardar las categorías ordenadas en PlayerPrefs antes de enviar los datos a predicción
+        GuardarCategoriasOrdenadas();
 
         // 2. Llamar al modelo de Barracuda
         ModeloAI modeloAI = GetComponent<ModeloAI>(); // Asumiendo que ModeloAI está en el mismo GameObject
         if (modeloAI != null)
         {
             float[] predictionResult = modeloAI.RunInference(features);
-            // Por ejemplo, si el modelo devuelve un valor entre 0 y 1, puedes usar un umbral de 0.5
             int prediction = (predictionResult[0] > 0.5f) ? 1 : 0;
             Debug.Log("Predicción de Barracuda: " + prediction);
             ProcesarPrediccionDeConocimiento(predictionResult);
@@ -600,6 +602,19 @@ public class ControladorEncuesta : MonoBehaviour
         }
     }
 
+    private List<Categoria> categorias = new List<Categoria>
+    {
+            new Categoria("Metales Alcalinos", "¡Prepárate para la reactividad extrema! ¿Podrás dominar estos metales explosivos?"),
+            new Categoria("Metales Alcalinotérreos", "¡Más estables, pero igual de sorprendentes! Descubre su papel esencial en la química."),
+            new Categoria("Metales de Transición", "¡Los maestros del cambio! Explora los metales que forman los colores más vibrantes."),
+            new Categoria("Metales Postransicionales", "¡Menos famosos, pero igual de útiles! ¿Cuánto sabes de estos metales versátiles?"),
+            new Categoria("Metaloides", "¡Ni metal ni no metal! Atrévete a jugar con los elementos más enigmáticos."),
+            new Categoria("No Metales Reactivos", "¡Elementos esenciales para la vida! Descubre su impacto en nuestro mundo."),
+            new Categoria("Gases Nobles", "¡Silenciosos pero poderosos! ¿Podrás jugar con los elementos más estables?"),
+            new Categoria("Lantánidos", "¡Los metales raros que hacen posible la tecnología moderna! ¿Aceptas el reto?"),
+            new Categoria("Actínoides", "¡La energía del futuro! Juega con los elementos más radioactivos y misteriosos."),
+            new Categoria("Propiedades Desconocidas", "¡Aventúrate en lo desconocido! ¿Cuánto sabes de estos elementos misteriosos?")
+    };
 
     // Funci�n para procesar la predicci�n de conocimiento (0 o 1) recibida de la API �A�ADIDO!
     public void ProcesarPrediccionDeConocimiento(float[] predictions)
@@ -611,6 +626,8 @@ public class ControladorEncuesta : MonoBehaviour
         {
             // Convertir el valor a porcentaje
             float porcentaje = predictions[i] * 100f;
+            categorias[i].Porcentaje = porcentaje; // Guardar el porcentaje en la categoría
+
             if (predictions[i] > umbral)
             {
                 Debug.Log($"El usuario CONOCE el concepto del Grupo {i + 1} ({porcentaje:F2}%).");
@@ -620,8 +637,23 @@ public class ControladorEncuesta : MonoBehaviour
                 Debug.Log($"El usuario NO CONOCE el concepto del Grupo {i + 1} ({porcentaje:F2}%).");
             }
         }
+
+        GuardarCategoriasOrdenadas();
     }
 
+    private void GuardarCategoriasOrdenadas()
+    {
+        // Ordenar de menor a mayor porcentaje
+        categorias = categorias.OrderBy(c => c.Porcentaje).ToList();
+
+        // Convertir a JSON y guardar en PlayerPrefs
+        CategoriasData data = new CategoriasData { categorias = categorias };
+        string json = JsonUtility.ToJson(data);
+        PlayerPrefs.SetString("CategoriasOrdenadas", json);
+        PlayerPrefs.Save();
+
+        Debug.Log("📌 Categorías ordenadas guardadas en JSON: " + json);
+    }
 
 
     [Header("Referencias UI")]
@@ -633,5 +665,29 @@ public class ControladorEncuesta : MonoBehaviour
     public Color colorCorrecto = Color.green;
     public Color colorIncorrecto = Color.red;
     public Color colorNormal = Color.white; // Color por defecto
+
+
+
+
+    [System.Serializable]
+    public class Categoria
+    {
+        public string Titulo;
+        public string Descripcion;
+        public float Porcentaje;
+
+        public Categoria(string nombre, string descripcion)
+        {
+            Titulo = nombre;
+            Descripcion = descripcion;
+            Porcentaje = 0f;
+        }
+    }
+
+    [System.Serializable]
+    public class CategoriasData
+    {
+        public List<Categoria> categorias;
+    }
 
 }

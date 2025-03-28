@@ -107,21 +107,21 @@ public class GestorElementos : MonoBehaviour
         LimpiarElementos();
         var elementos = jsonData["Misiones_Categorias"]["Categorias"][categoriaSeleccionada]["Elementos"];
 
+        // Obtener la paleta de colores correspondiente a la categoría
+        Color32[] paleta = TablaPeriodicaColores.Paletas.ContainsKey(categoriaSeleccionada)
+            ? TablaPeriodicaColores.Paletas[categoriaSeleccionada]
+            : new Color32[] { new Color32(255, 255, 255, 255) }; // Blanco por defecto
+
+        int indiceColor = 0;
+
         foreach (KeyValuePair<string, JSONNode> elemento in elementos)
         {
-            CrearBotonElemento(elemento.Key, elemento.Value);
+            CrearBotonElemento(elemento.Key, elemento.Value, categoriaSeleccionada, paleta[indiceColor % paleta.Length]);
+            indiceColor++; // Para usar colores diferentes dentro de la misma categoría
         }
     }
 
-    void LimpiarElementos()
-    {
-        foreach (Transform child in contenedorElementos)
-        {
-            Destroy(child.gameObject);
-        }
-    }
-
-    void CrearBotonElemento(string nombreElemento, JSONNode datosElemento)
+    void CrearBotonElemento(string nombreElemento, JSONNode datosElemento, string categoria, Color32 colorBoton)
     {
         GameObject nuevoBoton = Instantiate(prefabElemento, contenedorElementos);
 
@@ -136,7 +136,36 @@ public class GestorElementos : MonoBehaviour
         Button boton = nuevoBoton.GetComponent<Button>();
         boton.onClick.AddListener(() => SeleccionarElemento(nombreElemento));
 
-        nuevoBoton.GetComponent<Image>().color = new Color(UnityEngine.Random.value, UnityEngine.Random.value, UnityEngine.Random.value);
+        // Asignar el color correspondiente de la paleta
+        nuevoBoton.GetComponent<Image>().color = colorBoton;
+    }
+
+    public static class TablaPeriodicaColores
+    {
+        public static Dictionary<string, Color32[]> Paletas = new Dictionary<string, Color32[]>
+    {
+        { "Metales Alcalinos", new Color32[] { new Color32(255, 204, 204, 255), new Color32(255, 178, 178, 255), new Color32(255, 153, 153, 255) } }, // Rojo pastel
+        { "Metales Alcalinotérreos", new Color32[] { new Color32(255, 229, 204, 255), new Color32(255, 204, 153, 255), new Color32(255, 179, 128, 255) } }, // Naranja pastel
+        { "Metales de Transición", new Color32[] { new Color32(204, 229, 255, 255), new Color32(179, 217, 255, 255), new Color32(153, 204, 255, 255) } }, // Azul pastel
+        { "Metales Postransicionales", new Color32[] { new Color32(221, 160, 221, 255), new Color32(200, 140, 200, 255), new Color32(180, 120, 180, 255) } }, // Lavanda
+        { "Metaloides", new Color32[] { new Color32(255, 239, 184, 255), new Color32(250, 222, 140, 255), new Color32(240, 200, 100, 255) } }, // Amarillo dorado pastel
+        { "No Metales Reactivos", new Color32[] { new Color32(204, 255, 204, 255), new Color32(178, 255, 178, 255), new Color32(153, 255, 153, 255) } }, // Verde claro pastel
+        { "Gases Nobles", new Color32[] { new Color32(238, 204, 255, 255), new Color32(221, 178, 255, 255), new Color32(200, 153, 255, 255) } }, // Violeta pastel
+        { "Lantánidos", new Color32[] { new Color32(216, 191, 216, 255), new Color32(200, 170, 200, 255), new Color32(180, 150, 180, 255) } }, // Malva pastel
+        { "Actínoides", new Color32[] { new Color32(255, 218, 233, 255), new Color32(255, 191, 219, 255), new Color32(255, 165, 204, 255) } }, // Rosa claro pastel
+        { "Propiedades Desconocidas", new Color32[] { new Color32(211, 211, 211, 255), new Color32(190, 190, 190, 255), new Color32(170, 170, 170, 255) } } // Gris claro neutro
+    };
+    }
+
+
+
+
+    void LimpiarElementos()
+    {
+        foreach (Transform child in contenedorElementos)
+        {
+            Destroy(child.gameObject);
+        }
     }
 
     public void SeleccionarElemento(string nombreElemento)

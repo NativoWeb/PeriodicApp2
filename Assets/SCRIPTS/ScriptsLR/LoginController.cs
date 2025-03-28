@@ -313,22 +313,25 @@ public class LoginController : MonoBehaviour
 
             DocumentSnapshot snapshot = task.Result;
 
-            if (!snapshot.Exists || !snapshot.ContainsField("misiones"))
+            if (!snapshot.Exists)
             {
-                Debug.Log("📌 No hay misiones en Firestore. Continuando con el login normal.");
+                Debug.Log("📌 No hay datos del usuario en Firestore. Continuando con el login normal.");
                 CheckUserStatus(userId);
                 return;
             }
 
-            string misionesJson = snapshot.GetValue<string>("misiones");
+            // Obtener misiones y categorías del documento
+            string misionesJson = snapshot.ContainsField("misiones") ? snapshot.GetValue<string>("misiones") : "{}";
+            string categoriasJson = snapshot.ContainsField("categorias") ? snapshot.GetValue<string>("categorias") : "{}";
 
-            if (!string.IsNullOrEmpty(misionesJson))
-            {
-                PlayerPrefs.SetString("misionesJSON", misionesJson);
-                PlayerPrefs.Save();
-                Debug.Log("✅ Misiones descargadas y guardadas localmente.");
-            }
+            // Guardar en PlayerPrefs
+            PlayerPrefs.SetString("misionesJSON", misionesJson);
+            PlayerPrefs.SetString("categoriasJSON", categoriasJson);
+            PlayerPrefs.Save();
 
+            Debug.Log("✅ Misiones y categorías descargadas y guardadas localmente.");
+
+            // Continuar con el login normal
             CheckUserStatus(userId);
         });
     }

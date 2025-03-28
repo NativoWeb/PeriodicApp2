@@ -52,7 +52,7 @@ public class UpdateData : MonoBehaviour
 
 
     // 🔹 Modo online
-    void  HandleOnlineMode() // ----------------------------------------------------------------------------------
+    private async void HandleOnlineMode() // ----------------------------------------------------------------------------------
     {
     
         string estadoUsuario = PlayerPrefs.GetString("Estadouser", "");
@@ -72,7 +72,7 @@ public class UpdateData : MonoBehaviour
 
             ActualizarEstadoEncuestaAprendizaje(userId, estadoencuestaaprendizaje);
             ActualizarEstadoEncuestaConocimiento(userId, estadoencuestaconocimiento);
-            SubirMisionesJSON();
+            await SubirDatosJSON();
             ActualizarXPEnFirebase(userId);
         }
         
@@ -130,7 +130,7 @@ public class UpdateData : MonoBehaviour
             Debug.LogError($"❌ Error al actualizar XP en Firebase: {e.Message}");
         }
     }
-    public async Task SubirMisionesJSON()
+    public async Task SubirDatosJSON()
     {
         if (string.IsNullOrEmpty(userId))
         {
@@ -138,34 +138,47 @@ public class UpdateData : MonoBehaviour
             return;
         }
 
-        string jsonMisiones = PlayerPrefs.GetString("misionesCategoriasJSON", "{}"); // Obtener el JSON de PlayerPrefs
+        // Obtener JSON de misiones y categorías desde PlayerPrefs
+        string jsonMisiones = PlayerPrefs.GetString("misionesCategoriasJSON", "{}");
+        string jsonCategorias = PlayerPrefs.GetString("CategoriasOrdenadas", "{}");
 
-        if (jsonMisiones == "{}")
+        // Referencias a los documentos dentro de la colección del usuario
+        DocumentReference misionesDoc = db.Collection("users").Document(userId).Collection("datos").Document("misiones");
+        DocumentReference categoriasDoc = db.Collection("users").Document(userId).Collection("datos").Document("categorias");
+
+        // Crear tareas para subir ambos JSONs
+        List<Task> tareasSubida = new List<Task>();
+
+        if (jsonMisiones != "{}")
         {
-            Debug.LogWarning("⚠️ No hay datos de misiones guardados.");
-            return;
-        }
-
-        // Convertir JSON a Dictionary para Firestore
-        Dictionary<string, object> data = new Dictionary<string, object>
+            Dictionary<string, object> dataMisiones = new Dictionary<string, object>
         {
             { "misiones", jsonMisiones },
             { "timestamp", FieldValue.ServerTimestamp }
         };
+            tareasSubida.Add(misionesDoc.SetAsync(dataMisiones, SetOptions.MergeAll));
+        }
 
-        // Subir a Firestore dentro del documento del usuario
-        DocumentReference userDoc = db.Collection("users").Document(userId);
-
-        await userDoc.SetAsync(data, SetOptions.MergeAll).ContinueWithOnMainThread(task =>
+        if (jsonCategorias != "{}")
         {
-            if (task.IsCompleted)
-            {
-                Debug.Log("✅ Misiones JSON guardadas en Firestore.");
-            }
-            else
-            {
-                Debug.LogError("❌ Error al guardar el JSON en Firestore: " + task.Exception);
-            }
-        });
+            Dictionary<string, object> dataCategorias = new Dictionary<string, object>
+        {
+            { "categorias", jsonCategorias },
+            { "timestamp", FieldValue.ServerTimestamp }
+        };
+            tareasSubida.Add(categoriasDoc.SetAsync(dataCategorias, SetOptions.MergeAll));
+        }
+
+        if (tareasSubida.Count == 0)
+        {
+            Debug.LogWarning("⚠️ No hay datos de misiones ni categorías para subir.");
+            return;
+        }
+
+        // Esperar a que todas las tareas finalicen
+        await Task.WhenAll(tareasSubida);
+
+        Debug.Log("✅ Datos de misiones y categorías subidos en documentos separados.");
     }
+
 }
