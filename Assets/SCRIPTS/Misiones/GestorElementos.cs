@@ -157,9 +157,6 @@ public class GestorElementos : MonoBehaviour
     };
     }
 
-
-
-
     void LimpiarElementos()
     {
         foreach (Transform child in contenedorElementos)

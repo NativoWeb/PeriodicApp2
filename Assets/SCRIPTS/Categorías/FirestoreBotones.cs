@@ -2,10 +2,13 @@
 using UnityEngine.UI;
 using TMPro;
 using System.Collections.Generic;
+using Google.MiniJSON;
+using SimpleJSON;
 
 public class FirestoreBotones : MonoBehaviour
 {
     public Transform contenedorBotones;
+    public Slider SliderProgreso;
     public GameObject prefabBoton;
     public TextMeshProUGUI NombreUsuarioTMP;
     public TextMeshProUGUI tituloTMP;
@@ -42,6 +45,14 @@ public class FirestoreBotones : MonoBehaviour
         {
             Categoria categoria = categorias[i];
             GameObject nuevoBoton = CrearBoton(i + 1, categoria);
+
+            // Obtener progreso y actualizar el slider de la categoría
+            float progreso = ObtenerProgresoCategoria(categoria.Titulo);
+            SliderProgreso = nuevoBoton.GetComponentInChildren<Slider>();
+            if (SliderProgreso != null)
+            {
+                SliderProgreso.value = progreso;
+            }
 
             if (!primerBotonSeleccionado)
             {
@@ -116,6 +127,61 @@ public class FirestoreBotones : MonoBehaviour
             new Categoria("Actínoides", "¡La energía del futuro! Juega con los elementos más radioactivos y misteriosos."),
             new Categoria("Propiedades Desconocidas", "¡Aventúrate en lo desconocido! ¿Cuánto sabes de estos elementos misteriosos?")
         };
+    }
+
+    // Método para obtener el progreso de una categoría específica
+    float ObtenerProgresoCategoria(string categoriaSeleccionada)
+    {
+        string jsonString = PlayerPrefs.GetString("misionesCategoriasJSON", "");
+        if (string.IsNullOrEmpty(jsonString))
+        {
+            Debug.LogError("❌ No se encontró el JSON en PlayerPrefs.");
+            return 0f;
+        }
+
+        var json = JSON.Parse(jsonString);
+        if (!json.HasKey("Misiones_Categorias") || !json["Misiones_Categorias"].HasKey("Categorias"))
+        {
+            Debug.LogError("❌ Estructura del JSON incorrecta.");
+            return 0f;
+        }
+
+        var categorias = json["Misiones_Categorias"]["Categorias"];
+
+        if (!categorias.HasKey(categoriaSeleccionada) || !categorias[categoriaSeleccionada].HasKey("Elementos"))
+        {
+            Debug.LogError($"❌ No se encontró la categoría '{categoriaSeleccionada}' en el JSON.");
+            return 0f;
+        }
+
+        var elementos = categorias[categoriaSeleccionada]["Elementos"];
+        int totalMisiones = 0;
+        int misionesCompletadas = 0;
+
+        foreach (var elemento in elementos.Keys)
+        {
+            var misiones = elementos[elemento]["misiones"].AsArray;
+            int misionesElemento = misiones.Count - 1; // No contar la misión final
+            totalMisiones += misionesElemento;
+
+            int misionesCompletadasElemento = 0;
+            for (int i = 0; i < misionesElemento; i++)
+            {
+                if (misiones[i]["completada"].AsBool)
+                {
+                    misionesCompletadas++;
+                    misionesCompletadasElemento++;
+                }
+            }
+
+            // Si todas las misiones de un elemento se completan, sumar un pequeño progreso extra
+            if (misionesElemento > 0 && misionesCompletadasElemento == misionesElemento)
+            {
+                misionesCompletadas += 1; // Bonus por completar todas las misiones de un elemento
+            }
+        }
+
+        return totalMisiones > 0 ? (float)misionesCompletadas / totalMisiones : 0f;
     }
 }
 

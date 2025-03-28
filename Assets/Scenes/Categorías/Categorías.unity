@@ -277,7 +277,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 1557942187}
   m_Direction: 0
   m_Value: 0
-  m_Size: 0.40348995
+  m_Size: 0.399033
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -1446,8 +1446,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0.768}
   m_AnchorMax: {x: 1, y: 0.768}
-  m_AnchoredPosition: {x: 7.5006084, y: -57.878265}
-  m_SizeDelta: {x: -213.23633, y: 37.86487}
+  m_AnchoredPosition: {x: 11.967773, y: -83.25522}
+  m_SizeDelta: {x: -204.3, y: 88.619}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &266170820
 MonoBehaviour:
@@ -1471,7 +1471,7 @@ MonoBehaviour:
   m_Transition: 1
   m_Colors:
     m_NormalColor: {r: 1, g: 1, b: 1, a: 1}
-    m_HighlightedColor: {r: 0.9607843, g: 0.9607843, b: 0.9607843, a: 1}
+    m_HighlightedColor: {r: 0.18382876, g: 0.22867137, b: 0.764151, a: 1}
     m_PressedColor: {r: 0.78431374, g: 0.78431374, b: 0.78431374, a: 1}
     m_SelectedColor: {r: 0.9607843, g: 0.9607843, b: 0.9607843, a: 1}
     m_DisabledColor: {r: 0.78431374, g: 0.78431374, b: 0.78431374, a: 0.5019608}
@@ -1494,7 +1494,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 0}
   m_Direction: 0
   m_MinValue: 0
-  m_MaxValue: 1
+  m_MaxValue: 100
   m_WholeNumbers: 0
   m_Value: 0
   m_OnValueChanged:
@@ -3242,52 +3242,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1109658271}
   m_CullTransparentMesh: 1
---- !u!1 &1161546176
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1161546178}
-  - component: {fileID: 1161546177}
-  m_Layer: 0
-  m_Name: SliderController
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &1161546177
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1161546176}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 9812c5853c47ff54bb20de2eaccdc1cc, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  progresoSlider: {fileID: 266170820}
-  maxNiveles: 30
---- !u!4 &1161546178
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1161546176}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 818.6852, y: 2000.7349, z: 6.6300535}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1210393449
 GameObject:
   m_ObjectHideFlags: 0
@@ -3333,6 +3287,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   contenedorBotones: {fileID: 1097079080}
+  SliderProgreso: {fileID: 266170820}
   prefabBoton: {fileID: 325418278352248205, guid: 1ac6098cdd65dae4585e2a57a8b90483, type: 3}
   NombreUsuarioTMP: {fileID: 76577194}
   tituloTMP: {fileID: 184358560}
@@ -5025,6 +4980,5 @@ SceneRoots:
   - {fileID: 189979671}
   - {fileID: 1271648643}
   - {fileID: 1210393451}
-  - {fileID: 1161546178}
   - {fileID: 1814275098}
   - {fileID: 430656375}
