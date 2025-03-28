@@ -70,7 +70,7 @@ public class EstadisticasController : MonoBehaviour
     private void MostrarDatosOffline()
     {
         string username = PlayerPrefs.GetString("DisplayName", "");
-        string rangos = PlayerPrefs.GetString("Rango", "");
+        string rangos = PlayerPrefs.GetString("Rango", "Novato de laboratorio");
         int xp = PlayerPrefs.GetInt("TempXP", 0);
       
 
@@ -183,7 +183,7 @@ public class EstadisticasController : MonoBehaviour
             return;
         }
 
-        string jsonMisiones = PlayerPrefs.GetString("misionesJSON", "{}"); // Obtener el JSON de PlayerPrefs
+        string jsonMisiones = PlayerPrefs.GetString("misionesCategoriasJSON", "{}"); // Obtener el JSON de PlayerPrefs
 
         if (jsonMisiones == "{}")
         {
@@ -233,7 +233,7 @@ public class EstadisticasController : MonoBehaviour
         //PlayerPrefs.DeleteKey("misionesJSON"); // Eliminar datos locales
         PlayerPrefs.DeleteAll();
 
-        //PlayerPrefs.SetString("Estadouser", estadouser);
+       //PlayerPrefs.SetString("Estadouser", estadouser);
         PlayerPrefs.Save();
 
         Debug.Log("✅ Sesión cerrada correctamente.");

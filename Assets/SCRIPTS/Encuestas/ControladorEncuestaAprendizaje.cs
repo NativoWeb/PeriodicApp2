@@ -107,18 +107,7 @@ public class ControladorEncuestaAprendizaje : MonoBehaviour
         eventosToggleHabilitados = true;
 
         auth = FirebaseAuth.DefaultInstance;
-        firestore = FirebaseFirestore.DefaultInstance;
-        // Recuperamos el userId almacenado en el login
-        string userId = PlayerPrefs.GetString("userId", "");
-
-        if (string.IsNullOrEmpty(userId))
-        {
-            Debug.LogError("⚠️ No se encontró userId en PlayerPrefs.");
-        }
-        else
-        {
-            Debug.Log($"📌 UserId encontrado: {userId}");
-        }
+        firestore = FirebaseFirestore.DefaultInstance;       
 
     }
 
@@ -393,10 +382,27 @@ public class ControladorEncuestaAprendizaje : MonoBehaviour
 
     public void FinalizarEncuesta()
     {
-            PlayerPrefs.SetInt("TempEncuestaCompletada", 1);
+
+        // hacer validación si las dos estan teminadas mandar a categorias si no a inicioOffline 
+        // PENDIENTE
+            PlayerPrefs.SetInt("EstadoEncuestaAprendizaje", 1);
             PlayerPrefs.Save();
-            SceneManager.LoadScene("Categorías");
+            
+
         
+        bool estadoencuestaaprendizaje = PlayerPrefs.GetInt("EstadoEncuestaAprendizaje", 0) == 1;
+        bool estadoencuestaconocimiento = PlayerPrefs.GetInt("EstadoEncuestaConocimiento", 0) == 1;
+
+
+        // Validar el estado de ambas encuestas para pasar a scena 
+        if (estadoencuestaaprendizaje == true && estadoencuestaconocimiento == true)
+        {
+            SceneManager.LoadScene("Categorías");
+        }
+        else
+        {
+            SceneManager.LoadScene("SeleccionarEncuesta");
+        }
     }
 
 

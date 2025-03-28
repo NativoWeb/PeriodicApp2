@@ -16,4 +16,10 @@ public class cambiarescena : MonoBehaviour
         PlayerPrefs.SetString("CargarVuforia", "Inicio");
         SceneManager.LoadScene("SampleScene");
     }
+
+    public void VuforiaDesdeProfesor()
+    {
+        PlayerPrefs.SetString("CargarVuforia", "Profesor");
+        SceneManager.LoadScene("SampleScene");
+    }
 }

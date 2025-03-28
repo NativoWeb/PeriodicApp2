@@ -10,10 +10,13 @@ using UnityEngine.UI;
 
 public class RegisterController : MonoBehaviour
 {
+    public TMP_Text txtMensaje;
+
     public TMP_InputField userNameInput;
     public Button completeProfileButton;
     public Dropdown roles;
     [SerializeField] private GameObject m_OcupacionUI = null;// Activar Lista ocupación 
+
     private string ocupacionSelecionada; // para actualizar 
 
     private FirebaseAuth auth;
@@ -59,13 +62,13 @@ public class RegisterController : MonoBehaviour
         }
     }
 
-    void CambiarColor()
+    void CambiarColor()// -------------------------------------------------------------------------
     {
         Text label = roles.captionText;
         label.color = (roles.value == 0) ? Color.gray : Color.black;
     }
 
-    public void OnCompleteProfileButtonClick()
+    public void OnCompleteProfileButtonClick()// -------------------------------------------------------------------------
     {
         FirebaseUser currentUser = auth.CurrentUser;
 
@@ -75,7 +78,23 @@ public class RegisterController : MonoBehaviour
             return;
         }
 
+        bool ocupacion = PlayerPrefs.HasKey("TempOcupacion");
+        // Validar que el usuario haya seleccionado un rol válido
+        if (roles.value == 0 && !ocupacion)
+        {
+            txtMensaje.text = "Debes seleccionar una ocupación antes de continuar.";
+            txtMensaje.color = Color.red;
+            return;
+        }
+
         string userName = userNameInput.text;
+        if (userName.Equals("") )
+        {
+            txtMensaje.text = "Debes Ingresar un nombre de usuario antes de continuar";
+            txtMensaje.color = Color.red;
+            return;
+        }
+
         PlayerPrefs.SetString("DisplayName", userName);
         PlayerPrefs.Save();
 
@@ -86,13 +105,13 @@ public class RegisterController : MonoBehaviour
             return;
         }
 
-                PlayerPrefs.SetInt("EmailVerified", 1);
-                PlayerPrefs.Save();
-                UpdateUserProfile(currentUser, userName);
-           
+        PlayerPrefs.SetInt("EmailVerified", 1);
+        PlayerPrefs.Save();
+        UpdateUserProfile(currentUser, userName);
+
     }
 
-    private void UpdateUserProfile(FirebaseUser user, string userName)
+    private void UpdateUserProfile(FirebaseUser user, string userName)// -------------------------------------------------------------------------
     {
         UserProfile profile = new UserProfile { DisplayName = userName };
         user.UpdateUserProfileAsync(profile).ContinueWithOnMainThread(task => {
@@ -108,40 +127,49 @@ public class RegisterController : MonoBehaviour
         });
     }
 
-    private async void SaveUserData(FirebaseUser user)
+    private async void SaveUserData(FirebaseUser user) // -------------------------------------------------------------------------
     {
         string userId = user.UserId;
         DocumentReference docRef = db.Collection("users").Document(userId);
 
-        string avatarUrl = "Avatares/defecto";  
+        string avatarUrl = "Avatares/defecto";
 
-        bool tieneUsuarioTemporal = PlayerPrefs.HasKey("TempUsername");
-        bool encuestaCompletada = PlayerPrefs.GetInt("TempEncuestaCompletada", 0) == 1;
+        bool tieneUsuarioTemporal = PlayerPrefs.HasKey("TempOcupacion");
+
+        // Verificar Estado de las Encuestas-----------------
+        bool estadoencuestaaprendizaje = PlayerPrefs.GetInt("EstadoEncuestaAprendizaje", 0) == 1;
+        bool estadoencuestaconocimiento = PlayerPrefs.GetInt("EstadoEncuestaConocimiento", 0) == 1;
+        //-------------------------------------
         int xpTemp = PlayerPrefs.GetInt("TempXP", 0);
 
         if (tieneUsuarioTemporal)
         {
             ocupacionSelecionada = PlayerPrefs.GetString("TempOcupacion", "");
+            Debug.Log($"la ocupacion seleccionada antes de guardar en firebase es : {ocupacionSelecionada}");
         }
         else
         {
             ocupacionSelecionada = roles.options[roles.value].text;
+            Debug.Log($"la ocupacion seleccionada antes de guardar en firebase es : {ocupacionSelecionada}");
         }
 
 
-            Dictionary<string, object> userData = new Dictionary<string, object>
+        Dictionary<string, object> userData = new Dictionary<string, object>
     {
         { "DisplayName", user.DisplayName },
         { "Email", user.Email },
         { "Ocupacion", ocupacionSelecionada },
-        { "EncuestaCompletada", encuestaCompletada },
+        { "EstadoEncuestaAprendizaje", estadoencuestaaprendizaje },
+        { "EstadoEncuestaConocimiento", estadoencuestaconocimiento },
         { "xp", xpTemp },
         { "avatar", avatarUrl },
         { "Rango", "Novato de laboratorio" }
     };
 
-        PlayerPrefs.SetString("Estadouser", "nube");
+
+        PlayerPrefs.SetString("Estadouser", "sinloguear");
         PlayerPrefs.SetString("userId", userId);
+        PlayerPrefs.SetString("TempOcupacion", ocupacionSelecionada); // guardamos la ocupación para poder hacer el tryofflinelogin si se entra la primera vez con wifi
         PlayerPrefs.Save();
 
         try
@@ -149,31 +177,26 @@ public class RegisterController : MonoBehaviour
             await docRef.SetAsync(userData, SetOptions.MergeAll);
             Debug.Log("✅ Datos de usuario guardados en Firestore.");
 
-            if (tieneUsuarioTemporal)
-            {
-                PlayerPrefs.DeleteKey("TempUsername");
-                PlayerPrefs.SetInt("TempXP", 0);
-                PlayerPrefs.DeleteKey("TempOcupacion");
-                PlayerPrefs.DeleteKey("TempAvatar");
-                PlayerPrefs.DeleteKey("TempRango");
-                PlayerPrefs.SetString("Estadouser", "nube");
-                PlayerPrefs.Save();
-            }
+          // acá pongo el autologin para que en offline pueda entrar normal
 
             CrearSubcoleccionGrupos(userId);
             VerificarYActualizarRango(userId);
             await SubirMisionesJSON(userId);
 
-            SceneManager.LoadScene("Start");
+            // mandeme a el login después de registrarme
+            SceneManager.LoadScene("Login");
         }
         catch (System.Exception e)
         {
+            PlayerPrefs.DeleteKey("userEmail");
+            PlayerPrefs.DeleteKey("userPassword");
             Debug.LogError($"Error al guardar datos del usuario: {e.Message}");
+
         }
     }
 
 
-    private void CrearSubcoleccionGrupos(string userId)
+    private void CrearSubcoleccionGrupos(string userId) // -------------------------------------------------------------------------
     {
         CollectionReference gruposRef = db.Collection("users").Document(userId).Collection("grupos");
 
@@ -207,7 +230,7 @@ public class RegisterController : MonoBehaviour
         }
     }
 
-    private void VerificarYActualizarRango(string userId)
+    private void VerificarYActualizarRango(string userId)// -------------------------------------------------------------------------
     {
         DocumentReference docRef = db.Collection("users").Document(userId);
 
@@ -235,9 +258,9 @@ public class RegisterController : MonoBehaviour
         });
     }
 
-    private async Task SubirMisionesJSON(string userId)
+    private async Task SubirMisionesJSON(string userId)// -------------------------------------------------------------------------
     {
-        string jsonMisiones = PlayerPrefs.GetString("misionesJSON", "{}");
+        string jsonMisiones = PlayerPrefs.GetString("misionesCategoriasJSON", "{}");
 
         if (jsonMisiones == "{}")
         {

@@ -7,6 +7,8 @@ using System.Linq;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using Firebase.Auth;
+using System.Net;
+using System.Collections;
 
 public class EncuestaManager : MonoBehaviour
 {
@@ -35,16 +37,27 @@ public class EncuestaManager : MonoBehaviour
     {
         db = FirebaseFirestore.DefaultInstance;
 
+        StartCoroutine(VerificarConexionPeriodicamente());
+
         // Escuchar cambios en la colección "encuestas"
         db.Collection("encuestas").Listen(snapshot =>
         {
             CargarEncuestas(); // Llamar a la función cuando haya cambios
         });
-
-        // Cargar encuestas inicialmente
-        CargarEncuestas();
     }
 
+
+    private IEnumerator VerificarConexionPeriodicamente()
+    {
+        while (true)
+        {
+            yield return new WaitForSeconds(10); // Verifica cada 10 segundos
+            if (HayInternet())
+            {
+                SincronizarEncuestasConFirebase();
+            }
+        }
+    }
     public void AgregarPregunta()
     {
         GameObject nuevaPregunta = Instantiate(preguntaPrefab, contenedorPreguntas);
@@ -53,10 +66,18 @@ public class EncuestaManager : MonoBehaviour
     }
     public void GuardarEncuesta()
     {
+        string usuarioActual = PlayerPrefs.GetString("userId", ""); // Obtener usuario actual
+        if (string.IsNullOrEmpty(usuarioActual))
+        {
+            Debug.LogError("⚠ No hay un usuario autenticado.");
+            return;
+        }
+
         string encuestaID = System.Guid.NewGuid().ToString();
         string titulo = inputTituloEncuesta.text;
         string codigoAcceso = CodeGenerator.GenerateCode();
         List<Dictionary<string, object>> preguntasData = new List<Dictionary<string, object>>();
+
         foreach (PreguntaController preguntaController in listaPreguntas)
         {
             List<Dictionary<string, object>> opcionesData = new List<Dictionary<string, object>>();
@@ -71,39 +92,166 @@ public class EncuestaManager : MonoBehaviour
                         break;
                     }
                 }
-                opcionesData.Add(new Dictionary<string, object>
+                opcionesData.Add(new Dictionary<string, object>()
             {
                 { "texto", opcionTexto },
                 { "esCorrecta", esCorrecta }
             });
             }
-            preguntasData.Add(new Dictionary<string, object>
+            preguntasData.Add(new Dictionary<string, object>()
         {
             { "textoPregunta", preguntaController.inputPregunta.text },
             { "opciones", opcionesData }
         });
         }
-        Dictionary<string, object> encuesta = new Dictionary<string, object>
+
+        Dictionary<string, object> encuesta = new Dictionary<string, object>()
     {
+        { "id", encuestaID },
         { "titulo", titulo },
         { "codigoAcceso", codigoAcceso },
         { "preguntas", preguntasData },
-        { "activo", false } // Campo agregado con valor false por defecto
+        { "activo", false }
     };
-        db.Collection("encuestas").Document(encuestaID).SetAsync(encuesta).ContinueWithOnMainThread(task =>
-        {
-            if (task.IsCompleted)
-            {
-                Debug.Log($"✅ Encuesta {encuestaID} guardada correctamente.");
-                LimpiarCampos();
-                CargarEncuestas();
-            }
-            else
-            {
-                Debug.LogError("❌ Error al guardar la encuesta: " + task.Exception);
-            }
-        });
+
+        // Convertir a JSON
+        string jsonEncuesta = JsonUtility.ToJson(new EncuestaData(encuestaID, titulo, codigoAcceso, preguntasData, false));
+
+        // Guardar en PlayerPrefs con una clave única basada en el usuario
+        string claveUsuario = $"Encuestas_{usuarioActual}";
+        List<string> encuestasUsuario = ObtenerListaDeEncuestas(usuarioActual);
+        encuestasUsuario.Add(jsonEncuesta);
+
+        // Guardar la nueva lista de encuestas en PlayerPrefs
+        PlayerPrefs.SetString(claveUsuario, JsonUtility.ToJson(new ListaEncuestas(encuestasUsuario)));
+        PlayerPrefs.Save();
+
+        Debug.Log($"📂 Encuesta guardada para el usuario {usuarioActual}: {titulo}");
+
+        LimpiarCampos();
+        CargarEncuestasOffline(); // Mostrar las encuestas almacenadas localmente
     }
+    private List<string> ObtenerListaDeEncuestas(string usuario)
+    {
+        string claveUsuario = $"Encuestas_{usuario}";
+        string json = PlayerPrefs.GetString(claveUsuario, "");
+
+        if (string.IsNullOrEmpty(json))
+            return new List<string>();
+
+        return JsonUtility.FromJson<ListaEncuestas>(json).encuestas;
+    }
+
+
+    public void CargarEncuestasOffline()
+    {
+        string usuarioActual = PlayerPrefs.GetString("UsuarioActual", "");
+        if (string.IsNullOrEmpty(usuarioActual))
+        {
+            Debug.LogError("⚠ No hay un usuario autenticado.");
+            return;
+        }
+
+        string claveUsuario = $"Encuestas_{usuarioActual}";
+        string json = PlayerPrefs.GetString(claveUsuario, "");
+
+        if (string.IsNullOrEmpty(json))
+        {
+            Debug.Log("📭 No hay encuestas para este usuario.");
+            return;
+        }
+
+        ListaEncuestas listaEncuestas = JsonUtility.FromJson<ListaEncuestas>(json);
+        int index = 0;
+        foreach (string jsonEncuesta in listaEncuestas.encuestas)
+        {
+            EncuestaData encuesta = JsonUtility.FromJson<EncuestaData>(jsonEncuesta);
+            MostrarEncuestaEnInterfaz(encuesta); // Método que dibuja la encuesta en la UI
+            index++;
+        }
+    }
+
+    private void MostrarEncuestaEnInterfaz(EncuestaData encuesta)
+    {
+        int numeroPreguntas = encuesta.preguntas.Count;
+        CrearTarjetaEncuesta(encuesta.titulo, encuesta.codigoAcceso, numeroPreguntas, 0, encuesta.id, encuesta.activo);
+    }
+
+
+
+    // Método para obtener todas las claves de PlayerPrefs (IDs de encuestas guardadas)
+    private List<string> PlayerPrefsKeys()
+    {
+        List<string> keys = new List<string>();
+        foreach (string key in PlayerPrefs.GetString("EncuestasGuardadas", "").Split(','))
+        {
+            if (!string.IsNullOrEmpty(key))
+            {
+                keys.Add(key);
+            }
+        }
+        return keys;
+    }
+
+    public bool HayInternet()
+    {
+        try
+        {
+            using (var client = new WebClient())
+            using (var stream = client.OpenRead("http://www.google.com"))
+            {
+                return true;
+            }
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+
+    public void SincronizarEncuestasConFirebase()
+    {
+        if (!HayInternet())
+        {
+            Debug.Log("🚫 No hay conexión a Internet. No se puede sincronizar.");
+            return;
+        }
+
+        foreach (var key in PlayerPrefsKeys())
+        {
+            string json = PlayerPrefs.GetString(key);
+            EncuestaData encuesta = JsonUtility.FromJson<EncuestaData>(json);
+
+            if (encuesta != null)
+            {
+                Dictionary<string, object> encuestaData = new Dictionary<string, object>
+            {
+                { "titulo", encuesta.titulo },
+                { "codigoAcceso", encuesta.codigoAcceso },
+                { "preguntas", encuesta.preguntas },
+                { "activo", encuesta.activo }
+            };
+
+                db.Collection("encuestas").Document(encuesta.id).SetAsync(encuestaData).ContinueWithOnMainThread(task =>
+                {
+                    if (task.IsCompleted)
+                    {
+                        Debug.Log($"✅ Encuesta {encuesta.id} subida a Firebase.");
+                        PlayerPrefs.DeleteKey(encuesta.id);
+                        PlayerPrefs.Save();
+                    }
+                    else
+                    {
+                        Debug.LogError("❌ Error al subir la encuesta: " + task.Exception);
+                    }
+                });
+            }
+        }
+    }
+
+
+
     public void CargarEncuestas()
     {
         foreach (Transform child in contenedorEncuestas)

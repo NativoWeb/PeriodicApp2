@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 
 
 public class ControllerBotones : MonoBehaviour
@@ -26,5 +27,20 @@ public class ControllerBotones : MonoBehaviour
             PanelBotonUI.SetActive(false);
             botonCompletarMision.interactable = false;
         }
+        else if (ruta == "Profesor")
+        {
+            PanelRegresarUI.SetActive(true);
+            Regresar.onClick.AddListener(CargarVuforiaProfesor);
+            PanelBotonUI.SetActive(false);
+            botonCompletarMision.interactable = false;
+        }
     }
+
+
+    void CargarVuforiaProfesor()
+    {
+        SceneManager.LoadScene("InicioProfesor");
+    }
+
+
 }

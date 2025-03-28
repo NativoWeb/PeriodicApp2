@@ -24,12 +24,25 @@ public class EmailController : MonoBehaviour
     public TMP_Text minLengthText, uppercaseText, lowercaseText, specialCharText; // Textos de cada requisito
     public TMP_Text txtMessage;
 
+    public Texture2D imagenActiva;
+    public Texture2D imagenInactiva;
+
+
+
+    public RawImage Caracteres;
+    public RawImage Mayusculas;
+    public RawImage Minusculas;
+    public RawImage Especiales;
+
+
 
     public TMP_InputField emailInput;
     public TMP_InputField verificationCodeInput;
     public Button registerButton;
     public Button verifyButton;
+    public Button editButton;
     public TMP_Text verificationMessage;
+    public TMP_Text CorreoMessage;
     public GameObject registroPanel;
     public GameObject verificacionPanel;
 
@@ -40,7 +53,7 @@ public class EmailController : MonoBehaviour
     private string userEmail;
 
     // Lista de dominios permitidos
-    private string[] allowedDomains = { "gmail.com", "outlook.com", "outlook.es", "yahoo.com", "hotmail.com", "icloud.com", "aol.com", "zoho.com", "mail.com"};
+    private string[] allowedDomains = {"gmail.com", "outlook.com", "outlook.es", "yahoo.com", "hotmail.com", "icloud.com", "aol.com", "zoho.com", "mail.com"};
 
     private const string apiKey = "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";  // Reemplaza con tu API Key de Brevo
     private const string url = "https://api.brevo.com/v3/smtp/email";
@@ -93,6 +106,7 @@ public class EmailController : MonoBehaviour
 
     void ShowRequirements(string text)
     {
+        txtMessage.text = "";
         requirementsPanel.SetActive(true);
     }
 
@@ -110,10 +124,14 @@ public class EmailController : MonoBehaviour
         bool hasSpecialChar = Regex.IsMatch(password, @"[\^\$\*\.\[\]\{\}\(\)\?\""!@#%&/\\,><':;|_~`]");
 
         // Cambiar color según validación
-        minLengthText.color = hasMinLength ? Color.green : Color.red;
-        uppercaseText.color = hasUppercase ? Color.green : Color.red;
-        lowercaseText.color = hasLowercase ? Color.green : Color.red;
-        specialCharText.color = hasSpecialChar ? Color.green : Color.red;
+        minLengthText.color = hasMinLength ? Color.green : Color.white;
+        Caracteres.texture = hasMinLength ? imagenActiva : imagenInactiva;
+        uppercaseText.color = hasUppercase ? Color.green : Color.white;
+        Mayusculas.texture = hasUppercase ? imagenActiva : imagenInactiva;
+        lowercaseText.color = hasLowercase ? Color.green : Color.white;
+        Minusculas.texture = hasLowercase ? imagenActiva : imagenInactiva;
+        specialCharText.color = hasSpecialChar ? Color.green : Color.white;
+        Especiales.texture = hasSpecialChar ? imagenActiva : imagenInactiva;
     }
 
 
@@ -175,6 +193,12 @@ public class EmailController : MonoBehaviour
         txtMessage.text = "Registrando usuario...";
         txtMessage.color = Color.green;
         CreateUserWithEmail(email, password);
+
+        // acá guardo los player para si todo sale bien, guarde en registercontroller
+
+        PlayerPrefs.SetString("userEmail", email);
+        PlayerPrefs.SetString("userPassword", password);
+
     }
 
     // Método para validar el formato del correo electrónico
@@ -259,7 +283,11 @@ public class EmailController : MonoBehaviour
                 Color warningColor = new Color(1f, 0.65f, 0f); // Naranja fuerte
                 verificationMessage.color = warningColor;
                 registroPanel.SetActive(false);
+                CorreoMessage.text = "Correo enviado a: " + email;
+                CorreoMessage.color = Color.white;
+                editButton.onClick.AddListener(VolverEmail);
                 verificacionPanel.SetActive(true);
+                
             }
             else
             {
@@ -267,6 +295,14 @@ public class EmailController : MonoBehaviour
                 Debug.LogError("Respuesta: " + request.downloadHandler.text);
             }
         }
+    }
+
+    void VolverEmail()
+    {
+        verificacionPanel.SetActive(false);
+        registroPanel.SetActive(true);
+        emailInput.text = "";
+        passwordInput.text = passwordInput.text;
     }
 
     public void OnVerifyButtonClick()
