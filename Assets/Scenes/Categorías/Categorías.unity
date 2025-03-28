@@ -3759,13 +3759,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   contenedorBotones: {fileID: 1097079080}
+  SliderProgreso: {fileID: 0}
   prefabBoton: {fileID: 325418278352248205, guid: 1ac6098cdd65dae4585e2a57a8b90483, type: 3}
   NombreUsuarioTMP: {fileID: 76577194}
   tituloTMP: {fileID: 184358560}
   nombreTMP: {fileID: 1038486551}
   descripcionTMP: {fileID: 251663662}
-  botonCambiarEscena: {fileID: 1872623212}
-  juegoEscenaActual: 
 --- !u!1 &1271648640
 GameObject:
   m_ObjectHideFlags: 0
@@ -5639,7 +5638,19 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 1872623213}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 1814275097}
+        m_TargetAssemblyTypeName: cambiarescena, Assembly-CSharp
+        m_MethodName: siguienteEscena
+        m_Mode: 5
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: Escena_Alcalinos
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!114 &1872623213
 MonoBehaviour:
   m_ObjectHideFlags: 0

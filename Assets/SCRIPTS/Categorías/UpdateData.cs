@@ -75,6 +75,16 @@ public class UpdateData : MonoBehaviour
             bool estadoencuestaaprendizaje = PlayerPrefs.GetInt("EstadoEncuestaAprendizaje", 0) == 1;
             bool estadoencuestaconocimiento = PlayerPrefs.GetInt("EstadoEncuestaConocimiento", 0) == 1;
 
+            if (estadoencuestaaprendizaje == true)
+            {
+                PlayerPrefs.SetInt("EstadoEncuestaAprendizaje", 1);
+            }
+            else if (estadoencuestaconocimiento == true)
+            {
+                PlayerPrefs.SetInt("EstadoEncuestaConocimiento", 1);
+
+            }
+
             ActualizarEstadoEncuestaAprendizaje(userId, estadoencuestaaprendizaje);
             ActualizarEstadoEncuestaConocimiento(userId, estadoencuestaconocimiento);
             await SubirDatosJSON();

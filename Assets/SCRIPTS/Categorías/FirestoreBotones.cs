@@ -47,12 +47,12 @@ public class FirestoreBotones : MonoBehaviour
             GameObject nuevoBoton = CrearBoton(i + 1, categoria);
 
             // Obtener progreso y actualizar el slider de la categoría
-            float progreso = ObtenerProgresoCategoria(categoria.Titulo);
-            SliderProgreso = nuevoBoton.GetComponentInChildren<Slider>();
-            if (SliderProgreso != null)
-            {
-                SliderProgreso.value = progreso;
-            }
+           //float progreso = ObtenerProgresoCategoria(categoria.Titulo);
+           // SliderProgreso = nuevoBoton.GetComponentInChildren<Slider>();
+           // if (SliderProgreso != null)
+           // {
+           //     SliderProgreso.value = progreso;
+           // }
 
             if (!primerBotonSeleccionado)
             {
