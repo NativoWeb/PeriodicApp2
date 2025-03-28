@@ -4,6 +4,9 @@ using System.Collections.Generic;
 using SimpleJSON;
 using UnityEngine.SceneManagement;
 using UnityEngine;
+using Newtonsoft.Json.Linq;
+using Newtonsoft.Json;
+using System;
 
 public class GestorElementos : MonoBehaviour
 {
@@ -29,6 +32,9 @@ public class GestorElementos : MonoBehaviour
 
     [Header("Prefab de Elementos")]
     public GameObject prefabElemento;
+    public Button botonMisionFinal; // Asigna el botón desde el Inspector
+    [SerializeField] private Slider sliderProgreso;
+
 
     [Header("UI Información")]
     public TextMeshProUGUI txtMasaAtomica;
@@ -52,9 +58,12 @@ public class GestorElementos : MonoBehaviour
         txtTitulo.text = PlayerPrefs.GetString("CategoriaSeleccionada", "");
         CargarJSON();
         CargarElementosDesdeJSON();
+        botonMisionFinal.interactable = false;
+        ActualizarProgresoCategoria();
         btnMisiones.onClick.AddListener(MostrarMisiones);
         btnInformacion.onClick.AddListener(MostrarInformacion);
         btnRegresar.onClick.AddListener(RegresarAlPanelElementos);
+        botonMisionFinal.onClick.AddListener(IrAMisionFinal);
         MostrarMisiones();
     }
 
@@ -127,7 +136,7 @@ public class GestorElementos : MonoBehaviour
         Button boton = nuevoBoton.GetComponent<Button>();
         boton.onClick.AddListener(() => SeleccionarElemento(nombreElemento));
 
-        nuevoBoton.GetComponent<Image>().color = new Color(Random.value, Random.value, Random.value);
+        nuevoBoton.GetComponent<Image>().color = new Color(UnityEngine.Random.value, UnityEngine.Random.value, UnityEngine.Random.value);
     }
 
     public void SeleccionarElemento(string nombreElemento)
@@ -326,5 +335,145 @@ public class GestorElementos : MonoBehaviour
         {
             Destroy(child.gameObject);
         }
+    }
+
+    public void ActualizarProgresoCategoria()
+    {
+        string categoriaSeleccionada = PlayerPrefs.GetString("CategoriaSeleccionada", "");
+        if (string.IsNullOrEmpty(categoriaSeleccionada))
+        {
+            Debug.LogError("❌ No hay categoría seleccionada.");
+            return;
+        }
+
+        string jsonString = PlayerPrefs.GetString("misionesCategoriasJSON", "");
+        if (string.IsNullOrEmpty(jsonString))
+        {
+            Debug.LogError("❌ No se encontró el JSON en PlayerPrefs.");
+            return;
+        }
+
+        var json = JSON.Parse(jsonString);
+        if (!json.HasKey("Misiones_Categorias") || !json["Misiones_Categorias"].HasKey("Categorias"))
+        {
+            Debug.LogError("❌ Estructura del JSON incorrecta.");
+            return;
+        }
+
+        var categorias = json["Misiones_Categorias"]["Categorias"];
+
+        if (!categorias.HasKey(categoriaSeleccionada) || !categorias[categoriaSeleccionada].HasKey("Elementos"))
+        {
+            Debug.LogError($"❌ No se encontró la categoría '{categoriaSeleccionada}' en el JSON.");
+            return;
+        }
+
+        var elementos = categorias[categoriaSeleccionada]["Elementos"];
+        int totalMisiones = 0;
+        int misionesCompletadas = 0;
+
+        foreach (var elemento in elementos.Keys)
+        {
+            var misiones = elementos[elemento]["misiones"].AsArray;
+            totalMisiones += misiones.Count - 1; // No contar la misión final
+
+            for (int i = 0; i < misiones.Count - 1; i++) // Ignorar la última misión
+            {
+                if (misiones[i]["completada"].AsBool)
+                {
+                    misionesCompletadas++;
+                }
+            }
+        }
+
+        float progreso = (float)misionesCompletadas / totalMisiones;
+        sliderProgreso.value = progreso;
+
+        Debug.Log($"📊 Progreso de '{categoriaSeleccionada}': {misionesCompletadas}/{totalMisiones} ({progreso * 100}%)");
+
+        // Verificar si se debe activar la misión final
+        if (misionesCompletadas == totalMisiones)
+        {
+            ActualizarEstadoMisionFinal();
+        }
+    }
+
+    public void IrAMisionFinal()
+    {
+        string categoriaSeleccionada = PlayerPrefs.GetString("CategoriaSeleccionada", "");
+        string rutaMisionFinal = ObtenerRutaMisionFinal(categoriaSeleccionada);
+
+        if (!string.IsNullOrEmpty(rutaMisionFinal))
+        {
+            Debug.Log($"🔄 Cargando misión final: {rutaMisionFinal}");
+            SceneManager.LoadScene(rutaMisionFinal);
+        }
+        else
+        {
+            Debug.LogError("❌ No se encontró la ruta de la misión final.");
+        }
+    }
+
+    private void ActualizarEstadoMisionFinal()
+    {
+        if (sliderProgreso == null || botonMisionFinal == null)
+        {
+            Debug.LogError("⚠️ Slider o botón no asignados en el Inspector.");
+            return;
+        }
+
+        // Comprobar si el slider está lleno (es decir, si el valor es 1)
+        if (sliderProgreso.value >= 1f)
+        {
+            botonMisionFinal.interactable = true;
+            Debug.Log("✔️ Misión final desbloqueada, botón activado.");
+        }
+        else
+        {
+            botonMisionFinal.interactable = false;
+            Debug.Log("❌ Misión final bloqueada, botón desactivado.");
+        }
+    }
+    public string ObtenerRutaMisionFinal(string categoria)
+    {
+        string jsonString = PlayerPrefs.GetString("misionesCategoriasJSON", "");
+        if (string.IsNullOrEmpty(jsonString))
+        {
+            Debug.LogWarning("No se encontró información en PlayerPrefs.");
+            return null;
+        }
+
+        try
+        {
+            var jsonData = JsonConvert.DeserializeObject<Dictionary<string, object>>(jsonString);
+
+            if (jsonData.ContainsKey("Misiones_Categorias"))
+            {
+                var misionesCategorias = jsonData["Misiones_Categorias"] as JObject;
+                if (misionesCategorias != null && misionesCategorias.ContainsKey("Categorias"))
+                {
+                    var categorias = misionesCategorias["Categorias"] as JObject;
+                    if (categorias != null && categorias.ContainsKey(categoria))
+                    {
+                        var categoriaSeleccionada = categorias[categoria] as JObject;
+                        if (categoriaSeleccionada != null && categoriaSeleccionada.ContainsKey("Mision Final"))
+                        {
+                            var misionFinal = categoriaSeleccionada["Mision Final"]["MisionFinal"] as JObject;
+                            if (misionFinal != null && misionFinal.ContainsKey("rutaescena"))
+                            {
+                                return misionFinal["rutaescena"].ToString();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError("Error al procesar el JSON: " + ex.Message);
+        }
+
+        Debug.LogWarning("No se encontró la ruta de la Misión Final.");
+        return null;
     }
 }

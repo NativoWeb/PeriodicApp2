@@ -9,6 +9,8 @@ using Firebase.Database;
 using Firebase.Auth;
 using System;
 using System.Runtime.CompilerServices;
+using Firebase.Extensions;
+using System.Threading.Tasks;
 
 
 public class UpdateData : MonoBehaviour
@@ -50,7 +52,7 @@ public class UpdateData : MonoBehaviour
 
 
     // 🔹 Modo online
-    void HandleOnlineMode() // ----------------------------------------------------------------------------------
+    void  HandleOnlineMode() // ----------------------------------------------------------------------------------
     {
     
         string estadoUsuario = PlayerPrefs.GetString("Estadouser", "");
@@ -70,7 +72,7 @@ public class UpdateData : MonoBehaviour
 
             ActualizarEstadoEncuestaAprendizaje(userId, estadoencuestaaprendizaje);
             ActualizarEstadoEncuestaConocimiento(userId, estadoencuestaconocimiento);
-
+            SubirMisionesJSON();
             ActualizarXPEnFirebase(userId);
         }
         
@@ -128,5 +130,42 @@ public class UpdateData : MonoBehaviour
             Debug.LogError($"❌ Error al actualizar XP en Firebase: {e.Message}");
         }
     }
+    public async Task SubirMisionesJSON()
+    {
+        if (string.IsNullOrEmpty(userId))
+        {
+            Debug.LogError("❌ No hay usuario autenticado.");
+            return;
+        }
 
+        string jsonMisiones = PlayerPrefs.GetString("misionesCategoriasJSON", "{}"); // Obtener el JSON de PlayerPrefs
+
+        if (jsonMisiones == "{}")
+        {
+            Debug.LogWarning("⚠️ No hay datos de misiones guardados.");
+            return;
+        }
+
+        // Convertir JSON a Dictionary para Firestore
+        Dictionary<string, object> data = new Dictionary<string, object>
+        {
+            { "misiones", jsonMisiones },
+            { "timestamp", FieldValue.ServerTimestamp }
+        };
+
+        // Subir a Firestore dentro del documento del usuario
+        DocumentReference userDoc = db.Collection("users").Document(userId);
+
+        await userDoc.SetAsync(data, SetOptions.MergeAll).ContinueWithOnMainThread(task =>
+        {
+            if (task.IsCompleted)
+            {
+                Debug.Log("✅ Misiones JSON guardadas en Firestore.");
+            }
+            else
+            {
+                Debug.LogError("❌ Error al guardar el JSON en Firestore: " + task.Exception);
+            }
+        });
+    }
 }
