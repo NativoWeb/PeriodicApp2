@@ -35,5 +35,8 @@ public class VerificarEncuestas : MonoBehaviour
         {
             botonConocimiento.GetComponentInChildren<TMP_Text>().color = Color.white;
         }
+
+
     }
+
 }

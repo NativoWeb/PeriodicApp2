@@ -108,7 +108,9 @@ public class ControladorEncuestaAprendizaje : MonoBehaviour
 
         auth = FirebaseAuth.DefaultInstance;
         firestore = FirebaseFirestore.DefaultInstance;       
+
     }
+
     void Update()
     {
         ActualizarTextoTiempo();

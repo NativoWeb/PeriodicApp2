@@ -62,13 +62,13 @@ public class RegisterController : MonoBehaviour
         }
     }
 
-    void CambiarColor()
+    void CambiarColor()// -------------------------------------------------------------------------
     {
         Text label = roles.captionText;
         label.color = (roles.value == 0) ? Color.gray : Color.black;
     }
 
-    public void OnCompleteProfileButtonClick()
+    public void OnCompleteProfileButtonClick()// -------------------------------------------------------------------------
     {
         FirebaseUser currentUser = auth.CurrentUser;
 
@@ -111,7 +111,7 @@ public class RegisterController : MonoBehaviour
 
     }
 
-    private void UpdateUserProfile(FirebaseUser user, string userName)
+    private void UpdateUserProfile(FirebaseUser user, string userName)// -------------------------------------------------------------------------
     {
         UserProfile profile = new UserProfile { DisplayName = userName };
         user.UpdateUserProfileAsync(profile).ContinueWithOnMainThread(task => {
@@ -127,7 +127,7 @@ public class RegisterController : MonoBehaviour
         });
     }
 
-    private async void SaveUserData(FirebaseUser user)
+    private async void SaveUserData(FirebaseUser user) // -------------------------------------------------------------------------
     {
         string userId = user.UserId;
         DocumentReference docRef = db.Collection("users").Document(userId);
@@ -136,7 +136,7 @@ public class RegisterController : MonoBehaviour
 
         bool tieneUsuarioTemporal = PlayerPrefs.HasKey("TempOcupacion");
 
-        // verificar encuestas-----------------
+        // Verificar Estado de las Encuestas-----------------
         bool estadoencuestaaprendizaje = PlayerPrefs.GetInt("EstadoEncuestaAprendizaje", 0) == 1;
         bool estadoencuestaconocimiento = PlayerPrefs.GetInt("EstadoEncuestaConocimiento", 0) == 1;
         //-------------------------------------
@@ -167,8 +167,9 @@ public class RegisterController : MonoBehaviour
     };
 
 
-        PlayerPrefs.SetString("Estadouser", "nube");
+        PlayerPrefs.SetString("Estadouser", "sinloguear");
         PlayerPrefs.SetString("userId", userId);
+        PlayerPrefs.SetString("TempOcupacion", ocupacionSelecionada); // guardamos la ocupación para poder hacer el tryofflinelogin si se entra la primera vez con wifi
         PlayerPrefs.Save();
 
         try
@@ -176,33 +177,26 @@ public class RegisterController : MonoBehaviour
             await docRef.SetAsync(userData, SetOptions.MergeAll);
             Debug.Log("✅ Datos de usuario guardados en Firestore.");
 
-            if (tieneUsuarioTemporal)
-            {
-                PlayerPrefs.DeleteKey("DisplayName");
-                PlayerPrefs.SetInt("TempXP", 0);
-                PlayerPrefs.DeleteKey("TempOcupacion");
-                PlayerPrefs.DeleteKey("TempAvatar");
-                PlayerPrefs.DeleteKey("Rango");
-                PlayerPrefs.SetString("Estadouser", "nube");
-                PlayerPrefs.Save();
-            }
+          // acá pongo el autologin para que en offline pueda entrar normal
 
             CrearSubcoleccionGrupos(userId);
             VerificarYActualizarRango(userId);
             await SubirMisionesJSON(userId);
 
-
-
-            SceneManager.LoadScene("Start");
+            // mandeme a el login después de registrarme
+            SceneManager.LoadScene("Login");
         }
         catch (System.Exception e)
         {
+            PlayerPrefs.DeleteKey("userEmail");
+            PlayerPrefs.DeleteKey("userPassword");
             Debug.LogError($"Error al guardar datos del usuario: {e.Message}");
+
         }
     }
 
 
-    private void CrearSubcoleccionGrupos(string userId)
+    private void CrearSubcoleccionGrupos(string userId) // -------------------------------------------------------------------------
     {
         CollectionReference gruposRef = db.Collection("users").Document(userId).Collection("grupos");
 
@@ -236,7 +230,7 @@ public class RegisterController : MonoBehaviour
         }
     }
 
-    private void VerificarYActualizarRango(string userId)
+    private void VerificarYActualizarRango(string userId)// -------------------------------------------------------------------------
     {
         DocumentReference docRef = db.Collection("users").Document(userId);
 
@@ -264,7 +258,7 @@ public class RegisterController : MonoBehaviour
         });
     }
 
-    private async Task SubirMisionesJSON(string userId)
+    private async Task SubirMisionesJSON(string userId)// -------------------------------------------------------------------------
     {
         string jsonMisiones = PlayerPrefs.GetString("misionesCategoriasJSON", "{}");
 

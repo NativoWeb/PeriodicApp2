@@ -26,7 +26,9 @@ public class UpdateData : MonoBehaviour
 
     //panel para registro 
     [SerializeField] GameObject m_NotificacionRegistroUI = null;
-   
+    [SerializeField] GameObject m_NotificacionLogueoUI = null;
+
+
     void Start()
     {
     
@@ -61,7 +63,10 @@ public class UpdateData : MonoBehaviour
         {
             m_NotificacionRegistroUI.SetActive(true); // si tiene wifi y el usuario no esta en la nube, lo mandamos a registrarse
         }
-
+        else if ( estadoUsuario == "sinloguear")
+        {
+            m_NotificacionLogueoUI.SetActive(true);
+        }
         else if (estadoUsuario == "nube")
         {
             currentUser = auth.CurrentUser;

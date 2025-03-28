@@ -193,6 +193,12 @@ public class EmailController : MonoBehaviour
         txtMessage.text = "Registrando usuario...";
         txtMessage.color = Color.green;
         CreateUserWithEmail(email, password);
+
+        // acá guardo los player para si todo sale bien, guarde en registercontroller
+
+        PlayerPrefs.SetString("userEmail", email);
+        PlayerPrefs.SetString("userPassword", password);
+
     }
 
     // Método para validar el formato del correo electrónico
