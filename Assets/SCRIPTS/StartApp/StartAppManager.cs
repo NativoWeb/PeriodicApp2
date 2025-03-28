@@ -3,19 +3,36 @@ using UnityEngine.SceneManagement;
 using System.Collections;
 using System.Collections.Generic;
 using TMPro;
+using Firebase.Auth;
+using Firebase.Firestore;
+using Firebase.Extensions;
+using Firebase;
+
 
 public class StartAppManager : MonoBehaviour
 {
+
+    
     public static bool IsReady = false; // 🔹 Bandera para indicar si terminó
     private bool yaVerificado = false; // 🔹 Evita ejecuciones repetidas
-   
 
+    //variables FIREBASE
+    private FirebaseAuth auth;
+    private FirebaseFirestore db;
 
     void Start()
     {
+        auth = FirebaseAuth.DefaultInstance;
+        db = FirebaseFirestore.DefaultInstance;
+
+        if ( db != null)
+        {
+            Debug.Log("Conexion con firebase establecida");
+        }
+        
         Debug.Log("⌛ Verificando conexión a Internet...");
         StartCoroutine(CheckInternetConnection());
-   
+       
     }
 
     // 🔹 Corrutina para verificar conexión
@@ -36,6 +53,7 @@ public class StartAppManager : MonoBehaviour
         }
     }
 
+   
     // 🔹 Modo offline
     void HandleOfflineMode()
     {
@@ -45,38 +63,55 @@ public class StartAppManager : MonoBehaviour
 
         string estadoUsuario = PlayerPrefs.GetString("Estadouser", "");
 
-        if (estadoUsuario == "nube")
+        // ---------------------------------------------- VALIDACIONES --------------------------------------------------------------------------
+
+        if (estadoUsuario == "nube") 
         {
-            Debug.Log("☁️ Usuario autenticado en la nube. Permitiendo acceso offline.");
-            LoadSceneIfNotAlready("Login");
+            AutoLogin();
+
         }
-        else if (IsTemporaryUserSaved())
+        else if (estadoUsuario == "local")
         {
-            Debug.Log("✅ Usuario temporal encontrado. Enviando a Inicio.");
+            Debug.Log("✅ Usuario temporal encontrado. Enviando a Categorías.");
             // Validar el estado de ambas encuestas para pasar a scena 
 
             bool estadoencuestaaprendizaje = PlayerPrefs.GetInt("EstadoEncuestaAprendizaje", 0) == 1;
             bool estadoencuestaconocimiento = PlayerPrefs.GetInt("EstadoEncuestaConocimiento", 0) == 1;
 
-            if (estadoencuestaaprendizaje == true && estadoencuestaconocimiento == true)
+            string ocupacion = PlayerPrefs.GetString("TempOcupacion", "").Trim();
+
+            if (ocupacion == "Profesor")
             {
-                SceneManager.LoadScene("Categorías");
+                SceneManager.LoadScene("InicioProfesor");
             }
-            else
+            else if (ocupacion == "Estudiante")
             {
-                SceneManager.LoadScene("SeleccionarEncuesta");
+                if (estadoencuestaaprendizaje == true && estadoencuestaconocimiento == true)
+                {
+                    SceneManager.LoadScene("Categorías");
+                }
+                else
+                {
+                    SceneManager.LoadScene("SeleccionarEncuesta");
+                }
+
             }
-            
+
         }
-        else
+        else if (string.IsNullOrEmpty(estadoUsuario))
         {
             Debug.Log("🆕 No se encontró usuario temporal. Creando usuario provisional...");
 
             CreateTemporaryUser();
             LoadSceneIfNotAlready("InicioOffline");
+
+        }
+        else if (estadoUsuario == "sinloguear") // funcion para cuando se registra con wifi y no se loguea, no le vuelva a crear otro usuario temporal -----------------------------
+        {
+            AutoLoginOnlyRegister();
         }
 
-        IsReady = true; // 🔹 Marcamos como listo también en modo offline
+            IsReady = true; // 🔹 Marcamos como listo también en modo offline
     }
 
 
@@ -87,21 +122,36 @@ public class StartAppManager : MonoBehaviour
 
         yaVerificado = true;
 
-        if (IsTemporaryUserSaved())
+        string EstadoUsuario = PlayerPrefs.GetString("Estadouser","");
+
+
+        if (EstadoUsuario == "local") 
         {
             Debug.Log("📝 Datos temporales encontrados. Enviando a Registro.");
 
             SceneManager.LoadScene("Email");
 
-            //LoadSceneIfNotAlready("Email");
+
         }
-        else
+        else if (EstadoUsuario == "nube")
         {
-            Debug.Log("🔑 No hay datos temporales. Enviando a Login.");
+            
+            AutoLogin();
+
+        }
+        else if (EstadoUsuario == "sinloguear")
+        {
+            Debug.Log("Registrado pero nunca logueado");
+            LoadSceneIfNotAlready("Login");
+
+        }
+        else if (string.IsNullOrEmpty(EstadoUsuario))
+        {
+            Debug.Log("Usuario Nuevo Ingresando...");
             LoadSceneIfNotAlready("Login");
         }
 
-        IsReady = true; // ✅ Marcamos como listo
+            IsReady = true; // ✅ Marcamos como listo
     }
 
     // 🔹 Evita recargar la misma escena si ya está activa
@@ -114,14 +164,15 @@ public class StartAppManager : MonoBehaviour
     }
 
     // Verificar si hay datos de usuario temporal guardados
-    bool IsTemporaryUserSaved()
-    {
-        return //PlayerPrefs.HasKey("DisplayName") &&
-               PlayerPrefs.HasKey("TempOcupacion") &&
-               PlayerPrefs.HasKey("TempXP") &&
-               PlayerPrefs.HasKey("TempAvatar");
-               //PlayerPrefs.HasKey("Rango");
-    }
+    //bool IsTemporaryUserSaved()
+    //{
+
+    //    return //PlayerPrefs.HasKey("DisplayName") &&
+    //           PlayerPrefs.HasKey("TempOcupacion") &&
+    //           PlayerPrefs.HasKey("TempXP") &&
+    //           PlayerPrefs.HasKey("TempAvatar");
+    //           //PlayerPrefs.HasKey("Rango");
+    //}
 
     // Crear y guardar usuario temporal en PlayerPrefs
     void CreateTemporaryUser()
@@ -146,4 +197,175 @@ public class StartAppManager : MonoBehaviour
         Debug.Log("✅ Usuario provisional creado: " + username);
     }
 
+    void AutoLogin()
+    {
+        if (PlayerPrefs.GetInt("rememberMe") == 1)
+        {
+            string savedEmail = PlayerPrefs.GetString("userEmail");
+            string savedPassword = PlayerPrefs.GetString("userPassword");
+
+            auth.SignInWithEmailAndPasswordAsync(savedEmail, savedPassword).ContinueWithOnMainThread(task =>
+            {
+                if (task.IsCompleted && !task.IsFaulted)
+                {
+                    Debug.Log("✅ Login automático exitoso");
+                    FirebaseUser user = task.Result.User;
+                    PlayerPrefs.SetString("userId", user.UserId);
+                    PlayerPrefs.SetString("Estadouser", "nube");
+                    PlayerPrefs.Save();
+
+                    CheckAndDownloadMisiones(user.UserId);
+                }
+                else
+                {
+                    Debug.LogError("❌ Error en login automático online.");
+                    TryOfflineLogin(savedEmail, savedPassword);
+                }
+            });
+        }
+    }
+    void AutoLoginOnlyRegister() // funcion para cuando se registra con wifi y no se loguea, no le vuelva a crear otro usuario temporal -----------------------------
+    {
+        
+            string savedEmail = PlayerPrefs.GetString("userEmail");
+            string savedPassword = PlayerPrefs.GetString("userPassword");
+            Debug.Log("entrando a tryofflinelogi, el usuario solo se registro, no se logueo");
+            TryOfflineLogin(savedEmail, savedPassword);
+          
+    }
+
+
+    /* ------------------------ 🔥 NUEVA FUNCIÓN PARA DESCARGAR MISIONES 🔥 ------------------------ */
+    private void CheckAndDownloadMisiones(string userId)
+    {
+        DocumentReference userDoc = db.Collection("users").Document(userId);
+
+        userDoc.GetSnapshotAsync().ContinueWithOnMainThread(task =>
+        {
+            if (task.IsFaulted || task.IsCanceled)
+            {
+                Debug.LogError("❌ Error al obtener los datos del usuario.");
+                return;
+            }
+
+            DocumentSnapshot snapshot = task.Result;
+
+            if (!snapshot.Exists || !snapshot.ContainsField("misiones"))
+            {
+                Debug.Log("📌 No hay misiones en Firestore. Continuando con el login normal.");
+                CheckUserStatus(userId);
+                return;
+            }
+
+            string misionesJson = snapshot.GetValue<string>("misiones");
+
+            if (!string.IsNullOrEmpty(misionesJson))
+            {
+                PlayerPrefs.SetString("misionesJSON", misionesJson);
+                PlayerPrefs.Save();
+                Debug.Log("✅ Misiones descargadas y guardadas localmente.");
+            }
+
+            CheckUserStatus(userId);
+        });
+    }
+
+    private void CheckUserStatus(string userId)
+    {
+        DocumentReference docRef = db.Collection("users").Document(userId);
+
+        docRef.GetSnapshotAsync().ContinueWithOnMainThread(task =>
+        {
+            if (task.IsCanceled || task.IsFaulted)
+            {
+                Debug.LogError("❌ Error al obtener los datos del usuario.");
+                return;
+            }
+
+            DocumentSnapshot snapshot = task.Result;
+            if (!snapshot.Exists)
+            {
+                Debug.LogError("❌ No se encontraron datos para este usuario.");
+                return;
+            }
+
+            string ocupacion = snapshot.GetValue<string>("Ocupacion");
+
+
+            bool estadoencuestaaprendizaje = snapshot.ContainsField("EstadoEncuestaAprendizaje") ? snapshot.GetValue<bool>("EstadoEncuestaAprendizaje") : false;
+
+            bool estadoencuestaconocimiento = snapshot.ContainsField("EstadoEncuestaConocimiento") ? snapshot.GetValue<bool>("EstadoEncuestaConocimiento") : false;  // Valor por defecto si el campo no existe
+
+
+            Debug.Log($"📌 Usuario: {ocupacion}, Estado Encuesta Aprendizaje: {estadoencuestaaprendizaje}, Estado Encuesta Conocimiento: {estadoencuestaconocimiento}");
+
+            if (ocupacion == "Profesor")
+            {
+                SceneManager.LoadScene("InicioProfesor");
+            }
+            else if (ocupacion == "Estudiante")
+            {
+                if (estadoencuestaaprendizaje == true && estadoencuestaconocimiento == true)
+                {
+                    SceneManager.LoadScene("Categorías");
+                }
+                else
+                {
+                    SceneManager.LoadScene("SeleccionarEncuesta");
+                }
+            }
+
+        });
+    }
+
+    private void TryOfflineLogin(string email, string password)
+    {
+        if (PlayerPrefs.HasKey("userEmail") && PlayerPrefs.HasKey("userPassword") && PlayerPrefs.HasKey("userId"))
+        {
+            string savedEmail = PlayerPrefs.GetString("userEmail");
+            string savedPassword = PlayerPrefs.GetString("userPassword");
+            string savedUserId = PlayerPrefs.GetString("userId");
+
+            if (email == savedEmail && password == savedPassword)
+            {
+                
+                Debug.Log("📴 ✅ Inicio de sesión sin conexión exitoso.");
+
+                bool estadoencuestaaprendizaje = PlayerPrefs.GetInt("EstadoEncuestaAprendizaje", 0) == 1;
+                bool estadoencuestaconocimiento = PlayerPrefs.GetInt("EstadoEncuestaConocimiento", 0) == 1;
+
+                Debug.Log($"aprendizaje: {estadoencuestaaprendizaje}, Conocimiento: {estadoencuestaconocimiento}, desde try offline login");
+
+                string ocupacion = PlayerPrefs.GetString("TempOcupacion", "");
+
+                Debug.Log($"ocupacion: {ocupacion}, desde tryOfflineLogin - StartApp");
+
+                if (ocupacion == "Profesor")
+                {
+                    SceneManager.LoadScene("InicioProfesor");
+                }
+                else if (ocupacion == "Estudiante")
+                {
+                    if (estadoencuestaaprendizaje == true && estadoencuestaconocimiento == true)
+                    {
+                        SceneManager.LoadScene("Categorías");
+                    }
+                    else
+                    {
+                        SceneManager.LoadScene("SeleccionarEncuesta");
+                    }
+
+                }
+
+            }
+            else if (email == savedEmail && password != savedPassword)
+            {
+                Debug.LogError("📴 ❌ Datos incorrectos para el inicio de sesión offline.");
+            }
+        }
+        else
+        {
+            Debug.LogError("📴 ❌ No hay datos guardados para inicio de sesión offline.");
+        }
+    }
 }
