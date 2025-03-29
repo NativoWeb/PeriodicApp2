@@ -1,6 +1,7 @@
 ﻿using Firebase.Auth;
 using Firebase.Extensions;
 using Firebase.Firestore;
+using System.Collections;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using TMPro;
@@ -19,8 +20,17 @@ public class RegisterController : MonoBehaviour
 
     private string ocupacionSelecionada; // para actualizar 
 
+    //instanciar firebase
     private FirebaseAuth auth;
     private FirebaseFirestore db;
+
+
+    // verificar wifi
+    private bool hayInternet = false;
+    
+
+    //pop up sin internet
+    [SerializeField] private GameObject m_SinInternetUI = null;
 
     private Dictionary<string, int> rangos = new Dictionary<string, int>()
     {
@@ -70,45 +80,80 @@ public class RegisterController : MonoBehaviour
 
     public void OnCompleteProfileButtonClick()// -------------------------------------------------------------------------
     {
-        FirebaseUser currentUser = auth.CurrentUser;
+        hayInternet = Application.internetReachability != NetworkReachability.NotReachable;
 
-        if (currentUser == null)
+        if (hayInternet)
         {
-            Debug.LogError("No se encontró un usuario autenticado.");
-            return;
-        }
 
-        bool ocupacion = PlayerPrefs.HasKey("TempOcupacion");
-        // Validar que el usuario haya seleccionado un rol válido
-        if (roles.value == 0 && !ocupacion)
-        {
-            txtMensaje.text = "Debes seleccionar una ocupación antes de continuar.";
-            txtMensaje.color = Color.red;
-            return;
-        }
 
-        string userName = userNameInput.text;
-        if (userName.Equals("") )
-        {
-            txtMensaje.text = "Debes Ingresar un nombre de usuario antes de continuar";
-            txtMensaje.color = Color.red;
-            return;
-        }
+            FirebaseUser currentUser = auth.CurrentUser;
 
-        PlayerPrefs.SetString("DisplayName", userName);
-        PlayerPrefs.Save();
+            if (currentUser == null)
+            {
+                Debug.LogError("No se encontró un usuario autenticado.");
+                return;
+            }
 
-        if (PlayerPrefs.GetInt("EmailVerified", 0) == 1)
-        {
-            Debug.Log("✅ Correo verificado. Continuando con el registro...");
+            bool ocupacion = PlayerPrefs.HasKey("TempOcupacion");
+            // Validar que el usuario haya seleccionado un rol válido
+            if (roles.value == 0 && !ocupacion)
+            {
+                txtMensaje.text = "Debes seleccionar una ocupación antes de continuar.";
+                txtMensaje.color = Color.red;
+                return;
+            }
+
+            string userName = userNameInput.text;
+            if (userName.Equals(""))
+            {
+                txtMensaje.text = "Debes Ingresar un nombre de usuario antes de continuar";
+                txtMensaje.color = Color.red;
+                return;
+            }
+
+            PlayerPrefs.SetString("DisplayName", userName);
+            PlayerPrefs.Save();
+
+            if (PlayerPrefs.GetInt("EmailVerified", 0) == 1)
+            {
+                Debug.Log("✅ Correo verificado. Continuando con el registro...");
+                UpdateUserProfile(currentUser, userName);
+                return;
+            }
+
+            PlayerPrefs.SetInt("EmailVerified", 1);
+            PlayerPrefs.Save();
             UpdateUserProfile(currentUser, userName);
-            return;
         }
+        else
+        {
+            StartCoroutine(DeleteAccount()); // Eliminar la cuenta
+            m_SinInternetUI.SetActive(true);
+        }
+    }
+    private IEnumerator DeleteAccount()
+    {
+        string tempUserId = PlayerPrefs.GetString("tempUserId", "");
 
-        PlayerPrefs.SetInt("EmailVerified", 1);
-        PlayerPrefs.Save();
-        UpdateUserProfile(currentUser, userName);
+        if (!string.IsNullOrEmpty(tempUserId))
+        {
+            FirebaseUser user = auth.CurrentUser;
+            if (user != null && user.UserId == tempUserId)
+            {
+                var deleteTask = user.DeleteAsync();
+                yield return new WaitUntil(() => deleteTask.IsCompleted);
 
+                if (deleteTask.IsCompletedSuccessfully)
+                {
+                    Debug.Log("Cuenta eliminada por falta de conexión.");
+                    PlayerPrefs.DeleteKey("tempUserId");
+                }
+                else
+                {
+                    Debug.LogError("Error al eliminar la cuenta.");
+                }
+            }
+        }
     }
 
     private void UpdateUserProfile(FirebaseUser user, string userName)// -------------------------------------------------------------------------

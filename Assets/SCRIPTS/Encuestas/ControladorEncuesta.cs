@@ -10,11 +10,21 @@ using Newtonsoft.Json;
 using Firebase.Firestore;
 using Firebase.Extensions;
 using Firebase;
+using Firebase.Auth;
+
 using UnityEngine.SceneManagement;
 
 
 public class ControladorEncuesta : MonoBehaviour
 {
+
+    // instancion variables firebase 
+    private FirebaseAuth auth;
+    private FirebaseFirestore db;
+
+    // instanciar conecxion
+    private bool hayInternet = false;
+
     private List<Pregunta> preguntas;
     private int preguntaActualIndex = 0;        // �ndice de la pregunta actual en la lista aleatoria
     private Pregunta preguntaActual;             // Para guardar la pregunta que se est� mostrando actualmente
@@ -105,7 +115,7 @@ public class ControladorEncuesta : MonoBehaviour
         eventosToggleHabilitados = true;
 
         firestore = FirebaseFirestore.DefaultInstance;
-        string userId = PlayerPrefs.GetString("userId", ""); // Obtener el ID del usuario
+        
     }
 
     // M�todo para manejar el temporizador
@@ -161,13 +171,77 @@ public class ControladorEncuesta : MonoBehaviour
             Debug.Log("Encuesta Finalizada");
             textoPreguntaUI.text = "�Encuesta Finalizada!";
             grupoOpcionesUI.enabled = false;
+            GuardarEncuestaConocimiento();
 
-            PlayerPrefs.SetInt("EstadoEncuestaConocimiento", 1);
+        }
+        Debug.Log("siguientePregunta() finalizado.");
+    }
 
-            bool estadoencuestaaprendizaje = PlayerPrefs.GetInt("EstadoEncuestaAprendizaje", 0) == 1;
-            bool estadoencuestaconocimiento = PlayerPrefs.GetInt("EstadoEncuestaConocimiento", 0) == 1;
+    private void GuardarEncuestaConocimiento()
+    {
+        PlayerPrefs.SetInt("EstadoEncuestaConocimiento", 1);
+        PlayerPrefs.Save();
+        hayInternet = Application.internetReachability != NetworkReachability.NotReachable;
 
-            EnviarDatosAPrediccion(); // �A�ADIDO: Llamar a EnviarDatosAPrediccion al finalizar la encuesta!
+        bool estadoencuestaaprendizaje = false;
+        bool estadoencuestaconocimiento = false;
+
+        if (hayInternet)
+        {
+            firestore = FirebaseFirestore.DefaultInstance;
+            auth = FirebaseAuth.DefaultInstance;
+            FirebaseUser currentUser = auth.CurrentUser;
+
+            if (currentUser == null)
+            {
+                Debug.LogError("❌ No hay un usuario autenticado.");
+            }
+
+            string userId = currentUser.UserId;
+
+            estadoencuestaconocimiento = PlayerPrefs.GetInt("EstadoEncuestaConocimiento", 0) == 1;
+
+            ActualizarEstadoEncuestaConocimiento(userId, estadoencuestaconocimiento);
+
+            DocumentReference docRef = firestore.Collection("users").Document(userId);
+
+            docRef.GetSnapshotAsync().ContinueWithOnMainThread(task =>
+            {
+                if (task.IsCanceled || task.IsFaulted)
+                {
+                    Debug.LogError("❌ Error al obtener los datos del usuario.");
+                    return;
+                }
+
+                DocumentSnapshot snapshot = task.Result;
+
+                if (!snapshot.Exists)
+                {
+                    Debug.LogError("❌ No se encontraron datos para este usuario.");
+                    return;
+                }
+
+                // Obtener valores de Firestore
+                estadoencuestaaprendizaje = snapshot.ContainsField("EstadoEncuestaAprendizaje") ? snapshot.GetValue<bool>("EstadoEncuestaAprendizaje") : false;
+                estadoencuestaconocimiento = snapshot.ContainsField("EstadoEncuestaConocimiento") ? snapshot.GetValue<bool>("EstadoEncuestaConocimiento") : false;
+
+                // Verificar si se deben cargar las categorías
+                if (estadoencuestaaprendizaje && estadoencuestaconocimiento)
+                {
+                    SceneManager.LoadScene("Categorías");
+                }
+                else
+                {
+                    SceneManager.LoadScene("SeleccionarEncuesta");
+                }
+
+            });
+        }
+        else
+        {
+            estadoencuestaaprendizaje = PlayerPrefs.GetInt("EstadoEncuestaAprendizaje", 0) == 1;
+            estadoencuestaconocimiento = PlayerPrefs.GetInt("EstadoEncuestaConocimiento", 0) == 1;
+
 
             // Validar el estado de ambas encuestas para pasar a scena 
             if (estadoencuestaaprendizaje == true && estadoencuestaconocimiento == true)
@@ -178,9 +252,14 @@ public class ControladorEncuesta : MonoBehaviour
             {
                 SceneManager.LoadScene("SeleccionarEncuesta");
             }
-
         }
-        Debug.Log("siguientePregunta() finalizado.");
+    }
+
+    private async void ActualizarEstadoEncuestaConocimiento(string userId, bool estadoencuesta) // ------------------------------------------------
+    {
+        DocumentReference userRef = db.Collection("users").Document(userId);
+        await userRef.UpdateAsync("EstadoEncuestaConocimiento", estadoencuesta);
+        Debug.Log($"✅ Estado de la encuesta Conocimiento... {userId}: {estadoencuesta} desde Encuesta Conocimiento");
     }
 
     void CargarPreguntasDesdeJSON()
@@ -311,21 +390,7 @@ public class ControladorEncuesta : MonoBehaviour
             Debug.Log("¡Encuesta Finalizada!");
             textoPreguntaUI.text = "¡Encuesta Finalizada!";
             grupoOpcionesUI.enabled = false;
-            PlayerPrefs.SetInt("EstadoEncuestaConocimiento", 1);
-
-            bool estadoencuestaaprendizaje = PlayerPrefs.GetInt("EstadoEncuestaAprendizaje", 0) == 1;
-            bool estadoencuestaconocimiento = PlayerPrefs.GetInt("EstadoEncuestaConocimiento", 0) == 1;
-
-
-            // Validar el estado de ambas encuestas para pasar a scena 
-            if (estadoencuestaaprendizaje == true && estadoencuestaconocimiento == true)
-            {
-                SceneManager.LoadScene("Categorías");
-            }else
-            {
-                SceneManager.LoadScene("SeleccionarEncuesta");
-            }
-                
+            GuardarEncuestaConocimiento();
             return;
         }
 

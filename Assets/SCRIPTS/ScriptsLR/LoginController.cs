@@ -33,6 +33,14 @@ public class LoginController : MonoBehaviour
     public Button loginButton;
     public TMP_Text txtError;
 
+    // pop up
+    [SerializeField] private GameObject m_SinInternetUI = null;
+
+    // Verificar internet
+    private bool hayInternet = false;
+   
+     
+
     private FirebaseAuth auth;
     private FirebaseFirestore firestore;
 
@@ -78,16 +86,23 @@ public class LoginController : MonoBehaviour
 
     public void OnLoginButtonClick()
     {
-
-        if (IsLockedOut())
+        hayInternet = Application.internetReachability != NetworkReachability.NotReachable;
+        if (hayInternet)
         {
-            txtError.text = $"Demasiados intentos fallidos. Intenta en {GetRemainingLockoutTime()} segundos.";
-            return;
-        }
+            if (IsLockedOut())
+            {
+                txtError.text = $"Demasiados intentos fallidos. Intenta en {GetRemainingLockoutTime()} segundos.";
+                return;
+            }
 
-        string email = emailInput.text;
-        string password = passwordInput.text;
-        SignInUserWithEmail(email, password);
+            string email = emailInput.text;
+            string password = passwordInput.text;
+            SignInUserWithEmail(email, password);
+        }
+        else
+        {
+            m_SinInternetUI.SetActive(true);
+        }
     }
 
     private void MostrarPanelRestablecer()

@@ -125,8 +125,6 @@ public class StartAppManager : MonoBehaviour
         string EstadoUsuario = PlayerPrefs.GetString("Estadouser","");
 
         // ---------------------------------------------- VALIDACIONES --------------------------------------------------------------------------
-
-
         if (EstadoUsuario == "local") 
         {
             Debug.Log("📝 Datos temporales encontrados. Enviando a Registro.");
@@ -275,6 +273,7 @@ public class StartAppManager : MonoBehaviour
             }
 
             DocumentSnapshot snapshot = task.Result;
+
             if (!snapshot.Exists)
             {
                 Debug.LogError("❌ No se encontraron datos para este usuario.");

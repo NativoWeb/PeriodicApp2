@@ -5,11 +5,12 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using static ControladorEncuesta;
-using Firebase.Firestore;
 using Firebase;
+using Firebase.Firestore;
+using Firebase.Auth;
 using Firebase.Extensions; // 👈 Necesario para ContinueWithOnMainThread
 using UnityEngine.SceneManagement;
-using Firebase.Auth;
+
 
 public class ControladorEncuestaAprendizaje : MonoBehaviour
 {
@@ -27,11 +28,10 @@ public class ControladorEncuestaAprendizaje : MonoBehaviour
 
     public BarraProgreso barraProgreso;
 
+    // instanciar firebase
     private FirebaseFirestore firestore;
-
-
     private FirebaseAuth auth;
-
+    
 
     [System.Serializable]
     public class PreguntaEstiloAprendizaje
@@ -107,8 +107,16 @@ public class ControladorEncuestaAprendizaje : MonoBehaviour
         eventosToggleHabilitados = true;
 
         auth = FirebaseAuth.DefaultInstance;
-        firestore = FirebaseFirestore.DefaultInstance;       
+        firestore = FirebaseFirestore.DefaultInstance;
+        FirebaseUser currentUser = auth.CurrentUser;
 
+        if (currentUser == null) // Evitar errores si el usuario no está autenticado
+        {
+            Debug.LogError("❌ No hay un usuario autenticado.");
+           
+        }
+
+       
     }
 
     void Update()
@@ -382,29 +390,86 @@ public class ControladorEncuestaAprendizaje : MonoBehaviour
 
     public void FinalizarEncuesta()
     {
+        PlayerPrefs.SetInt("EstadoEncuestaAprendizaje", 1);
+        PlayerPrefs.Save();
+        hayInternet = Application.internetReachability != NetworkReachability.NotReachable;
 
-        // hacer validación si las dos estan teminadas mandar a categorias si no a inicioOffline 
-        // PENDIENTE
-            PlayerPrefs.SetInt("EstadoEncuestaAprendizaje", 1);
-            PlayerPrefs.Save();
-            
+        bool estadoencuestaaprendizaje = false;
+        bool estadoencuestaconocimiento = false;
 
-        
-        bool estadoencuestaaprendizaje = PlayerPrefs.GetInt("EstadoEncuestaAprendizaje", 0) == 1;
-        bool estadoencuestaconocimiento = PlayerPrefs.GetInt("EstadoEncuestaConocimiento", 0) == 1;
-
-
-        // Validar el estado de ambas encuestas para pasar a scena 
-        if (estadoencuestaaprendizaje == true && estadoencuestaconocimiento == true)
+        if (hayInternet)
         {
-            SceneManager.LoadScene("Categorías");
+            firestore = FirebaseFirestore.DefaultInstance;
+            auth = FirebaseAuth.DefaultInstance;
+            FirebaseUser currentUser = auth.CurrentUser;
+
+            if (currentUser == null)
+            {
+                Debug.LogError("❌ No hay un usuario autenticado.");
+            }
+
+            string userId = currentUser.UserId;
+
+            estadoencuestaaprendizaje = PlayerPrefs.GetInt("EstadoEncuestaAprendizaje", 0) == 1;
+            ActualizarEstadoEncuestaAprendizaje(userId, estadoencuestaaprendizaje);
+
+            DocumentReference docRef = firestore.Collection("users").Document(userId);
+
+            docRef.GetSnapshotAsync().ContinueWithOnMainThread(task =>
+            {
+                if (task.IsCanceled || task.IsFaulted)
+                {
+                    Debug.LogError("❌ Error al obtener los datos del usuario.");
+                    return;
+                }
+
+                DocumentSnapshot snapshot = task.Result;
+
+                if (!snapshot.Exists)
+                {
+                    Debug.LogError("❌ No se encontraron datos para este usuario.");
+                    return;
+                }
+
+                // Obtener valores de Firestore
+                estadoencuestaaprendizaje = snapshot.ContainsField("EstadoEncuestaAprendizaje") ? snapshot.GetValue<bool>("EstadoEncuestaAprendizaje") : false;
+                estadoencuestaconocimiento = snapshot.ContainsField("EstadoEncuestaConocimiento") ? snapshot.GetValue<bool>("EstadoEncuestaConocimiento") : false;
+
+                // Verificar si se deben cargar las categorías
+                if (estadoencuestaaprendizaje && estadoencuestaconocimiento)
+                {
+                    SceneManager.LoadScene("Categorías");
+                }
+                else
+                {
+                    SceneManager.LoadScene("SeleccionarEncuesta");
+                }
+            });
         }
         else
         {
-            SceneManager.LoadScene("SeleccionarEncuesta");
+            estadoencuestaaprendizaje = PlayerPrefs.GetInt("EstadoEncuestaAprendizaje", 0) == 1;
+            estadoencuestaconocimiento = PlayerPrefs.GetInt("EstadoEncuestaConocimiento", 0) == 1;
+
+
+            // Validar el estado de ambas encuestas para pasar a scena 
+            if (estadoencuestaaprendizaje == true && estadoencuestaconocimiento == true)
+            {
+                SceneManager.LoadScene("Categorías");
+            }
+            else
+            {
+                SceneManager.LoadScene("SeleccionarEncuesta");
+            }
         }
     }
 
+    private async void ActualizarEstadoEncuestaAprendizaje(string userId, bool estadoencuesta) // ------------------------------------------------
+    {
+        DocumentReference userRef = firestore.Collection("users").Document(userId);
+        await userRef.UpdateAsync("EstadoEncuestaAprendizaje", estadoencuesta);
+        Debug.Log($"✅ Estado de la encuesta Aprendizaje... {userId}: {estadoencuesta} desde EncuestaAprendizaje");
+    }
 
     [Header("Referencias UI")]
     public ToggleGroup grupoOpcionesUI;
