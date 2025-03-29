@@ -11,8 +11,6 @@ using Firebase;
 
 public class StartAppManager : MonoBehaviour
 {
-
-    
     public static bool IsReady = false; // 🔹 Bandera para indicar si terminó
     private bool yaVerificado = false; // 🔹 Evita ejecuciones repetidas
 

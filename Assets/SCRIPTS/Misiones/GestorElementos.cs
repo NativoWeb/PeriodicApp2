@@ -86,7 +86,6 @@ public class GestorElementos : MonoBehaviour
                 return;
             }
         }
-
         jsonData = JSON.Parse(jsonString);
     }
 
@@ -281,6 +280,9 @@ public class GestorElementos : MonoBehaviour
                     mision.logoMision = "logosMision/default";
                     break;
             }
+
+            PlayerPrefs.SetInt("xp_mision", mision.xp); // Guardar XP en PlayerPrefs
+
 
             CrearPrefabMision(mision);
         }

@@ -7,12 +7,19 @@ using Firebase.Auth;
 using Firebase.Firestore;
 using System.Threading.Tasks;
 using Firebase.Extensions;
+using Google.Protobuf.WellKnownTypes;
+using DG.Tweening;
+using UnityEngine.SceneManagement; // Agregar esto al inicio
+
+
 //using System.Drawing.Text;
 
 public class GuardarMisionCompletada : MonoBehaviour
 {
     public Button botonCompletarMision; // Asigna el botón desde el Inspector
-    //public Transform contenedorMisiones; // Asigna el contenedor de misiones en el Inspector
+    public ParticleSystem explosionParticulas;
+    public GameObject imagenMision; // Asigna el objeto desde el Inspector
+    public AudioSource audioSource;
 
     private FirebaseAuth auth;
     private FirebaseFirestore db;
@@ -24,7 +31,7 @@ public class GuardarMisionCompletada : MonoBehaviour
             auth = FirebaseAuth.DefaultInstance;
             db = FirebaseFirestore.DefaultInstance;
 
-            var user = auth.CurrentUser;
+        var user = auth.CurrentUser;
             if (user != null)
             {
                 userId = user.UserId;
@@ -36,7 +43,8 @@ public class GuardarMisionCompletada : MonoBehaviour
 
             if (botonCompletarMision != null)
             {
-                botonCompletarMision.onClick.AddListener(MarcarMisionComoCompletada);
+                botonCompletarMision.onClick.AddListener(MarcarMisionComoCompletada); 
+                botonCompletarMision.onClick.AddListener(AnimacionMisionCompletada); 
             }
             else
             {
@@ -64,7 +72,33 @@ public class GuardarMisionCompletada : MonoBehaviour
         ActualizarMisionEnJSON(elemento, idMision);
     }
 
-    private async void ActualizarMisionEnJSON(string elemento, int idMision)
+    public void AnimacionMisionCompletada()
+    {
+        if (imagenMision == null) return;
+        Handheld.Vibrate();
+        imagenMision.SetActive(true);
+        imagenMision.transform.localScale = Vector3.zero;
+        audioSource.Play(); // 🔊 Reproduce el sonido
+
+        Sequence secuenciaAnimacion = DOTween.Sequence();
+        secuenciaAnimacion.Append(imagenMision.transform.DOScale(1.2f, 0.5f).SetEase(Ease.OutBounce))
+            .Join(imagenMision.GetComponent<Image>().DOFade(1, 0.5f).From(0))
+            .AppendCallback(() => explosionParticulas.Play())  // 💥 Reproduce las partículas
+            .Append(imagenMision.transform.DORotate(new Vector3(0, 0, 10f), 0.3f).SetEase(Ease.InOutSine))
+            .Append(imagenMision.transform.DORotate(new Vector3(0, 0, -10f), 0.3f).SetEase(Ease.InOutSine))
+            .Append(imagenMision.transform.DORotate(Vector3.zero, 0.3f).SetEase(Ease.InOutSine))
+            .Append(imagenMision.transform.DOMoveY(imagenMision.transform.position.y + 50, 1f).SetEase(Ease.OutQuad))
+            .Join(imagenMision.GetComponent<Image>().DOFade(0, 1f))
+            .OnComplete(() => CambiarEscena());
+    }
+
+
+    void CambiarEscena()
+    {
+        SceneManager.LoadScene("Escena_Alcalinos"); // Reemplaza con el nombre de la escena destino
+    }
+
+private async void ActualizarMisionEnJSON(string elemento, int idMision)
     {
         string jsonString = PlayerPrefs.GetString("misionesCategoriasJSON", "");
         if (string.IsNullOrEmpty(jsonString))
@@ -93,7 +127,7 @@ public class GuardarMisionCompletada : MonoBehaviour
         var elementoJson = categorias[categoriaSeleccionada]["Elementos"][elemento];
         var misiones = elementoJson["misiones"].AsArray;
         bool cambioRealizado = false;
-        int xpGanado = 0;
+        int xpGanado = PlayerPrefs.GetInt("xp_mision");
 
         for (int i = 0; i < misiones.Count; i++)
         {
@@ -101,7 +135,6 @@ public class GuardarMisionCompletada : MonoBehaviour
             if (mision["id"].AsInt == idMision)
             {
                 mision["completada"] = true;
-                xpGanado = mision["xp"].AsInt; // Obtener el XP de la misión
                 cambioRealizado = true;
                 break;
             }
