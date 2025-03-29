@@ -103,6 +103,7 @@ public class ControladorEncuesta : MonoBehaviour
         ActualizarTextoTiempo();
 
         eventosToggleHabilitados = true;
+        panelFeedback.SetActive(false);
 
         firestore = FirebaseFirestore.DefaultInstance;
         string userId = PlayerPrefs.GetString("userId", ""); // Obtener el ID del usuario
@@ -422,24 +423,66 @@ public class ControladorEncuesta : MonoBehaviour
 
 
         // Resetear colores de todas las opciones
-        foreach (Toggle toggle in opcionesToggleUI)
+        // Mostrar solo la opción correcta
+        for (int i = 0; i < opcionesToggleUI.Length; i++)
         {
-            toggle.image.color = colorNormal;
+            if (i == preguntaActual.indiceRespuestaCorrecta)
+            {
+                opcionesToggleUI[i].gameObject.SetActive(true);
+                opcionesToggleUI[i].image.color = colorCorrecto;
+            }
+            else
+            {
+                opcionesToggleUI[i].gameObject.SetActive(false);
+                opcionesToggleUI[i].image.color = colorIncorrecto;
+            }
         }
+
+        panelFeedback.SetActive(true);
+        textoFeedback.text = "<color=white>✔</color> Correcto";
+
 
         // Cambiar color de la opción seleccionada
         if (indiceOpcionSeleccionada == preguntaActual.indiceRespuestaCorrecta)
         {
-            opcionesToggleUI[indiceOpcionSeleccionada].image.color = colorCorrecto;
+            // ✅ RESPUESTA CORRECTA
+            for (int i = 0; i < opcionesToggleUI.Length; i++)
+            {
+                if (i == preguntaActual.indiceRespuestaCorrecta)
+                {
+                    opcionesToggleUI[i].gameObject.SetActive(true);
+                    opcionesToggleUI[i].image.color = colorCorrecto;
+                }
+                else
+                {
+                    opcionesToggleUI[i].gameObject.SetActive(false); // Oculta las incorrectas
+                }
+            }
+
+            panelFeedback.SetActive(true);
+            textoFeedback.text = "<color=white>✔</color> Correcto";
         }
         else
         {
-            // Color para respuesta incorrecta
-            opcionesToggleUI[indiceOpcionSeleccionada].image.color = colorIncorrecto;
+            // ❌ RESPUESTA INCORRECTA
+            for (int i = 0; i < opcionesToggleUI.Length; i++)
+            {
+                if (i == indiceOpcionSeleccionada)
+                {
+                    opcionesToggleUI[i].image.color = colorIncorrecto; // Respuesta seleccionada en rojo
+                }
+                else
+                {
+                    opcionesToggleUI[i].image.color = colorNormal; // El resto en blanco o como prefieras
+                }
+            }
 
-            // Resaltar también la respuesta correcta
-            opcionesToggleUI[preguntaActual.indiceRespuestaCorrecta].image.color = colorCorrecto;
+            panelFeedback.SetActive(true);
+            textoFeedback.text = "<color=white>✘</color> Incorrecto";
         }
+
+
+
 
         Debug.Log($"Verificando respuesta. �ndice seleccionado: {indiceOpcionSeleccionada}, �ndice correcto: {preguntaActual.indiceRespuestaCorrecta}");
         // Desactivar la interactividad de las opciones y el bot�n "Siguiente Pregunta" una vez que se responde
@@ -521,10 +564,20 @@ public class ControladorEncuesta : MonoBehaviour
 
     IEnumerator MostrarFeedbackYCambiarPregunta()
     {
-        tiempoRestante = 2f;
-        yield return new WaitForSeconds(1.5f); // Tiempo para ver feedback
-        siguientePregunta();
+        yield return new WaitForSeconds(1.5f); // Tiempo visible del feedback
+        panelFeedback.SetActive(false);
+
+        // Restaurar visibilidad de todas las opciones
+        foreach (Toggle toggle in opcionesToggleUI)
+        {
+            toggle.gameObject.SetActive(true);
+            toggle.image.color = colorNormal;
+        }
+
+        // Aquí puedes avanzar a la siguiente pregunta
+        siguientePregunta(); // o lo que uses
     }
+
     // M�todo para reactivar la interactividad de las opciones (Toggles) para la siguiente pregunta
     void ActivarInteractividadOpciones()
     {
@@ -660,6 +713,11 @@ public class ControladorEncuesta : MonoBehaviour
     public TextMeshProUGUI textoPreguntaUI;
     public ToggleGroup grupoOpcionesUI;
     public Toggle[] opcionesToggleUI;
+
+    [Header("Feedback UI")]
+    public GameObject panelFeedback; // Panel semitransparente
+    public TextMeshProUGUI textoFeedback; // Texto: Correcto / Incorrecto
+
 
     [Header("Colores de Respuesta")]
     public Color colorCorrecto = Color.green;
