@@ -9,6 +9,8 @@ using Firebase.Database;
 using Firebase.Auth;
 using System;
 using System.Runtime.CompilerServices;
+using Firebase.Extensions;
+using System.Threading.Tasks;
 
 
 public class UpdateData : MonoBehaviour
@@ -52,7 +54,7 @@ public class UpdateData : MonoBehaviour
 
 
     // 🔹 Modo online
-    void HandleOnlineMode() // ----------------------------------------------------------------------------------
+    private async void HandleOnlineMode() // ----------------------------------------------------------------------------------
     {
     
         string estadoUsuario = PlayerPrefs.GetString("Estadouser", "");
@@ -73,9 +75,19 @@ public class UpdateData : MonoBehaviour
             bool estadoencuestaaprendizaje = PlayerPrefs.GetInt("EstadoEncuestaAprendizaje", 0) == 1;
             bool estadoencuestaconocimiento = PlayerPrefs.GetInt("EstadoEncuestaConocimiento", 0) == 1;
 
+            if (estadoencuestaaprendizaje == true)
+            {
+                PlayerPrefs.SetInt("EstadoEncuestaAprendizaje", 1);
+            }
+            else if (estadoencuestaconocimiento == true)
+            {
+                PlayerPrefs.SetInt("EstadoEncuestaConocimiento", 1);
+
+            }
+
             ActualizarEstadoEncuestaAprendizaje(userId, estadoencuestaaprendizaje);
             ActualizarEstadoEncuestaConocimiento(userId, estadoencuestaconocimiento);
-
+            await SubirDatosJSON();
             ActualizarXPEnFirebase(userId);
         }
         
@@ -132,6 +144,56 @@ public class UpdateData : MonoBehaviour
         {
             Debug.LogError($"❌ Error al actualizar XP en Firebase: {e.Message}");
         }
+    }
+    public async Task SubirDatosJSON()
+    {
+        if (string.IsNullOrEmpty(userId))
+        {
+            Debug.LogError("❌ No hay usuario autenticado.");
+            return;
+        }
+
+        // Obtener JSON de misiones y categorías desde PlayerPrefs
+        string jsonMisiones = PlayerPrefs.GetString("misionesCategoriasJSON", "{}");
+        string jsonCategorias = PlayerPrefs.GetString("CategoriasOrdenadas", "{}");
+
+        // Referencias a los documentos dentro de la colección del usuario
+        DocumentReference misionesDoc = db.Collection("users").Document(userId).Collection("datos").Document("misiones");
+        DocumentReference categoriasDoc = db.Collection("users").Document(userId).Collection("datos").Document("categorias");
+
+        // Crear tareas para subir ambos JSONs
+        List<Task> tareasSubida = new List<Task>();
+
+        if (jsonMisiones != "{}")
+        {
+            Dictionary<string, object> dataMisiones = new Dictionary<string, object>
+        {
+            { "misiones", jsonMisiones },
+            { "timestamp", FieldValue.ServerTimestamp }
+        };
+            tareasSubida.Add(misionesDoc.SetAsync(dataMisiones, SetOptions.MergeAll));
+        }
+
+        if (jsonCategorias != "{}")
+        {
+            Dictionary<string, object> dataCategorias = new Dictionary<string, object>
+        {
+            { "categorias", jsonCategorias },
+            { "timestamp", FieldValue.ServerTimestamp }
+        };
+            tareasSubida.Add(categoriasDoc.SetAsync(dataCategorias, SetOptions.MergeAll));
+        }
+
+        if (tareasSubida.Count == 0)
+        {
+            Debug.LogWarning("⚠️ No hay datos de misiones ni categorías para subir.");
+            return;
+        }
+
+        // Esperar a que todas las tareas finalicen
+        await Task.WhenAll(tareasSubida);
+
+        Debug.Log("✅ Datos de misiones y categorías subidos en documentos separados.");
     }
 
 }

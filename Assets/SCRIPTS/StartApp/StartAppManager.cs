@@ -124,6 +124,8 @@ public class StartAppManager : MonoBehaviour
 
         string EstadoUsuario = PlayerPrefs.GetString("Estadouser","");
 
+        // ---------------------------------------------- VALIDACIONES --------------------------------------------------------------------------
+
 
         if (EstadoUsuario == "local") 
         {
@@ -163,16 +165,6 @@ public class StartAppManager : MonoBehaviour
         }
     }
 
-    // Verificar si hay datos de usuario temporal guardados
-    //bool IsTemporaryUserSaved()
-    //{
-
-    //    return //PlayerPrefs.HasKey("DisplayName") &&
-    //           PlayerPrefs.HasKey("TempOcupacion") &&
-    //           PlayerPrefs.HasKey("TempXP") &&
-    //           PlayerPrefs.HasKey("TempAvatar");
-    //           //PlayerPrefs.HasKey("Rango");
-    //}
 
     // Crear y guardar usuario temporal en PlayerPrefs
     void CreateTemporaryUser()
@@ -229,7 +221,7 @@ public class StartAppManager : MonoBehaviour
         
             string savedEmail = PlayerPrefs.GetString("userEmail");
             string savedPassword = PlayerPrefs.GetString("userPassword");
-            Debug.Log("entrando a tryofflinelogi, el usuario solo se registro, no se logueo");
+            Debug.Log("entrando a tryofflinelogin, el usuario solo se registro, no se logueo");
             TryOfflineLogin(savedEmail, savedPassword);
           
     }
