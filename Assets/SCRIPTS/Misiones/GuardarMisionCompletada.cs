@@ -25,6 +25,7 @@ public class GuardarMisionCompletada : MonoBehaviour
     private FirebaseFirestore db;
     private string userId;
 
+
     void Start()
     {
             auth = FirebaseAuth.DefaultInstance;
@@ -90,6 +91,7 @@ public class GuardarMisionCompletada : MonoBehaviour
             .Join(imagenMision.GetComponent<Image>().DOFade(0, 1f))
             .OnComplete(() => CambiarEscena());
     }
+
 
     void CambiarEscena()
     {
@@ -210,34 +212,34 @@ private async void ActualizarMisionEnJSON(string elemento, int idMision)
             return;
         }
 
-        // Obtener JSON de misiones y categorías desde PlayerPrefs
-        string jsonMisiones = PlayerPrefs.GetString("misionesCategoriasJSON", "{}");
+        string jsonMisiones = PlayerPrefs.GetString("misionesCategoriasJSON", "{}"); // Obtener el JSON de PlayerPrefs
 
-        // Referencias a los documentos dentro de la colección del usuario
-        DocumentReference misionesDoc = db.Collection("users").Document(userId).Collection("datos").Document("misiones");
-
-        // Crear tareas para subir ambos JSONs
-        List<Task> tareasSubida = new List<Task>();
-
-        if (jsonMisiones != "{}")
+        if (jsonMisiones == "{}")
         {
-            Dictionary<string, object> dataMisiones = new Dictionary<string, object>
+            Debug.LogWarning("⚠️ No hay datos de misiones guardados.");
+            return;
+        }
+
+        // Convertir JSON a Dictionary para Firestore
+        Dictionary<string, object> data = new Dictionary<string, object>
         {
             { "misiones", jsonMisiones },
             { "timestamp", FieldValue.ServerTimestamp }
         };
-            tareasSubida.Add(misionesDoc.SetAsync(dataMisiones, SetOptions.MergeAll));
-        }
 
-        if (tareasSubida.Count == 0)
+        // Subir a Firestore dentro del documento del usuario
+        DocumentReference userDoc = db.Collection("users").Document(userId);
+
+        await userDoc.SetAsync(data, SetOptions.MergeAll).ContinueWithOnMainThread(task =>
         {
-            Debug.LogWarning("⚠️ No hay datos de misiones ni categorías para subir.");
-            return;
-        }
-
-        // Esperar a que todas las tareas finalicen
-        await Task.WhenAll(tareasSubida);
-
-        Debug.Log("✅ Datos de misiones y categorías subidos en documentos separados.");
+            if (task.IsCompleted)
+            {
+                Debug.Log("✅ Misiones JSON guardadas en Firestore.");
+            }
+            else
+            {
+                Debug.LogError("❌ Error al guardar el JSON en Firestore: " + task.Exception);
+            }
+        });
     }
 }

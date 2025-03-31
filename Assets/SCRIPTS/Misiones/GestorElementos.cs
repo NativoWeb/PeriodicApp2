@@ -283,6 +283,7 @@ public class GestorElementos : MonoBehaviour
 
             PlayerPrefs.SetInt("xp_mision", mision.xp); // Guardar XP en PlayerPrefs
 
+
             CrearPrefabMision(mision);
         }
     }

@@ -269,6 +269,7 @@ public class LoginController : MonoBehaviour
         }
     }
 
+
     /* ------------------------ 🔥 NUEVA FUNCIÓN PARA DESCARGAR MISIONES 🔥 ------------------------ */
     private void CheckAndDownloadMisiones(string userId)
     {
@@ -284,29 +285,25 @@ public class LoginController : MonoBehaviour
 
             DocumentSnapshot snapshot = task.Result;
 
-            if (!snapshot.Exists)
+            if (!snapshot.Exists || !snapshot.ContainsField("misiones"))
             {
-                Debug.Log("📌 No hay datos del usuario en Firestore. Continuando con el login normal.");
+                Debug.Log("📌 No hay misiones en Firestore. Continuando con el login normal.");
                 CheckUserStatus(userId);
                 return;
             }
 
-            // Obtener misiones y categorías del documento
-            string misionesJson = snapshot.ContainsField("misiones") ? snapshot.GetValue<string>("misiones") : "{}";
-            string categoriasJson = snapshot.ContainsField("categorias") ? snapshot.GetValue<string>("categorias") : "{}";
+            string misionesJson = snapshot.GetValue<string>("misiones");
 
-            // Guardar en PlayerPrefs
-            PlayerPrefs.SetString("misionesCategoriasJSON", misionesJson);
-            PlayerPrefs.SetString("CategoriasOrdenadas", categoriasJson);
-            PlayerPrefs.Save();
+            if (!string.IsNullOrEmpty(misionesJson))
+            {
+                PlayerPrefs.SetString("misionesJSON", misionesJson);
+                PlayerPrefs.Save();
+                Debug.Log("✅ Misiones descargadas y guardadas localmente.");
+            }
 
-            Debug.Log("✅ Misiones y categorías descargadas y guardadas localmente.");
-
-            // Continuar con el login normal
             CheckUserStatus(userId);
         });
     }
-
 
     private void CheckUserStatus(string userId)
     {
