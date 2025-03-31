@@ -33,6 +33,7 @@ public class LoginController : MonoBehaviour
     public Button loginButton;
     public TMP_Text txtError;
 
+
     // pop up
     [SerializeField] private GameObject m_SinInternetUI = null;
 
@@ -322,6 +323,14 @@ public class LoginController : MonoBehaviour
 
     private void CheckUserStatus(string userId)
     {
+
+        // verificar si hay wifi
+        hayInternet = Application.internetReachability != NetworkReachability.NotReachable;
+
+        // instanciar variables 
+        bool estadoencuestaaprendizaje = false;
+        bool estadoencuestaconocimiento = false;
+
         DocumentReference docRef = firestore.Collection("users").Document(userId);
 
         docRef.GetSnapshotAsync().ContinueWithOnMainThread(task =>
@@ -341,13 +350,16 @@ public class LoginController : MonoBehaviour
 
             string ocupacion = snapshot.GetValue<string>("Ocupacion");
 
+            if (hayInternet)
+            {
+                estadoencuestaaprendizaje = snapshot.ContainsField("EstadoEncuestaAprendizaje") ? snapshot.GetValue<bool>("EstadoEncuestaAprendizaje") : false;
+                estadoencuestaconocimiento = snapshot.ContainsField("EstadoEncuestaConocimiento") ? snapshot.GetValue<bool>("EstadoEncuestaConocimiento") : false;  // Valor por defecto si el campo no existe
+            }else
+            {
+                estadoencuestaaprendizaje = PlayerPrefs.GetInt("EstadoEncuestaAprendizaje", 0) == 1;
+                estadoencuestaconocimiento = PlayerPrefs.GetInt("EstadoEncuestaConocimiento", 0) == 1;
 
-            //bool estadoencuestaaprendizaje = snapshot.ContainsField("EstadoEncuestaAprendizaje")? snapshot.GetValue<bool>("EstadoEncuestaAprendizaje") : false;  
-
-            bool estadoencuestaaprendizaje = PlayerPrefs.GetInt("EstadoEncuestaAprendizaje", 0) == 1;
-            bool estadoencuestaconocimiento = PlayerPrefs.GetInt("EstadoEncuestaConocimiento", 0) == 1;
-
-            //bool estadoencuestaconocimiento = snapshot.ContainsField("EstadoEncuestaConocimiento")? snapshot.GetValue<bool>("EstadoEncuestaConocimiento") : false;  // Valor por defecto si el campo no existe
+            }
 
 
             Debug.Log($"📌 Usuario: {ocupacion}, Estado Encuesta Aprendizaje: {estadoencuestaaprendizaje}, Estado Encuesta Conocimiento: {estadoencuestaconocimiento}");

@@ -348,33 +348,10 @@ public class EmailController : MonoBehaviour
         }
         else
         {
-            StartCoroutine(DeleteAccount()); // Eliminar la cuenta
+            string usuarioaeliminar = PlayerPrefs.GetString("tempUserId", "");
+            PlayerPrefs.SetString("UsuarioEliminar", usuarioaeliminar);
             m_SinInternetUI.SetActive(true);
         }
 
-    }
-    private IEnumerator DeleteAccount()
-    {
-        string tempUserId = PlayerPrefs.GetString("tempUserId","");
-
-        if (!string.IsNullOrEmpty(tempUserId))
-        {
-            FirebaseUser user = auth.CurrentUser;
-            if (user != null && user.UserId == tempUserId)
-            {
-                var deleteTask = user.DeleteAsync();
-                yield return new WaitUntil(() => deleteTask.IsCompleted);
-
-                if (deleteTask.IsCompletedSuccessfully)
-                {
-                    Debug.Log("Cuenta eliminada por falta de conexión.");
-                    PlayerPrefs.DeleteKey("tempUserId");
-                }
-                else
-                {
-                    Debug.LogError("Error al eliminar la cuenta.");
-                }
-            }
-        }
     }
 }
