@@ -435,7 +435,7 @@ public class ControladorEncuesta : MonoBehaviour
             // Activar feedback visual
             panelFeedback.SetActive(true);
             panelFeedback.GetComponent<Image>().color = colorFondoCorrecto;
-            textoFeedback.text = "<color=white>✔</color> Correcto";
+            textoFeedback.text = "Correcto";
         }
         else
         {
@@ -455,7 +455,7 @@ public class ControladorEncuesta : MonoBehaviour
             // Activar feedback visual
             panelFeedback.SetActive(true);
             panelFeedback.GetComponent<Image>().color = colorFondoIncorrecto;
-            textoFeedback.text = "<color=white>✘</color> Incorrecto";
+            textoFeedback.text = "Incorrecto";
         }
 
         Debug.Log($"Respuesta seleccionada: {preguntaActual.respuestaUsuario} | Correcta: {preguntaActual.opcionesRespuesta[preguntaActual.indiceRespuestaCorrecta]}");
