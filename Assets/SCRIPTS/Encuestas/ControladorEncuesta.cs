@@ -405,7 +405,6 @@ public class ControladorEncuesta : MonoBehaviour
     // M�todo para verificar la respuesta seleccionada por el usuario
     public void VerificarRespuesta(int indiceOpcionSeleccionada)
     {
-
         if (!eventosToggleHabilitados) return;
 
         eventosToggleHabilitados = false;
@@ -419,148 +418,88 @@ public class ControladorEncuesta : MonoBehaviour
         // Guardar la respuesta seleccionada
         preguntaActual.respuestaUsuario = opcionesAleatorias[indiceOpcionSeleccionada];
 
-        Debug.Log($"Respuesta seleccionada: {preguntaActual.respuestaUsuario} | Respuesta correcta: {preguntaActual.opcionesRespuesta[preguntaActual.indiceRespuestaCorrecta]}");
+        bool esCorrecta = (indiceOpcionSeleccionada == preguntaActual.indiceRespuestaCorrecta);
 
-
-        // Resetear colores de todas las opciones
-        // Mostrar solo la opción correcta
-        for (int i = 0; i < opcionesToggleUI.Length; i++)
+        // Visual
+        if (esCorrecta)
         {
-            if (i == preguntaActual.indiceRespuestaCorrecta)
-            {
-                opcionesToggleUI[i].gameObject.SetActive(true);
-                opcionesToggleUI[i].image.color = colorCorrecto;
-            }
-            else
-            {
-                opcionesToggleUI[i].gameObject.SetActive(false);
-                opcionesToggleUI[i].image.color = colorIncorrecto;
-            }
-        }
-
-        panelFeedback.SetActive(true);
-        textoFeedback.text = "<color=white>✔</color> Correcto";
-
-
-        // Cambiar color de la opción seleccionada
-        if (indiceOpcionSeleccionada == preguntaActual.indiceRespuestaCorrecta)
-        {
-            // ✅ RESPUESTA CORRECTA
+            // Mostrar solo la correcta
             for (int i = 0; i < opcionesToggleUI.Length; i++)
             {
                 if (i == preguntaActual.indiceRespuestaCorrecta)
-                {
-                    opcionesToggleUI[i].gameObject.SetActive(true);
                     opcionesToggleUI[i].image.color = colorCorrecto;
-                }
                 else
-                {
-                    opcionesToggleUI[i].gameObject.SetActive(false); // Oculta las incorrectas
-                }
+                    opcionesToggleUI[i].image.color = colorNormal;
             }
 
+            // Activar feedback visual
             panelFeedback.SetActive(true);
+            panelFeedback.GetComponent<Image>().color = colorFondoCorrecto;
             textoFeedback.text = "<color=white>✔</color> Correcto";
         }
         else
         {
-            // ❌ RESPUESTA INCORRECTA
+            // Mostrar todas las opciones y resaltar correcta/incorrecta
             for (int i = 0; i < opcionesToggleUI.Length; i++)
             {
+                opcionesToggleUI[i].gameObject.SetActive(true);
+
                 if (i == indiceOpcionSeleccionada)
-                {
-                    opcionesToggleUI[i].image.color = colorIncorrecto; // Respuesta seleccionada en rojo
-                }
+                    opcionesToggleUI[i].image.color = colorIncorrecto;
+                else if (i == preguntaActual.indiceRespuestaCorrecta)
+                    opcionesToggleUI[i].image.color = colorCorrecto;
                 else
-                {
-                    opcionesToggleUI[i].image.color = colorNormal; // El resto en blanco o como prefieras
-                }
+                    opcionesToggleUI[i].image.color = colorNormal;
             }
 
+            // Activar feedback visual
             panelFeedback.SetActive(true);
+            panelFeedback.GetComponent<Image>().color = colorFondoIncorrecto;
             textoFeedback.text = "<color=white>✘</color> Incorrecto";
         }
 
+        Debug.Log($"Respuesta seleccionada: {preguntaActual.respuestaUsuario} | Correcta: {preguntaActual.opcionesRespuesta[preguntaActual.indiceRespuestaCorrecta]}");
 
-
-
-        Debug.Log($"Verificando respuesta. �ndice seleccionado: {indiceOpcionSeleccionada}, �ndice correcto: {preguntaActual.indiceRespuestaCorrecta}");
-        // Desactivar la interactividad de las opciones y el bot�n "Siguiente Pregunta" una vez que se responde
+        // Desactivar interactividad
         DesactivarInteractividadOpciones();
 
-        if (indiceOpcionSeleccionada == preguntaActual.indiceRespuestaCorrecta)
+        // Actualizar lógica de racha, aciertos e indicadores
+        if (esCorrecta)
         {
-            // �Respuesta CORRECTA!
-            Debug.Log("�Respuesta Correcta!");
-            if (indiceOpcionSeleccionada == preguntaActual.indiceRespuestaCorrecta)
-            {
-                racha++;
-                respuestasCorrectas++;
-            }
-            txtRacha.text = "" + racha;
-            // Determinar la categor�a de la pregunta actual (asumiendo que tienes una propiedad 'grupo' en tu objeto PreguntaConocimiento) �A�ADIDO!
-            string categoriaPregunta = preguntaActual.grupoPregunta.grupo; // Ajusta esto seg�n la estructura de tu objeto PreguntaConocimiento
+            racha++;
+            respuestasCorrectas++;
+            txtRacha.text = racha.ToString();
 
-            // Incrementar el contador de respuestas correctas seg�n la categor�a �A�ADIDO!
+            string categoriaPregunta = preguntaActual.grupoPregunta.grupo;
+
             switch (categoriaPregunta)
             {
-                case "Metales Alcalinos (Grupo 1)":
-                    correctasAlcalinos++;
-                    break;
-                case "Metales Alcalinotérreos":
-                    correctasMetalesAlcalinotérreos++;
-                    break;
-                case "Metales de Transición":
-                    correctasTransicion++;
-                    break;
-                case "Lantánidos":
-                    correctasLantanidos++;
-                    break;
-                case "Actinoides":
-                    correctasActinoides++;
-                    break;
-                case "Metaloides": // Ajusta este nombre si es diferente en tus datos
-                    correctasMetaloides++;
-                    break;
-                case "Metales postransicionales": // Ajusta este nombre si es diferente en tus datos
-                    correctasMetalesPostansicionales++;
-                    break;
-                case "No Metales": // Ajusta este nombre si es diferente en tus datos
-                    correctasNoMetales++;
-                    break;
-                case "Propiedades desconocidas":
-                    correctasPropiedadesDesconocidas++;
-                    break;
-                case "Gases Nobles": 
-                    correctasGasesNobles++;
-                    break;
-                default:
-                    Debug.LogWarning($"Categor�a de pregunta no reconocida: {categoriaPregunta}. Ajusta el switch en VerificarRespuesta.");
-                    break;
+                case "Metales Alcalinos (Grupo 1)": correctasAlcalinos++; break;
+                case "Metales Alcalinotérreos": correctasMetalesAlcalinotérreos++; break;
+                case "Metales de Transición": correctasTransicion++; break;
+                case "Lantánidos": correctasLantanidos++; break;
+                case "Actinoides": correctasActinoides++; break;
+                case "Metaloides": correctasMetaloides++; break;
+                case "Metales postransicionales": correctasMetalesPostansicionales++; break;
+                case "No Metales": correctasNoMetales++; break;
+                case "Propiedades desconocidas": correctasPropiedadesDesconocidas++; break;
+                case "Gases Nobles": correctasGasesNobles++; break;
+                default: Debug.LogWarning($"Categoría desconocida: {categoriaPregunta}"); break;
             }
-            // **IMPORTANTE:** Aseg�rate de que los nombres de las categor�as en este `switch` coincidan EXACTAMENTE con los nombres que usas en tus datos de preguntas JSON.
-
         }
         else
         {
-            // �Respuesta INCORRECTA!
-            Debug.Log("Respuesta Incorrecta");
             racha = 0;
-            txtRacha.text = "" + racha;
-            incorrectasTotales++; // �A�ADIDO: Incrementar contador de incorrectas!
+            txtRacha.text = "0";
+            incorrectasTotales++;
         }
 
-        // Registrar la dificultad de la pregunta actual (asumiendo que tienes una propiedad 'dificultadPregunta' en tu objeto PreguntaConocimiento) �A�ADIDO!
-        float dificultadPregunta = preguntaActual.dificultadPregunta; // Ajusta esto seg�n la estructura de tu objeto PreguntaConocimiento
-        dificultadTotalPreguntas += dificultadPregunta;
+        dificultadTotalPreguntas += preguntaActual.dificultadPregunta;
         cantidadPreguntasRespondidas++;
 
-
-        // Preparar para la siguiente pregunta (puedes decidir cu�ndo avanzar a la siguiente pregunta, por ejemplo, con un bot�n)
-        //preguntaActualIndex++; // Incrementar el �ndice para la siguiente pregunta
         StartCoroutine(MostrarFeedbackYCambiarPregunta());
-
     }
+
 
     IEnumerator MostrarFeedbackYCambiarPregunta()
     {
@@ -575,7 +514,7 @@ public class ControladorEncuesta : MonoBehaviour
         }
 
         // Aquí puedes avanzar a la siguiente pregunta
-        siguientePregunta(); // o lo que uses
+        siguientePregunta(); 
     }
 
     // M�todo para reactivar la interactividad de las opciones (Toggles) para la siguiente pregunta
@@ -715,8 +654,10 @@ public class ControladorEncuesta : MonoBehaviour
     public Toggle[] opcionesToggleUI;
 
     [Header("Feedback UI")]
-    public GameObject panelFeedback; // Panel semitransparente
-    public TextMeshProUGUI textoFeedback; // Texto: Correcto / Incorrecto
+    public GameObject panelFeedback; 
+    public TextMeshProUGUI textoFeedback;
+    public Color colorFondoCorrecto = new Color(0.66f, 0.81f, 0.30f); // Verde claro
+    public Color colorFondoIncorrecto = new Color(0.89f, 0.31f, 0.31f); // Rojo claro
 
 
     [Header("Colores de Respuesta")]
