@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using Firebase.Firestore;
@@ -7,7 +7,7 @@ using TMPro;
 using System.Collections;
 using System;
 
-public class RankingManager : MonoBehaviour
+public class RankingManager2 : MonoBehaviour
 {
     public GameObject prefabJugador;
     public Transform content;
@@ -16,14 +16,14 @@ public class RankingManager : MonoBehaviour
     private Coroutine rankingCoroutine;
     private bool estaActualizando = false;
 
-    
+
 
     [SerializeField] private GameObject RankingPanel = null;
 
     void Start()
     {
         db = FirebaseFirestore.DefaultInstance;
-       
+        ActivarRanking();
     }
 
     public void ActivarRanking()
@@ -45,7 +45,7 @@ public class RankingManager : MonoBehaviour
         if (estaActualizando)
         {
             estaActualizando = false;
-            StopCoroutine(rankingCoroutine); // Detiene la actualización
+            StopCoroutine(rankingCoroutine); // Detiene la actualizaci�n
         }
     }
 

@@ -54,7 +54,7 @@ public class ControllerPerfil : MonoBehaviour
             }
             else
             {
-                Debug.LogError("❌ No hay usuario autenticado");
+                Debug.LogError("❌ No hay usuario autenticado, Mostrando datos offline");
                 MostrarDatosOffline();
             }
         }
