@@ -80,13 +80,12 @@ public class UpdateData : MonoBehaviour
 
             if (estadoencuestaaprendizaje)
             {
-                ActualizarEstadoEncuestaAprendizaje(userId, estadoencuestaaprendizaje);
+                ActualizarEstadoEncuestaEnFirebase(userId,"EstadoEncuestaAprendizaje", estadoencuestaaprendizaje);
             }
             if (estadoencuestaconocimiento)
             {
-                ActualizarEstadoEncuestaConocimiento(userId, estadoencuestaconocimiento);
+                ActualizarEstadoEncuestaEnFirebase(userId, "EstadoEncuestaConocimiento", estadoencuestaconocimiento);
             }
-            
             
             await SubirDatosJSON();
             ActualizarXPEnFirebase(userId);
@@ -95,18 +94,11 @@ public class UpdateData : MonoBehaviour
     }
 
 
-    private async void ActualizarEstadoEncuestaAprendizaje(string userId, bool estadoencuesta) // ------------------------------------------------
+    private async void ActualizarEstadoEncuestaEnFirebase(string userId,string encuesta, bool estadoencuesta) // ------------------------------------------------
     {
         DocumentReference userRef = db.Collection("users").Document(userId);
-        await userRef.UpdateAsync("EstadoEncuestaAprendizaje", estadoencuesta);
-        Debug.Log($"✅ Estado de la encuesta Aprendizaje... {userId}: {estadoencuesta} desde UpdateData");
-    }
-
-    private async void ActualizarEstadoEncuestaConocimiento(string userId, bool estadoencuesta) // ------------------------------------------------
-    {
-        DocumentReference userRef = db.Collection("users").Document(userId);
-        await userRef.UpdateAsync("EstadoEncuestaConocimiento", estadoencuesta);
-        Debug.Log($"✅ Estado de la encuesta Conocimiento... {userId}: {estadoencuesta} desde UpdateData");
+        await userRef.UpdateAsync(encuesta, estadoencuesta);
+        Debug.Log($"✅ Estado de la encuesta {encuesta}... {userId}: {estadoencuesta} desde UpdateData");
     }
 
 
@@ -228,7 +220,8 @@ public class UpdateData : MonoBehaviour
                     PlayerPrefs.SetString("Rango",rango);
                     string avatar = snapshot.GetValue<string>("avatar");
                     PlayerPrefs.SetString("TempAvatar", avatar);
-                    Debug.Log("Get user Data desde Update Data puso bien los player prefs");
+
+                    Debug.Log("Get-user-Data desde Update Data puso bien los player prefs");
                 }
 
             }

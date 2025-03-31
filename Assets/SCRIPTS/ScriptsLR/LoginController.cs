@@ -95,7 +95,6 @@ public class LoginController : MonoBehaviour
                 txtError.text = $"Demasiados intentos fallidos. Intenta en {GetRemainingLockoutTime()} segundos.";
                 return;
             }
-
             string email = emailInput.text;
             string password = passwordInput.text;
             SignInUserWithEmail(email, password);
