@@ -11,6 +11,8 @@ using Firebase;
 
 public class StartAppManager : MonoBehaviour
 {
+
+
     public static bool IsReady = false; // 🔹 Bandera para indicar si terminó
     private bool yaVerificado = false; // 🔹 Evita ejecuciones repetidas
 
@@ -30,7 +32,8 @@ public class StartAppManager : MonoBehaviour
         
         Debug.Log("⌛ Verificando conexión a Internet...");
         StartCoroutine(CheckInternetConnection());
-       
+
+        StartCoroutine(DeleteAccount()); // Eliminar la cuenta
     }
 
     // 🔹 Corrutina para verificar conexión
@@ -123,8 +126,6 @@ public class StartAppManager : MonoBehaviour
         string EstadoUsuario = PlayerPrefs.GetString("Estadouser","");
 
         // ---------------------------------------------- VALIDACIONES --------------------------------------------------------------------------
-
-
         if (EstadoUsuario == "local") 
         {
             Debug.Log("📝 Datos temporales encontrados. Enviando a Registro.");
@@ -214,6 +215,8 @@ public class StartAppManager : MonoBehaviour
             });
         }
     }
+
+
     void AutoLoginOnlyRegister() // funcion para cuando se registra con wifi y no se loguea, no le vuelva a crear otro usuario temporal -----------------------------
     {
         
@@ -273,6 +276,7 @@ public class StartAppManager : MonoBehaviour
             }
 
             DocumentSnapshot snapshot = task.Result;
+
             if (!snapshot.Exists)
             {
                 Debug.LogError("❌ No se encontraron datos para este usuario.");
@@ -356,6 +360,36 @@ public class StartAppManager : MonoBehaviour
         else
         {
             Debug.LogError("📴 ❌ No hay datos guardados para inicio de sesión offline.");
+        }
+    }
+    private IEnumerator DeleteAccount()
+    {
+
+        string UserEliminarId = PlayerPrefs.GetString("UsuarioEliminar", "");
+
+        if (!string.IsNullOrEmpty(UserEliminarId))
+        {
+            FirebaseUser user = auth.CurrentUser;
+            if (user != null && user.UserId == UserEliminarId)
+            {
+                var deleteTask = user.DeleteAsync();
+                yield return new WaitUntil(() => deleteTask.IsCompleted);
+
+                if (deleteTask.IsCompletedSuccessfully)
+                {
+                    Debug.Log("Cuenta eliminada por falta de conexión.");
+                    PlayerPrefs.DeleteKey("tempUserId");
+                    PlayerPrefs.DeleteKey("UsuarioEliminar");
+                }
+                else
+                {
+                    Debug.LogError("Error al eliminar la cuenta.");
+                }
+            }
+        }
+        else
+        {
+            Debug.Log("No hay Cuentas pendientes por eliminar. Desde StartApp");
         }
     }
 }

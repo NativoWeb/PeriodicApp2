@@ -11,6 +11,7 @@ using System;
 using System.Runtime.CompilerServices;
 using Firebase.Extensions;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
 
 
 public class UpdateData : MonoBehaviour
@@ -21,6 +22,7 @@ public class UpdateData : MonoBehaviour
     private FirebaseFirestore db;
     private FirebaseUser currentUser;
     private string userId;
+
     // Internet
     private bool hayInternet = false;
 
@@ -31,7 +33,7 @@ public class UpdateData : MonoBehaviour
 
     void Start()
     {
-    
+
         // Verificar conexión a internet
         hayInternet = Application.internetReachability != NetworkReachability.NotReachable;
 
@@ -40,30 +42,31 @@ public class UpdateData : MonoBehaviour
             // incializamos firebase
             auth = FirebaseAuth.DefaultInstance;
             db = FirebaseFirestore.DefaultInstance;
-           
+
 
             Debug.Log("⌛ Verificando conexión a Internet...desde UpdateData");
             HandleOnlineMode();
-         
+
         }
         else
         {
             Debug.Log("No es posible actualizar datos por el momento, el progreso se cargará cuando tengas conexión a internet... desde UpdateData");
         }
+        GetuserData();
     }
 
 
     // 🔹 Modo online
     private async void HandleOnlineMode() // ----------------------------------------------------------------------------------
     {
-    
+
         string estadoUsuario = PlayerPrefs.GetString("Estadouser", "");
 
         if (estadoUsuario == "local")
         {
             m_NotificacionRegistroUI.SetActive(true); // si tiene wifi y el usuario no esta en la nube, lo mandamos a registrarse
         }
-        else if ( estadoUsuario == "sinloguear")
+        else if (estadoUsuario == "sinloguear")
         {
             m_NotificacionLogueoUI.SetActive(true);
         }
@@ -75,37 +78,27 @@ public class UpdateData : MonoBehaviour
             bool estadoencuestaaprendizaje = PlayerPrefs.GetInt("EstadoEncuestaAprendizaje", 0) == 1;
             bool estadoencuestaconocimiento = PlayerPrefs.GetInt("EstadoEncuestaConocimiento", 0) == 1;
 
-            if (estadoencuestaaprendizaje == true)
+            if (estadoencuestaaprendizaje)
             {
-                PlayerPrefs.SetInt("EstadoEncuestaAprendizaje", 1);
+                ActualizarEstadoEncuestaEnFirebase(userId,"EstadoEncuestaAprendizaje", estadoencuestaaprendizaje);
             }
-            else if (estadoencuestaconocimiento == true)
+            if (estadoencuestaconocimiento)
             {
-                PlayerPrefs.SetInt("EstadoEncuestaConocimiento", 1);
-
+                ActualizarEstadoEncuestaEnFirebase(userId, "EstadoEncuestaConocimiento", estadoencuestaconocimiento);
             }
-
-            ActualizarEstadoEncuestaAprendizaje(userId, estadoencuestaaprendizaje);
-            ActualizarEstadoEncuestaConocimiento(userId, estadoencuestaconocimiento);
+            
             await SubirDatosJSON();
             ActualizarXPEnFirebase(userId);
         }
-        
+
     }
 
 
-    private async void ActualizarEstadoEncuestaAprendizaje(string userId, bool estadoencuesta) // ------------------------------------------------
+    private async void ActualizarEstadoEncuestaEnFirebase(string userId,string encuesta, bool estadoencuesta) // ------------------------------------------------
     {
         DocumentReference userRef = db.Collection("users").Document(userId);
-        await userRef.UpdateAsync("EstadoEncuestaAprendizaje", estadoencuesta);
-        Debug.Log($"✅ Estado de la encuesta Aprendizaje... {userId}: {estadoencuesta} desde UpdateData");
-    }
-
-    private async void ActualizarEstadoEncuestaConocimiento(string userId, bool estadoencuesta) // ------------------------------------------------
-    {
-        DocumentReference userRef = db.Collection("users").Document(userId);
-        await userRef.UpdateAsync("EstadoEncuestaConocimiento", estadoencuesta);
-        Debug.Log($"✅ Estado de la encuesta Conocimiento... {userId}: {estadoencuesta} desde UpdateData");
+        await userRef.UpdateAsync(encuesta, estadoencuesta);
+        Debug.Log($"✅ Estado de la encuesta {encuesta}... {userId}: {estadoencuesta} desde UpdateData");
     }
 
 
@@ -196,4 +189,50 @@ public class UpdateData : MonoBehaviour
         Debug.Log("✅ Datos de misiones y categorías subidos en documentos separados.");
     }
 
+    private async void GetuserData()
+    {
+        // verificar la conexion a internet
+        hayInternet = Application.internetReachability != NetworkReachability.NotReachable;
+
+        if (hayInternet)
+        {
+            currentUser = auth.CurrentUser;
+            userId = currentUser.UserId;
+
+            DocumentReference userRef = db.Collection("users").Document(userId);
+
+            try
+            {
+                // Obtener el XP actual de Firebase
+                DocumentSnapshot snapshot = await userRef.GetSnapshotAsync();
+                if (snapshot.Exists)
+                {
+                    int xpActual = snapshot.GetValue<int>("xp"); // XP actual en Firebase
+                    string username = snapshot.GetValue<string>("DisplayName");
+                    PlayerPrefs.SetString("DisplayName", username);
+                    bool estadoencuestaaprendizaje = snapshot.GetValue<bool>("EstadoEncuestaAprendizaje");
+                    PlayerPrefs.SetInt("EstadoEncuestaAprendizaje", estadoencuestaaprendizaje ? 1 : 0);
+                    bool estadoencuestaconocimiento = snapshot.GetValue<bool>("EstadoEncuestaConocimiento");
+                    PlayerPrefs.SetInt("EstadoEncuestaConocimiento", estadoencuestaconocimiento ? 1 : 0);
+                    string ocupacion = snapshot.GetValue<string>("Ocupacion");
+                    PlayerPrefs.SetString("TempOcupacion", ocupacion);
+                    string rango = snapshot.GetValue<string>("Rango");
+                    PlayerPrefs.SetString("Rango",rango);
+                    string avatar = snapshot.GetValue<string>("avatar");
+                    PlayerPrefs.SetString("TempAvatar", avatar);
+
+                    Debug.Log("Get-user-Data desde Update Data puso bien los player prefs");
+                }
+
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"❌ no se pudo actualizar la informacion basica del usuario: {e.Message}");
+            }
+        }
+        else
+        {
+            Debug.Log("Sin conexion a internet, por el momento no se puede actualizar los datos basicos del usuario");
+        }
+    }
 }

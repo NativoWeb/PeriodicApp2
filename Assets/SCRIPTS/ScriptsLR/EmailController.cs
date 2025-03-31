@@ -16,6 +16,13 @@ using System;
 public class EmailController : MonoBehaviour
 {
 
+    // validar wifi
+    private bool hayInternet = false;
+    
+
+    //pop up 
+    [SerializeField] private GameObject m_SinInternetUI = null;
+
     /* -----------------  VALIDAR CONTRASEÑA  ----------------- */
 
     public TMP_InputField passwordInput;
@@ -137,68 +144,77 @@ public class EmailController : MonoBehaviour
 
     public void OnRegisterButtonClick()
     {
-        string email = emailInput.text.Trim();
-        string password = passwordInput.text;
-        string confirmPassword = confirmPasswordInput.text;
-
-        // Verificar si los campos están vacíos
-        if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(password) || string.IsNullOrEmpty(confirmPassword))
+        hayInternet = Application.internetReachability != NetworkReachability.NotReachable;
+        if (hayInternet)
         {
-            txtMessage.text = "Por favor, completa todos los campos.";
-            txtMessage.color = Color.red;
-            return;
-        }
 
-        // Validar el formato del correo
-        if (!IsValidEmail(email))
+
+            string email = emailInput.text.Trim();
+            string password = passwordInput.text;
+            string confirmPassword = confirmPasswordInput.text;
+
+            // Verificar si los campos están vacíos
+            if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(password) || string.IsNullOrEmpty(confirmPassword))
+            {
+                txtMessage.text = "Por favor, completa todos los campos.";
+                txtMessage.color = Color.red;
+                return;
+            }
+
+            // Validar el formato del correo
+            if (!IsValidEmail(email))
+            {
+                txtMessage.text = "El correo ingresado no tiene un formato válido.";
+                txtMessage.color = Color.red;
+                return;
+            }
+
+            // Validar si el dominio es permitido
+            if (!IsAllowedDomain(email))
+            {
+                txtMessage.text = "El dominio del correo es invalido.";
+                txtMessage.color = Color.red;
+                return;
+            }
+
+            txtMessage.text = "Correo válido.";
+            txtMessage.color = Color.green;
+
+            // Verificar si las contraseñas coinciden
+            if (password != confirmPassword)
+            {
+                txtMessage.text = "Las contraseñas no coinciden.";
+                txtMessage.color = Color.red;
+                return;
+            }
+
+            // Validar contraseña
+            bool hasMinLength = password.Length >= 6;
+            bool hasUppercase = Regex.IsMatch(password, "[A-Z]");
+            bool hasLowercase = Regex.IsMatch(password, "[a-z]");
+            bool hasSpecialChar = Regex.IsMatch(password, @"[\^\$\*\.\[\]\{\}\(\)\?\""!@#%&/\\,><':;|_~`]");
+
+            if (!hasMinLength || !hasUppercase || !hasLowercase || !hasSpecialChar)
+            {
+                txtMessage.text = "La contraseña no cumple con los requisitos solicitados.";
+                txtMessage.color = Color.red;
+                return;
+            }
+
+            // Si todo está correcto, registrar usuario
+            txtMessage.text = "Registrando usuario...";
+            txtMessage.color = Color.green;
+            CreateUserWithEmail(email, password);
+
+            // acá guardo los player para si todo sale bien, guarde en registercontroller
+
+            PlayerPrefs.SetString("userEmail", email);
+            PlayerPrefs.SetString("userPassword", password);
+        }
+        else
         {
-            txtMessage.text = "El correo ingresado no tiene un formato válido.";
-            txtMessage.color = Color.red;
-            return;
+            m_SinInternetUI.SetActive(true);
         }
-
-        // Validar si el dominio es permitido
-        if (!IsAllowedDomain(email))
-        {
-            txtMessage.text = "El dominio del correo es invalido.";
-            txtMessage.color = Color.red;
-            return;
-        }
-
-        txtMessage.text = "Correo válido.";
-        txtMessage.color = Color.green;
-
-        // Verificar si las contraseñas coinciden
-        if (password != confirmPassword)
-        {
-            txtMessage.text = "Las contraseñas no coinciden.";
-            txtMessage.color = Color.red;
-            return;
-        }
-
-        // Validar contraseña
-        bool hasMinLength = password.Length >= 6;
-        bool hasUppercase = Regex.IsMatch(password, "[A-Z]");
-        bool hasLowercase = Regex.IsMatch(password, "[a-z]");
-        bool hasSpecialChar = Regex.IsMatch(password, @"[\^\$\*\.\[\]\{\}\(\)\?\""!@#%&/\\,><':;|_~`]");
-
-        if (!hasMinLength || !hasUppercase || !hasLowercase || !hasSpecialChar)
-        {
-            txtMessage.text = "La contraseña no cumple con los requisitos solicitados.";
-            txtMessage.color = Color.red;
-            return;
-        }
-
-        // Si todo está correcto, registrar usuario
-        txtMessage.text = "Registrando usuario...";
-        txtMessage.color = Color.green;
-        CreateUserWithEmail(email, password);
-
-        // acá guardo los player para si todo sale bien, guarde en registercontroller
-
-        PlayerPrefs.SetString("userEmail", email);
-        PlayerPrefs.SetString("userPassword", password);
-
     }
 
     // Método para validar el formato del correo electrónico
@@ -235,6 +251,10 @@ public class EmailController : MonoBehaviour
 
             currentUser = auth.CurrentUser;
             userEmail = email;
+
+            // Guardar el ID del usuario recién creado en PlayerPrefs para la siguiente escena
+            PlayerPrefs.SetString("tempUserId", currentUser.UserId);
+            PlayerPrefs.Save();
 
             System.Random random = new System.Random();
             generatedCode = random.Next(100000, 999999).ToString();
@@ -307,17 +327,31 @@ public class EmailController : MonoBehaviour
 
     public void OnVerifyButtonClick()
     {
-        Debug.Log(generatedCode);
-        Debug.Log(verificationCodeInput.text);
-        if (verificationCodeInput.text == generatedCode)
+        hayInternet = Application.internetReachability != NetworkReachability.NotReachable;
+
+        if (hayInternet)
         {
-            verificationMessage.text = "Código verificado correctamente. Avanzando a la siguiente escena...";
-            verificationMessage.color = Color.green;
-            SceneManager.LoadScene("Registrar");
+
+
+            Debug.Log(generatedCode);
+            Debug.Log(verificationCodeInput.text);
+            if (verificationCodeInput.text == generatedCode)
+            {
+                verificationMessage.text = "Código verificado correctamente. Avanzando a la siguiente escena...";
+                verificationMessage.color = Color.green;
+                SceneManager.LoadScene("Registrar");
+            }
+            else
+            {
+                verificationMessage.text = "Código incorrecto. Intenta nuevamente.";
+            }
         }
         else
         {
-            verificationMessage.text = "Código incorrecto. Intenta nuevamente.";
+            string usuarioaeliminar = PlayerPrefs.GetString("tempUserId", "");
+            PlayerPrefs.SetString("UsuarioEliminar", usuarioaeliminar);
+            m_SinInternetUI.SetActive(true);
         }
+
     }
 }
