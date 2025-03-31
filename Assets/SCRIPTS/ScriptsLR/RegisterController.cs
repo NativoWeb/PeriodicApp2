@@ -136,36 +136,41 @@ public class RegisterController : MonoBehaviour
 
         bool tieneUsuarioTemporal = PlayerPrefs.HasKey("TempOcupacion");
 
-        // verificar encuestas-----------------
+        // verificar encuestas
         bool estadoencuestaaprendizaje = PlayerPrefs.GetInt("EstadoEncuestaAprendizaje", 0) == 1;
         bool estadoencuestaconocimiento = PlayerPrefs.GetInt("EstadoEncuestaConocimiento", 0) == 1;
-        //-------------------------------------
+
         int xpTemp = PlayerPrefs.GetInt("TempXP", 0);
 
+        // Determinar ocupación seleccionada
         if (tieneUsuarioTemporal)
         {
             ocupacionSelecionada = PlayerPrefs.GetString("TempOcupacion", "");
-            Debug.Log($"la ocupacion seleccionada antes de guardar en firebase es : {ocupacionSelecionada}");
+            Debug.Log($"La ocupación seleccionada antes de guardar en firebase es: {ocupacionSelecionada}");
         }
         else
         {
             ocupacionSelecionada = roles.options[roles.value].text;
-            Debug.Log($"la ocupacion seleccionada antes de guardar en firebase es : {ocupacionSelecionada}");
+            Debug.Log($"La ocupación seleccionada antes de guardar en firebase es: {ocupacionSelecionada}");
         }
 
+        // Obtener el proveedor de autenticación y email correspondiente
+        string authProvider = PlayerPrefs.GetString("AuthProvider", "email");
+        string userEmail = authProvider != "email" ? PlayerPrefs.GetString("ProviderEmail") : user.Email;
 
         Dictionary<string, object> userData = new Dictionary<string, object>
     {
-        { "DisplayName", user.DisplayName },
-        { "Email", user.Email },
+        { "DisplayName", user.DisplayName ?? userNameInput.text },
+        { "Email", userEmail },
         { "Ocupacion", ocupacionSelecionada },
+        { "AuthProvider", authProvider },
         { "EstadoEncuestaAprendizaje", estadoencuestaaprendizaje },
         { "EstadoEncuestaConocimiento", estadoencuestaconocimiento },
         { "xp", xpTemp },
         { "avatar", avatarUrl },
-        { "Rango", "Novato de laboratorio" }
+        { "Rango", "Novato de laboratorio" },
+        { "FechaRegistro", FieldValue.ServerTimestamp }
     };
-
 
         PlayerPrefs.SetString("Estadouser", "nube");
         PlayerPrefs.SetString("userId", userId);
@@ -187,11 +192,10 @@ public class RegisterController : MonoBehaviour
                 PlayerPrefs.Save();
             }
 
+            // Mantener tus funciones adicionales
             CrearSubcoleccionGrupos(userId);
             VerificarYActualizarRango(userId);
             await SubirMisionesJSON(userId);
-
-
 
             SceneManager.LoadScene("Start");
         }
