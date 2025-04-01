@@ -11,12 +11,9 @@ public class RankingManager2 : MonoBehaviour
 {
     public GameObject prefabJugador;
     public Transform content;
-    public Sprite[] medallas;
     FirebaseFirestore db;
     private Coroutine rankingCoroutine;
     private bool estaActualizando = false;
-
-
 
     [SerializeField] private GameObject RankingPanel = null;
 
@@ -60,6 +57,8 @@ public class RankingManager2 : MonoBehaviour
 
     public void ObtenerRanking()
     {
+        string usuarioActual = Firebase.Auth.FirebaseAuth.DefaultInstance.CurrentUser.DisplayName;
+
         db.Collection("users")
           .OrderByDescending("xp")
           .Limit(1000)
@@ -79,35 +78,36 @@ public class RankingManager2 : MonoBehaviour
                       string nombre = document.GetValue<string>("DisplayName");
                       int xp = document.GetValue<int>("xp");
 
-                      CrearElementoRanking(posicion, nombre, xp);
+                      // Mostrar solo desde la posición 4 en adelante
+                      if (posicion >= 4)
+                      {
+                          GameObject jugadorUI = CrearElementoRanking(posicion, nombre, xp);
+
+                          if (nombre == usuarioActual)
+                          {
+                              ColorUtility.TryParseHtmlString("#E6FFED", out Color customColor);
+                              jugadorUI.GetComponent<Image>().color = customColor; // Resalta el jugador actual
+                          }
+                      }
+
                       posicion++;
                   }
               }
           });
     }
 
-    void CrearElementoRanking(int posicion, string nombre, int xp)
+
+    GameObject CrearElementoRanking(int posicion, string nombre, int xp)
     {
         GameObject jugadorUI = Instantiate(prefabJugador, content);
         TMP_Text nombreTMP = jugadorUI.transform.Find("Nombre").GetComponent<TMP_Text>();
         TMP_Text xpTMP = jugadorUI.transform.Find("XP").GetComponent<TMP_Text>();
         TMP_Text posicionTMP = jugadorUI.transform.Find("Posicion").GetComponent<TMP_Text>();
-        Image medallaImg = jugadorUI.transform.Find("Medalla").GetComponent<Image>();
 
         nombreTMP.text = nombre;
         xpTMP.text = "EXP \n" + xp;
+        posicionTMP.text = "#" + posicion.ToString();
 
-        if (posicion <= 3)
-        {
-            medallaImg.sprite = medallas[posicion - 1];
-            medallaImg.gameObject.SetActive(true);
-            posicionTMP.gameObject.SetActive(false);
-        }
-        else
-        {
-            posicionTMP.text = posicion.ToString();
-            medallaImg.gameObject.SetActive(false);
-        }
+        return jugadorUI;
     }
 }
-
