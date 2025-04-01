@@ -59,7 +59,7 @@ public class GestorElementos : MonoBehaviour
         CargarJSON();
         CargarElementosDesdeJSON();
         botonMisionFinal.interactable = false;
-        ActualizarProgresoCategoria();
+        //ActualizarProgresoCategoria();
         btnMisiones.onClick.AddListener(MostrarMisiones);
         btnInformacion.onClick.AddListener(MostrarInformacion);
         btnRegresar.onClick.AddListener(RegresarAlPanelElementos);
@@ -69,7 +69,7 @@ public class GestorElementos : MonoBehaviour
 
     void CargarJSON()
     {
-        string jsonString = PlayerPrefs.GetString("misionesCategoriasJSON", "");
+        string jsonString = PlayerPrefs.GetString("misionesCategoriasJSON");
 
         if (string.IsNullOrEmpty(jsonString))
         {
@@ -87,19 +87,43 @@ public class GestorElementos : MonoBehaviour
             }
         }
         jsonData = JSON.Parse(jsonString);
+        Debug.Log(jsonData);
     }
 
     void CargarElementosDesdeJSON()
     {
-        string categoriaSeleccionada = PlayerPrefs.GetString("CategoriaSeleccionada", "");
+        string categoriaSeleccionada = PlayerPrefs.GetString("CategoriaSeleccionada");
+        Debug.Log("Categoría seleccionada: " + categoriaSeleccionada);
 
-        if (jsonData == null ||
-            !jsonData.HasKey("Misiones_Categorias") ||
-            !jsonData["Misiones_Categorias"].HasKey("Categorias") ||
-            !jsonData["Misiones_Categorias"]["Categorias"].HasKey(categoriaSeleccionada) ||
-            !jsonData["Misiones_Categorias"]["Categorias"][categoriaSeleccionada].HasKey("Elementos"))
+
+        if (string.IsNullOrEmpty(categoriaSeleccionada))
         {
-            Debug.LogError("La categoría '" + categoriaSeleccionada + "' no se encuentra en el JSON o no tiene elementos.");
+            Debug.LogError("Error: No se ha seleccionado ninguna categoría.");
+            return;
+        }
+
+        if (jsonData == null)
+        {
+            Debug.LogError("Error: jsonData es nulo.");
+            return;
+        }
+
+        if (!jsonData.HasKey("Misiones_Categorias") ||
+            !jsonData["Misiones_Categorias"].HasKey("Categorias"))
+        {
+            Debug.LogError("Error: El JSON no tiene la clave 'Misiones_Categorias' o 'Categorias'.");
+            return;
+        }
+
+        if (!jsonData["Misiones_Categorias"]["Categorias"].HasKey(categoriaSeleccionada))
+        {
+            Debug.LogError($"Error: La categoría '{categoriaSeleccionada}' no se encuentra en el JSON.");
+            return;
+        }
+
+        if (!jsonData["Misiones_Categorias"]["Categorias"][categoriaSeleccionada].HasKey("Elementos"))
+        {
+            Debug.LogError($"Error: La categoría '{categoriaSeleccionada}' no tiene elementos.");
             return;
         }
 
@@ -115,6 +139,14 @@ public class GestorElementos : MonoBehaviour
 
         foreach (KeyValuePair<string, JSONNode> elemento in elementos)
         {
+            // Extraer información del elemento
+            string nombreElemento = elemento.Value["nombre"];
+            string simbolo = elemento.Value["simbolo"];
+            int numeroAtomico = elemento.Value["numero_atomico"].AsInt;
+            float masaAtomica = elemento.Value["masa_atomica"].AsFloat;
+            string descripcion = elemento.Value["descripcion"];
+
+            Debug.Log($"Cargando elemento: {nombreElemento} ({simbolo})");
             CrearBotonElemento(elemento.Key, elemento.Value, categoriaSeleccionada, paleta[indiceColor % paleta.Length]);
             indiceColor++; // Para usar colores diferentes dentro de la misma categoría
         }
@@ -178,9 +210,9 @@ public class GestorElementos : MonoBehaviour
 
     void CargarDatosElementoSeleccionado()
     {
-        string categoriaSeleccionada = PlayerPrefs.GetString("CategoriaSeleccionada", "");
-        string jsonString = PlayerPrefs.GetString("misionesCategoriasJSON", "");
-        string elementoSeleccionado = PlayerPrefs.GetString("ElementoSeleccionado", "");
+        string categoriaSeleccionada = PlayerPrefs.GetString("CategoriaSeleccionada");
+        string jsonString = PlayerPrefs.GetString("misionesCategoriasJSON");
+        string elementoSeleccionado = PlayerPrefs.GetString("ElementoSeleccionado");
 
         if (string.IsNullOrEmpty(jsonString))
         {
@@ -290,7 +322,7 @@ public class GestorElementos : MonoBehaviour
 
     void CrearPrefabMision(Mision mision)
     {
-        string elementoseleccionado = PlayerPrefs.GetString("ElementoSeleccionado", "");
+        string elementoseleccionado = PlayerPrefs.GetString("ElementoSeleccionado");
         GameObject nuevaMision = Instantiate(prefabMision, contenedorMisiones);
         UI_Mision uiMision = nuevaMision.GetComponent<UI_Mision>();
         uiMision.ConfigurarMision(mision);
@@ -428,7 +460,7 @@ public class GestorElementos : MonoBehaviour
 
     public void IrAMisionFinal()
     {
-        string categoriaSeleccionada = PlayerPrefs.GetString("CategoriaSeleccionada", "");
+        string categoriaSeleccionada = PlayerPrefs.GetString("CategoriaSeleccionada");
         string rutaMisionFinal = ObtenerRutaMisionFinal(categoriaSeleccionada);
 
         if (!string.IsNullOrEmpty(rutaMisionFinal))

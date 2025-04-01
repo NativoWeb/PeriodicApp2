@@ -38,6 +38,7 @@ public class StartAppManager : MonoBehaviour
 
     // 🔹 Corrutina para verificar conexión
     IEnumerator CheckInternetConnection()
+
     {
         yield return new WaitForSeconds(0); // Esperar un segundo antes de validar
 

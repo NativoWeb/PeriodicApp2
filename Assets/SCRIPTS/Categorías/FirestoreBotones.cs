@@ -99,7 +99,7 @@ public class FirestoreBotones : MonoBehaviour
     {
         if (PlayerPrefs.HasKey("CategoriasOrdenadas"))
         {
-            string json = PlayerPrefs.GetString("CategoriasOrdenadas", "");
+            string json = PlayerPrefs.GetString("CategoriasOrdenadas");
             if (!string.IsNullOrEmpty(json))
             {
                 CategoriasData data = JsonUtility.FromJson<CategoriasData>(json);

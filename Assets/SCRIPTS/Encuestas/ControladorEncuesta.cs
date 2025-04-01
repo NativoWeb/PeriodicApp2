@@ -171,9 +171,11 @@ public class ControladorEncuesta : MonoBehaviour
             Debug.Log("Encuesta Finalizada");
             textoPreguntaUI.text = "�Encuesta Finalizada!";
             grupoOpcionesUI.enabled = false;
+
             GuardarEncuestaConocimiento();
 
         }
+        EnviarDatosAPrediccion();
         Debug.Log("siguientePregunta() finalizado.");
     }
 
@@ -181,6 +183,7 @@ public class ControladorEncuesta : MonoBehaviour
     {
         PlayerPrefs.SetInt("EstadoEncuestaConocimiento", 1);
         PlayerPrefs.Save();
+
         hayInternet = Application.internetReachability != NetworkReachability.NotReachable;
 
         bool estadoencuestaaprendizaje = false;
@@ -390,6 +393,7 @@ public class ControladorEncuesta : MonoBehaviour
             Debug.Log("¡Encuesta Finalizada!");
             textoPreguntaUI.text = "¡Encuesta Finalizada!";
             grupoOpcionesUI.enabled = false;
+
             GuardarEncuestaConocimiento();
             return;
         }

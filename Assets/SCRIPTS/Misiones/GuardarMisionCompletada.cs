@@ -7,9 +7,11 @@ using Firebase.Auth;
 using Firebase.Firestore;
 using System.Threading.Tasks;
 using Firebase.Extensions;
+using System.Collections;
 using Google.Protobuf.WellKnownTypes;
 using DG.Tweening;
-using UnityEngine.SceneManagement; // Agregar esto al inicio
+using UnityEngine.SceneManagement;
+using UnityEngine.Video; // Agregar esto al inicio
 
 
 //using System.Drawing.Text;
@@ -17,13 +19,14 @@ using UnityEngine.SceneManagement; // Agregar esto al inicio
 public class GuardarMisionCompletada : MonoBehaviour
 {
     public Button botonCompletarMision; // Asigna el botón desde el Inspector
-    public ParticleSystem explosionParticulas;
     public GameObject imagenMision; // Asigna el objeto desde el Inspector
+    public GameObject panel;
     public AudioSource audioSource;
-
+    public RawImage RawImage;
     private FirebaseAuth auth;
     private FirebaseFirestore db;
     private string userId;
+    public VideoPlayer videoPlayer;
 
 
     void Start()
@@ -74,16 +77,23 @@ public class GuardarMisionCompletada : MonoBehaviour
 
     public void AnimacionMisionCompletada()
     {
-        if (imagenMision == null) return;
-        Handheld.Vibrate();
+        if (panel == null || imagenMision == null || videoPlayer == null) return;
+
+        panel.SetActive(true);
         imagenMision.SetActive(true);
         imagenMision.transform.localScale = Vector3.zero;
         audioSource.Play(); // 🔊 Reproduce el sonido
 
+        Handheld.Vibrate();
+
+        if (videoPlayer == null || RawImage == null) return;
+
+        videoPlayer.Prepare();
+        StartCoroutine(PlayVideoWhenReady());
+
         Sequence secuenciaAnimacion = DOTween.Sequence();
         secuenciaAnimacion.Append(imagenMision.transform.DOScale(1.2f, 0.5f).SetEase(Ease.OutBounce))
             .Join(imagenMision.GetComponent<Image>().DOFade(1, 0.5f).From(0))
-            .AppendCallback(() => explosionParticulas.Play())  // 💥 Reproduce las partículas
             .Append(imagenMision.transform.DORotate(new Vector3(0, 0, 10f), 0.3f).SetEase(Ease.InOutSine))
             .Append(imagenMision.transform.DORotate(new Vector3(0, 0, -10f), 0.3f).SetEase(Ease.InOutSine))
             .Append(imagenMision.transform.DORotate(Vector3.zero, 0.3f).SetEase(Ease.InOutSine))
@@ -92,6 +102,17 @@ public class GuardarMisionCompletada : MonoBehaviour
             .OnComplete(() => CambiarEscena());
     }
 
+    // 📌 Nueva función para esperar que el VideoPlayer esté listo
+    private IEnumerator PlayVideoWhenReady()
+    {
+        while (!videoPlayer.isPrepared)
+        {
+            yield return null; // Espera hasta que el video esté listo
+        }
+
+        RawImage.texture = videoPlayer.targetTexture; // Asigna la textura al RawImage
+        videoPlayer.Play();
+    }
 
     void CambiarEscena()
     {
