@@ -203,8 +203,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 36
-  m_fontSizeBase: 36
+  m_fontSize: 46
+  m_fontSizeBase: 46
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
@@ -839,6 +839,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1233962845}
+  - component: {fileID: 1233962846}
   m_Layer: 0
   m_Name: GameObject
   m_TagString: Untagged
@@ -861,6 +862,27 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1233962846
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1233962844}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0854ecc1341969c449b65cf83708da9b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  textoPregunta: {fileID: 279430080}
+  barraProgreso: {fileID: 1208862509}
+  contenedor:
+    preguntasEstiloBinario:
+      Gamificacion: []
+      Metodologia_Tradicional: []
+      Aprendizaje_Basado_en_Proyectos: []
+      Aprendizaje_Basado_en_Problemas: []
+      Aprendizaje_Cooperativo: []
 --- !u!1 &1333999658
 GameObject:
   m_ObjectHideFlags: 0
