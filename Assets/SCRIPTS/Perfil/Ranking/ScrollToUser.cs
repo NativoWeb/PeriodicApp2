@@ -3,8 +3,8 @@ using UnityEngine.UI;
 using TMPro;
 using Firebase.Firestore;
 using Firebase.Auth;
-using System.Threading.Tasks;
 using System.Collections;
+
 public class ScrollToUser : MonoBehaviour
 {
     public ScrollRect scrollRect; // Asigna el ScrollRect del ranking
@@ -13,19 +13,20 @@ public class ScrollToUser : MonoBehaviour
     public TMP_Text nombreUsuarioText;
     public TMP_Text xpUsuarioText;
     public TMP_Text posicionUsuarioText;
+
     private FirebaseFirestore db;
     private FirebaseAuth auth;
+
     void Start()
     {
         db = FirebaseFirestore.DefaultInstance;
         auth = FirebaseAuth.DefaultInstance;
         ObtenerInformacionUsuario();
-
     }
+
     public void ScrollToUserPosition()
     {
         string usuarioActual = PlayerPrefs.GetString("DisplayName", "").Trim().ToLower();
-
         Debug.Log("Usuario actual: " + usuarioActual);
         Debug.Log("Número de elementos en content: " + content.childCount);
 
@@ -53,14 +54,51 @@ public class ScrollToUser : MonoBehaviour
                 float targetY = Mathf.Abs(targetRect.anchoredPosition.y);
                 float normalizedPosition = 1 - (targetY / contentHeight);
 
-                scrollRect.verticalNormalizedPosition = Mathf.Clamp01(normalizedPosition);
-                
-               
-                Debug.Log("Scroll ajustado a posición: " + scrollRect.verticalNormalizedPosition);
+                // Inicia la corrutina para desplazamiento suave
+                StartCoroutine(SmoothScrollToPosition(normalizedPosition));
+
+                // Inicia la animación de la caja del usuario encontrado
+                StartCoroutine(AnimateUserBox(child));
+
                 break;
             }
         }
     }
+
+    IEnumerator SmoothScrollToPosition(float targetPosition)
+    {
+        float startPos = scrollRect.verticalNormalizedPosition;
+        float time = 0f;
+        float duration = 0.3f; // Duración del desplazamiento
+
+        while (time < duration)
+        {
+            time += Time.deltaTime;
+            scrollRect.verticalNormalizedPosition = Mathf.Lerp(startPos, Mathf.Clamp01(targetPosition), time / duration);
+            yield return null;
+        }
+    }
+
+    IEnumerator AnimateUserBox(Transform userBox)
+    {
+        Image boxImage = userBox.GetComponent<Image>();
+
+        if (boxImage != null)
+        {
+            Color originalColor = boxImage.color;
+            Color highlightColor = new Color(1f, 1f, 1f, 0.5f); // Blanco transparente
+
+            // Parpadeo 3 veces
+            for (int i = 0; i < 3; i++)
+            {
+                boxImage.color = highlightColor;
+                yield return new WaitForSeconds(0.3f);
+                boxImage.color = originalColor;
+                yield return new WaitForSeconds(0.3f);
+            }
+        }
+    }
+
     public void ObtenerInformacionUsuario()
     {
         string usuarioActual = auth.CurrentUser.DisplayName;
@@ -90,5 +128,4 @@ public class ScrollToUser : MonoBehaviour
               }
           });
     }
-   
 }

@@ -79,7 +79,7 @@ public class RankingManager2 : MonoBehaviour
                       int xp = document.GetValue<int>("xp");
 
                       // Mostrar solo desde la posición 4 en adelante
-                      if (posicion >= 4)
+                      if (posicion >= 0)
                       {
                           GameObject jugadorUI = CrearElementoRanking(posicion, nombre, xp);
 
