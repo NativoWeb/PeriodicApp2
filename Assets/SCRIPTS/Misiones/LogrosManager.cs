@@ -1,11 +1,8 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
-using UnityEngine.UI;
 using TMPro;
 using SimpleJSON;
-using static LogrosManager;
-using UI;
 
 public class LogrosManager : MonoBehaviour
 {
@@ -16,18 +13,15 @@ public class LogrosManager : MonoBehaviour
 
     private Dictionary<string, UI.Categoria> categorias;
     private Dictionary<string, Elemento> elementos;
+    private JSONNode jsonData;
+
+    private void Awake()
+    {
+        CargarJSON();
+    }
 
     private void Start()
     {
-        string jsonString = PlayerPrefs.GetString("misionesCategoriasJSON");
-
-        if (string.IsNullOrEmpty(jsonString))
-        {
-            Debug.LogError("❌ No se encontró el JSON en PlayerPrefs.");
-            return;
-        }
-
-        var jsonData = JSON.Parse(jsonString);
         if (jsonData == null || !jsonData.HasKey("Misiones_Categorias") || !jsonData["Misiones_Categorias"].HasKey("Categorias"))
         {
             Debug.LogError("❌ Error: Estructura del JSON no válida.");
@@ -35,26 +29,21 @@ public class LogrosManager : MonoBehaviour
         }
 
         var categoriasJson = jsonData["Misiones_Categorias"]["Categorias"];
-
         categorias = new Dictionary<string, UI.Categoria>();
         elementos = new Dictionary<string, Elemento>();
 
         foreach (var categoriaKey in categoriasJson.Keys)
         {
             var categoriaData = categoriasJson[categoriaKey];
+
             CategoriaData categoriaInfo = new CategoriaData
             {
                 nombre = categoriaKey,
+                TituloMisionFinal = categoriaData.HasKey("MisionFinal") && categoriaData["MisionFinal"].HasKey("titulo")
+                    ? categoriaData["MisionFinal"]["titulo"].Value
+                    : categoriaKey,
                 Elementos = new Dictionary<string, ElementoData>()
             };
-
-            if (categoriaData.HasKey("MisionFinal") && categoriaData["MisionFinal"].HasKey("MisionFinal") &&
-    categoriaData["MisionFinal"]["MisionFinal"].HasKey("titulo"))
-            {
-                categoriaInfo.TituloMisionFinal = categoriaData["MisionFinal"]["MisionFinal"]["titulo"].Value;
-            }
-
-
 
             if (categoriaData.HasKey("Elementos"))
             {
@@ -67,6 +56,7 @@ public class LogrosManager : MonoBehaviour
                         logro = elementoData.HasKey("logro") ? elementoData["logro"].Value : "Sin logro",
                         misiones = new List<MisionData>()
                     };
+                    
                     categoriaInfo.Elementos[elementoKey] = elementoInfo;
                 }
             }
@@ -75,57 +65,74 @@ public class LogrosManager : MonoBehaviour
             categorias.Add(categoria.Nombre, categoria);
             CreateCategoriaLogro(categoria);
 
-
-            foreach (var elemento in categoria.ElementosData.Values)
+            foreach (var elementoData in categoria.ElementosData.Values)
             {
-                Elemento nuevoElemento = new Elemento(elemento);
+                Elemento nuevoElemento = new Elemento(elementoData);
                 elementos.Add(nuevoElemento.Nombre, nuevoElemento);
                 CreateElementoLogro(nuevoElemento);
             }
         }
     }
 
+    private void CargarJSON()
+    {
+        string jsonString = PlayerPrefs.GetString("misionesCategoriasJSON");
+
+        if (string.IsNullOrEmpty(jsonString))
+        {
+            TextAsset jsonFile = Resources.Load<TextAsset>("Misiones_Categorias");
+            if (jsonFile != null)
+            {
+                jsonString = jsonFile.text;
+                PlayerPrefs.SetString("misionesCategoriasJSON", jsonString);
+                PlayerPrefs.Save();
+            }
+            else
+            {
+                Debug.LogError("No se encontró el archivo JSON en Resources.");
+                return;
+            }
+        }
+        jsonData = JSON.Parse(jsonString);
+    }
+
     private void CreateCategoriaLogro(UI.Categoria categoria)
     {
-        if (categoria == null)
-        {
-            Debug.LogError("❌ Error: La categoría es NULL");
-            return;
-        }
         if (categoriaPrefab == null || categoriaPanel == null)
         {
             Debug.LogError("❌ Error: Los prefabs o paneles de categoría no están asignados.");
             return;
         }
+
         GameObject categoriaObj = Instantiate(categoriaPrefab, categoriaPanel);
         LogroCategoria logroCategoria = categoriaObj.GetComponent<LogroCategoria>();
+
         if (logroCategoria == null)
         {
             Debug.LogError("❌ Error: No se encontró el script LogroCategoria en el prefab.");
             return;
         }
+
         logroCategoria.ActualizarLogro(categoria.TituloMisionFinal, categoria.EstaCompletada());
     }
 
     private void CreateElementoLogro(Elemento elemento)
     {
-        if (elemento == null)
-        {
-            Debug.LogError("❌ Error: El elemento es NULL");
-            return;
-        }
         if (elementoPrefab == null || elementoPanel == null)
         {
             Debug.LogError("❌ Error: Los prefabs o paneles de elemento no están asignados.");
             return;
         }
+
         GameObject elementoObj = Instantiate(elementoPrefab, elementoPanel);
         LogroElemento logroElemento = elementoObj.GetComponent<LogroElemento>();
+
         if (logroElemento == null)
         {
             Debug.LogError("❌ Error: No se encontró el script LogroElemento en el prefab.");
             return;
         }
+
         logroElemento.ActualizarLogro(elemento.Nombre, elemento.Logro, elemento.EstaCompletado());
     }
 }
@@ -134,12 +141,11 @@ public class LogrosManager : MonoBehaviour
 public class CategoriaData
 {
     public string nombre;
-    public string logro;
-    public string TituloMisionFinal;  // ✅ Asegúrate de que esta propiedad está declarada
+    public string TituloMisionFinal;
     public Dictionary<string, ElementoData> Elementos;
 }
 
-
+[System.Serializable]
 public class ElementoData
 {
     public string nombre;
@@ -147,6 +153,7 @@ public class ElementoData
     public List<MisionData> misiones;
 }
 
+[System.Serializable]
 public class MisionData
 {
     public int id;
@@ -165,11 +172,7 @@ namespace UI
         public string titulo;
         public string descripcion;
         public string tipo;
-        public string colorBoton;
-        public string logoMision;
         public bool completada;
-        public int xp;
-        public string mensajeCompletada;
         public string rutaEscena;
 
         public Mision(MisionData data)
@@ -183,6 +186,7 @@ namespace UI
         }
     }
 }
+
 public class Elemento
 {
     public string Nombre { get; private set; }
@@ -198,11 +202,6 @@ public class Elemento
 
     public bool EstaCompletado()
     {
-        if (Misiones == null || Misiones.Count == 0)
-            return false;
-
-        return Misiones.All(m => m.completada);
+        return Misiones != null && Misiones.Count > 0 && Misiones.All(m => m.completada);
     }
 }
-
-
