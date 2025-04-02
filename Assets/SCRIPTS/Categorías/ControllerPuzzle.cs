@@ -19,7 +19,6 @@ public class ControllerPuzzle : MonoBehaviour
     public GameObject celdaPrefab;
     public Button botonContinuar;
 
-    public GuardarProgreso gestorProgreso;
     private FirebaseAuth auth;
 
     public int filas = 3;
@@ -124,10 +123,6 @@ public class ControllerPuzzle : MonoBehaviour
             GameObject gestor = GameObject.Find("GestorProgreso");
             if (gestor == null || auth == null) return;
 
-            GuardarProgreso gp = gestor.GetComponent<GuardarProgreso>();
-            if (gp == null) return;
-
-            gp.GuardarProgresoFirestore(nivelSeleccionado + 1, 9, auth);
         }
         else
         {

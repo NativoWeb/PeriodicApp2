@@ -10,7 +10,6 @@ public class MemoriaQuimica : MonoBehaviour
     public GameObject tarjetaPrefab;
     public Transform panelCartas;
     public GameObject botonContinuar;
-    public GuardarProgreso gestorProgreso;
 
     private int xpGanadoPorNivel = 100; // Ajustable desde el Inspector
     private int numeroNivel = 2; // Número de nivel ajustable
@@ -101,9 +100,6 @@ public class MemoriaQuimica : MonoBehaviour
                 botonContinuar.SetActive(true);
                 GameObject gestor = GameObject.Find("GestorProgreso");
 
-                GuardarProgreso gp = gestor.GetComponent<GuardarProgreso>();
-
-                gp.GuardarProgresoFirestore(nivelSeleccionado + 1, parejasEncontradas, auth);
             }
         }
         else

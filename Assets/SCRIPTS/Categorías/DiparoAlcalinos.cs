@@ -16,7 +16,6 @@ public class DisparoAlcalinos : MonoBehaviour
     public GameObject imagenSeleccion;
     public GameObject panelReporte;
     public TextMeshProUGUI textoReporte;
-    public GuardarProgreso gestorProgreso;
 
 
 
@@ -158,13 +157,6 @@ public class DisparoAlcalinos : MonoBehaviour
 
         GameObject gestor = GameObject.Find("GestorProgreso");
         if (gestor == null || auth == null) return;
-
-        GuardarProgreso gp = gestor.GetComponent<GuardarProgreso>();
-        if (gp == null) return;
-
-        gp.GuardarProgresoFirestore(nivelSeleccionado + 1, respuestasCorrectas, auth);
-        SceneManager.LoadScene("grupo1");
-
     }
     Dictionary<string, string> MezclarDiccionario(Dictionary<string, string> diccionario)
     {

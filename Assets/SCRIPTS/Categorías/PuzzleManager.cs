@@ -11,7 +11,6 @@ public class PuzzleManager : MonoBehaviour, IDropHandler
     public Transform panelGrid; // Grid donde están las piezas
     public Button botonContinuar; // Botón de continuar
 
-    public GuardarProgreso gestorProgreso;
     private FirebaseAuth auth;
 
     private int nivelSeleccionado = 12;
@@ -100,10 +99,6 @@ public class PuzzleManager : MonoBehaviour, IDropHandler
             GameObject gestor = GameObject.Find("GestorProgreso");
             if (gestor == null || auth == null) return;
 
-            GuardarProgreso gp = gestor.GetComponent<GuardarProgreso>();
-            if (gp == null) return;
-
-            gp.GuardarProgresoFirestore(nivelSeleccionado + 1, 12, auth);
         }
         else
         {

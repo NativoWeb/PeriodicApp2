@@ -1,7 +1,11 @@
+﻿using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
-using System.Collections.Generic;
+using SimpleJSON;
+using static LogrosManager;
+using UI;
 
 public class LogrosManager : MonoBehaviour
 {
@@ -10,181 +14,195 @@ public class LogrosManager : MonoBehaviour
     public Transform categoriaPanel;
     public Transform elementoPanel;
 
-    private Dictionary<string, Categoria> categorias;
+    private Dictionary<string, UI.Categoria> categorias;
     private Dictionary<string, Elemento> elementos;
 
     private void Start()
     {
-        // Cargar los datos del JSON de PlayerPrefs
-        string misionesCategoriasJSON = PlayerPrefs.GetString("misionesCategoriasJSON");
-        MisionesCategorias misionesCategorias = JsonUtility.FromJson<MisionesCategorias>(misionesCategoriasJSON);
+        string jsonString = PlayerPrefs.GetString("misionesCategoriasJSON");
 
-        categorias = new Dictionary<string, Categoria>();
-        elementos = new Dictionary<string, Elemento>();
-
-        // Crear logros por categor�a
-        foreach (var categoriaData in misionesCategorias.Misiones_Categorias.Categorias)
+        if (string.IsNullOrEmpty(jsonString))
         {
-            Categoria categoria = new Categoria(categoriaData.Key, categoriaData.Value);
-            categorias.Add(categoria.Nombre, categoria);
-            CreateCategoriaLogro(categoria);
+            Debug.LogError("❌ No se encontró el JSON en PlayerPrefs.");
+            return;
         }
 
-        // Crear logros por elemento
-        foreach (var categoria in categorias.Values)
+        var jsonData = JSON.Parse(jsonString);
+        if (jsonData == null || !jsonData.HasKey("Misiones_Categorias") || !jsonData["Misiones_Categorias"].HasKey("Categorias"))
         {
-            foreach (var elementoData in categoria.ElementosData)
+            Debug.LogError("❌ Error: Estructura del JSON no válida.");
+            return;
+        }
+
+        var categoriasJson = jsonData["Misiones_Categorias"]["Categorias"];
+
+        categorias = new Dictionary<string, UI.Categoria>();
+        elementos = new Dictionary<string, Elemento>();
+
+        foreach (var categoriaKey in categoriasJson.Keys)
+        {
+            var categoriaData = categoriasJson[categoriaKey];
+            CategoriaData categoriaInfo = new CategoriaData
             {
-                Elemento elemento = new Elemento(elementoData.Key, elementoData.Value);
-                elementos.Add(elemento.Nombre, elemento);
-                CreateElementoLogro(elemento);
+                nombre = categoriaKey,
+                Elementos = new Dictionary<string, ElementoData>()
+            };
+
+            if (categoriaData.HasKey("MisionFinal") && categoriaData["MisionFinal"].HasKey("MisionFinal") &&
+    categoriaData["MisionFinal"]["MisionFinal"].HasKey("titulo"))
+            {
+                categoriaInfo.TituloMisionFinal = categoriaData["MisionFinal"]["MisionFinal"]["titulo"].Value;
+            }
+
+
+
+            if (categoriaData.HasKey("Elementos"))
+            {
+                foreach (var elementoKey in categoriaData["Elementos"].Keys)
+                {
+                    var elementoData = categoriaData["Elementos"][elementoKey];
+                    ElementoData elementoInfo = new ElementoData
+                    {
+                        nombre = elementoData.HasKey("nombre") ? elementoData["nombre"].Value : "Sin nombre",
+                        logro = elementoData.HasKey("logro") ? elementoData["logro"].Value : "Sin logro",
+                        misiones = new List<MisionData>()
+                    };
+                    categoriaInfo.Elementos[elementoKey] = elementoInfo;
+                }
+            }
+
+            UI.Categoria categoria = new UI.Categoria(categoriaKey, categoriaInfo);
+            categorias.Add(categoria.Nombre, categoria);
+            CreateCategoriaLogro(categoria);
+
+
+            foreach (var elemento in categoria.ElementosData.Values)
+            {
+                Elemento nuevoElemento = new Elemento(elemento);
+                elementos.Add(nuevoElemento.Nombre, nuevoElemento);
+                CreateElementoLogro(nuevoElemento);
             }
         }
     }
 
-    private void CreateCategoriaLogro(Categoria categoria)
+    private void CreateCategoriaLogro(UI.Categoria categoria)
     {
+        if (categoria == null)
+        {
+            Debug.LogError("❌ Error: La categoría es NULL");
+            return;
+        }
+        if (categoriaPrefab == null || categoriaPanel == null)
+        {
+            Debug.LogError("❌ Error: Los prefabs o paneles de categoría no están asignados.");
+            return;
+        }
         GameObject categoriaObj = Instantiate(categoriaPrefab, categoriaPanel);
-        TextMeshProUGUI titulo = categoriaObj.transform.Find("Titulo").GetComponent<TextMeshProUGUI>();
-        Image imagenCompletada = categoriaObj.transform.Find("ImagenCompletada").GetComponent<Image>();
-
-        titulo.text = categoria.Nombre;
-        imagenCompletada.gameObject.SetActive(categoria.EstaCompletada());
-
-        // Aqu� puedes asignar la imagen del logro si es necesario
+        LogroCategoria logroCategoria = categoriaObj.GetComponent<LogroCategoria>();
+        if (logroCategoria == null)
+        {
+            Debug.LogError("❌ Error: No se encontró el script LogroCategoria en el prefab.");
+            return;
+        }
+        logroCategoria.ActualizarLogro(categoria.TituloMisionFinal, categoria.EstaCompletada());
     }
 
     private void CreateElementoLogro(Elemento elemento)
     {
+        if (elemento == null)
+        {
+            Debug.LogError("❌ Error: El elemento es NULL");
+            return;
+        }
+        if (elementoPrefab == null || elementoPanel == null)
+        {
+            Debug.LogError("❌ Error: Los prefabs o paneles de elemento no están asignados.");
+            return;
+        }
         GameObject elementoObj = Instantiate(elementoPrefab, elementoPanel);
-        TextMeshProUGUI nombre = elementoObj.transform.Find("NombreElemento").GetComponent<TextMeshProUGUI>();
-        TextMeshProUGUI logro = elementoObj.transform.Find("LogroElemento").GetComponent<TextMeshProUGUI>();
-        Image imagenCompletada = elementoObj.transform.Find("ImagenCompletada").GetComponent<Image>();
-
-        nombre.text = elemento.Nombre;
-        logro.text = elemento.Logro;
-        imagenCompletada.gameObject.SetActive(elemento.EstaCompletada());
+        LogroElemento logroElemento = elementoObj.GetComponent<LogroElemento>();
+        if (logroElemento == null)
+        {
+            Debug.LogError("❌ Error: No se encontró el script LogroElemento en el prefab.");
+            return;
+        }
+        logroElemento.ActualizarLogro(elemento.Nombre, elemento.Logro, elemento.EstaCompletado());
     }
+}
 
-    // Clases para manejar los datos de las categor�as y elementos
-    [System.Serializable]
-    public class MisionesCategorias
-    {
-        public Misiones_Categorias Misiones_Categorias;
-    }
+[System.Serializable]
+public class CategoriaData
+{
+    public string nombre;
+    public string logro;
+    public string TituloMisionFinal;  // ✅ Asegúrate de que esta propiedad está declarada
+    public Dictionary<string, ElementoData> Elementos;
+}
 
-    [System.Serializable]
-    public class Misiones_Categorias
-    {
-        public Dictionary<string, CategoriaData> Categorias;
-    }
 
-    [System.Serializable]
-    public class CategoriaData
-    {
-        public string nombre;
-        public Dictionary<string, ElementoData> Elementos;
-    }
+public class ElementoData
+{
+    public string nombre;
+    public string logro;
+    public List<MisionData> misiones;
+}
 
-    [System.Serializable]
-    public class ElementoData
-    {
-        public string nombre;
-        public string logro;
-        public List<MisionData> misiones;
-    }
+public class MisionData
+{
+    public int id;
+    public string titulo;
+    public string descripcion;
+    public string tipo;
+    public bool completada;
+    public string rutaescena;
+}
 
-    [System.Serializable]
-    public class MisionData
-    {
-        public int id;
-        public string titulo;
-        public string descripcion;
-        public string tipo;
-        public bool completada;
-        public string rutaescena;
-    }
-
- 
-
-    [System.Serializable]
-    public class Categorias
-    {
-        public Elementos MetalesAlcalinos;
-    }
-
-    [System.Serializable]
-    public class Elementos
-    {
-        public Elemento Litio;
-        public Elemento Sodio;
-        public Elemento Potasio;
-        public Elemento Rubidio;
-        public Elemento Cesio;
-        public Elemento Francio;
-    }
-
-    [System.Serializable]
+namespace UI
+{
     public class Mision
     {
         public int id;
         public string titulo;
         public string descripcion;
         public string tipo;
+        public string colorBoton;
+        public string logoMision;
         public bool completada;
-        public string rutaescena;
-    }
+        public int xp;
+        public string mensajeCompletada;
+        public string rutaEscena;
 
-    public class Categoria
-    {
-        public string Nombre { get; private set; }
-        public Dictionary<string, ElementoData> ElementosData { get; private set; }
-
-        public Categoria(string nombre, CategoriaData categoriaData)
+        public Mision(MisionData data)
         {
-            Nombre = nombre;
-            ElementosData = categoriaData.Elementos;
-        }
-
-        public bool EstaCompletada()
-        {
-            foreach (var elemento in ElementosData.Values)
-            {
-                foreach (var mision in elemento.misiones)
-                {
-                    if (!mision.completada)
-                    {
-                        return false;
-                    }
-                }
-            }
-            return true;
-        }
-    }
-
-    public class Elemento
-    {
-        public string Nombre { get; private set; }
-        public string Logro { get; private set; }
-        public List<MisionData> Misiones { get; private set; }
-
-        public Elemento(string nombre, ElementoData elementoData)
-        {
-            Nombre = nombre;
-            Logro = elementoData.logro;
-            Misiones = elementoData.misiones;
-        }
-
-        public bool EstaCompletada()
-        {
-            foreach (var mision in Misiones)
-            {
-                if (!mision.completada)
-                {
-                    return false;
-                }
-            }
-            return true;
+            id = data.id;
+            titulo = data.titulo;
+            descripcion = data.descripcion;
+            tipo = data.tipo;
+            completada = data.completada;
+            rutaEscena = data.rutaescena;
         }
     }
 }
+public class Elemento
+{
+    public string Nombre { get; private set; }
+    public string Logro { get; private set; }
+    public List<UI.Mision> Misiones { get; private set; }
+
+    public Elemento(ElementoData data)
+    {
+        Nombre = data.nombre;
+        Logro = data.logro;
+        Misiones = data.misiones != null ? data.misiones.Select(m => new UI.Mision(m)).ToList() : new List<UI.Mision>();
+    }
+
+    public bool EstaCompletado()
+    {
+        if (Misiones == null || Misiones.Count == 0)
+            return false;
+
+        return Misiones.All(m => m.completada);
+    }
+}
+
+
