@@ -202,7 +202,7 @@ public class RegisterController : MonoBehaviour
 
           // acá pongo el autologin para que en offline pueda entrar normal
 
-            CrearSubcoleccionGrupos(userId);
+           
             VerificarYActualizarRango(userId);
             await SubirDatosJSON(userId);
 
@@ -218,40 +218,6 @@ public class RegisterController : MonoBehaviour
         }
     }
 
-
-    private void CrearSubcoleccionGrupos(string userId) // -------------------------------------------------------------------------
-    {
-        CollectionReference gruposRef = db.Collection("users").Document(userId).Collection("grupos");
-
-        string[] nombresGrupos = {
-            "Metales Alcalinos", "Metales Alcalinotérreos", "Metales del Grupo del Escandio", "Metales del Grupo del Titanio",
-            "Metales del Grupo del Vanadio", "Metales del Grupo del Cromo", "Metales del Grupo del Manganeso", "Metales del Grupo del Hierro",
-            "Metales del Grupo del Cobalto", "Metales del Grupo del Níquel", "Metales del Grupo del Cobre", "Metales del Grupo del Zinc",
-            "Lantánidos", "Actínidos", "Metaloides", "No Metales", "Halógenos", "Gases Nobles"
-        };
-
-        foreach (string nombreGrupo in nombresGrupos)
-        {
-            Dictionary<string, object> grupoData = new Dictionary<string, object>
-            {
-                { "nivel", 1 },
-                { "nivel_maximo", 15 },
-                { "nombre", nombreGrupo },
-                { "ruta_imagen", $"GruposImages/{nombreGrupo}" }
-            };
-
-            gruposRef.Document(nombreGrupo).SetAsync(grupoData).ContinueWithOnMainThread(task => {
-                if (task.IsCompletedSuccessfully)
-                {
-                    Debug.Log($"Grupo '{nombreGrupo}' creado correctamente.");
-                }
-                else
-                {
-                    Debug.LogError($"Error al crear grupo '{nombreGrupo}': {task.Exception?.Message}");
-                }
-            });
-        }
-    }
 
     private void VerificarYActualizarRango(string userId)// -------------------------------------------------------------------------
     {

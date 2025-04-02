@@ -103,7 +103,6 @@ public class ScrollToUser : MonoBehaviour
             TMP_Text nombre = child.GetComponentInChildren<TMP_Text>(true);
             string nombreTexto = nombre != null ? nombre.text.Trim().ToLower() : "N/A";
 
-            Debug.Log("Buscando en: " + child.name + " - Texto encontrado: " + nombreTexto);
 
             if (nombre != null && nombreTexto == usuarioActual)
             {
