@@ -12,6 +12,7 @@ using System.Text.RegularExpressions;
 using SimpleJSON;
 using Google.MiniJSON;
 using System.Threading.Tasks;
+using Facebook.Unity;
 
 public class LoginController : MonoBehaviour
 {
