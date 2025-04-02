@@ -30,8 +30,17 @@ public class RankingManager2 : MonoBehaviour
 
     public void ActivarRanking()
     {
-        RankingPanel.SetActive(true);
-        ObtenerRanking();
+        string estadouser = PlayerPrefs.GetString("Estadouser", "");
+        if (estadouser == "nube")
+        {
+            RankingPanel.SetActive(true);
+            ObtenerRanking();
+
+        }else
+        {
+            return;
+        }
+
 
     }
 
