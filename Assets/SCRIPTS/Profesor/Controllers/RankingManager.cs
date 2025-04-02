@@ -5,6 +5,7 @@ using Firebase.Firestore;
 using Firebase.Extensions;
 using TMPro;
 using System.Collections;
+using System;
 
 public class RankingManager : MonoBehaviour
 {
@@ -15,12 +16,14 @@ public class RankingManager : MonoBehaviour
     private Coroutine rankingCoroutine;
     private bool estaActualizando = false;
 
+    
 
     [SerializeField] private GameObject RankingPanel = null;
 
     void Start()
     {
         db = FirebaseFirestore.DefaultInstance;
+       
     }
 
     public void ActivarRanking()
@@ -59,7 +62,7 @@ public class RankingManager : MonoBehaviour
     {
         db.Collection("users")
           .OrderByDescending("xp")
-          .Limit(30)
+          .Limit(1000)
           .GetSnapshotAsync()
           .ContinueWithOnMainThread(task =>
           {
