@@ -4,6 +4,10 @@ using TMPro;
 using Firebase.Firestore;
 using Firebase.Auth;
 using System.Collections;
+using System.Linq;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 public class ScrollToUser : MonoBehaviour
 {
@@ -16,12 +20,76 @@ public class ScrollToUser : MonoBehaviour
 
     private FirebaseFirestore db;
     private FirebaseAuth auth;
+    private ListenerRegistration listener;
 
     void Start()
     {
         db = FirebaseFirestore.DefaultInstance;
         auth = FirebaseAuth.DefaultInstance;
+        
         ObtenerInformacionUsuario();
+
+    }
+
+    private void ObtenerInformacionUsuario()
+    {
+        StartCoroutine(ObtenerInformacionUsuarioCoroutine());
+    }
+
+    private IEnumerator ObtenerInformacionUsuarioCoroutine()
+    {
+        if (auth.CurrentUser == null)
+        {
+            Debug.LogError("Usuario no autenticado.");
+            yield break;
+        }
+
+        string usuarioActual = auth.CurrentUser.DisplayName;
+        Debug.Log("Usuario actual: " + usuarioActual);
+
+        Task<QuerySnapshot> queryTask = db.Collection("users")
+            .OrderByDescending("xp")
+            .GetSnapshotAsync();
+
+        yield return new WaitUntil(() => queryTask.IsCompleted);
+
+        if (queryTask.Exception != null)
+        {
+            Debug.LogError("Error al obtener la información del usuario: " + queryTask.Exception.Message);
+            yield break;
+        }
+
+        QuerySnapshot snapshot = queryTask.Result;
+
+        if (!snapshot.Documents.Any())
+        {
+            Debug.LogWarning("No hay usuarios en la base de datos.");
+            yield break;
+        }
+
+        List<DocumentSnapshot> documentos = snapshot.Documents.ToList();
+        DocumentSnapshot usuarioDoc = documentos.FirstOrDefault(doc => doc.GetValue<string>("DisplayName") == usuarioActual);
+
+        if (usuarioDoc != null)
+        {
+            int xp = usuarioDoc.GetValue<int>("xp");
+            int posicion = documentos.IndexOf(usuarioDoc) + 1;
+
+            Debug.Log($"Usuario encontrado: {usuarioActual}, XP: {xp}, Posición: {posicion}");
+
+            StartCoroutine(UpdateUI(usuarioActual, xp, posicion));
+        }
+        else
+        {
+            Debug.LogWarning("Usuario no encontrado en la base de datos.");
+        }
+    }
+    IEnumerator UpdateUI(string usuario, int xp, int posicion)
+    {
+        nombreUsuarioText.text = usuario;
+        xpUsuarioText.text = "XP: " + xp.ToString();
+        posicionUsuarioText.text = "#" + posicion.ToString();
+        yield return null;
     }
 
     public void ScrollToUserPosition()
@@ -32,7 +100,7 @@ public class ScrollToUser : MonoBehaviour
 
         foreach (Transform child in content)
         {
-            TMP_Text nombre = child.GetComponentInChildren<TMP_Text>(true); // Busca el nombre dentro del prefab
+            TMP_Text nombre = child.GetComponentInChildren<TMP_Text>(true);
             string nombreTexto = nombre != null ? nombre.text.Trim().ToLower() : "N/A";
 
             Debug.Log("Buscando en: " + child.name + " - Texto encontrado: " + nombreTexto);
@@ -41,25 +109,18 @@ public class ScrollToUser : MonoBehaviour
             {
                 Debug.Log("Usuario encontrado en: " + child.name);
 
-                // Asegura que el contenido esté correctamente actualizado antes de calcular la posición
                 Canvas.ForceUpdateCanvases();
                 LayoutRebuilder.ForceRebuildLayoutImmediate((RectTransform)content);
 
-                // Obtiene la posición del usuario dentro del ranking
                 RectTransform targetRect = child.GetComponent<RectTransform>();
                 RectTransform contentRect = (RectTransform)content;
 
-                // Calcula la posición relativa dentro del ScrollRect
                 float contentHeight = contentRect.rect.height;
                 float targetY = Mathf.Abs(targetRect.anchoredPosition.y);
                 float normalizedPosition = 1 - (targetY / contentHeight);
 
-                // Inicia la corrutina para desplazamiento suave
                 StartCoroutine(SmoothScrollToPosition(normalizedPosition));
-
-                // Inicia la animación de la caja del usuario encontrado
                 StartCoroutine(AnimateUserBox(child));
-
                 break;
             }
         }
@@ -69,7 +130,7 @@ public class ScrollToUser : MonoBehaviour
     {
         float startPos = scrollRect.verticalNormalizedPosition;
         float time = 0f;
-        float duration = 0.3f; // Duración del desplazamiento
+        float duration = 0.3f;
 
         while (time < duration)
         {
@@ -86,9 +147,8 @@ public class ScrollToUser : MonoBehaviour
         if (boxImage != null)
         {
             Color originalColor = boxImage.color;
-            Color highlightColor = new Color(1f, 1f, 1f, 0.5f); // Blanco transparente
+            Color highlightColor = new Color(1f, 1f, 1f, 0.5f);
 
-            // Parpadeo 3 veces
             for (int i = 0; i < 3; i++)
             {
                 boxImage.color = highlightColor;
@@ -97,35 +157,5 @@ public class ScrollToUser : MonoBehaviour
                 yield return new WaitForSeconds(0.3f);
             }
         }
-    }
-
-    public void ObtenerInformacionUsuario()
-    {
-        string usuarioActual = auth.CurrentUser.DisplayName;
-
-        db.Collection("users")
-          .OrderByDescending("xp")
-          .GetSnapshotAsync()
-          .ContinueWith(task =>
-          {
-              if (task.IsCompleted)
-              {
-                  int posicion = 1;
-                  foreach (DocumentSnapshot document in task.Result.Documents)
-                  {
-                      string nombre = document.GetValue<string>("DisplayName");
-                      int xp = document.GetValue<int>("xp");
-
-                      if (nombre == usuarioActual)
-                      {
-                          nombreUsuarioText.text = nombre;
-                          xpUsuarioText.text = "XP: " + xp.ToString();
-                          posicionUsuarioText.text = "#" + posicion.ToString();
-                          break;
-                      }
-                      posicion++;
-                  }
-              }
-          });
     }
 }
