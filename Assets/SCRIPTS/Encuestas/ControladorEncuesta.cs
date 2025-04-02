@@ -172,19 +172,18 @@ public class ControladorEncuesta : MonoBehaviour
             Debug.Log("Encuesta Finalizada");
             textoPreguntaUI.text = "�Encuesta Finalizada!";
             grupoOpcionesUI.enabled = false;
-
-            GuardarEncuestaConocimiento();
+            FinalizarEncuesta();
 
         }
         EnviarDatosAPrediccion();
         Debug.Log("siguientePregunta() finalizado.");
+        
     }
 
-    private void GuardarEncuestaConocimiento()
+    public void FinalizarEncuesta()
     {
         PlayerPrefs.SetInt("EstadoEncuestaConocimiento", 1);
         PlayerPrefs.Save();
-
         hayInternet = Application.internetReachability != NetworkReachability.NotReachable;
 
         bool estadoencuestaaprendizaje = false;
@@ -203,8 +202,7 @@ public class ControladorEncuesta : MonoBehaviour
 
             string userId = currentUser.UserId;
 
-            estadoencuestaconocimiento = PlayerPrefs.GetInt("EstadoEncuestaConocimiento", 0) == 1;
-
+            estadoencuestaconocimiento= PlayerPrefs.GetInt("EstadoEncuestaConocimiento", 0) == 1;
             ActualizarEstadoEncuestaConocimiento(userId, estadoencuestaconocimiento);
 
             DocumentReference docRef = firestore.Collection("users").Document(userId);
@@ -225,6 +223,7 @@ public class ControladorEncuesta : MonoBehaviour
                     return;
                 }
 
+
                 // Obtener valores de Firestore
                 estadoencuestaaprendizaje = snapshot.ContainsField("EstadoEncuestaAprendizaje") ? snapshot.GetValue<bool>("EstadoEncuestaAprendizaje") : false;
                 estadoencuestaconocimiento = snapshot.ContainsField("EstadoEncuestaConocimiento") ? snapshot.GetValue<bool>("EstadoEncuestaConocimiento") : false;
@@ -238,7 +237,6 @@ public class ControladorEncuesta : MonoBehaviour
                 {
                     SceneManager.LoadScene("SeleccionarEncuesta");
                 }
-
             });
         }
         else
@@ -394,8 +392,7 @@ public class ControladorEncuesta : MonoBehaviour
             Debug.Log("¡Encuesta Finalizada!");
             textoPreguntaUI.text = "¡Encuesta Finalizada!";
             grupoOpcionesUI.enabled = false;
-
-            GuardarEncuestaConocimiento();
+            FinalizarEncuesta();
             return;
         }
 
