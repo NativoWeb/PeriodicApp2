@@ -14,12 +14,12 @@ public class cambiarescena : MonoBehaviour
     public void VuforiaDesdeInicio()
     {
         PlayerPrefs.SetString("CargarVuforia", "Inicio");
-        SceneManager.LoadScene("SampleScene");
+        SceneManager.LoadScene("VuforiaNuevo");
     }
 
     public void VuforiaDesdeProfesor()
     {
         PlayerPrefs.SetString("CargarVuforia", "Profesor");
-        SceneManager.LoadScene("SampleScene");
+        SceneManager.LoadScene("VuforiaNuevo");
     }
 }

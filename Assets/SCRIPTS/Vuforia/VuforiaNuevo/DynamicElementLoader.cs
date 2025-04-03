@@ -44,6 +44,7 @@ public class DynamicMoleculeLoader : MonoBehaviour
     private ObserverBehaviour imageTargetBehaviour;
     private string elementoSeleccionado;
     private string elementoTarget;
+    private string ruta;
     private Dictionary<string, Element> elementDatabase = new Dictionary<string, Element>();
     private JSONNode jsonData;  // Estructura para manejar el JSON
 
@@ -56,7 +57,7 @@ public class DynamicMoleculeLoader : MonoBehaviour
 
         elementoSeleccionado = PlayerPrefs.GetString("ElementoSeleccionado", "hidrogeno").ToLower();
         elementoTarget = PlayerPrefs.GetString("NumeroAtomico", "1").Trim() + "_" + PlayerPrefs.GetString("ElementoSeleccionado", "Hidrogeno").Trim();
-        //string ruta = PlayerPrefs.GetString("CargarVuforia", "");
+        ruta = PlayerPrefs.GetString("CargarVuforia", "");
 
         trackable = GetComponent<ObserverBehaviour>();
 
@@ -66,9 +67,12 @@ public class DynamicMoleculeLoader : MonoBehaviour
         }
 
         // Si este ImageTarget no es el elemento de la misión, se desactiva
-        if (trackable.TargetName.Trim().ToLower() != elementoTarget.Trim().ToLower())
+        if (ruta == "Misiones")
         {
-            gameObject.SetActive(false);
+            if (trackable.TargetName.Trim().ToLower() != elementoTarget.Trim().ToLower())
+            {
+                gameObject.SetActive(false);
+            }
         }
         //elementoSeleccionado = "hierro";
         Debug.Log($"Elemento seleccionado: {elementoSeleccionado}");
@@ -88,9 +92,11 @@ public class DynamicMoleculeLoader : MonoBehaviour
 
     void DesbloquearLogro(string elemento)
     {
-        Debug.Log($"🏆 Logro desbloqueado: {elemento}");
-        ControladorBotones.PanelBotonUI.SetActive(true);
-        ControladorBotones.botonCompletarMision.interactable = true;
+        if(ruta == "Misiones")
+        {
+            ControladorBotones.PanelBotonUI.SetActive(true);
+            ControladorBotones.botonCompletarMision.interactable = true;
+        }
     }
 
     void CargarJSON()
