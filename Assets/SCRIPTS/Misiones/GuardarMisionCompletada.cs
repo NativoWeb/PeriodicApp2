@@ -22,37 +22,42 @@ public class GuardarMisionCompletada : MonoBehaviour
     public GameObject imagenMision; // Asigna el objeto desde el Inspector
     public GameObject panel;
     public AudioSource audioSource;
-    public RawImage RawImage;
     private FirebaseAuth auth;
     private FirebaseFirestore db;
     private string userId;
-    public VideoPlayer videoPlayer;
+    public ParticleSystem particulasMision; // 🌟 Agregar en el Inspector
 
 
     void Start()
     {
-            auth = FirebaseAuth.DefaultInstance;
-            db = FirebaseFirestore.DefaultInstance;
+        auth = FirebaseAuth.DefaultInstance;
+        db = FirebaseFirestore.DefaultInstance;
 
         var user = auth.CurrentUser;
-            if (user != null)
-            {
-                userId = user.UserId;
-            }
-            else
-            {
-                Debug.LogError("❌ No hay usuario autenticado en Start.");
-            }
+        if (user != null)
+        {
+            userId = user.UserId;
+        }
+        else
+        {
+            Debug.LogError("❌ No hay usuario autenticado en Start.");
+        }
 
-            if (botonCompletarMision != null)
-            {
-                botonCompletarMision.onClick.AddListener(MarcarMisionComoCompletada); 
-                botonCompletarMision.onClick.AddListener(AnimacionMisionCompletada); 
-            }
-            else
-            {
-                Debug.LogError("❌ botonCompletarMision no está asignado en el Inspector.");
-            }
+        if (botonCompletarMision != null)
+        {
+            botonCompletarMision.onClick.AddListener(MarcarMisionComoCompletada);
+            botonCompletarMision.onClick.AddListener(AnimacionMisionCompletada);
+        }
+        else
+        {
+            Debug.LogError("❌ botonCompletarMision no está asignado en el Inspector.");
+        }
+
+        // 🔴 Desactivar partículas al inicio
+        if (particulasMision != null)
+        {
+            particulasMision.gameObject.SetActive(false);
+        }
     }
 
     public void MarcarMisionComoCompletada()
@@ -77,19 +82,20 @@ public class GuardarMisionCompletada : MonoBehaviour
 
     public void AnimacionMisionCompletada()
     {
-        if (panel == null || imagenMision == null || videoPlayer == null) return;
+        if (panel == null || imagenMision == null) return;
 
         panel.SetActive(true);
         imagenMision.SetActive(true);
         imagenMision.transform.localScale = Vector3.zero;
         audioSource.Play(); // 🔊 Reproduce el sonido
-
         Handheld.Vibrate();
 
-        if (videoPlayer == null || RawImage == null) return;
-
-        videoPlayer.Prepare();
-        StartCoroutine(PlayVideoWhenReady());
+        // 🟢 Activar y reproducir el efecto de partículas
+        if (particulasMision != null)
+        {
+            particulasMision.gameObject.SetActive(true);
+            particulasMision.Play();
+        }
 
         Sequence secuenciaAnimacion = DOTween.Sequence();
         secuenciaAnimacion.Append(imagenMision.transform.DOScale(1.2f, 0.5f).SetEase(Ease.OutBounce))
@@ -99,19 +105,14 @@ public class GuardarMisionCompletada : MonoBehaviour
             .Append(imagenMision.transform.DORotate(Vector3.zero, 0.3f).SetEase(Ease.InOutSine))
             .Append(imagenMision.transform.DOMoveY(imagenMision.transform.position.y + 50, 1f).SetEase(Ease.OutQuad))
             .Join(imagenMision.GetComponent<Image>().DOFade(0, 1f))
-            .OnComplete(() => CambiarEscena());
-    }
-
-    // 📌 Nueva función para esperar que el VideoPlayer esté listo
-    private IEnumerator PlayVideoWhenReady()
-    {
-        while (!videoPlayer.isPrepared)
-        {
-            yield return null; // Espera hasta que el video esté listo
-        }
-
-        RawImage.texture = videoPlayer.targetTexture; // Asigna la textura al RawImage
-        videoPlayer.Play();
+            .OnComplete(() => {
+                if (particulasMision != null)
+                {
+                    particulasMision.Stop(); // 🔴 Detener partículas
+                    particulasMision.gameObject.SetActive(false);
+                }
+                CambiarEscena();
+            });
     }
 
     void CambiarEscena()

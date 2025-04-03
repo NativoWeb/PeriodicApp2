@@ -257,9 +257,10 @@ public class ControladorEncuesta : MonoBehaviour
         }
     }
 
+
     private async void ActualizarEstadoEncuestaConocimiento(string userId, bool estadoencuesta) // ------------------------------------------------
     {
-        DocumentReference userRef = db.Collection("users").Document(userId);
+        DocumentReference userRef = firestore.Collection("users").Document(userId);
         await userRef.UpdateAsync("EstadoEncuestaConocimiento", estadoencuesta);
         Debug.Log($"✅ Estado de la encuesta Conocimiento... {userId}: {estadoencuesta} desde Encuesta Conocimiento");
     }
