@@ -3,6 +3,7 @@ using Firebase.Extensions;
 using Firebase.Firestore;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using TMPro;
 using UnityEngine;
@@ -78,14 +79,12 @@ public class RegisterController : MonoBehaviour
         label.color = (roles.value == 0) ? Color.gray : Color.black;
     }
 
-    public void OnCompleteProfileButtonClick()// -------------------------------------------------------------------------
+    public void OnCompleteProfileButtonClick()
     {
         hayInternet = Application.internetReachability != NetworkReachability.NotReachable;
 
         if (hayInternet)
         {
-
-
             FirebaseUser currentUser = auth.CurrentUser;
 
             if (currentUser == null)
@@ -95,7 +94,7 @@ public class RegisterController : MonoBehaviour
             }
 
             bool ocupacion = PlayerPrefs.HasKey("TempOcupacion");
-            // Validar que el usuario haya seleccionado un rol válido
+
             if (roles.value == 0 && !ocupacion)
             {
                 txtMensaje.text = "Debes seleccionar una ocupación antes de continuar.";
@@ -103,35 +102,66 @@ public class RegisterController : MonoBehaviour
                 return;
             }
 
-            string userName = userNameInput.text;
-            if (userName.Equals(""))
+            string userName = userNameInput.text.Trim();
+
+            if (string.IsNullOrEmpty(userName))
             {
-                txtMensaje.text = "Debes Ingresar un nombre de usuario antes de continuar";
+                txtMensaje.text = "Debes ingresar un nombre de usuario antes de continuar.";
                 txtMensaje.color = Color.red;
                 return;
             }
 
-            PlayerPrefs.SetString("DisplayName", userName);
-            PlayerPrefs.Save();
-
-            if (PlayerPrefs.GetInt("EmailVerified", 0) == 1)
+            if (userName.Length < 8 || userName.Length > 10)
             {
-                Debug.Log("✅ Correo verificado. Continuando con el registro...");
-                UpdateUserProfile(currentUser, userName);
+                txtMensaje.text = "El nombre de usuario debe tener entre 8 y 10 caracteres.";
+                txtMensaje.color = Color.red;
                 return;
             }
 
-            PlayerPrefs.SetInt("EmailVerified", 1);
-            PlayerPrefs.Save();
-            UpdateUserProfile(currentUser, userName);
+            // Verificar si el nombre de usuario ya existe en Firestore
+            CheckUsernameAvailability(userName, currentUser);
         }
         else
         {
             string usuarioaeliminar = PlayerPrefs.GetString("tempUserId", "");
             PlayerPrefs.SetString("UsuarioEliminar", usuarioaeliminar);
+            PlayerPrefs.Save();
             m_SinInternetUI.SetActive(true);
-            
         }
+    }
+
+    private async void CheckUsernameAvailability(string userName, FirebaseUser currentUser)
+    {
+        FirebaseFirestore db = FirebaseFirestore.DefaultInstance;
+        Query query = db.Collection("users").WhereEqualTo("DisplayName", userName);
+        QuerySnapshot snapshot = await query.GetSnapshotAsync();
+
+        
+            if (snapshot.Count > 0)
+            {
+            // Si ya existe un usuario con ese nombre, mostrar error
+            txtMensaje.text = "El nombre de usuario ya está en uso. Elige otro.";
+            txtMensaje.color = Color.red;
+            return;
+        }
+
+        txtMensaje.text = "Guardando Usuario...";
+        txtMensaje.color = Color.green;
+
+        // Guardar el nombre en PlayerPrefs
+        PlayerPrefs.SetString("DisplayName", userName);
+        PlayerPrefs.Save();
+
+        if (PlayerPrefs.GetInt("EmailVerified", 0) == 1)
+        {
+            Debug.Log("✅ Correo verificado. Continuando con el registro...");
+            UpdateUserProfile(currentUser, userName);
+            return;
+        }
+
+        PlayerPrefs.SetInt("EmailVerified", 1);
+        PlayerPrefs.Save();
+        UpdateUserProfile(currentUser, userName);
     }
 
     private void UpdateUserProfile(FirebaseUser user, string userName)// -------------------------------------------------------------------------
