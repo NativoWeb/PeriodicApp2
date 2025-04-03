@@ -20,7 +20,7 @@ public class ControladorEncuesta : MonoBehaviour
 
     // instancion variables firebase 
     private FirebaseAuth auth;
-    private FirebaseFirestore db;
+    private FirebaseFirestore firestore;
 
     // instanciar conecxion
     private bool hayInternet = false;
@@ -61,7 +61,7 @@ public class ControladorEncuesta : MonoBehaviour
     private int respuestasCorrectas = 0;
 
 
-    private FirebaseFirestore firestore;
+    
 
     [System.Serializable]
     public class Pregunta
@@ -252,7 +252,7 @@ public class ControladorEncuesta : MonoBehaviour
             }
             else
             {
-                SceneManager.LoadScene("SeleccionarEncuesta");
+                SceneManager.LoadScene("SeleccinarEncuesta");
             }
         }
     }

@@ -1,6 +1,7 @@
 ﻿using Firebase.Auth;
 using Firebase.Extensions;
 using Firebase.Firestore;
+using System.Collections;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using TMPro;
@@ -151,9 +152,21 @@ public class ControladorEncuestaApre : MonoBehaviour
             }
         }
 
+
+        StartCoroutine(MostrarYEsperar(estiloDominante));
+        barraProgreso.value = 1f;
         
+    }
+    private IEnumerator MostrarYEsperar(string estiloDominante)
+    {
+        // Mostrar el resultado
         textoPregunta.text = $"🧠 Tu estilo de aprendizaje dominante es:\n<b>{estiloDominante.Replace("_", " ")}</b>";
         barraProgreso.value = 1f;
+
+        // Esperar 3 segundos
+        yield return new WaitForSeconds(3f);
+
+        // Continuar con la función FinalizarEncuesta
         FinalizarEncuesta();
     }
 

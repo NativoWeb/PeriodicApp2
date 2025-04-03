@@ -288,4 +288,9 @@ public class EstadisticasController : MonoBehaviour
         }
     }
 
+    public void quitarlogout()
+    {
+        m_logoutUI.SetActive(false);
+
+    }
 }

@@ -319,10 +319,54 @@ public class EmailController : MonoBehaviour
 
     void VolverEmail()
     {
+        hayInternet = Application.internetReachability != NetworkReachability.NotReachable;
+
         verificacionPanel.SetActive(false);
         registroPanel.SetActive(true);
         emailInput.text = "";
         passwordInput.text = passwordInput.text;
+
+        
+        
+        string usuarioaeliminar = PlayerPrefs.GetString("tempUserId", "");
+        PlayerPrefs.SetString("UsuarioEliminar", usuarioaeliminar);
+        PlayerPrefs.Save();
+
+        if (hayInternet)
+        {
+            StartCoroutine(DeleteAccount());
+        }
+
+    }
+    private IEnumerator DeleteAccount()
+    {
+
+        string UserEliminarId = PlayerPrefs.GetString("UsuarioEliminar", "");
+
+        if (!string.IsNullOrEmpty(UserEliminarId))
+        {
+            FirebaseUser user = auth.CurrentUser;
+            if (user != null && user.UserId == UserEliminarId)
+            {
+                var deleteTask = user.DeleteAsync();
+                yield return new WaitUntil(() => deleteTask.IsCompleted);
+
+                if (deleteTask.IsCompletedSuccessfully)
+                {
+                    Debug.Log("Cuenta eliminada por falta de conexión.");
+                    PlayerPrefs.DeleteKey("tempUserId");
+                    PlayerPrefs.DeleteKey("UsuarioEliminar");
+                }
+                else
+                {
+                    Debug.LogError("Error al eliminar la cuenta.");
+                }
+            }
+        }
+        else
+        {
+            Debug.Log("No hay Cuentas pendientes por eliminar. Desde StartApp");
+        }
     }
 
     public void OnVerifyButtonClick()
@@ -350,6 +394,7 @@ public class EmailController : MonoBehaviour
         {
             string usuarioaeliminar = PlayerPrefs.GetString("tempUserId", "");
             PlayerPrefs.SetString("UsuarioEliminar", usuarioaeliminar);
+            PlayerPrefs.Save();
             m_SinInternetUI.SetActive(true);
         }
 
