@@ -2,6 +2,7 @@ using UnityEngine;
 using TMPro;
 using UnityEngine.UI;
 
+
 [System.Serializable]
 public class Mision
 {
@@ -14,8 +15,9 @@ public class Mision
     public bool completada;
     public int xp;
     public string mensajeCompletada;
-    public string rutaEscena; // Nueva propiedad para la ruta de la escena
+    public string rutaEscena;
 }
+
 public class UI_Mision : MonoBehaviour
 {
     public TMP_Text tituloText;

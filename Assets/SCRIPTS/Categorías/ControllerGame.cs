@@ -85,12 +85,6 @@ public class ControllerGame : MonoBehaviour, IDragHandler, IEndDragHandler
 
                     GameObject gestor = GameObject.Find("GestorProgreso");
                     if (gestor == null || auth == null) return;
-
-                    GuardarProgreso gp = gestor.GetComponent<GuardarProgreso>();
-                    if (gp == null) return;
-
-                    gp.GuardarProgresoFirestore(nivelSeleccionado + 1, emparejamientosCorrectos, auth); // GUARDAR EN LA BASE DE DATOS
-
                 }
             }
             else

@@ -202,9 +202,9 @@ public class RegisterController : MonoBehaviour
 
           // acá pongo el autologin para que en offline pueda entrar normal
 
-            CrearSubcoleccionGrupos(userId);
+           
             VerificarYActualizarRango(userId);
-            await SubirMisionesJSON(userId);
+            await SubirDatosJSON(userId);
 
             // mandeme a el login después de registrarme
             SceneManager.LoadScene("Login");
@@ -218,40 +218,6 @@ public class RegisterController : MonoBehaviour
         }
     }
 
-
-    private void CrearSubcoleccionGrupos(string userId) // -------------------------------------------------------------------------
-    {
-        CollectionReference gruposRef = db.Collection("users").Document(userId).Collection("grupos");
-
-        string[] nombresGrupos = {
-            "Metales Alcalinos", "Metales Alcalinotérreos", "Metales del Grupo del Escandio", "Metales del Grupo del Titanio",
-            "Metales del Grupo del Vanadio", "Metales del Grupo del Cromo", "Metales del Grupo del Manganeso", "Metales del Grupo del Hierro",
-            "Metales del Grupo del Cobalto", "Metales del Grupo del Níquel", "Metales del Grupo del Cobre", "Metales del Grupo del Zinc",
-            "Lantánidos", "Actínidos", "Metaloides", "No Metales", "Halógenos", "Gases Nobles"
-        };
-
-        foreach (string nombreGrupo in nombresGrupos)
-        {
-            Dictionary<string, object> grupoData = new Dictionary<string, object>
-            {
-                { "nivel", 1 },
-                { "nivel_maximo", 15 },
-                { "nombre", nombreGrupo },
-                { "ruta_imagen", $"GruposImages/{nombreGrupo}" }
-            };
-
-            gruposRef.Document(nombreGrupo).SetAsync(grupoData).ContinueWithOnMainThread(task => {
-                if (task.IsCompletedSuccessfully)
-                {
-                    Debug.Log($"Grupo '{nombreGrupo}' creado correctamente.");
-                }
-                else
-                {
-                    Debug.LogError($"Error al crear grupo '{nombreGrupo}': {task.Exception?.Message}");
-                }
-            });
-        }
-    }
 
     private void VerificarYActualizarRango(string userId)// -------------------------------------------------------------------------
     {
@@ -281,22 +247,54 @@ public class RegisterController : MonoBehaviour
         });
     }
 
-    private async Task SubirMisionesJSON(string userId)// -------------------------------------------------------------------------
+    public async Task SubirDatosJSON(string UserId)
     {
-        string jsonMisiones = PlayerPrefs.GetString("misionesCategoriasJSON", "{}");
-
-        if (jsonMisiones == "{}")
+        if (string.IsNullOrEmpty(UserId))
         {
-            Debug.LogWarning("⚠️ No hay datos de misiones guardados.");
+            Debug.LogError("❌ No hay usuario autenticado.");
             return;
         }
 
-        Dictionary<string, object> data = new Dictionary<string, object>
+        // Obtener JSON de misiones y categorías desde PlayerPrefs
+        string jsonMisiones = PlayerPrefs.GetString("misionesCategoriasJSON");
+        string jsonCategorias = PlayerPrefs.GetString("CategoriasOrdenadas", "");
+
+        // Referencias a los documentos dentro de la colección del usuario
+        DocumentReference misionesDoc = db.Collection("users").Document(UserId).Collection("datos").Document("misiones");
+        DocumentReference categoriasDoc = db.Collection("users").Document(UserId).Collection("datos").Document("categorias");
+
+        // Crear tareas para subir ambos JSONs
+        List<Task> tareasSubida = new List<Task>();
+
+        if (jsonMisiones != "{}")
+        {
+            Dictionary<string, object> dataMisiones = new Dictionary<string, object>
         {
             { "misiones", jsonMisiones },
             { "timestamp", FieldValue.ServerTimestamp }
         };
+            tareasSubida.Add(misionesDoc.SetAsync(dataMisiones, SetOptions.MergeAll));
+        }
 
-        await db.Collection("users").Document(userId).SetAsync(data, SetOptions.MergeAll);
+        if (jsonCategorias != "{}")
+        {
+            Dictionary<string, object> dataCategorias = new Dictionary<string, object>
+        {
+            { "categorias", jsonCategorias },
+            { "timestamp", FieldValue.ServerTimestamp }
+        };
+            tareasSubida.Add(categoriasDoc.SetAsync(dataCategorias, SetOptions.MergeAll));
+        }
+
+        if (tareasSubida.Count == 0)
+        {
+            Debug.LogWarning("⚠️ No hay datos de misiones ni categorías para subir.");
+            return;
+        }
+
+        // Esperar a que todas las tareas finalicen
+        await Task.WhenAll(tareasSubida);
+
+        Debug.Log("✅ Datos de misiones y categorías subidos en documentos separados.");
     }
 }

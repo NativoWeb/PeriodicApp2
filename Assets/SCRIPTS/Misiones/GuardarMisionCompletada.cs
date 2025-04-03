@@ -7,16 +7,26 @@ using Firebase.Auth;
 using Firebase.Firestore;
 using System.Threading.Tasks;
 using Firebase.Extensions;
+using System.Collections;
+using Google.Protobuf.WellKnownTypes;
+using DG.Tweening;
+using UnityEngine.SceneManagement;
+using UnityEngine.Video; // Agregar esto al inicio
+
+
 //using System.Drawing.Text;
 
 public class GuardarMisionCompletada : MonoBehaviour
 {
     public Button botonCompletarMision; // Asigna el botón desde el Inspector
-    //public Transform contenedorMisiones; // Asigna el contenedor de misiones en el Inspector
-
+    public GameObject imagenMision; // Asigna el objeto desde el Inspector
+    public GameObject panel;
+    public AudioSource audioSource;
+    public RawImage RawImage;
     private FirebaseAuth auth;
     private FirebaseFirestore db;
     private string userId;
+    public VideoPlayer videoPlayer;
 
 
     void Start()
@@ -24,7 +34,7 @@ public class GuardarMisionCompletada : MonoBehaviour
             auth = FirebaseAuth.DefaultInstance;
             db = FirebaseFirestore.DefaultInstance;
 
-            var user = auth.CurrentUser;
+        var user = auth.CurrentUser;
             if (user != null)
             {
                 userId = user.UserId;
@@ -36,7 +46,8 @@ public class GuardarMisionCompletada : MonoBehaviour
 
             if (botonCompletarMision != null)
             {
-                botonCompletarMision.onClick.AddListener(MarcarMisionComoCompletada);
+                botonCompletarMision.onClick.AddListener(MarcarMisionComoCompletada); 
+                botonCompletarMision.onClick.AddListener(AnimacionMisionCompletada); 
             }
             else
             {
@@ -64,7 +75,51 @@ public class GuardarMisionCompletada : MonoBehaviour
         ActualizarMisionEnJSON(elemento, idMision);
     }
 
-    private async void ActualizarMisionEnJSON(string elemento, int idMision)
+    public void AnimacionMisionCompletada()
+    {
+        if (panel == null || imagenMision == null || videoPlayer == null) return;
+
+        panel.SetActive(true);
+        imagenMision.SetActive(true);
+        imagenMision.transform.localScale = Vector3.zero;
+        audioSource.Play(); // 🔊 Reproduce el sonido
+
+        Handheld.Vibrate();
+
+        if (videoPlayer == null || RawImage == null) return;
+
+        videoPlayer.Prepare();
+        StartCoroutine(PlayVideoWhenReady());
+
+        Sequence secuenciaAnimacion = DOTween.Sequence();
+        secuenciaAnimacion.Append(imagenMision.transform.DOScale(1.2f, 0.5f).SetEase(Ease.OutBounce))
+            .Join(imagenMision.GetComponent<Image>().DOFade(1, 0.5f).From(0))
+            .Append(imagenMision.transform.DORotate(new Vector3(0, 0, 10f), 0.3f).SetEase(Ease.InOutSine))
+            .Append(imagenMision.transform.DORotate(new Vector3(0, 0, -10f), 0.3f).SetEase(Ease.InOutSine))
+            .Append(imagenMision.transform.DORotate(Vector3.zero, 0.3f).SetEase(Ease.InOutSine))
+            .Append(imagenMision.transform.DOMoveY(imagenMision.transform.position.y + 50, 1f).SetEase(Ease.OutQuad))
+            .Join(imagenMision.GetComponent<Image>().DOFade(0, 1f))
+            .OnComplete(() => CambiarEscena());
+    }
+
+    // 📌 Nueva función para esperar que el VideoPlayer esté listo
+    private IEnumerator PlayVideoWhenReady()
+    {
+        while (!videoPlayer.isPrepared)
+        {
+            yield return null; // Espera hasta que el video esté listo
+        }
+
+        RawImage.texture = videoPlayer.targetTexture; // Asigna la textura al RawImage
+        videoPlayer.Play();
+    }
+
+    void CambiarEscena()
+    {
+        SceneManager.LoadScene("Escena_Alcalinos"); // Reemplaza con el nombre de la escena destino
+    }
+
+private async void ActualizarMisionEnJSON(string elemento, int idMision)
     {
         string jsonString = PlayerPrefs.GetString("misionesCategoriasJSON", "");
         if (string.IsNullOrEmpty(jsonString))
@@ -93,7 +148,7 @@ public class GuardarMisionCompletada : MonoBehaviour
         var elementoJson = categorias[categoriaSeleccionada]["Elementos"][elemento];
         var misiones = elementoJson["misiones"].AsArray;
         bool cambioRealizado = false;
-        int xpGanado = 0;
+        int xpGanado = PlayerPrefs.GetInt("xp_mision");
 
         for (int i = 0; i < misiones.Count; i++)
         {
@@ -101,7 +156,6 @@ public class GuardarMisionCompletada : MonoBehaviour
             if (mision["id"].AsInt == idMision)
             {
                 mision["completada"] = true;
-                xpGanado = mision["xp"].AsInt; // Obtener el XP de la misión
                 cambioRealizado = true;
                 break;
             }
@@ -179,34 +233,34 @@ public class GuardarMisionCompletada : MonoBehaviour
             return;
         }
 
-        string jsonMisiones = PlayerPrefs.GetString("misionesCategoriasJSON", "{}"); // Obtener el JSON de PlayerPrefs
+        // Obtener JSON de misiones y categorías desde PlayerPrefs
+        string jsonMisiones = PlayerPrefs.GetString("misionesCategoriasJSON", "{}");
 
-        if (jsonMisiones == "{}")
+        // Referencias a los documentos dentro de la colección del usuario
+        DocumentReference misionesDoc = db.Collection("users").Document(userId).Collection("datos").Document("misiones");
+
+        // Crear tareas para subir ambos JSONs
+        List<Task> tareasSubida = new List<Task>();
+
+        if (jsonMisiones != "{}")
         {
-            Debug.LogWarning("⚠️ No hay datos de misiones guardados.");
-            return;
-        }
-
-        // Convertir JSON a Dictionary para Firestore
-        Dictionary<string, object> data = new Dictionary<string, object>
+            Dictionary<string, object> dataMisiones = new Dictionary<string, object>
         {
             { "misiones", jsonMisiones },
             { "timestamp", FieldValue.ServerTimestamp }
         };
-
-        // Subir a Firestore dentro del documento del usuario
-        DocumentReference userDoc = db.Collection("users").Document(userId);
-
-        await userDoc.SetAsync(data, SetOptions.MergeAll).ContinueWithOnMainThread(task =>
+            tareasSubida.Add(misionesDoc.SetAsync(dataMisiones, SetOptions.MergeAll));
+        }
+       
+        if (tareasSubida.Count == 0)
         {
-            if (task.IsCompleted)
-            {
-                Debug.Log("✅ Misiones JSON guardadas en Firestore.");
-            }
-            else
-            {
-                Debug.LogError("❌ Error al guardar el JSON en Firestore: " + task.Exception);
-            }
-        });
+            Debug.LogWarning("⚠️ No hay datos de misiones ni categorías para subir.");
+            return;
+        }
+
+        // Esperar a que todas las tareas finalicen
+        await Task.WhenAll(tareasSubida);
+
+        Debug.Log("✅ Datos de misiones y categorías subidos en documentos separados.");
     }
 }

@@ -26,7 +26,6 @@ public class GestorOraciones : MonoBehaviour
     public GameObject panelFinal;
     public TextMeshProUGUI txtResultado;
     public BarraProgreso barraProgreso;
-    public GuardarProgreso gestorProgreso;
 
     private Dictionary<int, List<OracionConPalabras>> preguntasPorNivel = new Dictionary<int, List<OracionConPalabras>>();
     private List<OracionConPalabras> preguntas = new List<OracionConPalabras>();
@@ -48,7 +47,6 @@ public class GestorOraciones : MonoBehaviour
         db = FirebaseFirestore.DefaultInstance;
         auth = FirebaseAuth.DefaultInstance;
 
-        nivelSeleccionado = ControladorNiveles.nivelSeleccionado;
         // Cargar preguntas por nivel
         CargarPreguntas();
 
@@ -302,11 +300,6 @@ public class GestorOraciones : MonoBehaviour
         SceneManager.LoadScene("grupo1"); 
         GameObject gestor = GameObject.Find("GestorProgreso");
         if (gestor == null || auth == null) return;
-
-        GuardarProgreso gp = gestor.GetComponent<GuardarProgreso>();
-        if (gp == null) return;
-
-        gp.GuardarProgresoFirestore(nivelSeleccionado + 1, respuestasCorrectas, auth);
     }
 
     [System.Serializable]
