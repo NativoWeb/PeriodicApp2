@@ -55,7 +55,7 @@ public class DynamicMoleculeLoader : MonoBehaviour
     {
         ControladorBotones = FindAnyObjectByType<ControllerBotones>();
 
-        elementoTarget = PlayerPrefs.GetString("NumeroAtomico", "1").Trim() + "_" + PlayerPrefs.GetString("ElementoSeleccionado", "Hidrogeno").Trim();
+        elementoTarget = PlayerPrefs.GetString("NumeroAtomico", "").Trim() + "_" + PlayerPrefs.GetString("ElementoSeleccionado", "").Trim();
         ruta = PlayerPrefs.GetString("CargarVuforia", "");
 
         trackable = GetComponent<ObserverBehaviour>();
@@ -81,6 +81,7 @@ public class DynamicMoleculeLoader : MonoBehaviour
         {
             string resultado = trackable.TargetName.Split('_')[1];
             elementoSeleccionado = resultado.ToLower();
+            LimpiarModelos();
             CargarJSON();
             DesbloquearLogro(trackable.TargetName);
         }
@@ -151,8 +152,6 @@ public class DynamicMoleculeLoader : MonoBehaviour
 
     private IEnumerator LoadMoleculeModel(int electronLevels, int protons, int neutrons, int electrons, string modelName, List<string> electronModels)
     {
-        LimpiarModelos();
-
         // 1. Configuración exacta de distribución de electrones por nivel
         int[] levelCapacity = { 2, 8, 18, 32, 32, 18, 8 }; // Capacidad máxima por nivel
         float[] orbitRadii = { .2f, .25f, .3f, .35f, .4f, .45f, .5f }; // Radios para cada capa
@@ -188,7 +187,7 @@ public class DynamicMoleculeLoader : MonoBehaviour
 
             // Crear órbita con animación completa
             GameObject orbit = CreateOrbitRing(atomContainer.transform, radius,
-                new Color(1, 1, 1, 0.3f), level, electronsInLevel);
+                new Color(1, 1, 1, 0.8f), level, electronsInLevel);
 
             // Distribución simétrica de electrones
             float angleStep = 360f / electronsInLevel;
@@ -207,7 +206,7 @@ public class DynamicMoleculeLoader : MonoBehaviour
                     orbit.transform,
                     electronPos,
                     new Color(0.878f, 0.408f, 0.169f),
-                    2f,
+                    3f,
                     level
                 ));
 
@@ -266,8 +265,8 @@ public class DynamicMoleculeLoader : MonoBehaviour
         LineRenderer line = orbit.AddComponent<LineRenderer>();
         line.useWorldSpace = false;
         line.loop = true;
-        line.startWidth = 0.05f;
-        line.endWidth = 0.05f;
+        line.startWidth = 0.008f;
+        line.endWidth = 0.008f;
         line.positionCount = 100;
 
         Material mat = new Material(Shader.Find("Standard"));

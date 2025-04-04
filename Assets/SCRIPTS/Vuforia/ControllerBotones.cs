@@ -35,12 +35,9 @@ public class ControllerBotones : MonoBehaviour
             botonCompletarMision.interactable = false;
         }
     }
-
-
     void CargarVuforiaProfesor()
     {
         SceneManager.LoadScene("InicioProfesor");
     }
-
 
 }
