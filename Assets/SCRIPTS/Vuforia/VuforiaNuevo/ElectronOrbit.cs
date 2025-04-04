@@ -4,60 +4,51 @@ public class ElectronOrbit : MonoBehaviour
 {
     private float baseRadius;
     private float currentAngle;
-    private float orbitSpeed = 180f; // Grados/segundo
+    private float orbitSpeed;
+    private Transform orbitTransform;
+    private OrbitAnimation orbitAnimation; // acceso al ángulo compartido
+    private bool orbitEnabled = false;
 
-    void Start()
+    public void Configure(int level)
     {
-        // Captura la posición inicial como radio
+        orbitSpeed = 50f + (level * 10f);
+        orbitTransform = transform.parent;
         baseRadius = transform.localPosition.magnitude;
+
+        orbitAnimation = orbitTransform.GetComponent<OrbitAnimation>();
+
         currentAngle = Mathf.Atan2(
             transform.localPosition.z,
             transform.localPosition.x
         ) * Mathf.Rad2Deg;
     }
 
+    public void EnableOrbit()
+    {
+        orbitEnabled = true;
+    }
+
     void Update()
     {
-        // Movimiento orbital independiente
+        if (!orbitEnabled || orbitTransform == null || orbitAnimation == null) return;
+
+        // Actualizar ángulo
         currentAngle += orbitSpeed * Time.deltaTime;
         currentAngle %= 360f;
 
-        // Mantiene posición relativa a la órbita padre
-        transform.localPosition = new Vector3(
+        // Usar la rotación Y sincronizada desde OrbitAnimation
+        Quaternion rotation = Quaternion.Euler(0, orbitAnimation.sharedAngle, 0);
+
+        // Calcular nueva posición
+        Vector3 newPos = rotation * new Vector3(
             baseRadius * Mathf.Cos(currentAngle * Mathf.Deg2Rad),
-            0f,
+            0,
             baseRadius * Mathf.Sin(currentAngle * Mathf.Deg2Rad)
         );
+
+        transform.localPosition = newPos;
+
+        // Rotación del electrón
+        transform.localRotation = Quaternion.LookRotation(transform.localPosition.normalized);
     }
 }
-//public class ElectronOrbit : MonoBehaviour
-//{
-//    private Transform center;
-//    private float radius;
-//    private float speed;
-//    private float angle;
-//    private Vector3 originalPosition;
-
-//    public void Initialize(Transform center, float radius, float speed)
-//    {
-//        this.center = center;
-//        this.radius = radius;
-//        this.speed = speed;
-//        this.angle = Random.Range(0, 2 * Mathf.PI);
-//        this.originalPosition = center.localPosition;
-//    }
-
-//    void Update()
-//    {
-//        // Movimiento orbital independiente de la rotación global
-//        angle += speed * Time.deltaTime;
-//        Vector3 orbitPos = originalPosition + new Vector3(
-//            radius * Mathf.Cos(angle),
-//            0,
-//            radius * Mathf.Sin(angle)
-//        );
-
-//        // Mantener posición relativa considerando la rotación padre
-//        transform.localPosition = orbitPos;
-//    }
-//}
