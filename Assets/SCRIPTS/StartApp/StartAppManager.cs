@@ -8,7 +8,6 @@ using Firebase.Firestore;
 using Firebase.Extensions;
 using Firebase;
 
-
 public class StartAppManager : MonoBehaviour
 {
 

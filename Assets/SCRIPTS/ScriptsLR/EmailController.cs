@@ -155,6 +155,7 @@ public class EmailController : MonoBehaviour
     public void OnRegisterButtonClick()
     {
         hayInternet = Application.internetReachability != NetworkReachability.NotReachable;
+
         if (hayInternet)
         {
 
