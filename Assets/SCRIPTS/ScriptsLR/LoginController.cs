@@ -23,6 +23,7 @@ public class LoginController : MonoBehaviour
     public TMP_Text txtResetStatus;
     public GameObject PanelRestablecerUI;
     public GameObject PanelLogin;
+    public GameObject PanelMessage;
 
     /* -----------------  Necesario para intentos erroneos  ----------------- */
     private int failedAttempts = 0;
@@ -34,6 +35,7 @@ public class LoginController : MonoBehaviour
     public TMP_InputField passwordInput;
     public Toggle toggleRememberMe;
     public Button loginButton;
+    public Button messageButton;
     public TMP_Text txtError;
 
 
@@ -42,8 +44,8 @@ public class LoginController : MonoBehaviour
 
     // Verificar internet
     private bool hayInternet = false;
-   
-     
+
+
 
     private FirebaseAuth auth;
     private FirebaseFirestore firestore;
@@ -52,6 +54,7 @@ public class LoginController : MonoBehaviour
     {
         StartCoroutine(WaitForFirebase());
         btnResetPassword.onClick.AddListener(MostrarPanelRestablecer);
+        messageButton.onClick.AddListener(ClosePanelMessage);
         btnSendReset.onClick.AddListener(OnSendResetClick);
         CheckLockoutStatus(); // Verifica si el usuario está bloqueado
     }
@@ -82,21 +85,26 @@ public class LoginController : MonoBehaviour
             Debug.LogError("Error: No se pudo obtener las referencias de Firebase.");
             yield break;
         }
-        
+
         loginButton.onClick.AddListener(OnLoginButtonClick);
-       
+
     }
 
     public void OnLoginButtonClick()
     {
         hayInternet = Application.internetReachability != NetworkReachability.NotReachable;
+
         if (hayInternet)
         {
             if (IsLockedOut())
             {
+                PanelMessage.SetActive(true);
                 txtError.text = $"Demasiados intentos fallidos. Intenta en {GetRemainingLockoutTime()} segundos.";
                 return;
             }
+
+            if (VerificarCamposLoginVacios()) return; // 👈 Validación de campos vacíos
+
             string email = emailInput.text;
             string password = passwordInput.text;
             SignInUserWithEmail(email, password);
@@ -106,6 +114,7 @@ public class LoginController : MonoBehaviour
             m_SinInternetUI.SetActive(true);
         }
     }
+
 
     private void MostrarPanelRestablecer()
     {
@@ -180,6 +189,7 @@ public class LoginController : MonoBehaviour
             {
                 failedAttempts++;
 
+                PanelMessage.SetActive(true);
                 txtError.text = "El usuario o la contraseña no son correctas. Inténtelo de nuevo." + "\n\n Intentos restantes: " + (maxAttempts - failedAttempts);
                 PlayerPrefs.SetInt("FailedAttempts", failedAttempts);
 
@@ -223,14 +233,15 @@ public class LoginController : MonoBehaviour
         });
     }
 
-  
+
     /* -----------------  MÉTODOS PARA BLOQUEAR USUARIO  ----------------- */
     private void LockUser()
     {
         int lockoutEndTime = GetCurrentUnixTimestamp() + lockoutTime;
         PlayerPrefs.SetInt("LockoutTime", lockoutEndTime);
         PlayerPrefs.Save();
-        txtError.text = $"⏳ Demasiados intentos fallidos. Intenta en {lockoutTime} segundos.";
+        PanelMessage.SetActive(true);
+        txtError.text = $"Demasiados intentos fallidos. Intenta en {lockoutTime} segundos.";
         emailInput.interactable = false;
         passwordInput.interactable = false;
         loginButton.interactable = false;
@@ -266,6 +277,7 @@ public class LoginController : MonoBehaviour
         passwordInput.interactable = true;
         loginButton.interactable = true;
         txtError.text = "";
+        PanelMessage.SetActive(false);
     }
 
     private int GetCurrentUnixTimestamp()
@@ -278,7 +290,8 @@ public class LoginController : MonoBehaviour
         if (IsLockedOut())
         {
             int remainingTime = GetRemainingLockoutTime();
-            txtError.text = $"Demasiados intentos fallidos. Intenta en {remainingTime} segundos.";
+            PanelMessage.SetActive(true);
+            txtError.text = "Demasiados intentos fallidos. Intenta en {remainingTime} segundos.";
             emailInput.interactable = false;
             passwordInput.interactable = false;
             loginButton.interactable = false;
@@ -377,7 +390,8 @@ public class LoginController : MonoBehaviour
             {
                 estadoencuestaaprendizaje = snapshot.ContainsField("EstadoEncuestaAprendizaje") ? snapshot.GetValue<bool>("EstadoEncuestaAprendizaje") : false;
                 estadoencuestaconocimiento = snapshot.ContainsField("EstadoEncuestaConocimiento") ? snapshot.GetValue<bool>("EstadoEncuestaConocimiento") : false;  // Valor por defecto si el campo no existe
-            }else
+            }
+            else
             {
                 estadoencuestaaprendizaje = PlayerPrefs.GetInt("EstadoEncuestaAprendizaje", 0) == 1;
                 estadoencuestaconocimiento = PlayerPrefs.GetInt("EstadoEncuestaConocimiento", 0) == 1;
@@ -402,8 +416,28 @@ public class LoginController : MonoBehaviour
                     SceneManager.LoadScene("SeleccionarEncuesta");
                 }
             }
-           
+
         });
+    }
+
+    private void ClosePanelMessage()
+    {
+        PanelMessage.SetActive(false);
+    }
+
+    private bool VerificarCamposLoginVacios()
+    {
+        string email = emailInput.text.Trim();
+        string password = passwordInput.text.Trim();
+
+        if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(password))
+        {
+            txtError.text = "Hay campos vacíos, por favor completa todos los campos.";
+            PanelMessage.SetActive(true);
+            return true; // Sí están vacíos
+        }
+
+        return false; // No están vacíos
     }
 
 }

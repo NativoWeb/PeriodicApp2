@@ -13,6 +13,8 @@ using UnityEngine.UI;
 public class RegisterController : MonoBehaviour
 {
     public TMP_Text txtMensaje;
+    public GameObject panelMessage;
+    public Button ButtonMesage;
 
     public TMP_InputField userNameInput;
     public Button completeProfileButton;
@@ -45,6 +47,8 @@ public class RegisterController : MonoBehaviour
     {
         auth = FirebaseAuth.DefaultInstance;
         db = FirebaseFirestore.DefaultInstance;
+
+        ButtonMesage.onClick.AddListener(ClosePanelMessage);
 
         List<string> opciones = new List<string>() { "Seleccionar una ocupación", "Estudiante", "Profesor" };
         roles.AddOptions(opciones);
@@ -97,6 +101,7 @@ public class RegisterController : MonoBehaviour
 
             if (roles.value == 0 && !ocupacion)
             {
+                panelMessage.SetActive(true);
                 txtMensaje.text = "Debes seleccionar una ocupación antes de continuar.";
                 txtMensaje.color = Color.red;
                 return;
@@ -106,6 +111,7 @@ public class RegisterController : MonoBehaviour
 
             if (string.IsNullOrEmpty(userName))
             {
+                panelMessage.SetActive(true);
                 txtMensaje.text = "Debes ingresar un nombre de usuario antes de continuar.";
                 txtMensaje.color = Color.red;
                 return;
@@ -113,6 +119,7 @@ public class RegisterController : MonoBehaviour
 
             if (userName.Length < 8 || userName.Length > 10)
             {
+                panelMessage.SetActive(true);
                 txtMensaje.text = "El nombre de usuario debe tener entre 8 y 10 caracteres.";
                 txtMensaje.color = Color.red;
                 return;
@@ -140,13 +147,11 @@ public class RegisterController : MonoBehaviour
             if (snapshot.Count > 0)
             {
             // Si ya existe un usuario con ese nombre, mostrar error
+            panelMessage.SetActive(true);
             txtMensaje.text = "El nombre de usuario ya está en uso. Elige otro.";
             txtMensaje.color = Color.red;
             return;
         }
-
-        txtMensaje.text = "Guardando Usuario...";
-        txtMensaje.color = Color.green;
 
         // Guardar el nombre en PlayerPrefs
         PlayerPrefs.SetString("DisplayName", userName);
@@ -326,5 +331,10 @@ public class RegisterController : MonoBehaviour
         await Task.WhenAll(tareasSubida);
 
         Debug.Log("✅ Datos de misiones y categorías subidos en documentos separados.");
+    }
+
+    private void ClosePanelMessage()
+    {
+        panelMessage.SetActive(false);
     }
 }
