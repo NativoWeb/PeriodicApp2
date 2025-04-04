@@ -2,63 +2,132 @@ using UnityEngine;
 using UnityEngine.Networking;
 using System.Collections;
 using System.Text;
-using System.Security.Policy;
+using TMPro;
 
 public class AiTutor : MonoBehaviour
 {
+    [Header("Clave API")]
     string apiKey = "AIzaSyBx7SXpAy3o2fCKa1vT0bj_5fJCmth6Kyc";
-    string endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=";
+    string endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=";
 
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
+
+
+    [Header("Referencias UI")]
+    public TMP_InputField inputPregunta;
+    public TextMeshProUGUI respuestaTexto;
+    public GameObject panelChatTutor;
+
     void Start()
     {
         
+        panelChatTutor.SetActive(false);
     }
 
-    public void PreguntarAI(string pregunta)
+    public void EnviarPregunta()
     {
-        StartCoroutine(SendQuestion(pregunta));
-    }
-
-    IEnumerator SendQuestion(string input)
-    {
-        // Formato JSON requerido por Gemini
-        string json = "{\"contents\":[{\"parts\":[{\"text\":\"" + input + "\"}]}]}";
-
-        using (UnityWebRequest request = new UnityWebRequest(endpoint + apiKey, "POST"))
+        string pregunta = inputPregunta.text;
+        if (!string.IsNullOrEmpty(pregunta))
         {
-            byte[] bodyRaw = Encoding.UTF8.GetBytes(json);
-            request.uploadHandler = new UploadHandlerRaw(bodyRaw);
-            request.downloadHandler = new DownloadHandlerBuffer();
-            request.SetRequestHeader("Content-Type", "application/json");
-
-            yield return request.SendWebRequest();
-
-            if (request.result == UnityWebRequest.Result.Success)
-            {
-                Debug.Log("Respuesta: " + request.downloadHandler.text);
-
-                // Aquí puedes extraer el contenido de la respuesta
-                string respuesta = ProcesarRespuesta(request.downloadHandler.text);
-                Debug.Log("Respuesta procesada: " + respuesta);
-            }
-            else
-            {
-                Debug.LogError("Error: " + request.error);
-            }
+            Debug.Log("Pregunta enviada: " + pregunta);
+            StartCoroutine(SolicitarRespuestaIA(pregunta));
+            inputPregunta.text = "";
+        }
+        else
+        {
+            Debug.LogWarning("El campo de pregunta está vacío.");
         }
     }
 
-    string ProcesarRespuesta(string json)
+    IEnumerator SolicitarRespuestaIA(string pregunta)
     {
-        // Extrae el texto de la respuesta con una búsqueda sencilla
-        int index = json.IndexOf("\"text\":\"") + 8;
-        int end = json.IndexOf("\"", index);
-        if (index > 0 && end > index)
+        string jsonBody = "{ \"contents\": [ { \"role\": \"user\", \"parts\": [ { \"text\": \"" + pregunta + "\" } ] } ] }";
+        
+
+        UnityWebRequest request = new UnityWebRequest(endpoint + apiKey, "POST");
+        byte[] bodyRaw = Encoding.UTF8.GetBytes(jsonBody);
+        request.uploadHandler = new UploadHandlerRaw(bodyRaw);
+        request.downloadHandler = new DownloadHandlerBuffer();
+        request.SetRequestHeader("Content-Type", "application/json");
+
+        yield return request.SendWebRequest();
+
+        Debug.Log("Código de respuesta HTTP: " + request.responseCode);
+        Debug.Log("Respuesta completa:\n" + request.downloadHandler.text);
+
+        if (request.result == UnityWebRequest.Result.Success)
         {
-            return json.Substring(index, end - index).Replace("\\n", "\n");
+            try
+            {
+                RespuestaGemini respuesta = JsonUtility.FromJson<RespuestaGemini>(request.downloadHandler.text);
+                string texto = respuesta.candidates[0].content.parts[0].text;
+                respuestaTexto.text = texto;
+                Debug.Log("Respuesta IA: " + texto);
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError("Error al parsear respuesta de Gemini: " + e.Message);
+                respuestaTexto.text = "Error al procesar respuesta IA.";
+            }
         }
-        return "No se pudo procesar la respuesta.";
+        else
+        {
+            Debug.LogError("Error en la petición: " + request.error);
+            respuestaTexto.text = "Error: " + request.error;
+        }
     }
 
+    public void ToggleChatPanel()
+    {
+        if (panelChatTutor != null)
+        {
+            bool estadoActual = panelChatTutor.activeSelf;
+            panelChatTutor.SetActive(!estadoActual);
+            
+        }
+        else
+        {
+            Debug.LogError("panelChatTutor no está asignado.");
+        }
+    }
+
+
+
+    [System.Serializable]
+    public class MensajeGemini
+    {
+        public Content content;
+        public MensajeGemini(string texto)
+        {
+            content = new Content(texto);
+        }
+    }
+
+    [System.Serializable]
+    public class Content
+    {
+        public Part[] parts;
+        public string role = "user";
+        public Content(string texto)
+        {
+            parts = new Part[] { new Part { text = texto } };
+        }
+    }
+
+    [System.Serializable]
+    public class Part
+    {
+        public string text;
+    }
+
+    [System.Serializable]
+    public class RespuestaGemini
+    {
+        public Candidate[] candidates;
+    }
+
+    [System.Serializable]
+    public class Candidate
+    {
+        public Content content;
+    }
 }
