@@ -2,25 +2,39 @@ using UnityEngine;
 
 public class OrbitAnimation : MonoBehaviour
 {
-    // Propiedades públicas
-    public int level { get; set; }
-    public float baseRotationSpeed { get; set; }
-    public float maxTiltAngle { get; set; }
+    private int level;
+    private int electronCount;
 
-    // Control de animación
+    public float rotationSpeedY;
+    public float rotationSpeedX;
+    public float sharedAngle; // Para sincronización con ElectronOrbit
+
+    private float currentRotationY;
+    private float currentRotationX;
     private bool animationEnabled = false;
-    private float rotationProgress;
-    private float wobbleProgress;
 
-    public void Configure(int lvl, float speed, float tilt)
+    // Configuración extendida (con nivel y cantidad de electrones)
+    public void Configure(int lvl, float speedY, float speedX, int eCount)
     {
         level = lvl;
-        baseRotationSpeed = speed;
-        maxTiltAngle = tilt;
+        rotationSpeedY = speedY;
+        rotationSpeedX = speedX;
+        electronCount = eCount;
 
-        // Inicializar valores
-        rotationProgress = Random.Range(0f, 360f);
-        wobbleProgress = Random.Range(0f, 2f * Mathf.PI);
+        sharedAngle = Random.Range(0f, 360f);
+        currentRotationY = sharedAngle;
+        currentRotationX = Random.Range(0f, 360f);
+    }
+
+    // Configuración simple
+    public void Configure(float speedY, float speedX)
+    {
+        rotationSpeedY = speedY;
+        rotationSpeedX = speedX;
+
+        sharedAngle = Random.Range(0f, 360f);
+        currentRotationY = sharedAngle;
+        currentRotationX = Random.Range(0f, 360f);
     }
 
     public void EnableAnimation()
@@ -28,21 +42,27 @@ public class OrbitAnimation : MonoBehaviour
         animationEnabled = true;
     }
 
+    public Quaternion GetCurrentRotation()
+    {
+        return Quaternion.Euler(currentRotationX, currentRotationY, 0);
+    }
+
     void Update()
     {
         if (!animationEnabled) return;
 
-        // Rotación continua en Y
-        rotationProgress += baseRotationSpeed * Time.deltaTime;
-        rotationProgress %= 360f;
+        // Actualización de ángulos
+        sharedAngle += rotationSpeedY * Time.deltaTime;
+        sharedAngle %= 360f;
 
-        // Balanceo en X
-        wobbleProgress += 1f * Time.deltaTime;
-        float currentTilt = Mathf.Sin(wobbleProgress) * maxTiltAngle;
+        currentRotationY = sharedAngle;
+        currentRotationX += rotationSpeedX * Time.deltaTime;
+        currentRotationX %= 360f;
 
+        // Aplicar rotación en ambos ejes
         transform.localRotation = Quaternion.Euler(
-            currentTilt,
-            rotationProgress,
+            currentRotationX,
+            currentRotationY,
             0
         );
     }
