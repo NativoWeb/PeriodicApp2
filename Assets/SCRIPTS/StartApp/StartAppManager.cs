@@ -379,7 +379,6 @@ public class StartAppManager : MonoBehaviour
                 if (deleteTask.IsCompletedSuccessfully)
                 {
                     Debug.Log("Cuenta eliminada por falta de conexión.");
-                    PlayerPrefs.DeleteKey("tempUserId");
                     PlayerPrefs.DeleteKey("UsuarioEliminar");
                 }
                 else
