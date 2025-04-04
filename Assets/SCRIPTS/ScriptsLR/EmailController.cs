@@ -253,7 +253,7 @@ public class EmailController : MonoBehaviour
             userEmail = email;
 
             // Guardar el ID del usuario recién creado en PlayerPrefs para la siguiente escena
-            PlayerPrefs.SetString("tempUserId", currentUser.UserId);
+            PlayerPrefs.SetString("UsuarioEliminar", currentUser.UserId);
             PlayerPrefs.Save();
 
             System.Random random = new System.Random();
@@ -326,11 +326,6 @@ public class EmailController : MonoBehaviour
         emailInput.text = "";
         passwordInput.text = passwordInput.text;
 
-        
-        
-        string usuarioaeliminar = PlayerPrefs.GetString("tempUserId", "");
-        PlayerPrefs.SetString("UsuarioEliminar", usuarioaeliminar);
-        PlayerPrefs.Save();
 
         if (hayInternet)
         {
@@ -354,8 +349,9 @@ public class EmailController : MonoBehaviour
                 if (deleteTask.IsCompletedSuccessfully)
                 {
                     Debug.Log("Cuenta eliminada por falta de conexión.");
-                    PlayerPrefs.DeleteKey("tempUserId");
+
                     PlayerPrefs.DeleteKey("UsuarioEliminar");
+                    PlayerPrefs.Save();
                 }
                 else
                 {
@@ -392,8 +388,7 @@ public class EmailController : MonoBehaviour
         }
         else
         {
-            string usuarioaeliminar = PlayerPrefs.GetString("tempUserId", "");
-            PlayerPrefs.SetString("UsuarioEliminar", usuarioaeliminar);
+            string usuarioaeliminar = PlayerPrefs.GetString("UsuarioEliminar", "");
             PlayerPrefs.Save();
             m_SinInternetUI.SetActive(true);
         }

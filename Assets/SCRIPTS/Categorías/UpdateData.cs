@@ -220,6 +220,12 @@ public class UpdateData : MonoBehaviour
                     PlayerPrefs.SetString("Rango",rango);
                     string avatar = snapshot.GetValue<string>("avatar");
                     PlayerPrefs.SetString("TempAvatar", avatar);
+                    //int edad = snapshot.GetValue<int>("Edad");
+                    //PlayerPrefs.SetInt("Edad", edad);
+                    //string departamento = snapshot.GetValue<string>("Departamento");
+                    //PlayerPrefs.SetString("Departamento", departamento);
+                    //string ciudad = snapshot.GetValue<string>("Ciudad");
+                    //PlayerPrefs.SetString("Ciudad", ciudad);
 
                     Debug.Log("Get-user-Data desde Update Data puso bien los player prefs");
                 }

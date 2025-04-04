@@ -123,9 +123,7 @@ public class RegisterController : MonoBehaviour
         }
         else
         {
-            string usuarioaeliminar = PlayerPrefs.GetString("tempUserId", "");
-            PlayerPrefs.SetString("UsuarioEliminar", usuarioaeliminar);
-            PlayerPrefs.Save();
+           
             m_SinInternetUI.SetActive(true);
         }
     }
@@ -223,7 +221,9 @@ public class RegisterController : MonoBehaviour
         PlayerPrefs.SetString("Estadouser", "sinloguear");
         PlayerPrefs.SetString("userId", userId);
         PlayerPrefs.SetString("TempOcupacion", ocupacionSelecionada); // guardamos la ocupación para poder hacer el tryofflinelogin si se entra la primera vez con wifi
+        PlayerPrefs.DeleteKey("UsuarioEliminar");
         PlayerPrefs.Save();
+       
 
         try
         {

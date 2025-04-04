@@ -1,22 +1,32 @@
-using UnityEngine;
+Ôªøusing UnityEngine;
 using TMPro;
 using System.Collections.Generic;
-using System.Collections;
 using Firebase.Firestore;
 using Firebase.Auth;
 using UnityEngine.UI;
 using Firebase.Extensions;
+using System;
 
+[RequireComponent(typeof(NetworkConnectionChecker))]
 public class DatosPersonales : MonoBehaviour
 {
+    // Constantes para evitar strings m√°gicos
+    private const string AGE_KEY = "Edad";
+    private const string DEPARTMENT_KEY = "Departamento";
+    private const string CITY_KEY = "Ciudad";
+    private const string SELECT_DEPARTMENT = "Seleccionar";
+    private const string SELECT_CITY = "Seleccione un departamento";
+    private const string USERS_COLLECTION = "users";
+
+    [Header("UI References")]
     [SerializeField] private TMP_Dropdown edadDropdown;
     [SerializeField] private TMP_Dropdown departamentoDropdown;
     [SerializeField] private TMP_Dropdown ciudadDropdown;
-    public Button btnGuardar;
-    public Button btnActualizar;
+    [SerializeField] private Button btnGuardar;
+    [SerializeField] private Button btnActualizar;
+    [SerializeField] private GameObject connectionWarningPanel;
 
-
-    // instanciamos firebase 
+    private NetworkConnectionChecker connectionChecker;
     private FirebaseAuth auth;
     private FirebaseFirestore db;
     private FirebaseUser currentUser;
@@ -24,38 +34,190 @@ public class DatosPersonales : MonoBehaviour
 
     private Dictionary<string, List<string>> ciudadesPorDepartamento = new Dictionary<string, List<string>>();
 
-   
-
-    void Start()
+    private void Awake()
     {
+        connectionChecker = GetComponent<NetworkConnectionChecker>();
+        InitializeFirebase();
+        InitializeDropdowns();
+    }
 
-        // inicializamos firebase
+    private void InitializeFirebase()
+    {
         auth = FirebaseAuth.DefaultInstance;
         db = FirebaseFirestore.DefaultInstance;
 
-        LlenarCiudadesPorDepartamento();
-        LlenarDropdowns();
-        departamentoDropdown.onValueChanged.AddListener(delegate { ActualizarCiudades(); });
-
         if (auth.CurrentUser != null)
         {
-            btnGuardar.onClick.AddListener(GuardarDatos);
-
-        }else
-        {
-            Debug.Log("no hay usuario autenticado");
+            currentUser = auth.CurrentUser;
+            userId = currentUser.UserId;
         }
-        
-
     }
-  
-  
 
-    void LlenarDropdowns()
+    private void InitializeDropdowns()
     {
-        // Lista de edades (1 a 100 aÒos)
+        btnGuardar.onClick.AddListener(GuardarDatos);
+        btnActualizar.onClick.AddListener(ActivarDropdowns);
+
+        departamentoDropdown.onValueChanged.AddListener(delegate { ActualizarCiudades(); });
+
+        LlenarCiudadesPorDepartamento();
+        LlenarDropdowns();
+    }
+
+    private void Start()
+    {
+        connectionChecker.OnConnectionChanged += HandleConnectionChange;
+        CheckInitialConnection();
+    }
+
+    private void OnDestroy()
+    {
+        connectionChecker.OnConnectionChanged -= HandleConnectionChange;
+    }
+
+    private void CheckInitialConnection()
+    {
+        if (connectionChecker.HasInternetConnection)
+        {
+            VerificarCampos();
+        }
+        else
+        {
+            ShowConnectionWarning();
+            LoadOfflineData();
+        }
+    }
+
+    private void HandleConnectionChange(bool isConnected)
+    {
+        if (isConnected)
+        {
+            connectionWarningPanel.SetActive(false);
+            VerificarCampos();
+        }
+        else
+        {
+            ShowConnectionWarning();
+        }
+    }
+
+    private void ShowConnectionWarning()
+    {
+        connectionWarningPanel.SetActive(true);
+        Debug.LogWarning("No hay conexi√≥n a internet. Algunas funciones pueden estar limitadas.");
+    }
+
+    private void LoadOfflineData()
+    {
+        // Cargar datos desde PlayerPrefs si existen
+        if (PlayerPrefs.HasKey(AGE_KEY) &&
+            PlayerPrefs.HasKey(DEPARTMENT_KEY) &&
+            PlayerPrefs.HasKey(CITY_KEY))
+        {
+            SetDropdownValues(
+                PlayerPrefs.GetInt(AGE_KEY),
+                PlayerPrefs.GetString(DEPARTMENT_KEY),
+                PlayerPrefs.GetString(CITY_KEY)
+            );
+        }
+    }
+
+    private async void VerificarCampos()
+    {
+        if (string.IsNullOrEmpty(userId))
+        {
+            Debug.LogError("User ID is not available");
+            return;
+        }
+
+        DocumentReference docRef = db.Collection(USERS_COLLECTION).Document(userId);
+
+        try
+        {
+            DocumentSnapshot snapshot = await docRef.GetSnapshotAsync();
+
+            if (snapshot.Exists)
+            {
+                Dictionary<string, object> datos = snapshot.ToDictionary();
+
+                bool hasAllFields = datos.ContainsKey(AGE_KEY.ToLower()) &&
+                                  datos.ContainsKey(DEPARTMENT_KEY.ToLower()) &&
+                                  datos.ContainsKey(CITY_KEY.ToLower());
+
+                if (hasAllFields)
+                {
+                    Debug.Log("Todos los campos existen. Cargando datos...");
+                    GetUserData();
+                }
+                else
+                {
+                    Debug.Log("Faltan uno o m√°s campos. Permitiendo edici√≥n...");
+                    EnableEditing();
+                }
+            }
+            else
+            {
+                Debug.Log("El documento no existe. Permitiendo edici√≥n...");
+                EnableEditing();
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"Error al verificar campos: {e.Message}");
+            LoadOfflineData();
+        }
+    }
+
+    private async void GetUserData()
+    {
+        try
+        {
+            DocumentReference userRef = db.Collection(USERS_COLLECTION).Document(userId);
+            DocumentSnapshot snapshot = await userRef.GetSnapshotAsync();
+
+            if (snapshot.Exists)
+            {
+                int edad = snapshot.GetValue<int>(AGE_KEY.ToLower());
+                string departamento = snapshot.GetValue<string>(DEPARTMENT_KEY.ToLower());
+                string ciudad = snapshot.GetValue<string>(CITY_KEY.ToLower());
+
+                // Guardar en PlayerPrefs para uso offline
+                PlayerPrefsManager.SaveUserData(edad, departamento, ciudad);
+
+                // Actualizar UI
+                SetDropdownValues(edad, departamento, ciudad);
+                DisableDropdowns();
+
+                Debug.Log("Datos personales cargados correctamente");
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"Error al obtener datos del usuario: {e.Message}");
+            LoadOfflineData();
+        }
+    }
+
+    private void SetDropdownValues(int edad, string departamento, string ciudad)
+    {
+        // Asignar edad
+        int edadIndex = edadDropdown.options.FindIndex(option => option.text == edad.ToString());
+        if (edadIndex != -1) edadDropdown.value = edadIndex;
+
+        // Asignar departamento
+        int departamentoIndex = departamentoDropdown.options.FindIndex(option => option.text == departamento);
+        if (departamentoIndex != -1) departamentoDropdown.value = departamentoIndex;
+
+        // Asignar ciudad
+        int ciudadIndex = ciudadDropdown.options.FindIndex(option => option.text == ciudad);
+        if (ciudadIndex != -1) ciudadDropdown.value = ciudadIndex;
+    }
+
+    private void LlenarDropdowns()
+    {
+        // Lista de edades (1 a 100 a√±os)
         List<string> edades = new List<string>();
-        for (int i = 0; i <= 100; i++)
+        for (int i = 1; i <= 100; i++)
         {
             edades.Add(i.ToString());
         }
@@ -69,107 +231,190 @@ public class DatosPersonales : MonoBehaviour
         ActualizarCiudades();
     }
 
-    void LlenarCiudadesPorDepartamento()
+    private void LlenarCiudadesPorDepartamento()
     {
-        ciudadesPorDepartamento["Seleccionar"] = new List<string> { "Seleccione un departamento" };
-        ciudadesPorDepartamento["Amazonas"] = new List<string> { "Leticia", "Puerto NariÒo" };
-        ciudadesPorDepartamento["Antioquia"] = new List<string> { "MedellÌn", "Bello", "Envigado", "Itag¸Ì", "Rionegro", "ApartadÛ", "Turbo", "Sabaneta" };
+        // Limpiar diccionario primero
+        ciudadesPorDepartamento.Clear();
+
+        // Agregar opciones por defecto
+        ciudadesPorDepartamento[SELECT_DEPARTMENT] = new List<string> { SELECT_CITY };
+
+        // Datos reales de departamentos y ciudades
+        ciudadesPorDepartamento["Amazonas"] = new List<string> { "Leticia", "Puerto Nari√±o" };
+        ciudadesPorDepartamento["Antioquia"] = new List<string> { "Medell√≠n", "Bello", "Envigado", "Itag√º√≠", "Rionegro", "Apartad√≥", "Turbo", "Sabaneta" };
         ciudadesPorDepartamento["Arauca"] = new List<string> { "Arauca", "Saravena", "Tame", "Arauquita" };
-        ciudadesPorDepartamento["Atl·ntico"] = new List<string> { "Barranquilla", "Soledad", "Malambo", "Sabanalarga", "Puerto Colombia" };
-        ciudadesPorDepartamento["BolÌvar"] = new List<string> { "Cartagena", "MaganguÈ", "Turbaco", "Arjona", "El Carmen de BolÌvar" };
-        ciudadesPorDepartamento["Boyac·"] = new List<string> { "Tunja", "Duitama", "Sogamoso", "Chiquinquir·", "Paipa" };
-        ciudadesPorDepartamento["Caldas"] = new List<string> { "Manizales", "La Dorada", "Chinchin·", "VillamarÌa", "Riosucio" };
-        ciudadesPorDepartamento["Caquet·"] = new List<string> { "Florencia", "San Vicente del Cagu·n", "Puerto Rico", "Doncello" };
+        ciudadesPorDepartamento["Atl√°ntico"] = new List<string> { "Barranquilla", "Soledad", "Malambo", "Sabanalarga", "Puerto Colombia" };
+        ciudadesPorDepartamento["Bol√≠var"] = new List<string> { "Cartagena", "Magangu√©", "Turbaco", "Arjona", "El Carmen de Bol√≠var" };
+        ciudadesPorDepartamento["Boyac√°"] = new List<string> { "Tunja", "Duitama", "Sogamoso", "Chiquinquir√°", "Paipa" };
+        ciudadesPorDepartamento["Caldas"] = new List<string> { "Manizales", "La Dorada", "Chinchin√°", "Villamar√≠a", "Riosucio" };
+        ciudadesPorDepartamento["Caquet√°"] = new List<string> { "Florencia", "San Vicente del Cagu√°n", "Puerto Rico", "Doncello" };
         ciudadesPorDepartamento["Casanare"] = new List<string> { "Yopal", "Aguazul", "Villanueva", "Tauramena" };
-        ciudadesPorDepartamento["Cauca"] = new List<string> { "Popay·n", "Santander de Quilichao", "PatÌa", "Puerto Tejada" };
+        ciudadesPorDepartamento["Cauca"] = new List<string> { "Popay√°n", "Santander de Quilichao", "Pat√≠a", "Puerto Tejada" };
         ciudadesPorDepartamento["Cesar"] = new List<string> { "Valledupar", "Aguachica", "Codazzi", "La Jagua de Ibirico" };
-        ciudadesPorDepartamento["ChocÛ"] = new List<string> { "QuibdÛ", "Istmina", "Condoto", "BahÌa Solano" };
-        ciudadesPorDepartamento["CÛrdoba"] = new List<string> { "MonterÌa", "CeretÈ", "Sahag˙n", "Lorica", "MontelÌbano" };
-        ciudadesPorDepartamento["Cundinamarca"] = new List<string> { "Bogot·", "Soacha", "Zipaquir·", "Girardot", "Facatativ·", "ChÌa", "Fusagasug·" };
-        ciudadesPorDepartamento["GuainÌa"] = new List<string> { "InÌrida" };
-        ciudadesPorDepartamento["Guaviare"] = new List<string> { "San JosÈ del Guaviare", "Calamar", "Miraflores" };
-        ciudadesPorDepartamento["Huila"] = new List<string> { "Neiva", "Pitalito", "GarzÛn", "La Plata" };
+        ciudadesPorDepartamento["Choc√≥"] = new List<string> { "Quibd√≥", "Istmina", "Condoto", "Bah√≠a Solano" };
+        ciudadesPorDepartamento["C√≥rdoba"] = new List<string> { "Monter√≠a", "Ceret√©", "Sahag√∫n", "Lorica", "Montel√≠bano" };
+        ciudadesPorDepartamento["Cundinamarca"] = new List<string> { "Bogot√°", "Soacha", "Zipaquir√°", "Girardot", "Facatativ√°", "Ch√≠a", "Fusagasug√°" };
+        ciudadesPorDepartamento["Guain√≠a"] = new List<string> { "In√≠rida" };
+        ciudadesPorDepartamento["Guaviare"] = new List<string> { "San Jos√© del Guaviare", "Calamar", "Miraflores" };
+        ciudadesPorDepartamento["Huila"] = new List<string> { "Neiva", "Pitalito", "Garz√≥n", "La Plata" };
         ciudadesPorDepartamento["La Guajira"] = new List<string> { "Riohacha", "Maicao", "Uribia", "Fonseca" };
-        ciudadesPorDepartamento["Magdalena"] = new List<string> { "Santa Marta", "CiÈnaga", "FundaciÛn", "El Banco" };
-        ciudadesPorDepartamento["Meta"] = new List<string> { "Villavicencio", "AcacÌas", "Granada", "Puerto Gait·n" };
-        ciudadesPorDepartamento["NariÒo"] = new List<string> { "Pasto", "Ipiales", "Tumaco", "T˙querres" };
-        ciudadesPorDepartamento["Norte de Santander"] = new List<string> { "C˙cuta", "OcaÒa", "Pamplona", "Villa del Rosario" };
-        ciudadesPorDepartamento["Putumayo"] = new List<string> { "Mocoa", "Puerto AsÌs", "Orito", "Valle del Guamuez" };
-        ciudadesPorDepartamento["QuindÌo"] = new List<string> { "Armenia", "Circasia", "Montenegro", "Calarc·" };
+        ciudadesPorDepartamento["Magdalena"] = new List<string> { "Santa Marta", "Ci√©naga", "Fundaci√≥n", "El Banco" };
+        ciudadesPorDepartamento["Meta"] = new List<string> { "Villavicencio", "Acac√≠as", "Granada", "Puerto Gait√°n" };
+        ciudadesPorDepartamento["Nari√±o"] = new List<string> { "Pasto", "Ipiales", "Tumaco", "T√∫querres" };
+        ciudadesPorDepartamento["Norte de Santander"] = new List<string> { "C√∫cuta", "Oca√±a", "Pamplona", "Villa del Rosario" };
+        ciudadesPorDepartamento["Putumayo"] = new List<string> { "Mocoa", "Puerto As√≠s", "Orito", "Valle del Guamuez" };
+        ciudadesPorDepartamento["Quind√≠o"] = new List<string> { "Armenia", "Circasia", "Montenegro", "Calarc√°" };
         ciudadesPorDepartamento["Risaralda"] = new List<string> { "Pereira", "Dosquebradas", "Santa Rosa de Cabal", "La Virginia" };
-        ciudadesPorDepartamento["San AndrÈs y Providencia"] = new List<string> { "San AndrÈs", "Providencia" };
-        ciudadesPorDepartamento["Santander"] = new List<string> { "Bucaramanga", "Floridablanca", "GirÛn", "Piedecuesta", "Barrancabermeja" };
-        ciudadesPorDepartamento["Sucre"] = new List<string> { "Sincelejo", "Corozal", "SampuÈs", "San Marcos" };
-        ciudadesPorDepartamento["Tolima"] = new List<string> { "IbaguÈ", "Espinal", "Melgar", "Honda" };
-        ciudadesPorDepartamento["Valle del Cauca"] = new List<string> { "Cali", "Palmira", "Buenaventura", "Tulu·", "Cartago", "Buga" };
-        ciudadesPorDepartamento["VaupÈs"] = new List<string> { "Mit˙" };
-        ciudadesPorDepartamento["Vichada"] = new List<string> { "Puerto CarreÒo", "La Primavera" };
+        ciudadesPorDepartamento["San Andr√©s y Providencia"] = new List<string> { "San Andr√©s", "Providencia" };
+        ciudadesPorDepartamento["Santander"] = new List<string> { "Bucaramanga", "Floridablanca", "Gir√≥n", "Piedecuesta", "Barrancabermeja" };
+        ciudadesPorDepartamento["Sucre"] = new List<string> { "Sincelejo", "Corozal", "Sampu√©s", "San Marcos" };
+        ciudadesPorDepartamento["Tolima"] = new List<string> { "Ibagu√©", "Espinal", "Melgar", "Honda" };
+        ciudadesPorDepartamento["Valle del Cauca"] = new List<string> { "Cali", "Palmira", "Buenaventura", "Tulu√°", "Cartago", "Buga" };
+        ciudadesPorDepartamento["Vaup√©s"] = new List<string> { "Mit√∫" };
+        ciudadesPorDepartamento["Vichada"] = new List<string> { "Puerto Carre√±o", "La Primavera" };
     }
 
-
-    void ActualizarCiudades()
+    private void ActualizarCiudades()
     {
         string departamentoSeleccionado = departamentoDropdown.options[departamentoDropdown.value].text;
-        if (ciudadesPorDepartamento.ContainsKey(departamentoSeleccionado))
+
+        if (ciudadesPorDepartamento.TryGetValue(departamentoSeleccionado, out List<string> ciudades))
         {
-            ActualizarDropdown(ciudadDropdown, ciudadesPorDepartamento[departamentoSeleccionado]);
+            ActualizarDropdown(ciudadDropdown, ciudades);
         }
     }
 
-    void ActualizarDropdown(TMP_Dropdown dropdown, List<string> opciones)
+    private void ActualizarDropdown(TMP_Dropdown dropdown, List<string> opciones)
     {
-        dropdown.ClearOptions(); // Limpiar opciones anteriores
-        dropdown.AddOptions(opciones); // Agregar nuevas opciones
+        dropdown.ClearOptions();
+        dropdown.AddOptions(opciones);
     }
 
     public void GuardarDatos()
     {
-        if (auth.CurrentUser != null)
+        if (!connectionChecker.HasInternetConnection)
         {
-            string userId = auth.CurrentUser.UserId; // Obtener el ID del usuario autenticado
-            string edad = edadDropdown.options[edadDropdown.value].text;
-            string departamento = departamentoDropdown.options[departamentoDropdown.value].text;
-            string ciudad = ciudadDropdown.options[ciudadDropdown.value].text;
-
-            if(edad != "0" && departamento != "Seleccionar" && ciudad != "Seleccione un departamento")
-            {
-
-            
-                DocumentReference userRef = db.Collection("users").Document(userId);
-
-                Dictionary<string, object> datosUsuario = new Dictionary<string, object>
-                {
-                    { "Edad", edad },
-                    { "Departamento", departamento },
-                    { "Ciudad", ciudad }
-                };
-
-                userRef.SetAsync(datosUsuario, SetOptions.MergeAll).ContinueWithOnMainThread(task =>
-                {
-                    if (task.IsCompletedSuccessfully)
-                    {
-                        Debug.Log("Datos guardados en Firestore");
-
-                        // Deshabilitar los Dropdowns y el botÛn
-                        edadDropdown.interactable = false;
-                        departamentoDropdown.interactable = false;
-                        ciudadDropdown.interactable = false;
-                        
-                    }
-                    else
-                    {
-                        Debug.LogError("Error al guardar los datos: " + task.Exception);
-                    }
-                });
-            }else
-            {
-                Debug.Log("datos invalidos, no se pueden guardar datos a firebase");
-            }
-       
+            Debug.LogWarning("No se puede guardar sin conexi√≥n a internet");
+            ShowConnectionWarning();
+            return;
         }
-        else
+
+        if (auth.CurrentUser == null)
         {
             Debug.LogError("No hay usuario autenticado.");
+            return;
+        }
+
+        string edadtxt = edadDropdown.options[edadDropdown.value].text;
+        string departamento = departamentoDropdown.options[departamentoDropdown.value].text;
+        string ciudad = ciudadDropdown.options[ciudadDropdown.value].text;
+
+        if (!int.TryParse(edadtxt, out int edad) ||
+            departamento == SELECT_DEPARTMENT ||
+            ciudad == SELECT_CITY)
+        {
+            Debug.LogWarning("Datos inv√°lidos. Por favor complete todos los campos correctamente.");
+            return;
+        }
+
+        DocumentReference userRef = db.Collection(USERS_COLLECTION).Document(userId);
+
+        Dictionary<string, object> datosUsuario = new Dictionary<string, object>
+        {
+            { AGE_KEY.ToLower(), edad },
+            { DEPARTMENT_KEY.ToLower(), departamento },
+            { CITY_KEY.ToLower(), ciudad }
+        };
+
+        userRef.SetAsync(datosUsuario, SetOptions.MergeAll).ContinueWithOnMainThread(task =>
+        {
+            if (task.IsCompletedSuccessfully)
+            {
+                Debug.Log("Datos guardados en Firestore");
+
+                // Guardar tambi√©n en PlayerPrefs para uso offline
+                PlayerPrefsManager.SaveUserData(edad, departamento, ciudad);
+
+                DisableDropdowns();
+            }
+            else
+            {
+                Debug.LogError("Error al guardar los datos: " + task.Exception);
+            }
+        });
+    }
+
+    public void ActivarDropdowns()
+    {
+        if (!connectionChecker.HasInternetConnection)
+        {
+            ShowConnectionWarning();
+            return;
+        }
+
+        EnableEditing();
+        Debug.Log("Dropdowns activados para edici√≥n.");
+    }
+
+    private void EnableEditing()
+    {
+        edadDropdown.interactable = true;
+        departamentoDropdown.interactable = true;
+        ciudadDropdown.interactable = true;
+    }
+
+    private void DisableDropdowns()
+    {
+        edadDropdown.interactable = false;
+        departamentoDropdown.interactable = false;
+        ciudadDropdown.interactable = false;
+    }
+}
+
+// Clase auxiliar para manejar PlayerPrefs
+public static class PlayerPrefsManager
+{
+    public static void SaveUserData(int age, string department, string city)
+    {
+        PlayerPrefs.SetInt("Edad", age);
+        PlayerPrefs.SetString("Departamento", department);
+        PlayerPrefs.SetString("Ciudad", city);
+        PlayerPrefs.Save();
+    }
+
+    public static (int age, string department, string city) LoadUserData()
+    {
+        return (
+            PlayerPrefs.GetInt("Edad", 0),
+            PlayerPrefs.GetString("Departamento", ""),
+            PlayerPrefs.GetString("Ciudad", "")
+        );
+    }
+}
+
+// Clase para verificar conexi√≥n a internet
+public class NetworkConnectionChecker : MonoBehaviour
+{
+    public event Action<bool> OnConnectionChanged;
+
+    private bool lastConnectionStatus;
+
+    private void Start()
+    {
+        lastConnectionStatus = Application.internetReachability != NetworkReachability.NotReachable;
+        InvokeRepeating(nameof(CheckConnection), 1f, 1f);
+    }
+
+    private void CheckConnection()
+    {
+        bool currentStatus = Application.internetReachability != NetworkReachability.NotReachable;
+
+        if (currentStatus != lastConnectionStatus)
+        {
+            lastConnectionStatus = currentStatus;
+            OnConnectionChanged?.Invoke(currentStatus);
         }
     }
+
+    public bool HasInternetConnection => lastConnectionStatus;
 }
