@@ -26,7 +26,6 @@ public class ScrollToUser : MonoBehaviour
     {
         db = FirebaseFirestore.DefaultInstance;
         auth = FirebaseAuth.DefaultInstance;
-        
         ObtenerInformacionUsuario();
 
     }

@@ -351,6 +351,7 @@ public class LoginController : MonoBehaviour
                 Debug.LogWarning("⚠️ No se guardaron categorías porque están vacías.");
             }
 
+            PlayerPrefs.SetString("CategoriasOrdenadas", misionesJson);
             PlayerPrefs.Save();
             Debug.Log("✅ Misiones y categorías guardadas en PlayerPrefs.");
             CheckUserStatus(userId);
