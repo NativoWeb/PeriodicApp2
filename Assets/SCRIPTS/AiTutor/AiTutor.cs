@@ -10,16 +10,17 @@ public class AiTutor : MonoBehaviour
     string apiKey = "AIzaSyBx7SXpAy3o2fCKa1vT0bj_5fJCmth6Kyc";
     string endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=";
 
-
-
     [Header("Referencias UI")]
     public TMP_InputField inputPregunta;
-    public TextMeshProUGUI respuestaTexto;
     public GameObject panelChatTutor;
+
+    [Header("Prefabs y Contenedor")]
+    public GameObject bubbleUserPrefab;
+    public GameObject bubbleAiPrefab;
+    public Transform contentChat;
 
     void Start()
     {
-        
         panelChatTutor.SetActive(false);
     }
 
@@ -29,6 +30,7 @@ public class AiTutor : MonoBehaviour
         if (!string.IsNullOrEmpty(pregunta))
         {
             Debug.Log("Pregunta enviada: " + pregunta);
+            CrearBurbujaUsuario(pregunta);
             StartCoroutine(SolicitarRespuestaIA(pregunta));
             inputPregunta.text = "";
         }
@@ -38,10 +40,23 @@ public class AiTutor : MonoBehaviour
         }
     }
 
+    void CrearBurbujaUsuario(string texto)
+    {
+        GameObject burbuja = Instantiate(bubbleUserPrefab, contentChat);
+        TextMeshProUGUI textoUI = burbuja.GetComponentInChildren<TextMeshProUGUI>();
+        textoUI.text = texto;
+    }
+
+    void CrearBurbujaIA(string texto)
+    {
+        GameObject burbuja = Instantiate(bubbleAiPrefab, contentChat);
+        TextMeshProUGUI textoUI = burbuja.GetComponentInChildren<TextMeshProUGUI>();
+        textoUI.text = texto;
+    }
+
     IEnumerator SolicitarRespuestaIA(string pregunta)
     {
         string jsonBody = "{ \"contents\": [ { \"role\": \"user\", \"parts\": [ { \"text\": \"" + pregunta + "\" } ] } ] }";
-        
 
         UnityWebRequest request = new UnityWebRequest(endpoint + apiKey, "POST");
         byte[] bodyRaw = Encoding.UTF8.GetBytes(jsonBody);
@@ -60,19 +75,19 @@ public class AiTutor : MonoBehaviour
             {
                 RespuestaGemini respuesta = JsonUtility.FromJson<RespuestaGemini>(request.downloadHandler.text);
                 string texto = respuesta.candidates[0].content.parts[0].text;
-                respuestaTexto.text = texto;
+                CrearBurbujaIA(texto);
                 Debug.Log("Respuesta IA: " + texto);
             }
             catch (System.Exception e)
             {
                 Debug.LogError("Error al parsear respuesta de Gemini: " + e.Message);
-                respuestaTexto.text = "Error al procesar respuesta IA.";
+                CrearBurbujaIA("Error al procesar respuesta IA.");
             }
         }
         else
         {
             Debug.LogError("Error en la petición: " + request.error);
-            respuestaTexto.text = "Error: " + request.error;
+            CrearBurbujaIA("Error: " + request.error);
         }
     }
 
@@ -82,15 +97,12 @@ public class AiTutor : MonoBehaviour
         {
             bool estadoActual = panelChatTutor.activeSelf;
             panelChatTutor.SetActive(!estadoActual);
-            
         }
         else
         {
             Debug.LogError("panelChatTutor no está asignado.");
         }
     }
-
-
 
     [System.Serializable]
     public class MensajeGemini
