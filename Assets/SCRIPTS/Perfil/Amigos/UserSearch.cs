@@ -117,13 +117,14 @@ public class SearchUsers : MonoBehaviour
 
                     if (status == "Pendiente")
                     {
-                        SetButtonState(button, Color.green, "Solicitud enviada", false);
+                        SetButtonState(button,Color.white, "Solicitud enviada", false); // Verde oscuro personalizado
                     }
                     else if (status == "Aceptada")
                     {
-                        SetButtonState(button, Color.red, "Amigos", false);
+                        SetButtonState(button, Color.green, "Amigos", false);
                     }
                 }
+
             });
     }
 
@@ -143,7 +144,7 @@ public class SearchUsers : MonoBehaviour
                 if (task.IsCompleted)
                 {
                     Debug.Log("Solicitud de amistad enviada a: " + username);
-                    SetButtonState(button, Color.green, "Solicitud enviada", false);
+                    SetButtonState(button, Color.white, "Solicitud enviada", false);
                 }
                 else
                 {

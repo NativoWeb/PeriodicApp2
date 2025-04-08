@@ -117,10 +117,12 @@ public class FriendsManager : MonoBehaviour
                     .Where(doc => doc.Exists && doc.Id != userId && !excludedUsers.Contains(doc.Id))
                     .ToList();
 
-                if (suggestedUsers.Count == 0)
+                int cantidadFaltante = 5 - suggestedUsers.Count;
+
+                if (cantidadFaltante > 0)
                 {
-                    Debug.Log("No se encontraron usuarios en la misma ciudad. Buscando usuarios aleatorios...");
-                    LoadRandomUsers();
+                    Debug.Log($"Faltan {cantidadFaltante} usuarios, buscando aleatorios...");
+                    LoadRandomUsers(cantidadFaltante, suggestedUsers);
                 }
                 else
                 {
@@ -128,6 +130,35 @@ public class FriendsManager : MonoBehaviour
                 }
             });
     }
+
+    void LoadRandomUsers(int cantidadFaltante, List<DocumentSnapshot> currentUsers)
+    {
+        firestore.Collection("users")
+            .Limit(20) // Obtener más para mayor aleatoriedad
+            .GetSnapshotAsync()
+            .ContinueWithOnMainThread(task =>
+            {
+                if (task.IsFaulted)
+                {
+                    Debug.LogError($"Error obteniendo usuarios aleatorios: {task.Exception}");
+                    return;
+                }
+
+                List<DocumentSnapshot> allUsers = task.Result.Documents
+                    .Where(doc => doc.Exists && doc.Id != userId && !excludedUsers.Contains(doc.Id))
+                    .ToList();
+
+                if (allUsers.Count > 0)
+                {
+                    System.Random rand = new System.Random();
+                    List<DocumentSnapshot> randomUsers = allUsers.OrderBy(x => rand.Next()).Take(cantidadFaltante).ToList();
+                    currentUsers.AddRange(randomUsers);
+                }
+
+                CreateUserCards(currentUsers);
+            });
+    }
+
 
     void LoadRandomUsers()
     {
@@ -201,7 +232,7 @@ public class FriendsManager : MonoBehaviour
                 if (task.IsCompleted)
                 {
                     Debug.Log("Solicitud de amistad enviada a: " + friendName);
-                    SetButtonState(button, Color.green, "Solicitud enviada", false);
+                    SetButtonState(button, Color.white, "Solicitud enviada", false);
                 }
                 else
                 {
