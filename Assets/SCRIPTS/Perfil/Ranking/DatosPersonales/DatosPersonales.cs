@@ -23,6 +23,7 @@ public class DatosPersonales : MonoBehaviour
     public TMP_Text edadtxt;
     public TMP_Text departamentotxt;
     public TMP_Text ciudadtxt;
+    public TMP_Text Messagetxt;
 
     //Panel de entrada información básica
     [SerializeField] private GameObject m_PanelentradaUI = null;
@@ -147,6 +148,7 @@ public class DatosPersonales : MonoBehaviour
             }else
             {
                 Debug.Log("no ha completado datos básicos");
+                Messagetxt.text = ("no ha completado datos básicos");
             }
          
 
@@ -296,13 +298,15 @@ public class DatosPersonales : MonoBehaviour
             }
             else
             {
-                Debug.Log("datos invalidos, no se pueden guardar datos a firebase");
+                Debug.LogError("Usuario no autenticado");
+               
             }
 
         }
         else
         {
-            Debug.LogError("No hay usuario autenticado.");
+            Debug.Log("Datos invalidos");
+            Messagetxt.text = ("Datos invalidos");
         }
     }
     public void ActivarPanelDropdowns()
