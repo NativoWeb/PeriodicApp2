@@ -41,6 +41,7 @@ public class FriendsManager : MonoBehaviour
         // Obtener la lista de amigos y solicitudes pendientes
         LoadExcludedUsers();
     }
+    // nuevos cambios
 
     void LoadExcludedUsers()
     {
