@@ -7,6 +7,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using Firebase.Extensions;
 using Unity.Android.Types;
+using UnityEngine.EventSystems;
 
 public class DatosPersonales : MonoBehaviour
 {
@@ -22,6 +23,9 @@ public class DatosPersonales : MonoBehaviour
     public TMP_Text edadtxt;
     public TMP_Text departamentotxt;
     public TMP_Text ciudadtxt;
+
+    //Panel de entrada información básica
+    [SerializeField] private GameObject m_PanelentradaUI = null;
 
     //
     public Button btnGuardar;
@@ -106,6 +110,7 @@ public class DatosPersonales : MonoBehaviour
             }
             else
             {
+                ActivasPanelEntradaDatos();
                 ActivarPanelDropdowns();
                 CargarTotalementeDropDowns();
 
@@ -384,4 +389,24 @@ public class DatosPersonales : MonoBehaviour
             }
         }
     }
+   private void ActivasPanelEntradaDatos()
+    {
+
+        m_PanelentradaUI.SetActive(true);
+
+    }
+    public void DesactivarPanelEntrada()
+    {
+        m_PanelentradaUI.SetActive(false);
+        // Esperar un frame antes de enfocar el dropdown para evitar errores de UI
+        StartCoroutine(SetDropdownFocus());
+    }
+
+    private System.Collections.IEnumerator SetDropdownFocus()
+    {
+        yield return null; // Esperar un frame
+
+        EventSystem.current.SetSelectedGameObject(edadDropdown.gameObject);
+    }
+
 }
