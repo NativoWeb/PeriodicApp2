@@ -11,6 +11,7 @@ public class SearchUsers : MonoBehaviour
     public Button searchButton;
     public Transform resultsContainer;
     public GameObject userResultPrefab; // Prefab con nombre y botón de agregar
+    public TMP_Text messageText; // Texto para mostrar mensajes
 
     FirebaseFirestore db;
     string currentUserId;
@@ -20,17 +21,25 @@ public class SearchUsers : MonoBehaviour
         db = FirebaseFirestore.DefaultInstance;
         currentUserId = Firebase.Auth.FirebaseAuth.DefaultInstance.CurrentUser.UserId;
         searchButton.onClick.AddListener(() => SearchUser(searchInput.text));
+        ShowMessage("Por favor, escribe un nombre para buscar.");
     }
 
     void SearchUser(string username)
     {
-        if (string.IsNullOrEmpty(username)) return;
+        // Si el input está vacío, mostrar un mensaje
+        if (string.IsNullOrEmpty(username))
+        {
+            ShowMessage("Por favor, escribe un nombre para buscar.");
+            return;
+        }
 
         // Limpiar resultados anteriores
         foreach (Transform child in resultsContainer)
         {
             Destroy(child.gameObject);
         }
+
+        messageText.text = "Buscando..."; // Mostrar estado de búsqueda
 
         db.Collection("users")
             .WhereGreaterThanOrEqualTo("DisplayName", username)
@@ -41,6 +50,7 @@ public class SearchUsers : MonoBehaviour
                 if (task.IsFaulted || task.IsCanceled)
                 {
                     Debug.LogError("Error buscando usuarios: " + task.Exception);
+                    ShowMessage("Hubo un error al buscar. Inténtalo de nuevo.");
                     return;
                 }
 
@@ -85,11 +95,14 @@ public class SearchUsers : MonoBehaviour
                 // Si no se encontraron usuarios válidos
                 if (userCount == 0)
                 {
-                    Debug.LogWarning("No se encontraron usuarios con ese nombre.");
+                    ShowMessage("No se encontraron usuarios con ese nombre.");
+                }
+                else
+                {
+                    ShowMessage(""); // Limpiar mensaje si hay resultados
                 }
             });
     }
-
 
     void CheckFriendStatus(string userId, Button button)
     {
@@ -144,5 +157,10 @@ public class SearchUsers : MonoBehaviour
         button.GetComponent<Image>().color = color;
         button.GetComponentInChildren<TMP_Text>().text = text;
         button.interactable = interactable;
+    }
+
+    void ShowMessage(string message)
+    {
+        messageText.text = message;
     }
 }
