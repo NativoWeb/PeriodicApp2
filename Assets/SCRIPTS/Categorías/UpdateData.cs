@@ -208,6 +208,7 @@ public class UpdateData : MonoBehaviour
                 if (snapshot.Exists)
                 {
                     int xpActual = snapshot.GetValue<int>("xp"); // XP actual en Firebase
+                    PlayerPrefs.SetInt("TempXP", xpActual);
                     string username = snapshot.GetValue<string>("DisplayName");
                     PlayerPrefs.SetString("DisplayName", username);
                     bool estadoencuestaaprendizaje = snapshot.GetValue<bool>("EstadoEncuestaAprendizaje");

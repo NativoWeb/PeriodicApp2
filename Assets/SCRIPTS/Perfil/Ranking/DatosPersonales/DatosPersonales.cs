@@ -158,6 +158,7 @@ public class DatosPersonales : MonoBehaviour
 
         //desactivamos el panel de los dropdowns
         m_dropdownsUI.SetActive(false);
+        btnGuardar.interactable = false;
         // activamos panel informacion básica 
         m_InfoBasicaUI.SetActive(true);
         btnActualizar.interactable =false;
