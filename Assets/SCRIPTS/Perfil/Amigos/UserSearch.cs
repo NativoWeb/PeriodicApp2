@@ -4,6 +4,8 @@ using Firebase.Firestore;
 using Firebase.Extensions;
 using TMPro;
 using UnityEngine.UI;
+using Firebase.Auth;
+using System.Linq;
 
 public class SearchUsers : MonoBehaviour
 {
@@ -14,13 +16,21 @@ public class SearchUsers : MonoBehaviour
     public TMP_Text messageText; // Texto para mostrar mensajes
 
     FirebaseFirestore db;
+    private FirebaseUser currentUser;
+    private FirebaseAuth auth;
     string currentUserId;
 
     void Start()
     {
         db = FirebaseFirestore.DefaultInstance;
         currentUserId = Firebase.Auth.FirebaseAuth.DefaultInstance.CurrentUser.UserId;
-        searchButton.onClick.AddListener(() => SearchUser(searchInput.text));
+        auth = FirebaseAuth.DefaultInstance;
+
+        if (auth.CurrentUser != null)
+        {
+            currentUser = auth.CurrentUser;
+        }
+            searchButton.onClick.AddListener(() => SearchUser(searchInput.text));
         ShowMessage("Por favor, escribe un nombre para buscar.");
     }
 
@@ -106,52 +116,88 @@ public class SearchUsers : MonoBehaviour
 
     void CheckFriendStatus(string userId, Button button)
     {
-        db.Collection("Solicitudes_Amistad").Document(currentUserId)
-            .Collection("Usuarios").Document(userId)
-            .GetSnapshotAsync()
-            .ContinueWithOnMainThread(task =>
-            {
-                if (task.IsCompleted && task.Result.Exists)
-                {
-                    string status = task.Result.GetValue<string>("status");
+        db.Collection("SolicitudesAmistad")
+          .WhereEqualTo("idRemitente", currentUserId)
+          .WhereEqualTo("idDestinatario", userId)
+          .GetSnapshotAsync()
+          .ContinueWithOnMainThread(task =>
+          {
+              if (!task.IsCompleted || task.IsFaulted)
+              {
+                  Debug.LogError("Error al obtener solicitudes de amistad.");
+                  return;
+              }
 
-                    if (status == "Pendiente")
-                    {
-                        SetButtonState(button,Color.white, "Solicitud enviada", false); // Verde oscuro personalizado
-                    }
-                    else if (status == "Aceptada")
-                    {
-                        SetButtonState(button, Color.green, "Amigos", false);
-                    }
-                }
+              var snapshot = task.Result;
+              if (snapshot.Documents.Count() == 0)
+              {
+                  // No hay solicitudes pendientes
+                  SetButtonState(button, Color.blue, "Agregar amigo", true);
+              }
+              else
+              {
+                  // Obtener el primer documento encontrado
+                  var solicitud = snapshot.Documents.FirstOrDefault();
+                  if (solicitud != null)
+                  {
+                      string estado = solicitud.GetValue<string>("estado");
 
-            });
+                      if (estado == "pendiente")
+                      {
+                          SetButtonState(button, Color.white, "Solicitud enviada", false);
+                      }
+                      else if (estado == "aceptada")
+                      {
+                          SetButtonState(button, Color.green, "Amigos", false);
+                      }
+                  }
+              }
+          });
     }
 
-    void AddFriend(string userId, string username, Button button)
+
+    void AddFriend(string friendId, string friendName, Button button)
     {
-        var friendData = new Dictionary<string, object>
-        {
-            { "DisplayName", username },
-            { "status", "Pendiente" } // Estado de solicitud en espera
-        };
+        string currentUserName = currentUser.DisplayName;
 
-        db.Collection("Solicitudes_Amistad").Document(currentUserId)
-            .Collection("Usuarios").Document(userId)
-            .SetAsync(friendData)
-            .ContinueWithOnMainThread(task =>
+        string solicitudId = currentUserId + "_" + friendId; // ID único basado en ambos usuarios
+
+        var solicitudData = new Dictionary<string, object>
+    {
+        { "idRemitente", currentUserId },
+        { "nombreRemitente", currentUserName }, // Nombre del remitente
+        { "idDestinatario", friendId },
+        { "nombreDestinatario", friendName }, // Nombre del destinatario
+        { "estado", "pendiente" }
+    };
+
+        // Verificar si ya existe una solicitud antes de agregarla
+        db.Collection("SolicitudesAmistad").Document(solicitudId).GetSnapshotAsync().ContinueWithOnMainThread(task =>
+        {
+            if (task.IsCompleted && task.Result.Exists)
             {
-                if (task.IsCompleted)
+                Debug.Log("Ya existe una solicitud pendiente para este usuario.");
+                SetButtonState(button, Color.gray, "Solicitud ya enviada", false);
+            }
+            else
+            {
+                // Si no existe, la agregamos con el ID único
+                db.Collection("SolicitudesAmistad").Document(solicitudId).SetAsync(solicitudData).ContinueWithOnMainThread(setTask =>
                 {
-                    Debug.Log("Solicitud de amistad enviada a: " + username);
-                    SetButtonState(button, Color.white, "Solicitud enviada", false);
-                }
-                else
-                {
-                    Debug.LogError("Error al enviar solicitud: " + task.Exception);
-                }
-            });
+                    if (setTask.IsCompleted)
+                    {
+                        Debug.Log("Solicitud de amistad enviada de " + currentUserName + " a " + friendName);
+                        SetButtonState(button, Color.white, "Solicitud enviada", false);
+                    }
+                    else
+                    {
+                        Debug.LogError("Error al enviar solicitud: " + setTask.Exception);
+                    }
+                });
+            }
+        });
     }
+
 
     void SetButtonState(Button button, Color color, string text, bool interactable)
     {

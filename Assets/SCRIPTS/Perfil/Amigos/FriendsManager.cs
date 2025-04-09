@@ -28,6 +28,7 @@ public class FriendsManager : MonoBehaviour
         {
             currentUser = auth.CurrentUser;
             userId = auth.CurrentUser.UserId;
+           
             Debug.Log($"Usuario autenticado: {userId}");
         }
         else
@@ -45,12 +46,17 @@ public class FriendsManager : MonoBehaviour
 
     void LoadExcludedUsers()
     {
-        firestore.Collection("Solicitudes_Amistad").Document(userId)
-            .Collection("Usuarios").GetSnapshotAsync().ContinueWithOnMainThread(task =>
+        excludedUsers.Clear();
+
+        // Consultar solicitudes enviadas por el usuario
+        firestore.Collection("SolicitudesAmistad")
+            .WhereEqualTo("idRemitente", userId)
+            .GetSnapshotAsync()
+            .ContinueWithOnMainThread(task =>
             {
                 if (task.IsFaulted)
                 {
-                    Debug.LogError($"Error obteniendo amigos y solicitudes: {task.Exception}");
+                    Debug.LogError($"Error obteniendo solicitudes enviadas: {task.Exception}");
                     return;
                 }
 
@@ -58,21 +64,51 @@ public class FriendsManager : MonoBehaviour
                 {
                     if (doc.Exists)
                     {
-                        string friendId = doc.Id;
-                        string status = doc.GetValue<string>("status");
+                        string friendId = doc.GetValue<string>("idDestinatario");
+                        string status = doc.GetValue<string>("estado");
 
-                        // Excluir amigos y solicitudes pendientes
-                        if (status == "Aceptada" || status == "Pendiente")
+                        // Excluir si la solicitud está aceptada o pendiente
+                        if (status == "Aceptada" || status == "pendiente")
                         {
                             excludedUsers.Add(friendId);
                         }
                     }
                 }
 
-                // Ahora que tenemos la lista de usuarios a excluir, cargamos la ciudad
-                LoadUserCity();
+                // Consultar solicitudes recibidas por el usuario
+                firestore.Collection("SolicitudesAmistad")
+                    .WhereEqualTo("idDestinatario", userId)
+                    .GetSnapshotAsync()
+                    .ContinueWithOnMainThread(task2 =>
+                    {
+                        if (task2.IsFaulted)
+                        {
+                            Debug.LogError($"Error obteniendo solicitudes recibidas: {task2.Exception}");
+                            return;
+                        }
+
+                        foreach (DocumentSnapshot doc in task2.Result.Documents)
+                        {
+                            if (doc.Exists)
+                            {
+                                string friendId = doc.GetValue<string>("idRemitente");
+                                string status = doc.GetValue<string>("estado");
+
+                                // Excluir si la solicitud está aceptada o pendiente
+                                if (status == "Aceptada" || status == "pendiente")
+                                {
+                                    excludedUsers.Add(friendId);
+                                }
+                            }
+                        }
+
+                        // Ahora que tenemos la lista de excluidos, cargamos la ciudad
+                        LoadUserCity();
+                    });
             });
     }
+
+
 
     void LoadUserCity()
     {
@@ -218,28 +254,47 @@ public class FriendsManager : MonoBehaviour
 
     void AddFriend(string friendId, string friendName, Button button)
     {
-        var friendData = new Dictionary<string, object>
-        {
-            { "DisplayName", friendName },
-            { "status", "Pendiente" }
-        };
+        string currentUserName = currentUser.DisplayName;
 
-        firestore.Collection("Solicitudes_Amistad").Document(userId)
-            .Collection("Usuarios").Document(friendId)
-            .SetAsync(friendData)
-            .ContinueWithOnMainThread(task =>
+        string solicitudId = userId + "_" + friendId; // ID único basado en ambos usuarios
+
+        var solicitudData = new Dictionary<string, object>
+    {
+        { "idRemitente", userId },
+        { "nombreRemitente", currentUserName }, // Nombre del remitente
+        { "idDestinatario", friendId },
+        { "nombreDestinatario", friendName }, // Nombre del destinatario
+        { "estado", "pendiente" }
+    };
+
+        // Verificar si ya existe una solicitud antes de agregarla
+        firestore.Collection("SolicitudesAmistad").Document(solicitudId).GetSnapshotAsync().ContinueWithOnMainThread(task =>
+        {
+            if (task.IsCompleted && task.Result.Exists)
             {
-                if (task.IsCompleted)
+                Debug.Log("Ya existe una solicitud pendiente para este usuario.");
+                SetButtonState(button, Color.gray, "Solicitud ya enviada", false);
+            }
+            else
+            {
+                // Si no existe, la agregamos con el ID único
+                firestore.Collection("SolicitudesAmistad").Document(solicitudId).SetAsync(solicitudData).ContinueWithOnMainThread(setTask =>
                 {
-                    Debug.Log("Solicitud de amistad enviada a: " + friendName);
-                    SetButtonState(button, Color.white, "Solicitud enviada", false);
-                }
-                else
-                {
-                    Debug.LogError("Error al enviar solicitud: " + task.Exception);
-                }
-            });
+                    if (setTask.IsCompleted)
+                    {
+                        Debug.Log("Solicitud de amistad enviada de " + currentUserName + " a " + friendName);
+                        SetButtonState(button, Color.white, "Solicitud enviada", false);
+                    }
+                    else
+                    {
+                        Debug.LogError("Error al enviar solicitud: " + setTask.Exception);
+                    }
+                });
+            }
+        });
     }
+
+
 
     void SetButtonState(Button button, Color color, string text, bool interactable)
     {
