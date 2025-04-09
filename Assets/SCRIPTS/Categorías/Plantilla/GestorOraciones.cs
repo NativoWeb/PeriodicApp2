@@ -7,6 +7,8 @@ using Firebase.Firestore;
 using Firebase.Auth;
 using UnityEngine.SceneManagement;
 using Firebase.Extensions;
+using System.IO;
+using Newtonsoft.Json;
 
 public class GestorOraciones : MonoBehaviour
 {
@@ -14,8 +16,15 @@ public class GestorOraciones : MonoBehaviour
     public class Pregunta
     {
         public string oracion;
-        public string respuestaCorrecta;
         public List<string> opciones;
+        public int respuesta_correcta;
+    }
+
+    [System.Serializable]
+    public class PreguntasPorElemento
+    {
+        // Usamos un diccionario para manejar dinámicamente los 118 elementos
+        public Dictionary<string, List<Pregunta>> elementos;
     }
 
     public TextMeshProUGUI txtOracion;
@@ -26,8 +35,9 @@ public class GestorOraciones : MonoBehaviour
     public GameObject panelFinal;
     public TextMeshProUGUI txtResultado;
     public BarraProgreso barraProgreso;
+    public GuardarProgreso gestorProgreso;
 
-    private Dictionary<int, List<OracionConPalabras>> preguntasPorNivel = new Dictionary<int, List<OracionConPalabras>>();
+    private Dictionary<string, List<OracionConPalabras>> preguntasPorElemento = new Dictionary<string, List<OracionConPalabras>>();
     private List<OracionConPalabras> preguntas = new List<OracionConPalabras>();
 
     private int indicePreguntaActual = 0;
@@ -36,168 +46,101 @@ public class GestorOraciones : MonoBehaviour
     private float tiempoPorPregunta = 10f;
     private float tiempoRestante;
     private bool preguntaEnCurso = true;
-    private int nivelActual;
     private FirebaseFirestore db;
     private FirebaseAuth auth;
 
-    private int nivelSeleccionado;
+    private string elementoSeleccionado;
 
     void Start()
     {
         db = FirebaseFirestore.DefaultInstance;
         auth = FirebaseAuth.DefaultInstance;
 
-        // Cargar preguntas por nivel
-        CargarPreguntas();
+        // Obtener el elemento seleccionado de PlayerPrefs
+        elementoSeleccionado = PlayerPrefs.GetString("SimboloElemento", "H"); // Default a Hidrógeno si no hay valor
 
-        // Obtener nivel del usuario desde Firebase
-        CargarPreguntasNivel(nivelSeleccionado);
+        // Cargar preguntas desde JSON
+        CargarPreguntasDesdeJSON();
+
+        // Cargar preguntas para el elemento seleccionado
+        CargarPreguntasElemento(elementoSeleccionado);
     }
 
-
-    void CargarPreguntas()
+    void CargarPreguntasDesdeJSON()
     {
-        preguntasPorNivel[2] = new List<OracionConPalabras>
+        // Cargar el archivo JSON desde Resources
+        TextAsset jsonFile = Resources.Load<TextAsset>("Oraciones");
+        if (jsonFile == null)
         {
-            new OracionConPalabras("El agua está compuesta por _____ y oxígeno.", new string[] { "hidrógeno", "carbono", "helio", "nitrógeno" }, 0),
-            new OracionConPalabras("La tabla periódica organiza los _____.", new string[] { "elementos", "moléculas", "átomos", "compuestos" }, 0),
-            new OracionConPalabras("El símbolo químico del oxígeno es _____.", new string[] { "O", "Ox", "Og", "O2" }, 0),
-            new OracionConPalabras("El agua hierve a _____ grados Celsius.", new string[] { "100", "0", "50", "200" }, 0),
-            new OracionConPalabras("El pH mide el nivel de _____.", new string[] { "acidez", "temperatura", "densidad", "viscosidad" }, 0),
-            new OracionConPalabras("El gas que respiramos principalmente es _____.", new string[] { "nitrógeno", "oxígeno", "dióxido de carbono", "helio" }, 0),
-            new OracionConPalabras("El carbono es un elemento _____.", new string[] { "no metálico", "metálico", "radiactivo", "gaseoso" }, 0),
-            new OracionConPalabras("El oro tiene el símbolo _____.", new string[] { "Au", "Ag", "O", "Go" }, 0),
-            new OracionConPalabras("El cloro se usa para _____.", new string[] { "desinfectar", "oxidar", "fundir metales", "enfriar" }, 0),
-            new OracionConPalabras("Los líquidos toman la forma de su _____.", new string[] { "recipiente", "estado", "temperatura", "masa" }, 0)
+            Debug.LogError("No se encontró el archivo JSON de preguntas");
+            return;
+        }
+
+        // Configuración para manejar propiedades dinámicas en el JSON
+        var settings = new JsonSerializerSettings
+        {
+            // Permite manejar propiedades no definidas en la clase
+            MissingMemberHandling = MissingMemberHandling.Ignore
         };
 
+        // Deserializar el JSON a un diccionario dinámico
+        var preguntasJSON = JsonConvert.DeserializeObject<Dictionary<string, List<Pregunta>>>(jsonFile.text);
 
-        preguntasPorNivel[5] = new List<OracionConPalabras>
-                    {
-                        new OracionConPalabras("Los estados de la materia son sólido, líquido y _____.", new string[] { "gas", "plasma", "energía", "fluido" }, 0),
-                        new OracionConPalabras("La materia está compuesta por _____.", new string[] { "átomos", "moléculas", "iones", "electrones" }, 0),
-                        new OracionConPalabras("Cuando el agua se congela, pasa de estado líquido a _____.", new string[] { "sólido", "gas", "plasma", "vapor" }, 0),
-                        new OracionConPalabras("El cambio de estado de sólido a gas se llama _____.", new string[] { "sublimación", "fusión", "evaporación", "condensación" }, 0),
-                        new OracionConPalabras("La densidad se calcula dividiendo la masa entre _____.", new string[] { "volumen", "peso", "presión", "temperatura" }, 0),
-                        new OracionConPalabras("El punto de fusión del hielo es _____.", new string[] { "0°C", "100°C", "-50°C", "200°C" }, 0),
-                        new OracionConPalabras("El aire es una mezcla de _____.", new string[] { "gases", "líquidos", "sólidos", "iones" }, 0),
-                        new OracionConPalabras("El gas más ligero es _____.", new string[] { "hidrógeno", "helio", "oxígeno", "neón" }, 0),
-                        new OracionConPalabras("Los metales suelen ser buenos conductores de _____.", new string[] { "electricidad", "luz", "radiación", "sonido" }, 0),
-                        new OracionConPalabras("Cuando el agua se evapora, pasa de estado líquido a _____.", new string[] { "gas", "sólido", "plasma", "cristal" }, 0)
-                    };
-
-        preguntasPorNivel[8] = new List<OracionConPalabras>
-                        {
-                            new OracionConPalabras("Los protones tienen carga _____.", new string[] { "positiva", "negativa", "neutra", "variable" }, 0),
-                            new OracionConPalabras("Los electrones orbitan alrededor del _____.", new string[] { "núcleo", "protón", "neutrón", "átomo" }, 0),
-                            new OracionConPalabras("El número atómico indica la cantidad de _____.", new string[] { "protones", "electrones", "neutrones", "átomos" }, 0),
-                            new OracionConPalabras("Los metales alcalinos están en el grupo _____.", new string[] { "1", "2", "17", "18" }, 0),
-                            new OracionConPalabras("Los gases nobles son elementos muy _____.", new string[] { "estables", "reactivos", "metálicos", "densos" }, 0),
-                            new OracionConPalabras("El símbolo químico del sodio es _____.", new string[] { "Na", "S", "So", "N" }, 0),
-                            new OracionConPalabras("El carbono tiene un número atómico de _____.", new string[] { "6", "12", "8", "14" }, 0),
-                            new OracionConPalabras("El elemento más abundante en el universo es _____.", new string[] { "hidrógeno", "oxígeno", "helio", "carbono" }, 0),
-                            new OracionConPalabras("Los elementos con propiedades similares se agrupan en _____.", new string[] { "familias", "filas", "grupos", "secciones" }, 0),
-                            new OracionConPalabras("El flúor es un elemento muy _____.", new string[] { "reactivo", "pesado", "inestable", "metálico" }, 0)
-                        };
-
-        preguntasPorNivel[11] = new List<OracionConPalabras>
-                        {
-                            new OracionConPalabras("Los electrones de valencia son responsables de los _____.", new string[] { "enlaces químicos", "protones", "neutrones", "fotones" }, 0),
-                            new OracionConPalabras("Un enlace covalente implica la _____.", new string[] { "compartición de electrones", "transferencia de electrones", "pérdida de protones", "adición de neutrones" }, 0),
-                            new OracionConPalabras("El enlace iónico se forma entre un metal y un _____.", new string[] { "no metal", "metal", "gas noble", "metaloide" }, 0),
-                            new OracionConPalabras("Las sustancias que aumentan la velocidad de una reacción se llaman _____.", new string[] { "catalizadores", "reactivos", "productos", "enzimas" }, 0),
-                            new OracionConPalabras("Una reacción exotérmica _____.", new string[] { "libera energía", "absorbe energía", "requiere calor", "es endotérmica" }, 0),
-                            new OracionConPalabras("Un ejemplo de reacción química es la _____.", new string[] { "combustión", "evaporación", "condensación", "fusión" }, 0),
-                            new OracionConPalabras("El agua es un ejemplo de compuesto _____.", new string[] { "covalente", "iónico", "metálico", "radiactivo" }, 0),
-                            new OracionConPalabras("Los productos en una reacción química están en el lado _____.", new string[] { "derecho", "izquierdo", "superior", "inferior" }, 0),
-                            new OracionConPalabras("El dióxido de carbono es un _____.", new string[] { "compuesto", "elemento", "mezcla", "metal" }, 0),
-                            new OracionConPalabras("La ley de conservación de la materia dice que la materia no se _____.", new string[] { "crea ni destruye", "transforma", "multiplica", "fusiona" }, 0)
-                        };
-
-        preguntasPorNivel[14] = new List<OracionConPalabras>
-                        {
-                            new OracionConPalabras("El mol es una unidad de _____.", new string[] { "cantidad de sustancia", "masa", "volumen", "densidad" }, 0),
-                            new OracionConPalabras("La masa molar del agua (H₂O) es aproximadamente _____.", new string[] { "18 g/mol", "32 g/mol", "44 g/mol", "2 g/mol" }, 0),
-                            new OracionConPalabras("El reactivo limitante en una reacción es el que _____.", new string[] { "se consume primero", "queda en exceso", "es el más pesado", "tiene más átomos" }, 0),
-                            new OracionConPalabras("La ecuación química balanceada respeta la ley de _____.", new string[] { "conservación de la masa", "reacciones químicas", "dinámica molecular", "constantes químicas" }, 0),
-                            new OracionConPalabras("La constante de Avogadro es _____.", new string[] { "6.022 × 10²³", "3.1416", "9.81", "1.602 × 10⁻¹⁹" }, 0),
-                            new OracionConPalabras("El volumen molar de un gas ideal es aproximadamente _____.", new string[] { "22.4 L", "10 L", "1 L", "100 L" }, 0),
-                            new OracionConPalabras("La ecuación PV=nRT es conocida como la ecuación del _____.", new string[] { "gas ideal", "estado líquido", "pH", "reactivo limitante" }, 0),
-                            new OracionConPalabras("En una reacción química, la cantidad de reactivos y productos se mide en _____.", new string[] { "moles", "gramos", "mililitros", "litros" }, 0),
-                            new OracionConPalabras("Un mol de cualquier gas ocupa el mismo volumen a _____.", new string[] { "condiciones normales", "altas temperaturas", "baja presión", "en un sólido" }, 0),
-                            new OracionConPalabras("Si se duplican los reactivos, los productos también _____.", new string[] { "se duplican", "se dividen", "disminuyen", "se eliminan" }, 0)
-                        };
-
-        preguntasPorNivel[17] = new List<OracionConPalabras>
-                        {
-                            new OracionConPalabras("El pH de una solución ácida es menor a _____.", new string[] { "7", "14", "10", "1" }, 0),
-                            new OracionConPalabras("El ácido clorhídrico (HCl) es un ácido _____.", new string[] { "fuerte", "débil", "neutro", "básico" }, 0),
-                            new OracionConPalabras("El hidróxido de sodio (NaOH) es una _____.", new string[] { "base fuerte", "base débil", "sal", "ácido" }, 0),
-                            new OracionConPalabras("El agua pura tiene un pH de _____.", new string[] { "7", "0", "14", "5" }, 0),
-                            new OracionConPalabras("Los ácidos liberan iones _____.", new string[] { "H+", "OH-", "Na+", "Cl-" }, 0),
-                            new OracionConPalabras("Las bases liberan iones _____.", new string[] { "OH-", "H+", "Na+", "Cl-" }, 0),
-                            new OracionConPalabras("Cuando un ácido y una base reaccionan, forman _____.", new string[] { "sal y agua", "dióxido de carbono", "hidrógeno", "etanol" }, 0),
-                            new OracionConPalabras("Un ejemplo de ácido débil es _____.", new string[] { "ácido acético", "ácido sulfúrico", "ácido nítrico", "ácido clorhídrico" }, 0),
-                            new OracionConPalabras("El bicarbonato de sodio actúa como un _____.", new string[] { "amortiguador de pH", "ácido fuerte", "sal insoluble", "metal pesado" }, 0),
-                            new OracionConPalabras("El jugo de limón tiene un pH _____.", new string[] { "ácido", "básico", "neutro", "radiactivo" }, 0)
-                        };
-
-        preguntasPorNivel[20] = new List<OracionConPalabras>
-                        {
-                            new OracionConPalabras("La energía absorbida o liberada en una reacción química se llama _____.", new string[] { "entalpía", "entropía", "energía cinética", "caloría" }, 0),
-                            new OracionConPalabras("Una reacción endotérmica _____.", new string[] { "absorbe calor", "libera calor", "ocurre sin energía", "no cambia la temperatura" }, 0),
-                            new OracionConPalabras("La unidad de energía en el sistema internacional es el _____.", new string[] { "joule", "caloría", "ergio", "vatio" }, 0),
-                            new OracionConPalabras("La combustión es una reacción _____.", new string[] { "exotérmica", "endotérmica", "reversible", "nuclear" }, 0),
-                            new OracionConPalabras("El calor específico del agua es _____.", new string[] { "4.18 J/g°C", "1.00 J/g°C", "2.22 J/g°C", "9.81 J/g°C" }, 0),
-                            new OracionConPalabras("La energía en los enlaces químicos se denomina _____.", new string[] { "energía potencial química", "energía cinética", "energía térmica", "entropía" }, 0),
-                            new OracionConPalabras("La entropía es una medida del _____.", new string[] { "desorden", "calor", "trabajo", "reacción" }, 0),
-                            new OracionConPalabras("Las reacciones espontáneas ocurren cuando la energía libre de Gibbs es _____.", new string[] { "negativa", "positiva", "cero", "alta" }, 0),
-                            new OracionConPalabras("La ecuación de Gibbs es ΔG = ΔH - TΔS, donde ΔH representa la _____.", new string[] { "entalpía", "entropía", "temperatura", "energía cinética" }, 0),
-                            new OracionConPalabras("Un catalizador _____.", new string[] { "reduce la energía de activación", "consume reactivos", "aumenta la entalpía", "cambia los productos" }, 0)
-                        };
-
-        preguntasPorNivel[23] = new List<OracionConPalabras>
-                        {
-                            new OracionConPalabras("La reacción de oxidación implica la _____.", new string[] { "pérdida de electrones", "ganancia de electrones", "pérdida de protones", "ganancia de neutrones" }, 0),
-                            new OracionConPalabras("La reducción implica la _____.", new string[] { "ganancia de electrones", "pérdida de electrones", "ganancia de protones", "pérdida de neutrones" }, 0),
-                            new OracionConPalabras("En una celda galvánica, el ánodo es el electrodo donde ocurre la _____.", new string[] { "oxidación", "reducción", "reacción neutra", "neutralización" }, 0),
-                            new OracionConPalabras("En una celda galvánica, el cátodo es el electrodo donde ocurre la _____.", new string[] { "reducción", "oxidación", "fusión", "sublimación" }, 0),
-                            new OracionConPalabras("La electrólisis se usa para _____.", new string[] { "descomponer compuestos", "crear enlaces covalentes", "neutralizar soluciones", "medir la presión" }, 0),
-                            new OracionConPalabras("El flujo de electrones en un circuito eléctrico se llama _____.", new string[] { "corriente eléctrica", "voltaje", "resistencia", "capacitancia" }, 0),
-                            new OracionConPalabras("La batería es un ejemplo de una _____.", new string[] { "celda galvánica", "celda electrolítica", "reacción endotérmica", "fusión nuclear" }, 0),
-                            new OracionConPalabras("El voltaje en una celda galvánica se calcula con la ecuación de _____.", new string[] { "Nernst", "Boyle", "Gibbs", "Arrhenius" }, 0),
-                            new OracionConPalabras("En la ecuación electroquímica, el agente oxidante es la especie que _____.", new string[] { "se reduce", "se oxida", "pierde protones", "gana neutrones" }, 0),
-                            new OracionConPalabras("El número de oxidación del oxígeno en la mayoría de los compuestos es _____.", new string[] { "-2", "+2", "0", "-1" }, 0)
-                        };
-
-        preguntasPorNivel[26] = new List<OracionConPalabras>
-                        {
-                            new OracionConPalabras("El átomo central en la química orgánica es el _____.", new string[] { "carbono", "oxígeno", "hidrógeno", "nitrógeno" }, 0),
-                            new OracionConPalabras("Los hidrocarburos saturados se llaman _____.", new string[] { "alcanos", "alquenos", "alquinos", "aromáticos" }, 0),
-                            new OracionConPalabras("Los hidrocarburos con dobles enlaces se llaman _____.", new string[] { "alquenos", "alcanos", "alquinos", "éteres" }, 0),
-                            new OracionConPalabras("Los alcoholes contienen el grupo funcional _____.", new string[] { "-OH", "-COOH", "-NH2", "-SH" }, 0),
-                            new OracionConPalabras("Los ésteres se forman a partir de un ácido y un _____.", new string[] { "alcohol", "hidrocarburo", "éter", "nitrilo" }, 0),
-                            new OracionConPalabras("El benceno es un ejemplo de un compuesto _____.", new string[] { "aromático", "alifático", "cíclico", "heterocíclico" }, 0),
-                            new OracionConPalabras("Los aminoácidos contienen los grupos funcionales _____.", new string[] { "amina y carboxilo", "carbonilo y éter", "éter y alquino", "hidroxilo y fenol" }, 0),
-                            new OracionConPalabras("El ADN contiene bases nitrogenadas como _____.", new string[] { "adenina", "metano", "benceno", "etano" }, 0),
-                            new OracionConPalabras("Los polímeros son macromoléculas formadas por _____.", new string[] { "monómeros", "átomos", "iones", "ácidos" }, 0),
-                            new OracionConPalabras("El PET es un polímero usado en la fabricación de _____.", new string[] { "botellas plásticas", "vidrio", "acero", "cartón" }, 0)
-                        };
-
+        // Procesar todas las preguntas para cada elemento
+        foreach (var elemento in preguntasJSON)
+        {
+            preguntasPorElemento[elemento.Key] = ConvertirPreguntas(elemento.Value);
+        }
     }
 
-    void CargarPreguntasNivel(int nivel)
+    List<OracionConPalabras> ConvertirPreguntas(List<Pregunta> preguntasJSON)
     {
-        if (preguntasPorNivel.ContainsKey(nivel))
+        List<OracionConPalabras> resultado = new List<OracionConPalabras>();
+
+        foreach (Pregunta pregunta in preguntasJSON)
         {
-            preguntas = preguntasPorNivel[nivel];
+            resultado.Add(new OracionConPalabras(
+                pregunta.oracion,
+                pregunta.opciones.ToArray(),
+                pregunta.respuesta_correcta
+            ));
+        }
+
+        return resultado;
+    }
+
+    void CargarPreguntasElemento(string elemento)
+    {
+        if (preguntasPorElemento.ContainsKey(elemento))
+        {
+            preguntas = preguntasPorElemento[elemento];
+
+            // Barajar las preguntas para orden aleatorio
+            BarajarPreguntas();
+
             indicePreguntaActual = 0;
             barraProgreso.InicializarBarra(preguntas.Count);
             MostrarPregunta();
         }
         else
         {
-            Debug.LogWarning($"No hay preguntas definidas para el nivel {nivel}.");
+            Debug.LogWarning($"No hay preguntas definidas para el elemento {elemento}.");
+            // Cargar un mensaje de error o redirigir a otra escena
+        }
+    }
+
+    void BarajarPreguntas()
+    {
+        // Algoritmo de Fisher-Yates para barajar las preguntas
+        System.Random rng = new System.Random();
+        int n = preguntas.Count;
+        while (n > 1)
+        {
+            n--;
+            int k = rng.Next(n + 1);
+            OracionConPalabras value = preguntas[k];
+            preguntas[k] = preguntas[n];
+            preguntas[n] = value;
         }
     }
 
@@ -208,19 +151,27 @@ public class GestorOraciones : MonoBehaviour
             MostrarResultadosFinales();
             return;
         }
+
         OracionConPalabras preguntaActual = preguntas[indicePreguntaActual];
         txtOracion.text = preguntaActual.oracion;
 
+        // Limpiar opciones anteriores
         foreach (Transform child in contenedorOpciones)
             Destroy(child.gameObject);
 
-        for (int i = 0; i < preguntaActual.opciones.Length; i++)
+        // Barajar las opciones de respuesta
+        string[] opcionesBarajadas = BarajarOpciones(preguntaActual.opciones);
+        int indiceCorrectoBarajado = System.Array.IndexOf(opcionesBarajadas,
+            preguntaActual.opciones[preguntaActual.indiceCorrecto]);
+
+        // Crear botones para cada opción
+        for (int i = 0; i < opcionesBarajadas.Length; i++)
         {
             GameObject btn = Instantiate(botonPrefab, contenedorOpciones);
             TextMeshProUGUI txtBtn = btn.GetComponentInChildren<TextMeshProUGUI>();
-            txtBtn.text = preguntaActual.opciones[i];
+            txtBtn.text = opcionesBarajadas[i];
             int index = i;
-            btn.GetComponent<Button>().onClick.AddListener(() => SeleccionarPalabra(index, btn));
+            btn.GetComponent<Button>().onClick.AddListener(() => SeleccionarPalabra(index, btn, indiceCorrectoBarajado));
         }
 
         preguntaEnCurso = true;
@@ -228,7 +179,26 @@ public class GestorOraciones : MonoBehaviour
         StartCoroutine("Temporizador");
     }
 
-    void SeleccionarPalabra(int indiceSeleccionado, GameObject boton)
+    string[] BarajarOpciones(string[] opciones)
+    {
+        // Barajar las opciones de respuesta
+        System.Random rng = new System.Random();
+        string[] opcionesBarajadas = (string[])opciones.Clone();
+
+        int n = opcionesBarajadas.Length;
+        while (n > 1)
+        {
+            n--;
+            int k = rng.Next(n + 1);
+            string value = opcionesBarajadas[k];
+            opcionesBarajadas[k] = opcionesBarajadas[n];
+            opcionesBarajadas[n] = value;
+        }
+
+        return opcionesBarajadas;
+    }
+
+    void SeleccionarPalabra(int indiceSeleccionado, GameObject boton, int indiceCorrecto)
     {
         if (!preguntaEnCurso) return;
         preguntaEnCurso = false;
@@ -236,15 +206,15 @@ public class GestorOraciones : MonoBehaviour
 
         OracionConPalabras preguntaActual = preguntas[indicePreguntaActual];
 
-        bool esCorrecto = (indiceSeleccionado == preguntaActual.indiceCorrecto);
+        bool esCorrecto = (indiceSeleccionado == indiceCorrecto);
         string colorCorrecto = "<color=#A2C94D>";
         string colorIncorrecto = "<color=#C43E3B>";
         string colorFin = "</color>";
 
-        string palabraSeleccionada = preguntaActual.opciones[indiceSeleccionado];
+        string palabraSeleccionada = ((TextMeshProUGUI)boton.GetComponentInChildren<TextMeshProUGUI>()).text;
         string palabraColoreada = esCorrecto ? $"{colorCorrecto}{palabraSeleccionada}{colorFin}" : $"{colorIncorrecto}{palabraSeleccionada}{colorFin}";
 
-        txtOracion.text = preguntaActual.oracion.Replace("_____", palabraColoreada);
+        txtOracion.text = preguntaActual.oracion.Replace("___", palabraColoreada);
         boton.GetComponent<Image>().color = esCorrecto ? new Color(0.64f, 0.79f, 0.30f) : new Color(0.77f, 0.24f, 0.23f);
 
         if (esCorrecto)
@@ -280,6 +250,7 @@ public class GestorOraciones : MonoBehaviour
             StartCoroutine(EsperarYSiguientePregunta());
         }
     }
+
     IEnumerator EsperarYSiguientePregunta()
     {
         yield return new WaitForSeconds(1.5f);
@@ -287,19 +258,18 @@ public class GestorOraciones : MonoBehaviour
         barraProgreso.InicializarBarra(preguntas.Count);
         MostrarPregunta();
     }
+
     void MostrarResultadosFinales()
     {
         panelFinal.SetActive(true);
         int experiencia = (respuestasCorrectas * 100) / preguntas.Count;
         txtResultado.text = $"Respuestas correctas: {respuestasCorrectas}/{preguntas.Count}\nExperiencia ganada: {experiencia}XP\nBonificación de racha: {racha * 10}";
-    }
 
+    }
 
     public void GuardarYSalir()
     {
-        SceneManager.LoadScene("grupo1"); 
-        GameObject gestor = GameObject.Find("GestorProgreso");
-        if (gestor == null || auth == null) return;
+        SceneManager.LoadScene("Escena_Alcalinos");
     }
 
     [System.Serializable]
@@ -316,5 +286,4 @@ public class GestorOraciones : MonoBehaviour
             this.indiceCorrecto = indiceCorrecto;
         }
     }
-
 }
