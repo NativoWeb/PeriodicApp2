@@ -146,10 +146,177 @@ public class DynamicMoleculeLoader : MonoBehaviour
         }
 
         //// Llamar a la función LoadMoleculeModel con los datos extraídos
-        StartCoroutine(LoadMoleculeModel(electronLevels, showProtons, showNeutrons, electrons, modelName, electronModels));
+        StartCoroutine(LoadMoleculeModel(electronLevels, showProtons, showNeutrons, electrons, electronModels));
     }
 
-    private IEnumerator LoadMoleculeModel(int electronLevels, int protons, int neutrons, int electrons, string modelName, List<string> electronModels)
+    //private IEnumerator LoadMoleculeModel(int electronLevels, int protons, int neutrons, int electrons, string modelName, List<string> electronModels)
+    //{
+    //    LimpiarModelos();
+
+    //    int[] levelCapacity = { 2, 8, 18, 32, 32, 18, 8 };
+    //    float[] orbitRadii = { 0.2f, 0.25f, 0.3f, 0.35f, 0.4f, 0.45f, 0.5f };
+
+    //    // Distribución de electrones
+    //    int[] electronDistribution = new int[electronLevels];
+    //    int remaining = electrons;
+    //    for (int level = 0; level < electronLevels && remaining > 0; level++)
+    //    {
+    //        electronDistribution[level] = Mathf.Min(levelCapacity[level], remaining);
+    //        remaining -= electronDistribution[level];
+    //    }
+
+    //    GameObject atomContainer = new GameObject("AtomContainer");
+    //    atomContainer.transform.SetParent(imageTargetPrefab.transform);
+    //    atomContainer.transform.localPosition = Vector3.zero;
+
+    //    // Crear núcleo
+    //    yield return StartCoroutine(CreateNucleus(atomContainer.transform, protons, neutrons,
+    //        new Color(0.8f, 0.2f, 0.2f), new Color(0.2f, 0.2f, 0.8f)));
+
+    //    // Crear órbitas y electrones con estelas
+    //    for (int level = 0; level < electronLevels; level++)
+    //    {
+    //        int electronsInLevel = electronDistribution[level];
+    //        if (electronsInLevel <= 0) continue;
+
+    //        float radius = orbitRadii[level];
+
+    //        // Crear contenedor de órbita
+    //        GameObject orbit = new GameObject($"Orbit_Level_{level + 1}");
+    //        orbit.transform.SetParent(atomContainer.transform);
+    //        orbit.transform.localPosition = Vector3.zero;
+
+    //        var anim = orbit.AddComponent<OrbitAnimation>();
+    //        anim.Initialize(level, 15f + (level * 2f), 20f + (level * 3f));
+
+    //        // Distribuir electrones uniformemente
+    //        float angleStep = 360f / electronsInLevel;
+    //        for (int e = 0; e < electronsInLevel; e++)
+    //        {
+    //            float angle = angleStep * e;
+    //            Vector3 pos = new Vector3(
+    //                radius * Mathf.Cos(angle * Mathf.Deg2Rad),
+    //                0,
+    //                radius * Mathf.Sin(angle * Mathf.Deg2Rad)
+    //            );
+
+    //            yield return StartCoroutine(CreateElectronWithTrail(
+    //                electronModels[level % electronModels.Count],
+    //                orbit.transform,
+    //                pos,
+    //                new Color(0.878f, 0.408f, 0.169f),
+    //                3f,
+    //                level,
+    //                angle
+    //            ));
+
+    //            yield return new WaitForSeconds(0.03f);
+    //        }
+    //    }
+
+    //    // Habilitar animaciones
+    //    yield return new WaitForSeconds(0.5f);
+    //    EnableAllAnimations(atomContainer);
+    //}
+
+    //private IEnumerator CreateElectronWithTrail(string modelName, Transform parent, Vector3 position, Color color, float size, int level, float angle)
+    //{
+    //    string path = "Moleculas/NuevoElemento/" + modelName;
+    //    ResourceRequest request = Resources.LoadAsync<GameObject>(path);
+    //    yield return request;
+
+    //    if (request.asset != null)
+    //    {
+    //        GameObject electron = Instantiate(request.asset as GameObject, parent);
+    //        electron.transform.localPosition = position;
+    //        electron.transform.localScale = Vector3.one * size;
+
+    //        Renderer renderer = electron.GetComponent<Renderer>();
+    //        if (renderer != null)
+    //        {
+    //            renderer.material.color = color;
+    //            renderer.material.SetFloat("_Glossiness", 0.9f);
+    //            renderer.material.SetFloat("_Metallic", 0.7f);
+    //        }
+
+    //        var trailBehavior = electron.AddComponent<ElectronTrail>();
+    //        trailBehavior.Initialize(level, angle);
+    //    }
+    //}
+
+    //private void EnableAllAnimations(GameObject atomContainer)
+    //{
+    //    OrbitAnimation[] orbitAnimations = atomContainer.GetComponentsInChildren<OrbitAnimation>();
+    //    foreach (var anim in orbitAnimations)
+    //    {
+    //        anim.EnableAnimation();
+    //    }
+
+    //    ElectronTrail[] electronTrails = atomContainer.GetComponentsInChildren<ElectronTrail>();
+    //    foreach (var trail in electronTrails)
+    //    {
+    //        trail.EnableTrail();
+    //    }
+    //}
+
+    //private IEnumerator CreateNucleus(Transform parent, int protons, int neutrons, Color protonColor, Color neutronColor)
+    //{
+    //    GameObject nucleus = new GameObject("Nucleus");
+    //    nucleus.transform.SetParent(parent);
+    //    nucleus.transform.localPosition = Vector3.zero;
+
+    //    for (int i = 0; i < protons; i++)
+    //    {
+    //        Vector3 pos = FibonacciSphere(i, protons, 0.1f);
+    //        GameObject proton = Instantiate(Resources.Load<GameObject>("Moleculas/NuevoElemento/SM_MOLECULA_PROTON"), nucleus.transform);
+    //        proton.transform.localPosition = pos;
+    //        ApplyColorToParticle(proton, protonColor);
+    //        yield return new WaitForSeconds(0.02f);
+    //    }
+
+    //    for (int i = 0; i < neutrons; i++)
+    //    {
+    //        Vector3 pos = FibonacciSphere(i, neutrons, 0.1f);
+    //        GameObject neutron = Instantiate(Resources.Load<GameObject>("Moleculas/NuevoElemento/SM_MOLECULA_NEUTRON"), nucleus.transform);
+    //        neutron.transform.localPosition = pos;
+    //        ApplyColorToParticle(neutron, neutronColor);
+    //        yield return new WaitForSeconds(0.02f);
+    //    }
+    //}
+
+    //private void ApplyColorToParticle(GameObject particle, Color color)
+    //{
+    //    Renderer renderer = particle.GetComponent<Renderer>();
+    //    if (renderer != null)
+    //    {
+    //        MaterialPropertyBlock propBlock = new MaterialPropertyBlock();
+    //        renderer.GetPropertyBlock(propBlock);
+    //        propBlock.SetColor("_Color", color);
+    //        renderer.SetPropertyBlock(propBlock);
+    //    }
+    //}
+
+    //private Vector3 FibonacciSphere(int index, int total, float radius)
+    //{
+    //    float y = 1 - (index / (float)(total - 1)) * 2;
+    //    float radiusAtY = Mathf.Sqrt(1 - y * y);
+    //    float theta = Mathf.PI * (3 - Mathf.Sqrt(5)) * index;
+
+    //    float x = Mathf.Cos(theta) * radiusAtY * radius;
+    //    float z = Mathf.Sin(theta) * radiusAtY * radius;
+
+    //    return new Vector3(x, y * radius, z);
+    //}
+
+    //private void LimpiarModelos()
+    //{
+    //    foreach (Transform child in imageTargetPrefab.transform)
+    //    {
+    //        Destroy(child.gameObject);
+    //    }
+    //}
+
+    private IEnumerator LoadMoleculeModel(int electronLevels, int protons, int neutrons, int electrons, List<string> electronModels)
     {
         LimpiarModelos();
 
@@ -207,7 +374,7 @@ public class DynamicMoleculeLoader : MonoBehaviour
                     orbit.transform,
                     electronPos,
                     new Color(0.878f, 0.408f, 0.169f),
-                    2f,
+                    3f,
                     level
                 ));
 
@@ -266,8 +433,8 @@ public class DynamicMoleculeLoader : MonoBehaviour
         LineRenderer line = orbit.AddComponent<LineRenderer>();
         line.useWorldSpace = false;
         line.loop = true;
-        line.startWidth = 0.05f;
-        line.endWidth = 0.05f;
+        line.startWidth = 0.005f;
+        line.endWidth = 0.005f;
         line.positionCount = 100;
 
         Material mat = new Material(Shader.Find("Standard"));
@@ -333,32 +500,6 @@ public class DynamicMoleculeLoader : MonoBehaviour
             yield return new WaitForSeconds(0.02f);
         }
     }
-
-    // Versión corregida de CreateElectron
-    private IEnumerator CreateElectron(string modelName, Transform parent, Vector3 position, Color color, float size)
-    {
-        string path = "Moleculas/NuevoElemento/" + modelName;
-        ResourceRequest request = Resources.LoadAsync<GameObject>(path);
-        yield return request;
-
-        if (request.asset != null)
-        {
-            GameObject electron = Instantiate(request.asset as GameObject, parent);
-            electron.transform.localPosition = position;
-            electron.transform.localScale = Vector3.one * size;
-
-            // Material corregido (versión compatible con todos los shaders)
-            Renderer renderer = electron.GetComponent<Renderer>();
-            if (renderer != null)
-            {
-                renderer.material.color = color;
-                renderer.material.SetFloat("_Glossiness", 0.9f); // Equivalente a glossiness
-                renderer.material.SetFloat("_Metallic", 0.7f); // Equivalente a metallic
-            }
-            electron.AddComponent<ElectronOrbit>();
-        }
-    }
-
     //// Método auxiliar para aplicar color a cualquier partícula
     private void ApplyColorToParticle(GameObject particle, Color color)
     {
@@ -372,8 +513,8 @@ public class DynamicMoleculeLoader : MonoBehaviour
             // Opcional: Añadir efectos especiales para electrones
             if (color == new Color(0.9f, 0.9f, 0.2f)) // Si es electrón
             {
-                renderer.material.SetFloat("_Glossiness", 0.9f); // Equivalente a glossiness
-                renderer.material.SetFloat("_Metallic", 0.7f); // Equivalente a metallic
+                renderer.material.SetFloat("_Glossiness", 0.9f);
+                renderer.material.SetFloat("_Metallic", 0.7f);
                 //propBlock.SetFloat("_Metallic", 0.7f);
                 //propBlock.SetFloat("_Glossiness", 0.9f);
             }
@@ -381,7 +522,6 @@ public class DynamicMoleculeLoader : MonoBehaviour
             renderer.SetPropertyBlock(propBlock);
         }
     }
-
 
     private Vector3 FibonacciSphere(int index, int total, float radius)
     {
