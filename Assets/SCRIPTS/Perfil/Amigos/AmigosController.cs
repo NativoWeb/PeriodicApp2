@@ -138,7 +138,7 @@ public class AmigosController : MonoBehaviour
         else if (status == "pendiente")
         {
             panelEstado.GetComponent<Image>().color = new Color32(0x37, 0xBD, 0xF7, 0xFF); // Azul personalizado
-            estadoTxt.text = "Solicitud Pendiente";
+            estadoTxt.text = "Pendiente";
         }
     }
 

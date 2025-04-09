@@ -7,6 +7,7 @@ using Firebase.Extensions;
 using TMPro;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 public class FriendsManager : MonoBehaviour
 {
@@ -43,70 +44,62 @@ public class FriendsManager : MonoBehaviour
         LoadExcludedUsers();
     }
     // nuevos cambios
-
     void LoadExcludedUsers()
     {
         excludedUsers.Clear();
+        List<Task<QuerySnapshot>> tasks = new List<Task<QuerySnapshot>>();
 
-        // Consultar solicitudes enviadas por el usuario
-        firestore.Collection("SolicitudesAmistad")
+        // Consultar solicitudes enviadas
+        tasks.Add(firestore.Collection("SolicitudesAmistad")
             .WhereEqualTo("idRemitente", userId)
-            .GetSnapshotAsync()
-            .ContinueWithOnMainThread(task =>
-            {
-                if (task.IsFaulted)
-                {
-                    Debug.LogError($"Error obteniendo solicitudes enviadas: {task.Exception}");
-                    return;
-                }
+            .GetSnapshotAsync());
 
-                foreach (DocumentSnapshot doc in task.Result.Documents)
+        // Consultar solicitudes recibidas
+        tasks.Add(firestore.Collection("SolicitudesAmistad")
+            .WhereEqualTo("idDestinatario", userId)
+            .GetSnapshotAsync());
+
+        Task.WhenAll(tasks.ToArray()).ContinueWithOnMainThread(task =>
+        {
+            if (task.IsFaulted)
+            {
+                Debug.LogError("Error obteniendo solicitudes de amistad: " + task.Exception);
+                return;
+            }
+
+            foreach (var querySnapshot in task.Result)
+            {
+                foreach (DocumentSnapshot doc in querySnapshot.Documents)
                 {
                     if (doc.Exists)
                     {
-                        string friendId = doc.GetValue<string>("idDestinatario");
+                        string idRemitente = doc.GetValue<string>("idRemitente");
+                        string idDestinatario = doc.GetValue<string>("idDestinatario");
                         string status = doc.GetValue<string>("estado");
 
-                        // Excluir si la solicitud está aceptada o pendiente
-                        if (status == "Aceptada" || status == "pendiente")
+                        if (status == "aceptada" || status == "pendiente")
                         {
-                            excludedUsers.Add(friendId);
+                            // Excluir ambos usuarios para evitar que aparezcan en sugerencias
+                            excludedUsers.Add(idRemitente);
+                            excludedUsers.Add(idDestinatario);
+
+                            Debug.Log($"Excluyendo usuario {idRemitente} y {idDestinatario} por estado {status}");
                         }
                     }
                 }
+            }
 
-                // Consultar solicitudes recibidas por el usuario
-                firestore.Collection("SolicitudesAmistad")
-                    .WhereEqualTo("idDestinatario", userId)
-                    .GetSnapshotAsync()
-                    .ContinueWithOnMainThread(task2 =>
-                    {
-                        if (task2.IsFaulted)
-                        {
-                            Debug.LogError($"Error obteniendo solicitudes recibidas: {task2.Exception}");
-                            return;
-                        }
+            // Evitar que el usuario actual aparezca en sugerencias
+            excludedUsers.Add(userId);
+            Debug.Log($"Excluyéndome a mí mismo: {userId}");
 
-                        foreach (DocumentSnapshot doc in task2.Result.Documents)
-                        {
-                            if (doc.Exists)
-                            {
-                                string friendId = doc.GetValue<string>("idRemitente");
-                                string status = doc.GetValue<string>("estado");
-
-                                // Excluir si la solicitud está aceptada o pendiente
-                                if (status == "Aceptada" || status == "pendiente")
-                                {
-                                    excludedUsers.Add(friendId);
-                                }
-                            }
-                        }
-
-                        // Ahora que tenemos la lista de excluidos, cargamos la ciudad
-                        LoadUserCity();
-                    });
-            });
+            // Ahora que excludedUsers está lleno, cargar la ciudad del usuario
+            LoadUserCity();
+        });
     }
+
+
+
 
 
 
@@ -150,7 +143,7 @@ public class FriendsManager : MonoBehaviour
                 }
 
                 List<DocumentSnapshot> suggestedUsers = task.Result.Documents
-                    .Where(doc => doc.Exists && doc.Id != userId && !excludedUsers.Contains(doc.Id))
+                    .Where(doc => doc.Exists && doc.Id != userId && !excludedUsers.Contains(doc.Id)) // Filtrar correctamente
                     .ToList();
 
                 int cantidadFaltante = 5 - suggestedUsers.Count;
@@ -167,10 +160,11 @@ public class FriendsManager : MonoBehaviour
             });
     }
 
+
     void LoadRandomUsers(int cantidadFaltante, List<DocumentSnapshot> currentUsers)
     {
         firestore.Collection("users")
-            .Limit(20) // Obtener más para mayor aleatoriedad
+            .Limit(20) // Obtener más usuarios para aumentar aleatoriedad
             .GetSnapshotAsync()
             .ContinueWithOnMainThread(task =>
             {
@@ -181,7 +175,7 @@ public class FriendsManager : MonoBehaviour
                 }
 
                 List<DocumentSnapshot> allUsers = task.Result.Documents
-                    .Where(doc => doc.Exists && doc.Id != userId && !excludedUsers.Contains(doc.Id))
+                    .Where(doc => doc.Exists && doc.Id != userId && !excludedUsers.Contains(doc.Id)) // Asegurar exclusión
                     .ToList();
 
                 if (allUsers.Count > 0)
@@ -194,6 +188,7 @@ public class FriendsManager : MonoBehaviour
                 CreateUserCards(currentUsers);
             });
     }
+
 
 
     void LoadRandomUsers()
