@@ -35,7 +35,6 @@ public class GestorOraciones : MonoBehaviour
     public GameObject panelFinal;
     public TextMeshProUGUI txtResultado;
     public BarraProgreso barraProgreso;
-    public GuardarProgreso gestorProgreso;
 
     private Dictionary<string, List<OracionConPalabras>> preguntasPorElemento = new Dictionary<string, List<OracionConPalabras>>();
     private List<OracionConPalabras> preguntas = new List<OracionConPalabras>();
