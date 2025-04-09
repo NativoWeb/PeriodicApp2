@@ -21,7 +21,7 @@ public class FriendsManager : MonoBehaviour
     private string myCity;
 
     private HashSet<string> excludedUsers = new HashSet<string>(); // Para almacenar amigos y solicitudes pendientes
-
+    private Dictionary<string, DocumentSnapshot> userCache = new Dictionary<string, DocumentSnapshot>();
     void Start()
     {
         auth = FirebaseAuth.DefaultInstance;
@@ -29,7 +29,7 @@ public class FriendsManager : MonoBehaviour
         {
             currentUser = auth.CurrentUser;
             userId = auth.CurrentUser.UserId;
-           
+
             Debug.Log($"Usuario autenticado: {userId}");
         }
         else
@@ -43,6 +43,7 @@ public class FriendsManager : MonoBehaviour
         // Obtener la lista de amigos y solicitudes pendientes
         LoadExcludedUsers();
     }
+
     // nuevos cambios
     void LoadExcludedUsers()
     {
@@ -99,10 +100,6 @@ public class FriendsManager : MonoBehaviour
     }
 
 
-
-
-
-
     void LoadUserCity()
     {
         DocumentReference userDoc = firestore.Collection("users").Document(userId);
@@ -132,7 +129,7 @@ public class FriendsManager : MonoBehaviour
     {
         firestore.Collection("users")
             .WhereEqualTo("Ciudad", myCity)
-            .Limit(10)
+            .Limit(10) // Mantenemos un límite razonable
             .GetSnapshotAsync()
             .ContinueWithOnMainThread(task =>
             {
@@ -143,23 +140,24 @@ public class FriendsManager : MonoBehaviour
                 }
 
                 List<DocumentSnapshot> suggestedUsers = task.Result.Documents
-                    .Where(doc => doc.Exists && doc.Id != userId && !excludedUsers.Contains(doc.Id)) // Filtrar correctamente
+                    .Where(doc => doc.Exists && doc.Id != userId && !excludedUsers.Contains(doc.Id))
                     .ToList();
 
-                int cantidadFaltante = 5 - suggestedUsers.Count;
-
-                if (cantidadFaltante > 0)
+                if (suggestedUsers.Count >= 5)
                 {
-                    Debug.Log($"Faltan {cantidadFaltante} usuarios, buscando aleatorios...");
-                    LoadRandomUsers(cantidadFaltante, suggestedUsers);
+                    // Si hay 5 o más usuarios, mostramos todos los que haya (hasta 10)
+                    Debug.Log($"Mostrando {suggestedUsers.Count} usuarios de {myCity}");
+                    CreateUserCards(suggestedUsers);
                 }
                 else
                 {
-                    CreateUserCards(suggestedUsers);
+                    // Si hay menos de 5, completamos con usuarios aleatorios
+                    Debug.Log($"Solo {suggestedUsers.Count} usuarios en {myCity}, completando con aleatorios...");
+                    int cantidadFaltante = 5 - suggestedUsers.Count;
+                    LoadRandomUsers(cantidadFaltante, suggestedUsers);
                 }
             });
     }
-
 
     void LoadRandomUsers(int cantidadFaltante, List<DocumentSnapshot> currentUsers)
     {

@@ -6,23 +6,22 @@ using Firebase.Firestore;
 using Firebase.Extensions;
 using TMPro;
 using UnityEngine.UI;
-using System.Security.Permissions;
 
 public class AmigosController : MonoBehaviour
 {
-    public GameObject amigoPrefab; // Prefab del amigo
-    public Transform contentPanel; // Panel dentro del Scroll View
-    public TMP_InputField inputBuscar; // Campo de texto para buscar amigos
-    public Button botonBuscar; // Botón de búsqueda
+    public GameObject amigoPrefab;
+    public Transform contentPanel;
+    public TMP_InputField inputBuscar;
+    public Button botonBuscar;
+    public TMP_Text messageText; // Nuevo campo para mensajes de estado
+
+    [SerializeField] public GameObject m_AgregarAmigosUI = null;
+    [SerializeField] public GameObject m_SolicitudesUI = null;
 
     private FirebaseAuth auth;
     private FirebaseFirestore db;
     private string userId;
-
-
-    // instanciamos panel agregar amigos 
-    [SerializeField] public GameObject m_AgregarAmigosUI = null;
-    [SerializeField] public GameObject m_SolicitudesUI = null;
+    private int amigosCargados = 0;
 
     void Start()
     {
@@ -31,124 +30,158 @@ public class AmigosController : MonoBehaviour
 
         if (auth.CurrentUser != null)
         {
-            userId = auth.CurrentUser.UserId; // Obtener ID del usuario autenticado
-            Debug.Log($"Usuario autenticado: {userId}");
+            userId = auth.CurrentUser.UserId;
+            ShowMessage("Cargando amigos...");
             CargarAmigos("");
 
-            // Agregar listener al botón de búsqueda
             botonBuscar.onClick.AddListener(() => {
                 string nombreBuscar = inputBuscar.text.Trim();
-                Debug.Log($"Buscando amigos con el nombre: {nombreBuscar}");
+                ShowMessage($"Buscando: {nombreBuscar}");
                 CargarAmigos(nombreBuscar);
             });
         }
         else
         {
+            ShowMessage("No autenticado", true);
             Debug.LogError("No hay usuario autenticado.");
         }
     }
 
     void CargarAmigos(string filtroNombre)
     {
-        Debug.Log("Cargando amigos y solicitudes pendientes...");
+        amigosCargados = 0;
+        ClearFriendList();
 
-        // Limpiar la lista de amigos antes de cargar nuevos
+        if (string.IsNullOrEmpty(userId))
+        {
+            ShowMessage("Error: ID de usuario vacío", true);
+            return;
+        }
+
+        HashSet<string> amigosMostrados = new HashSet<string>();
+
+        // Consulta amigos donde el usuario es remitente
+        db.Collection("SolicitudesAmistad")
+          .WhereEqualTo("idRemitente", userId)
+          .WhereIn("estado", new List<object> { "aceptada" })
+          .GetSnapshotAsync().ContinueWithOnMainThread(task =>
+          {
+              if (task.IsCompleted)
+              {
+                  ProcessFriends(task.Result.Documents, true, filtroNombre, amigosMostrados);
+                  CheckSearchCompletion(filtroNombre);
+              }
+              else
+              {
+                  ShowMessage("Error al cargar amigos", true);
+              }
+          });
+
+        // Consulta amigos donde el usuario es destinatario
+        db.Collection("SolicitudesAmistad")
+          .WhereEqualTo("idDestinatario", userId)
+          .WhereIn("estado", new List<object> { "aceptada" })
+          .GetSnapshotAsync().ContinueWithOnMainThread(task =>
+          {
+              if (task.IsCompleted)
+              {
+                  ProcessFriends(task.Result.Documents, false, filtroNombre, amigosMostrados);
+                  CheckSearchCompletion(filtroNombre);
+              }
+          });
+    }
+
+    void ProcessFriends(IEnumerable<DocumentSnapshot> documents, bool isSender, string filtroNombre, HashSet<string> amigosMostrados)
+    {
+        foreach (DocumentSnapshot document in documents)
+        {
+            string amigoId = isSender ? document.GetValue<string>("idDestinatario") : document.GetValue<string>("idRemitente");
+            string nombreAmigo = isSender ? document.GetValue<string>("nombreDestinatario") : document.GetValue<string>("nombreRemitente");
+
+            if (!amigosMostrados.Contains(amigoId))
+            {
+                amigosMostrados.Add(amigoId);
+                if (ShouldShowFriend(nombreAmigo, filtroNombre))
+                {
+                    CreateFriendCard(amigoId, nombreAmigo);
+                    amigosCargados++;
+                }
+            }
+        }
+    }
+
+    bool ShouldShowFriend(string nombreAmigo, string filtroNombre)
+    {
+        return string.IsNullOrEmpty(filtroNombre) ||
+               nombreAmigo.ToLower().Contains(filtroNombre.ToLower());
+    }
+
+    void CreateFriendCard(string amigoId, string nombreAmigo)
+    {
+        GameObject nuevoAmigo = Instantiate(amigoPrefab, contentPanel);
+        nuevoAmigo.transform.Find("Nombretxt").GetComponent<TMP_Text>().text = nombreAmigo;
+
+        // Configurar estado
+        var panelEstado = nuevoAmigo.transform.Find("EstadoPanel").gameObject;
+        panelEstado.GetComponent<Image>().color = new Color32(0x52, 0xD9, 0x99, 0xFF);
+        nuevoAmigo.transform.Find("Estadotxt").GetComponent<TMP_Text>().text = "Amigos";
+
+        // Cargar rango
+        LoadFriendRank(amigoId, nuevoAmigo);
+    }
+
+    void LoadFriendRank(string amigoId, GameObject amigoUI)
+    {
+        db.Collection("usuarios").Document(amigoId).GetSnapshotAsync().ContinueWithOnMainThread(task =>
+        {
+            if (task.IsCompleted && task.Result.Exists)
+            {
+                string rango = task.Result.GetValue<string>("Rango") ?? "Novato";
+                var rangoText = amigoUI.transform.Find("Rangotxt")?.GetComponent<TMP_Text>();
+                if (rangoText != null) rangoText.text = rango;
+            }
+        });
+    }
+
+    void CheckSearchCompletion(string filtroNombre)
+    {
+        if (!string.IsNullOrEmpty(filtroNombre))
+        {
+            if (amigosCargados > 0)
+            {
+                ShowMessage($"{amigosCargados} amigos encontrados");
+            }
+            else
+            {
+                ShowMessage("No se encontraron amigos con ese nombre");
+            }
+        }
+        else if (amigosCargados > 0)
+        {
+            ShowMessage($"{amigosCargados} amigos cargados");
+        }
+    }
+
+    void ClearFriendList()
+    {
         foreach (Transform child in contentPanel)
         {
             Destroy(child.gameObject);
         }
-        if (string.IsNullOrEmpty(userId))
-        {
-            Debug.LogError("El userId es nulo o vacío.");
-            return;
-        }
-
-        // Consultar solicitudes aceptadas y pendientes donde el usuario es remitente o destinatario
-        db.Collection("SolicitudesAmistad")
-          .WhereEqualTo("idRemitente", userId)
-          .WhereIn("estado", new List<object> { "aceptada", "pendiente" }) // Buscar aceptadas y pendientes
-          .GetSnapshotAsync().ContinueWithOnMainThread(task =>
-          {
-              if (task.IsCompleted)
-              {
-                  foreach (DocumentSnapshot document in task.Result.Documents)
-                  {
-                      string amigoId = document.GetValue<string>("idDestinatario");
-                      string nombreAmigo = document.GetValue<string>("nombreDestinatario");
-                      string status = document.GetValue<string>("estado");
-
-                      MostrarAmigo(amigoId, nombreAmigo, status, filtroNombre);
-                  }
-              }
-              else
-              {
-                  Debug.LogError("Error al obtener amigos remitentes: " + task.Exception);
-              }
-          });
-
-        db.Collection("SolicitudesAmistad")
-          .WhereEqualTo("idDestinatario", userId)
-          .WhereIn("estado", new List<object> { "aceptada", "pendiente" }) // Buscar aceptadas y pendientes
-          .GetSnapshotAsync().ContinueWithOnMainThread(task =>
-          {
-              if (task.IsCompleted)
-              {
-                  foreach (DocumentSnapshot document in task.Result.Documents)
-                  {
-                      string amigoId = document.GetValue<string>("idRemitente");
-                      string nombreAmigo = document.GetValue<string>("nombreRemitente");
-                      string status = document.GetValue<string>("estado");
-
-                      MostrarAmigo(amigoId, nombreAmigo, status, filtroNombre);
-                  }
-              }
-              else
-              {
-                  Debug.LogError("Error al obtener amigos destinatarios: " + task.Exception);
-              }
-          });
     }
 
-
-    void MostrarAmigo(string amigoId, string nombreAmigo, string status, string filtroNombre)
+    void ShowMessage(string message, bool isError = false)
     {
-        Debug.Log($"Mostrando amigo/solicitud: {nombreAmigo} ({status})");
-
-        // Si hay un filtro y el nombre no coincide, lo omitimos
-        if (!string.IsNullOrEmpty(filtroNombre) && !nombreAmigo.ToLower().Contains(filtroNombre.ToLower()))
+        if (messageText != null)
         {
-            Debug.Log($"El amigo {nombreAmigo} no coincide con la búsqueda.");
-            return;
-        }
-
-        GameObject nuevoAmigo = Instantiate(amigoPrefab, contentPanel);
-
-        // Asignar el nombre
-        nuevoAmigo.transform.Find("Nombretxt").GetComponent<TMP_Text>().text = nombreAmigo;
-
-        // Obtener el panel de estado y cambiar color según estado
-        GameObject panelEstado = nuevoAmigo.transform.Find("EstadoPanel").gameObject;
-        TMP_Text estadoTxt = nuevoAmigo.transform.Find("Estadotxt").GetComponent<TMP_Text>();
-
-        if (status == "aceptada")
-        {
-            panelEstado.GetComponent<Image>().color = new Color32(0x52, 0xD9, 0x99, 0xFF); // Verde personalizado
-            estadoTxt.text = "Amigos";
-        }
-        else if (status == "pendiente")
-        {
-            panelEstado.GetComponent<Image>().color = new Color32(0x37, 0xBD, 0xF7, 0xFF); // Azul personalizado
-            estadoTxt.text = "Pendiente";
+            messageText.text = message;
+            messageText.color = isError ? Color.red : Color.white;
         }
     }
-
-
 
     public void ActivarPanelAgregarAmigos()
     {
-
         m_AgregarAmigosUI.SetActive(true);
-        
     }
 
     public void ActivarPanelSolicitudes()

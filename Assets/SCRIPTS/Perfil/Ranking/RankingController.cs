@@ -181,5 +181,7 @@ public class RankingController : MonoBehaviour
             Debug.LogError("No se encontró al usuario en el ranking.");
             posicionText.text = "Posición: No encontrada"; // Muestra un mensaje de error
         }
+
+
     }
 }
