@@ -6,6 +6,8 @@ using System.Collections;
 using System.Collections.Generic;
 using static DynamicMoleculeLoader;
 using SimpleJSON;  // Necesitas agregar "using SimpleJSON" si usas SimpleJSON para el parseo
+using Firebase.Auth;
+using Firebase.Firestore;
 
 public class DynamicMoleculeLoader : MonoBehaviour
 {
@@ -51,8 +53,16 @@ public class DynamicMoleculeLoader : MonoBehaviour
     private ObserverBehaviour trackable;
     private ControllerBotones ControladorBotones;
 
+    private FirebaseAuth auth;
+    private FirebaseFirestore db;
+    private string userId;
+
+
     void Start()
     {
+        auth = FirebaseAuth.DefaultInstance;
+        db = FirebaseFirestore.DefaultInstance;
+
         ControladorBotones = FindAnyObjectByType<ControllerBotones>();
 
         elementoTarget = PlayerPrefs.GetString("NumeroAtomico", "").Trim() + "_" + PlayerPrefs.GetString("ElementoSeleccionado", "").Trim();
@@ -83,10 +93,19 @@ public class DynamicMoleculeLoader : MonoBehaviour
             elementoSeleccionado = resultado.ToLower();
             LimpiarModelos();
             CargarJSON();
+
+            if (Application.internetReachability != NetworkReachability.NotReachable)
+            {
+                SumarXPFirebase(5);
+            }
+            else
+            {
+                SumarXPTemporario(5);
+            }
+
             DesbloquearLogro(trackable.TargetName);
         }
     }
-
 
     void DesbloquearLogro(string elemento)
     {
@@ -400,6 +419,39 @@ public class DynamicMoleculeLoader : MonoBehaviour
         foreach (Transform child in imageTargetPrefab.transform)
         {
             Destroy(child.gameObject);
+        }
+    }
+
+    void SumarXPTemporario(int xp)
+    {
+        int xpTemp = PlayerPrefs.GetInt("TempXP", 0);
+        xpTemp += xp;
+        PlayerPrefs.SetInt("TempXP", xpTemp);
+        PlayerPrefs.Save();
+        Debug.Log($"🔄 XP {xp} sumado temporalmente. Total TempXP: {xpTemp}");
+    }
+
+    async void SumarXPFirebase(int xp)
+    {
+        var user = auth.CurrentUser;
+        if (user == null)
+        {
+            Debug.LogError("❌ No hay usuario.");
+            return;
+        }
+
+        DocumentReference userRef = db.Collection("users").Document(user.UserId);
+        try
+        {
+            DocumentSnapshot snapshot = await userRef.GetSnapshotAsync();
+            int xpActual = snapshot.Exists && snapshot.TryGetValue("xp", out int valor) ? valor : 0;
+            int nuevoXP = xpActual + xp;
+            await userRef.UpdateAsync("xp", nuevoXP);
+            Debug.Log($"✅ XP actualizado: {nuevoXP}");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"❌ Error al subir XP: {e.Message}");
         }
     }
 }

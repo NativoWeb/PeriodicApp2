@@ -39,7 +39,6 @@ public class GuardarMisionFinalCompletada : MonoBehaviour
         }
 
     }
-
     public void MarcarFinalComoCompletada()
     {
         string categoria = PlayerPrefs.GetString("CategoriaSeleccionada", "");
@@ -50,12 +49,14 @@ public class GuardarMisionFinalCompletada : MonoBehaviour
             return;
         }
 
+        // Marcar localmente como completada
         string claveFinal = $"MisionFinal_{categoria}";
         PlayerPrefs.SetInt(claveFinal, 1);
         PlayerPrefs.Save();
 
         Debug.Log($"✅ Misión final de {categoria} marcada como completada.");
 
+        // Actualizar JSON y otorgar XP
         ActualizarJSONFinal(categoria);
     }
 
@@ -83,24 +84,55 @@ public class GuardarMisionFinalCompletada : MonoBehaviour
             return;
         }
 
-        categorias[categoria]["misionFinalCompletada"] = true;
+        // Verificar si ya está completada antes de hacer cualquier cosa
+        bool yaCompletada = false;
+
+        if (categorias[categoria].HasKey("Mision Final") &&
+            categorias[categoria]["Mision Final"].HasKey("MisionFinal") &&
+            categorias[categoria]["Mision Final"]["MisionFinal"].HasKey("completada"))
+        {
+            yaCompletada = categorias[categoria]["Mision Final"]["MisionFinal"]["completada"].AsBool;
+        }
+
+        if (yaCompletada)
+        {
+            Debug.Log($"⚠️ La misión final de la categoría '{categoria}' ya estaba completada. No se otorga XP ni se actualiza logro.");
+            return;
+        }
+
+        // Marcar como completada
+        if (!categorias[categoria].HasKey("Mision Final"))
+            categorias[categoria]["Mision Final"] = new JSONObject();
+        if (!categorias[categoria]["Mision Final"].HasKey("MisionFinal"))
+            categorias[categoria]["Mision Final"]["MisionFinal"] = new JSONObject();
+
+        categorias[categoria]["Mision Final"]["MisionFinal"]["completada"] = true;
+
+        // Guardar el JSON actualizado
         PlayerPrefs.SetString("misionesCategoriasJSON", json.ToString());
         PlayerPrefs.Save();
 
-        Debug.Log($"✅ JSON actualizado para misión final de {categoria}.");
+        Debug.Log($"✅ Misión final de la categoría '{categoria}' marcada como completada en el JSON.");
 
-        int xp = PlayerPrefs.GetInt("xp_mision_final", 200); // Puedes cambiar el valor por defecto
+        // XP normales + XP por logro desbloqueado
+        int xpMisionFinal = 30;
+        int xpLogroCategoria = 20;
+        int xpTotal = xpMisionFinal + xpLogroCategoria;
+
+        string claveLogroCategoria = $"LogroCategoria_{categoria}";
+        Debug.Log($"🎉 ¡Logro de la categoría '{categoria}' desbloqueado! +{xpLogroCategoria} XP extra");
 
         if (Application.internetReachability != NetworkReachability.NotReachable)
         {
             await SubirMisionesJSON();
-            SumarXPFirebase(xp);
+            SumarXPFirebase(xpTotal);
         }
         else
         {
-            SumarXPTemporario(xp);
+            SumarXPTemporario(xpTotal);
         }
     }
+
 
     void SumarXPTemporario(int xp)
     {

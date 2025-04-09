@@ -80,17 +80,18 @@ public class RankingController : MonoBehaviour
     // Función que devuelve la ruta del avatar según el rango del usuario
     private string ObtenerAvatarPorRango(string rangos)
     {
-        string avatarPath = rangos switch
+        switch (rangos)
         {
-            "Novato de laboratorio" => "Avatares/nivel1", // Ruta del avatar para el rango "Novato de laboratorio"
-            "Arquitecto molecular" => "Avatares/nivel2", // Ruta del avatar para el rango "Arquitecto molecular"
-            "Visionario Cuántico" => "Avatares/nivel3", // Ruta del avatar para el rango "Visionario Cuántico"
-            "Amo del caos químico" => "Avatares/nivel4", // Ruta del avatar para el rango "Amo del caos químico"
-            _ => "Avatares/defecto" // Si no hay un rango definido, se asigna el avatar por defecto
-        };
-
-        Debug.Log($"Ruta de avatar por nivel: {avatarPath}"); // Muestra en consola la ruta del avatar
-        return avatarPath; // Devuelve la ruta del avatar correspondiente
+            case "Novato de laboratorio": return "Avatares/Rango1";
+            case "Aprendiz Atomico": return "Avatares/Rango2";
+            case "Promesa quimica": return "Avatares/Rango3";
+            case "Cientifico en Formacion": return "Avatares/Rango4";
+            case "Experto Molecular": return "Avatares/Rango5";
+            case "Maestro de Laboratorio": return "Avatares/Rango6";
+            case "Sabio de la tabla": return "Avatares/Rango7";
+            case "Leyenda química": return "Avatares/Rango8";
+            default: return "Avatares/Rango1";
+        }
     }
 
     // Función para obtener los datos del usuario desde Firebase
@@ -137,7 +138,7 @@ public class RankingController : MonoBehaviour
         {
             // Si no se encuentra el avatar, muestra un avatar por defecto
             Debug.LogError($"No se encontró el avatar para la ruta: {avatarPath}. Asignando avatar por defecto.");
-            avatarimage.sprite = Resources.Load<Sprite>("Avatares/default");
+            avatarimage.sprite = Resources.Load<Sprite>("Avatares/Rango1");
         }
     }
 

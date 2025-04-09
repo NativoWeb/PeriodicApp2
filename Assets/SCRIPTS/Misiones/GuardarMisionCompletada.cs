@@ -52,12 +52,6 @@ public class GuardarMisionCompletada : MonoBehaviour
         {
             Debug.LogError("❌ botonCompletarMision no está asignado en el Inspector.");
         }
-
-        // 🔴 Desactivar partículas al inicio
-        if (particulasMision != null)
-        {
-            particulasMision.gameObject.SetActive(false);
-        }
     }
 
     public void MarcarMisionComoCompletada()
@@ -70,12 +64,6 @@ public class GuardarMisionCompletada : MonoBehaviour
             Debug.LogError("❌ No se encontraron datos válidos en PlayerPrefs.");
             return;
         }
-
-        string claveMision = $"Mision_{elemento}_{idMision}";
-        PlayerPrefs.SetInt(claveMision, 1);
-        PlayerPrefs.Save();
-
-        Debug.Log($"✅ Misión {idMision} del elemento {elemento} marcada como completada.");
 
         ActualizarMisionEnJSON(elemento, idMision);
     }
@@ -120,7 +108,7 @@ public class GuardarMisionCompletada : MonoBehaviour
         SceneManager.LoadScene("Escena_Alcalinos"); // Reemplaza con el nombre de la escena destino
     }
 
-private async void ActualizarMisionEnJSON(string elemento, int idMision)
+    private async void ActualizarMisionEnJSON(string elemento, int idMision)
     {
         string jsonString = PlayerPrefs.GetString("misionesCategoriasJSON", "");
         if (string.IsNullOrEmpty(jsonString))
@@ -139,7 +127,8 @@ private async void ActualizarMisionEnJSON(string elemento, int idMision)
         var categorias = json["Misiones_Categorias"]["Categorias"];
         string categoriaSeleccionada = PlayerPrefs.GetString("CategoriaSeleccionada", "");
 
-        if (!categorias.HasKey(categoriaSeleccionada) || !categorias[categoriaSeleccionada].HasKey("Elementos") ||
+        if (!categorias.HasKey(categoriaSeleccionada) ||
+            !categorias[categoriaSeleccionada].HasKey("Elementos") ||
             !categorias[categoriaSeleccionada]["Elementos"].HasKey(elemento))
         {
             Debug.LogError($"❌ No se encontró la categoría '{categoriaSeleccionada}' o el elemento '{elemento}' en el JSON.");
@@ -149,34 +138,93 @@ private async void ActualizarMisionEnJSON(string elemento, int idMision)
         var elementoJson = categorias[categoriaSeleccionada]["Elementos"][elemento];
         var misiones = elementoJson["misiones"].AsArray;
         bool cambioRealizado = false;
-        int xpGanado = PlayerPrefs.GetInt("xp_mision");
+        bool esUltimaMisionPendiente = true;
+        int xpGanado = PlayerPrefs.GetInt("xp_mision", 0);
 
-        for (int i = 0; i < misiones.Count; i++)
+        foreach (KeyValuePair<string, JSONNode> categoria in categorias)
         {
-            var mision = misiones[i];
-            if (mision["id"].AsInt == idMision)
+            var nombreCategoria = categoria.Key;
+            var elementos = categoria.Value["Elementos"];
+
+            if (elementos.HasKey(elemento))
             {
-                mision["completada"] = true;
-                cambioRealizado = true;
-                break;
+                for (int i = 0; i < misiones.Count; i++)
+                {
+                    var mision = misiones[i];
+
+                    if (mision["id"].AsInt == idMision)
+                    {
+                        // Validar si YA está completada
+                        if (mision["completada"].AsBool)
+                        {
+                            Debug.Log("⚠️ Misión ya estaba completada. No se suma XP.");
+                            if (Application.internetReachability != NetworkReachability.NotReachable)
+                            {
+                                await SubirMisionesJSON();
+                                SumarXPFirebase(3);
+                            }
+                            else
+                            {
+                                SumarXPTemporario(3);
+                            }
+                            return; // salir sin hacer nada
+                        }
+
+                        // Si NO está completada, marcarla como completada y sumar XP
+                        mision["completada"] = true;
+                        PlayerPrefs.SetString("misionesCategoriasJSON", json.ToString());
+                        PlayerPrefs.Save();
+
+                        Debug.Log("✅ Misión completada por primera vez. Sumando XP.");
+                        int xp = PlayerPrefs.GetInt("xp_mision", 0);
+                        if (Application.internetReachability != NetworkReachability.NotReachable)
+                        {
+                            await SubirMisionesJSON();
+                            SumarXPFirebase(xp);
+                        }
+                        else
+                        {
+                            SumarXPTemporario(xp);
+                        }
+                        return;
+                    }
+                }
+
+                Debug.LogWarning("⚠️ Misión con ese ID no encontrada en el elemento.");
             }
         }
 
         if (cambioRealizado)
         {
+            // Guardar JSON actualizado en PlayerPrefs
             PlayerPrefs.SetString("misionesCategoriasJSON", json.ToString());
             PlayerPrefs.Save();
-            Debug.Log($"✅ JSON actualizado para la misión {idMision} del elemento {elemento}: {json}");
+            Debug.Log($"✅ JSON actualizado para la misión {idMision} del elemento {elemento}");
 
-            // Verificar conexión a Internet
+            // Comprobamos conexión
             if (Application.internetReachability != NetworkReachability.NotReachable)
             {
                 await SubirMisionesJSON();
                 SumarXPFirebase(xpGanado);
+
+                if (esUltimaMisionPendiente)
+                {
+                    Debug.Log("🎉 ¡Última misión del elemento completada! Desbloqueando logro...");
+                    int xpLogroElemento = 15;
+                    SumarXPFirebase(xpLogroElemento);
+
+                }
             }
             else
             {
                 SumarXPTemporario(xpGanado);
+
+                if (esUltimaMisionPendiente)
+                {
+                    Debug.Log("🎉 ¡Última misión del elemento completada sin conexión! Logro guardado.");
+                    int xpLogroElemento = 15;
+                    SumarXPTemporario(xpLogroElemento);
+                }
             }
         }
         else

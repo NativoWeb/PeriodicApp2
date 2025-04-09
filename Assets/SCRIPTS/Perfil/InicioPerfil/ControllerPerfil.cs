@@ -115,7 +115,7 @@ public class ControllerPerfil : MonoBehaviour
 
                 // Cargar avatar y datos
                 string avatarPath = ObtenerAvatarPorRango(rangos);
-                Sprite avatarSprite = Resources.Load<Sprite>(avatarPath) ?? Resources.Load<Sprite>("Avatares/default");
+                Sprite avatarSprite = Resources.Load<Sprite>(avatarPath) ?? Resources.Load<Sprite>("Avatares/Rango1");
 
                 avatarImage.sprite = avatarSprite;// información que se muestra del usuario en la interfaz ----------------------------------------------------
 
@@ -220,9 +220,13 @@ public class ControllerPerfil : MonoBehaviour
     // ✅ Rango según XP
     private string ObtenerRangoSegunXP(int xp)
     {
-        if (xp >= 3000) return "Amo del caos químico";
-        if (xp >= 2000) return "Visionario Cuántico";
-        if (xp >= 1000) return "Arquitecto molecular";
+        if (xp >= 10000) return "Leyenda química";
+        if (xp >= 6000) return "Sabio de la tabla";
+        if (xp >= 3500) return "Maestro de Laboratorio";
+        if (xp >= 2300) return "Experto Molecular";
+        if (xp >= 1200) return "Cientifico en Formacion";
+        if (xp >= 600) return "Promesa quimica";
+        if (xp >= 200) return "Aprendiz Atomico";
         return "Novato de laboratorio";
     }
 
@@ -231,11 +235,15 @@ public class ControllerPerfil : MonoBehaviour
     {
         switch (rangos)
         {
-            case "Novato de laboratorio": return "Avatares/nivel1";
-            case "Arquitecto molecular": return "Avatares/nivel2";
-            case "Visionario Cuántico": return "Avatares/nivel3";
-            case "Amo del caos químico": return "Avatares/nivel4";
-            default: return "Avatares/default";
+            case "Novato de laboratorio": return "Avatares/Rango1";
+            case "Aprendiz Atomico": return "Avatares/Rango2";
+            case "Promesa quimica": return "Avatares/Rango3";
+            case "Cientifico en Formacion": return "Avatares/Rango4";
+            case "Experto Molecular": return "Avatares/Rango5";
+            case "Maestro de Laboratorio": return "Avatares/Rango6";
+            case "Sabio de la tabla": return "Avatares/Rango7";
+            case "Leyenda química": return "Avatares/Rango8";
+            default: return "Avatares/Rango1";
         }
     }
     public void ImprimirDatosPlayerPrefs()

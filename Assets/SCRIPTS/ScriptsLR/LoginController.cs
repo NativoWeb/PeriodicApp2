@@ -410,7 +410,7 @@ public class LoginController : MonoBehaviour
             {
                 if (estadoencuestaaprendizaje == true && estadoencuestaconocimiento == true)
                 {
-                    SceneManager.LoadScene("Categorías");
+                    SceneManager.LoadScene("Inicio");
                 }
                 else
                 {

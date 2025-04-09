@@ -25,8 +25,23 @@ public class RankingManager2 : MonoBehaviour
     void Start()
     {
         db = FirebaseFirestore.DefaultInstance;
-        
+        MostrarPanel();
     }
+    private void MostrarPanel()
+    {
+        string escenaguardada = PlayerPrefs.GetString("PanelRanking");
+
+        if(escenaguardada == "PanelRanking")
+        {
+            ActivarRanking();
+            PlayerPrefs.SetString("PanelRanking", "");
+        }
+        else
+        {
+            DesactivarRanking();
+        }
+    }
+
 
     public void ActivarRanking()
     {
@@ -40,13 +55,10 @@ public class RankingManager2 : MonoBehaviour
         {
             return;
         }
-
-
     }
 
     public void DesactivarRanking()
     {
-       
         RankingPanel.SetActive(false);
 
         if (estaActualizando)
@@ -55,8 +67,6 @@ public class RankingManager2 : MonoBehaviour
             StopCoroutine(rankingCoroutine);
         }
     }
-
-   
 
     public void ObtenerRanking()
     {

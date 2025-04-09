@@ -43,8 +43,5 @@ public class UI_Mision : MonoBehaviour
         {
             logoImage.sprite = logo;
         }
-
-        // Desactiva el botón si la misión está completada
-        botonMision.interactable = !mision.completada;
     }
 }

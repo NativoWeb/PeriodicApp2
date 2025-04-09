@@ -10,8 +10,6 @@ using Firebase;
 
 public class StartAppManager : MonoBehaviour
 {
-
-
     public static bool IsReady = false; // 🔹 Bandera para indicar si terminó
     private bool yaVerificado = false; // 🔹 Evita ejecuciones repetidas
 
@@ -89,7 +87,7 @@ public class StartAppManager : MonoBehaviour
             {
                 if (estadoencuestaaprendizaje == true && estadoencuestaconocimiento == true)
                 {
-                    SceneManager.LoadScene("Categorías");
+                    SceneManager.LoadScene("Inicio");
                 }
                 else
                 {
@@ -301,7 +299,7 @@ public class StartAppManager : MonoBehaviour
             {
                 if (estadoencuestaaprendizaje == true && estadoencuestaconocimiento == true)
                 {
-                    SceneManager.LoadScene("Categorías");
+                    SceneManager.LoadScene("Inicio");
                 }
                 else
                 {
@@ -342,7 +340,7 @@ public class StartAppManager : MonoBehaviour
                 {
                     if (estadoencuestaaprendizaje == true && estadoencuestaconocimiento == true)
                     {
-                        SceneManager.LoadScene("Categorías");
+                        SceneManager.LoadScene("Inicio");
                     }
                     else
                     {

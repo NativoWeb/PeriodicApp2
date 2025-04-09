@@ -58,8 +58,7 @@ public class GestorElementos : MonoBehaviour
         txtTitulo.text = PlayerPrefs.GetString("CategoriaSeleccionada", "");
         CargarJSON();
         CargarElementosDesdeJSON();
-        botonMisionFinal.interactable = false;
-        //ActualizarProgresoCategoria();
+        ActualizarProgresoCategoria();
         btnMisiones.onClick.AddListener(MostrarMisiones);
         btnInformacion.onClick.AddListener(MostrarInformacion);
         btnRegresar.onClick.AddListener(RegresarAlPanelElementos);
@@ -282,32 +281,32 @@ public class GestorElementos : MonoBehaviour
             switch (mision.tipo)
             {
                 case "AR":
-                    mision.xp = 100;
+                    mision.xp = 10;
                     mision.colorBoton = "#FFD700"; // Dorado
                     mision.logoMision = "logosMision/ar";
                     break;
                 case "QR":
-                    mision.xp = 80;
+                    mision.xp =10;
                     mision.colorBoton = "#00CED1"; // Turquesa
                     mision.logoMision = "logosMision/qr";
                     break;
                 case "Juego":
-                    mision.xp = 120;
+                    mision.xp = 12;
                     mision.colorBoton = "#32CD32"; // Verde lima
                     mision.logoMision = "logosMision/juego";
                     break;
                 case "Quiz":
-                    mision.xp = 90;
+                    mision.xp = 12;
                     mision.colorBoton = "#4169E1"; // Azul real
                     mision.logoMision = "logosMision/quiz";
                     break;
                 case "Evaluacion":
-                    mision.xp = 150;
+                    mision.xp = 12;
                     mision.colorBoton = "#8B0000"; // Rojo oscuro
                     mision.logoMision = "logosMision/evaluacion";
                     break;
                 default:
-                    mision.xp = 50;
+                    mision.xp = 10;
                     mision.colorBoton = "#808080"; // Gris
                     mision.logoMision = "logosMision/default";
                     break;
@@ -328,17 +327,6 @@ public class GestorElementos : MonoBehaviour
         uiMision.ConfigurarMision(mision);
 
         Button botonMision = nuevaMision.GetComponentInChildren<Button>();
-
-        // Clave única para la misión
-        string claveMision = $"Mision_{elementoseleccionado}_{mision.id}";
-
-        // Si la misión ya está completada, desactivar el botón
-        if (PlayerPrefs.GetInt(claveMision, 0) == 1)
-        {
-            botonMision.interactable = false;
-            botonMision.GetComponentInChildren<TextMeshProUGUI>().text = "¡Completada!";
-            botonMision.GetComponent<Image>().color = Color.gray;
-        }
 
         // Asignar evento para cambiar de escena
         botonMision.onClick.AddListener(() => CargarEscenaMision(mision.rutaEscena, elementoseleccionado, mision.id));
@@ -399,6 +387,12 @@ public class GestorElementos : MonoBehaviour
 
     public void ActualizarProgresoCategoria()
     {
+        if (sliderProgreso == null)
+        {
+            Debug.LogError("⚠️ No se ha asignado el Slider en el Inspector.");
+            return;
+        }
+
         string categoriaSeleccionada = PlayerPrefs.GetString("CategoriaSeleccionada", "");
         if (string.IsNullOrEmpty(categoriaSeleccionada))
         {
@@ -414,6 +408,7 @@ public class GestorElementos : MonoBehaviour
         }
 
         var json = JSON.Parse(jsonString);
+
         if (!json.HasKey("Misiones_Categorias") || !json["Misiones_Categorias"].HasKey("Categorias"))
         {
             Debug.LogError("❌ Estructura del JSON incorrecta.");
@@ -432,29 +427,63 @@ public class GestorElementos : MonoBehaviour
         int totalMisiones = 0;
         int misionesCompletadas = 0;
 
-        foreach (var elemento in elementos.Keys)
+        foreach (KeyValuePair<string, JSONNode> par in elementos)
         {
-            var misiones = elementos[elemento]["misiones"].AsArray;
-            totalMisiones += misiones.Count - 1; // No contar la misión final
+            string nombreElemento = par.Key;
+            var nodoElemento = par.Value;
 
-            for (int i = 0; i < misiones.Count - 1; i++) // Ignorar la última misión
+            if (!nodoElemento.HasKey("misiones"))
             {
-                if (misiones[i]["completada"].AsBool)
+                Debug.LogWarning($"⚠️ El elemento '{nombreElemento}' no tiene misiones.");
+                continue;
+            }
+
+            var misiones = nodoElemento["misiones"].AsArray;
+
+            if (misiones == null || misiones.Count == 0)
+            {
+                Debug.LogWarning($"⚠️ El elemento '{nombreElemento}' no tiene misiones válidas.");
+                continue;
+            }
+
+            totalMisiones += misiones.Count;
+
+            for (int i = 0; i < misiones.Count; i++) // ahora incluye la misión final también
+            {
+                var mision = misiones[i];
+                string completadaStr = mision["completada"].Value.Trim().ToLower();
+                bool completada = completadaStr == "true";
+
+                if (completada)
                 {
                     misionesCompletadas++;
                 }
             }
         }
 
-        float progreso = (float)misionesCompletadas / totalMisiones;
-        sliderProgreso.value = progreso;
+        sliderProgreso.maxValue = totalMisiones;
 
-        Debug.Log($"📊 Progreso de '{categoriaSeleccionada}': {misionesCompletadas}/{totalMisiones} ({progreso * 100}%)");
+        if (totalMisiones == 0)
+        {
+            Debug.LogWarning("⚠️ No hay misiones que evaluar.");
+            sliderProgreso.value = 0f;
+            return;
+        }
+
+        int progreso = (int)misionesCompletadas / totalMisiones;
+        sliderProgreso.value = misionesCompletadas;
+
+        Debug.Log($"📊 Progreso de '{categoriaSeleccionada}': {misionesCompletadas}/{totalMisiones} ({progreso * 100:F2}%)");
 
         // Verificar si se debe activar la misión final
         if (misionesCompletadas == totalMisiones)
         {
             ActualizarEstadoMisionFinal();
+        }
+        else
+        {
+            botonMisionFinal.interactable = false;
+            Debug.Log("🔒 Misión final aún bloqueada.");
         }
     }
 

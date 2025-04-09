@@ -39,30 +39,57 @@ public class LogrosManager : MonoBehaviour
             CategoriaData categoriaInfo = new CategoriaData
             {
                 nombre = categoriaKey,
-                TituloMisionFinal = categoriaData.HasKey("MisionFinal") && categoriaData["MisionFinal"].HasKey("titulo")
-                    ? categoriaData["MisionFinal"]["titulo"].Value
-                    : categoriaKey,
+                TituloMisionFinal = categoriaData["Mision Final"]["MisionFinal"]["titulo"],
                 Elementos = new Dictionary<string, ElementoData>()
             };
 
             if (categoriaData.HasKey("Elementos"))
             {
-                foreach (var elementoKey in categoriaData["Elementos"].Keys)
+                foreach (KeyValuePair<string, JSONNode> kvpElemento in categoriaData["Elementos"].AsObject)
                 {
-                    var elementoData = categoriaData["Elementos"][elementoKey];
+                    string elementoKey = kvpElemento.Key;
+                    JSONNode elementoData = kvpElemento.Value;
+
                     ElementoData elementoInfo = new ElementoData
                     {
                         nombre = elementoData.HasKey("nombre") ? elementoData["nombre"].Value : "Sin nombre",
                         logro = elementoData.HasKey("logro") ? elementoData["logro"].Value : "Sin logro",
                         misiones = new List<MisionData>()
                     };
-                    
+
+                    if (elementoData.HasKey("misiones"))
+                    {
+                        foreach (JSONNode misionNode in elementoData["misiones"].AsArray)
+                        {
+                            MisionData mision = new MisionData
+                            {
+                                id = misionNode["id"].AsInt,
+                                titulo = misionNode["titulo"],
+                                descripcion = misionNode["descripcion"],
+                                tipo = misionNode["tipo"],
+                                completada = misionNode["completada"].AsBool,
+                                rutaescena = misionNode["rutaescena"]
+                            };
+                            elementoInfo.misiones.Add(mision);
+                        }
+                    }
+
                     categoriaInfo.Elementos[elementoKey] = elementoInfo;
                 }
             }
 
-            UI.Categoria categoria = new UI.Categoria(categoriaKey, categoriaInfo);
-            categorias.Add(categoria.Nombre, categoria);
+            // ✅ Revisamos si la misión final está completadabool
+            bool misionFinalDesbloqueada = categoriaData.HasKey("Mision Final") &&
+            categoriaData["Mision Final"].HasKey("MisionFinal") &&
+            categoriaData["Mision Final"]["MisionFinal"].HasKey("completada") &&
+            categoriaData["Mision Final"]["MisionFinal"]["completada"].AsBool;
+
+
+
+            // ✅ Instanciamos la categoría usando ese valor
+            UI.Categoria categoria = new UI.Categoria(categoriaKey, categoriaInfo, misionFinalDesbloqueada);
+            categorias.Add(categoriaKey, categoria);
+
             CreateCategoriaLogro(categoria);
 
             foreach (var elementoData in categoria.ElementosData.Values)
@@ -186,7 +213,6 @@ namespace UI
         }
     }
 }
-
 public class Elemento
 {
     public string Nombre { get; private set; }

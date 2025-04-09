@@ -16,8 +16,9 @@ public class FirestoreBotones : MonoBehaviour
     public TextMeshProUGUI descripcionTMP;
 
     private Button botonSeleccionado;
-    private Color colorNormal = Color.gray;
-    private Color colorSeleccionado = new Color(81f / 255f, 178f / 255f, 124f / 255f);
+    private Color colorNormal = new Color(180f / 255f, 180f / 255f, 180f / 255f) ;
+    private Color colorSeleccionado = new Color(0f / 255f, 162f / 255f, 148f / 255f)
+;
 
     private List<Categoria> categorias = new List<Categoria>();
 
@@ -45,14 +46,6 @@ public class FirestoreBotones : MonoBehaviour
         {
             Categoria categoria = categorias[i];
             GameObject nuevoBoton = CrearBoton(i + 1, categoria);
-
-            // Obtener progreso y actualizar el slider de la categoría
-           //float progreso = ObtenerProgresoCategoria(categoria.Titulo);
-           // SliderProgreso = nuevoBoton.GetComponentInChildren<Slider>();
-           // if (SliderProgreso != null)
-           // {
-           //     SliderProgreso.value = progreso;
-           // }
 
             if (!primerBotonSeleccionado)
             {
@@ -91,6 +84,14 @@ public class FirestoreBotones : MonoBehaviour
         tituloTMP.text = "Categoría " + (categorias.IndexOf(categoria) + 1) + ":";
         nombreTMP.text = categoria.Titulo;
         descripcionTMP.text = categoria.Descripcion;
+
+        // ✅ Actualizar progreso al seleccionar la categoría
+        float progreso = ObtenerProgresoCategoria(categoria.Titulo);
+        if (SliderProgreso != null)
+        {
+            SliderProgreso.value = progreso;
+        }
+
         PlayerPrefs.SetString("CategoriaSeleccionada", nombreTMP.text);
         PlayerPrefs.Save();
     }

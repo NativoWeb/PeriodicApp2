@@ -115,7 +115,7 @@ public class UpdateData : MonoBehaviour
             {
                 int xpActual = snapshot.GetValue<int>("xp"); // XP actual en Firebase
 
-                int nuevoXP = xpActual + tempXP; // Sumar XP
+                int nuevoXP = tempXP; // Actualiza XP
 
                 // Actualizar el XP en Firebase
                 Dictionary<string, object> updates = new Dictionary<string, object>
@@ -125,8 +125,6 @@ public class UpdateData : MonoBehaviour
 
                 await userRef.UpdateAsync(updates);
                 Debug.Log($"✅ XP actualizado en Firebase para {userId}: {nuevoXP}");
-
-                PlayerPrefs.SetInt("TempXP", 0); // Reiniciar XP temporal
             }
             else
             {
@@ -208,6 +206,7 @@ public class UpdateData : MonoBehaviour
                 if (snapshot.Exists)
                 {
                     int xpActual = snapshot.GetValue<int>("xp"); // XP actual en Firebase
+                    PlayerPrefs.SetInt("TempXP", xpActual);
                     string username = snapshot.GetValue<string>("DisplayName");
                     PlayerPrefs.SetString("DisplayName", username);
                     bool estadoencuestaaprendizaje = snapshot.GetValue<bool>("EstadoEncuestaAprendizaje");

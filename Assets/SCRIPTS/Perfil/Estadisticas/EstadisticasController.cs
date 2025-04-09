@@ -249,10 +249,14 @@ public class EstadisticasController : MonoBehaviour
 
         switch (rango)
         {
-            case "Novato de laboratorio": xpMin = 0; xpMax = 1000; break;
-            case "Arquitecto molecular": xpMin = 1000; xpMax = 2000; break;
-            case "Visionario Cuántico": xpMin = 2000; xpMax = 3000; break;
-            case "Amo del caos químico": xpMin = 3000; xpMax = 4000; break;
+            case "Novato de laboratorio": xpMin = 0; xpMax = 199; break;
+            case "Aprendiz Atomico": xpMin = 200; xpMax = 599; break;
+            case "Promesa quimica": xpMin = 600; xpMax = 1199; break;
+            case "Cientifico en Formacion": xpMin = 1200; xpMax = 2299; break;
+            case "Experto Molecular": xpMin = 2300; xpMax = 3499; break;
+            case "Maestro de Laboratorio": xpMin = 3500; xpMax = 5999; break;
+            case "Sabio de la tabla": xpMin = 6000; xpMax = 9999; break;
+            case "Leyenda química": xpMin = 10000; xpMax = 1000000; break;
         }
 
         int rangoXP = xpMax - xpMin;
@@ -266,11 +270,15 @@ public class EstadisticasController : MonoBehaviour
     {
         switch (rango)
         {
-            case "Novato de laboratorio": return "Avatares/nivel1";
-            case "Arquitecto molecular": return "Avatares/nivel2";
-            case "Visionario Cuántico": return "Avatares/defecto";
-            case "Amo del caos químico": return "Avatares/nivel4";
-            default: return "Avatars/default";
+            case "Novato de laboratorio": return "Avatares/Rango1";
+            case "Aprendiz Atomico": return "Avatares/Rango2";
+            case "Promesa quimica": return "Avatares/Rango3";
+            case "Cientifico en Formacion": return "Avatares/Rango4";
+            case "Experto Molecular": return "Avatares/Rango5";
+            case "Maestro de Laboratorio": return "Avatares/Rango6";
+            case "Sabio de la tabla": return "Avatares/Rango7";
+            case "Leyenda química": return "Avatares/Rango8";
+            default: return "Avatares/Rango1";
         }
     }
 
