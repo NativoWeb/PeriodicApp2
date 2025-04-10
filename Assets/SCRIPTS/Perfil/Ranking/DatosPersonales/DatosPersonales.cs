@@ -201,7 +201,7 @@ public class DatosPersonales : MonoBehaviour
     {
         // Lista de edades (1 a 100 años)
         List<string> edades = new List<string>();
-        for (int i = 0; i <= 100; i++)
+        for (int i = 10; i <= 100; i++)
         {
             edades.Add(i.ToString());
         }
@@ -281,7 +281,10 @@ public class DatosPersonales : MonoBehaviour
         // Validar cada campo individualmente
         List<string> errores = new List<string>();
 
-        if (edadtxt == "0" || string.IsNullOrEmpty(edadtxt))
+        // Si todo está bien, proceder con el guardado
+        int.TryParse(edadtxt, out int edad);
+
+        if (string.IsNullOrEmpty(edadtxt))
         {
             errores.Add("• Selecciona una edad válida");
         }
@@ -304,8 +307,7 @@ public class DatosPersonales : MonoBehaviour
             return;
         }
 
-        // Si todo está bien, proceder con el guardado
-        int.TryParse(edadtxt, out int edad);
+        
 
         // Guardar en PlayerPrefs
         PlayerPrefs.SetInt("Edad", edad);
