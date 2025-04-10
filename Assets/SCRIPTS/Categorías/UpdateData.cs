@@ -217,10 +217,28 @@ public class UpdateData : MonoBehaviour
                     string ocupacion = snapshot.GetValue<string>("Ocupacion");
                     PlayerPrefs.SetString("TempOcupacion", ocupacion);
                     string rango = snapshot.GetValue<string>("Rango");
-                    PlayerPrefs.SetString("Rango",rango);
+                    PlayerPrefs.SetString("Rango", rango);
                     string avatar = snapshot.GetValue<string>("avatar");
                     PlayerPrefs.SetString("TempAvatar", avatar);
 
+                    // Verificamos si los campos existen ----------------------------- para guardarlos en playerprefs
+
+                    Dictionary<string, object> datos = snapshot.ToDictionary();
+                    bool tieneEdad = datos.ContainsKey("Edad");
+                    bool tieneDepartamento = datos.ContainsKey("Departamento");
+                    bool tieneCiudad = datos.ContainsKey("Ciudad");
+
+                    if (tieneEdad && tieneDepartamento && tieneCiudad)
+                    {
+                        int edad = snapshot.GetValue<int>("Edad");
+                        PlayerPrefs.SetInt("Edad", edad);
+                        string departamento = snapshot.GetValue<string>("Departamento");
+                        PlayerPrefs.SetString("Departamento", departamento);
+                        string ciudad = snapshot.GetValue<string>("Ciudad");
+                        PlayerPrefs.SetString("Ciudad", ciudad);
+
+                        
+                    }
                     Debug.Log("Get-user-Data desde Update Data puso bien los player prefs");
                 }
 

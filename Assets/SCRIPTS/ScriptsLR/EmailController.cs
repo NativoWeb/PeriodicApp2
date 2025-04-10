@@ -12,7 +12,6 @@ using UnityEngine.Networking;
 using Vuforia;
 using System.Text.RegularExpressions;
 using System;
-using Unity.Burst;
 
 public class EmailController : MonoBehaviour
 {
@@ -30,8 +29,6 @@ public class EmailController : MonoBehaviour
     public TMP_InputField confirmPasswordInput;
     public GameObject requirementsPanel;  // Panel con los requisitos
     public TMP_Text minLengthText, uppercaseText, lowercaseText, specialCharText; // Textos de cada requisito
-    public GameObject PanelMessage;
-    public Button ButtonMessage;
     public TMP_Text txtMessage;
 
     public Texture2D imagenActiva;
@@ -51,16 +48,10 @@ public class EmailController : MonoBehaviour
     public Button registerButton;
     public Button verifyButton;
     public Button editButton;
-    public GameObject PanelVerifficacionMessage;
-    public Button ButtonVerificacionMessage;
     public TMP_Text verificationMessage;
-    public GameObject PanelCorreo;
     public TMP_Text CorreoMessage;
     public GameObject registroPanel;
     public GameObject verificacionPanel;
-    public Text TextTimer;  // Referencia al componente Text de la UI
-    public float tiempoRestante = 0f;  // Tiempo inicial del temporizador en segundos
-
 
     private FirebaseAuth auth;
     private FirebaseFirestore firestore;
@@ -77,8 +68,6 @@ public class EmailController : MonoBehaviour
     void Start()
     {
         /* -----------------  VALIDAR CONTRASEÑA----------------- */
-        ButtonVerificacionMessage.onClick.AddListener(ClosePanelMessageVerificacion);
-        ButtonMessage.onClick.AddListener(ClosePanelMessage);
         passwordInput.onSelect.AddListener(ShowRequirements);
         passwordInput.onValueChanged.AddListener(ValidatePassword);
         passwordInput.onDeselect.AddListener(HideRequirements);
@@ -118,12 +107,13 @@ public class EmailController : MonoBehaviour
         verifyButton.onClick.AddListener(OnVerifyButtonClick);
     }
 
+
+
     /* -----------------  MÉTODOS PARA VALIDAR CONTRASEÑA----------------- */
 
     void ShowRequirements(string text)
     {
         txtMessage.text = "";
-        PanelMessage.SetActive(false);
         requirementsPanel.SetActive(true);
     }
 
@@ -155,11 +145,9 @@ public class EmailController : MonoBehaviour
     public void OnRegisterButtonClick()
     {
         hayInternet = Application.internetReachability != NetworkReachability.NotReachable;
-
         if (hayInternet)
         {
 
-            tiempoRestante = 180f;  // Tiempo inicial del temporizador en segundos
 
             string email = emailInput.text.Trim();
             string password = passwordInput.text;
@@ -168,7 +156,6 @@ public class EmailController : MonoBehaviour
             // Verificar si los campos están vacíos
             if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(password) || string.IsNullOrEmpty(confirmPassword))
             {
-                PanelMessage.SetActive(true);
                 txtMessage.text = "Por favor, completa todos los campos.";
                 txtMessage.color = Color.red;
                 return;
@@ -177,7 +164,6 @@ public class EmailController : MonoBehaviour
             // Validar el formato del correo
             if (!IsValidEmail(email))
             {
-                PanelMessage.SetActive(true);
                 txtMessage.text = "El correo ingresado no tiene un formato válido.";
                 txtMessage.color = Color.red;
                 return;
@@ -186,17 +172,17 @@ public class EmailController : MonoBehaviour
             // Validar si el dominio es permitido
             if (!IsAllowedDomain(email))
             {
-                PanelMessage.SetActive(true);
                 txtMessage.text = "El dominio del correo es invalido.";
                 txtMessage.color = Color.red;
                 return;
             }
 
+            txtMessage.text = "Correo válido.";
+            txtMessage.color = Color.green;
 
             // Verificar si las contraseñas coinciden
             if (password != confirmPassword)
             {
-                PanelMessage.SetActive(true);
                 txtMessage.text = "Las contraseñas no coinciden.";
                 txtMessage.color = Color.red;
                 return;
@@ -210,12 +196,14 @@ public class EmailController : MonoBehaviour
 
             if (!hasMinLength || !hasUppercase || !hasLowercase || !hasSpecialChar)
             {
-                PanelMessage.SetActive(true);
                 txtMessage.text = "La contraseña no cumple con los requisitos solicitados.";
                 txtMessage.color = Color.red;
                 return;
             }
 
+            // Si todo está correcto, registrar usuario
+            txtMessage.text = "Registrando usuario...";
+            txtMessage.color = Color.green;
             CreateUserWithEmail(email, password);
 
             // acá guardo los player para si todo sale bien, guarde en registercontroller
@@ -256,7 +244,6 @@ public class EmailController : MonoBehaviour
         auth.CreateUserWithEmailAndPasswordAsync(email, password).ContinueWithOnMainThread(task => {
             if (task.IsCanceled || task.IsFaulted)
             {
-                PanelMessage.SetActive(true);
                 txtMessage.text = "Correo electronico en uso.";
                 txtMessage.color = Color.red;
                 return;
@@ -312,12 +299,12 @@ public class EmailController : MonoBehaviour
 
             if (request.result == UnityWebRequest.Result.Success)
             {
-                PanelVerifficacionMessage.SetActive(true);
                 verificationMessage.text = "Ingresa el código que te enviamos a tu correo.";
+                Color warningColor = new Color(1f, 0.65f, 0f); // Naranja fuerte
+                verificationMessage.color = warningColor;
                 registroPanel.SetActive(false);
-
-                PanelCorreo.SetActive(true);
                 CorreoMessage.text = "Correo enviado a: " + email;
+                CorreoMessage.color = Color.white;
                 editButton.onClick.AddListener(VolverEmail);
                 verificacionPanel.SetActive(true);
                 
@@ -339,14 +326,6 @@ public class EmailController : MonoBehaviour
         emailInput.text = "";
         passwordInput.text = passwordInput.text;
 
-        //desactivar panles milo
-        PanelMessage.SetActive(false);
-        verificacionPanel.SetActive(false);
-        PanelCorreo.SetActive(false);
-        PanelVerifficacionMessage.SetActive(false);
-
-        string usuarioaeliminar = PlayerPrefs.GetString("UsuarioEliminar", "");
-      
 
         if (hayInternet)
         {
@@ -370,7 +349,9 @@ public class EmailController : MonoBehaviour
                 if (deleteTask.IsCompletedSuccessfully)
                 {
                     Debug.Log("Cuenta eliminada por falta de conexión.");
+
                     PlayerPrefs.DeleteKey("UsuarioEliminar");
+                    PlayerPrefs.Save();
                 }
                 else
                 {
@@ -396,78 +377,21 @@ public class EmailController : MonoBehaviour
             Debug.Log(verificationCodeInput.text);
             if (verificationCodeInput.text == generatedCode)
             {
+                verificationMessage.text = "Código verificado correctamente. Avanzando a la siguiente escena...";
+                verificationMessage.color = Color.green;
                 SceneManager.LoadScene("Registrar");
             }
             else
             {
-                PanelVerifficacionMessage.SetActive(true);
                 verificationMessage.text = "Código incorrecto. Intenta nuevamente.";
-                verificationMessage.color = Color.red;
-                return;
             }
         }
         else
         {
-           
+            string usuarioaeliminar = PlayerPrefs.GetString("UsuarioEliminar", "");
+            PlayerPrefs.Save();
             m_SinInternetUI.SetActive(true);
         }
 
-    }
-
-    private void ClosePanelMessage()
-    {
-        PanelMessage.SetActive(false);
-    }
-
-    private void ClosePanelMessageVerificacion()
-    {
-        PanelVerifficacionMessage.SetActive(true);
-    }
-
-    bool codigoExpirado = false; // Bandera para evitar múltiples llamadas
-
-    void Update()
-    {
-        if (tiempoRestante > 0)
-        {
-            tiempoRestante -= Time.deltaTime;
-            ActualizarTextoTiempo();
-        }
-        else if (!codigoExpirado)
-        {
-            tiempoRestante = 0f; // Asegurarse de que no baje de cero
-            ActualizarTextoTiempo();
-            VolverEmailTimer();
-            codigoExpirado = true;
-        }
-    }
-
-    void ActualizarTextoTiempo()
-    {
-        int minutos = Mathf.FloorToInt(tiempoRestante / 60f);
-        int segundos = Mathf.FloorToInt(tiempoRestante % 60f);
-
-        TextTimer.text = "Queda " + minutos.ToString("00") + ":" + segundos.ToString("00") + " para que el código expire";
-    }
-
-    void VolverEmailTimer()
-    {
-        hayInternet = Application.internetReachability != NetworkReachability.NotReachable;
-
-        verificacionPanel.SetActive(false);
-        PanelCorreo.SetActive(false);
-        PanelVerifficacionMessage.SetActive(false);
-        PanelMessage.SetActive(true);
-        txtMessage.text = "Su codigo a expirado, intente verificar nuevamente su correo";
-        registroPanel.SetActive(true);
-        emailInput.text = emailInput.text;
-        passwordInput.text = passwordInput.text;
-        confirmPasswordInput.text = confirmPasswordInput.text;
-
-
-        if (hayInternet)
-        {
-            StartCoroutine(DeleteAccount());
-        }
     }
 }

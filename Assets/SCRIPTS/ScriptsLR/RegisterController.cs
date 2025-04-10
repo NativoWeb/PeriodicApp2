@@ -129,7 +129,8 @@ public class RegisterController : MonoBehaviour
             CheckUsernameAvailability(userName, currentUser);
         }
         else
-        { 
+        {
+        {
             m_SinInternetUI.SetActive(true);
         }
     }
