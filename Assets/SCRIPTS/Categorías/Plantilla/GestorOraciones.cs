@@ -262,13 +262,8 @@ public class GestorOraciones : MonoBehaviour
     {
         panelFinal.SetActive(true);
         int experiencia = (respuestasCorrectas * 100) / preguntas.Count;
-        txtResultado.text = $"Respuestas correctas: {respuestasCorrectas}/{preguntas.Count}\nExperiencia ganada: {experiencia}XP\nBonificación de racha: {racha * 10}";
+        txtResultado.text = $"Bonificación de racha: {racha * 10}";
 
-    }
-
-    public void GuardarYSalir()
-    {
-        SceneManager.LoadScene("Escena_Alcalinos");
     }
 
     [System.Serializable]

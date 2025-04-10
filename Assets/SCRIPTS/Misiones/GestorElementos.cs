@@ -306,7 +306,7 @@ public class GestorElementos : MonoBehaviour
                     mision.logoMision = "logosMision/evaluacion";
                     break;
                 default:
-                    mision.xp = 10;
+                    mision.xp = 0;
                     mision.colorBoton = "#808080"; // Gris
                     mision.logoMision = "logosMision/default";
                     break;

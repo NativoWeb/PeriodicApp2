@@ -15,8 +15,8 @@ public class GestorPreguntas : MonoBehaviour
     public Toggle[] opciones;
     public Text txtTiempo;
     public Text txtRacha;
-    public GameObject panelFinal;
     public TextMeshProUGUI txtResultado;
+    public GameObject PanelContinuar;
 
     public Slider barraProgresoSlider;
     private List<Pregunta> preguntasFiltradas;
@@ -268,9 +268,19 @@ public class GestorPreguntas : MonoBehaviour
 
     void MostrarResultadosFinales()
     {
-        panelFinal.SetActive(true);
+        PanelContinuar.SetActive(true);
+
         int experiencia = (respuestasCorrectas * 100) / preguntasFiltradas.Count;
-        txtResultado.text = $"Respuestas correctas: {respuestasCorrectas}/{preguntasFiltradas.Count}\nExperiencia ganada: {experiencia}XP\nBonificación de racha: {rachaActual * 10}";
+        txtResultado.text = $"Bonificación de racha: {rachaActual * 3}";
+
+        if (Application.internetReachability != NetworkReachability.NotReachable)
+        {
+            SumarXPFirebase(rachaActual);
+        }
+        else
+        {
+            SumarXPTemporario(rachaActual);
+        }
 
         // Guardar que el elemento ha sido completado
         PlayerPrefs.SetInt($"Progreso_{elementoCompleto}", preguntasFiltradas.Count);
@@ -285,9 +295,48 @@ public class GestorPreguntas : MonoBehaviour
         PlayerPrefs.SetInt("RachaActual", rachaActual);
         PlayerPrefs.SetFloat("ProgresoBarra", barraProgresoSlider.value);
         PlayerPrefs.Save();
+    }
 
-        string escena = PlayerPrefs.GetString("juegoEscenaActual", "");
-        SceneManager.LoadScene(escena);
+    void SumarXPTemporario(int xp)
+    {
+        int xpTemporal = PlayerPrefs.GetInt("TempXP", 0);
+        xpTemporal += xp;
+        PlayerPrefs.SetInt("TempXP", xpTemporal);
+        PlayerPrefs.Save();
+        Debug.Log($"🔄 No hay conexión. XP {xp} guardado en TempXP. Total: {xpTemporal}");
+    }
+
+    async void SumarXPFirebase(int xp)
+    {
+        var user = auth.CurrentUser;
+        if (user == null)
+        {
+            Debug.LogError("❌ No hay usuario autenticado.");
+            return;
+        }
+
+        DocumentReference userRef = db.Collection("users").Document(user.UserId);
+
+        try
+        {
+            DocumentSnapshot snapshot = await userRef.GetSnapshotAsync();
+            int xpActual = 0;
+
+            if (snapshot.Exists && snapshot.TryGetValue<int>("xp", out int valorXP))
+            {
+                xpActual = valorXP;
+            }
+
+            int xpNuevo = xpActual + xp;
+
+
+            await userRef.UpdateAsync("xp", xpNuevo);
+            Debug.Log($"✅ XP actualizado en Firebase: {xpNuevo}");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"❌ Error al actualizar XP en Firebase: {e.Message}");
+        }
     }
 }
 

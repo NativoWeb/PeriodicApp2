@@ -1,223 +1,186 @@
-﻿using UnityEngine;
+﻿using System;
+using TMPro;
+using UnityEngine;
 using Firebase.Auth;
 using Firebase.Firestore;
-using System;
-using System.Collections.Generic;
-using Firebase.Extensions;
-using TMPro;
+using System.Collections;
 using System.Threading.Tasks;
-
+using System.Collections.Generic;
 
 public class RachaManager : MonoBehaviour
 {
-    int rachaActualLocal;
-    DateTime ultimaFechaLocal;
+    public TMP_Text RachaTexto;
 
-    public TMP_Text Racha;
-    private FirebaseFirestore db;
-    private string userId;
     private FirebaseAuth auth;
+    private FirebaseFirestore db;
+    private FirebaseUser user;
+    private string userId;
 
-    void Start()
+    private int rachaActualLocal;
+    private DateTime ultimaFechaLocal;
+
+    private void Start()
     {
         auth = FirebaseAuth.DefaultInstance;
         db = FirebaseFirestore.DefaultInstance;
+        user = auth.CurrentUser;
+        userId = user?.UserId;
 
-        var user = auth.CurrentUser;
-        if (user != null)
-        {
-            userId = user.UserId;
-        }
-        VerificarRachaLocal();
+        VerificarRacha();
     }
 
-    void VerificarRachaLocal()
+    private void VerificarRacha()
     {
         DateTime hoy = DateTime.UtcNow.Date;
 
-        string fechaStr = PlayerPrefs.GetString("ultimaFecha", "");
+        // Leer de PlayerPrefs
+        string fechaGuardadaStr = PlayerPrefs.GetString("ultimaFecha", "");
         rachaActualLocal = PlayerPrefs.GetInt("rachaActual", 0);
 
-        if (!string.IsNullOrEmpty(fechaStr))
+        if (DateTime.TryParse(fechaGuardadaStr, out ultimaFechaLocal))
         {
-            ultimaFechaLocal = DateTime.Parse(fechaStr);
-            TimeSpan diferencia = hoy - ultimaFechaLocal;
+            int diferencia = (hoy - ultimaFechaLocal).Days;
 
-            if (diferencia.Days == 1)
+            if (diferencia == 1)
+            {
                 rachaActualLocal++;
-            else if (diferencia.Days > 1)
+                GuardarRachaLocal(hoy);
+            }
+            else if (diferencia > 1)
+            {
                 rachaActualLocal = 1;
-            // Si es el mismo día, no cambia
+                GuardarRachaLocal(hoy);
+            }
+            // diferencia == 0 → ya se sumó racha hoy, no hacemos nada
         }
         else
         {
+            // Primera vez o error al leer fecha
             rachaActualLocal = 1;
+            GuardarRachaLocal(hoy);
         }
 
-        // Guardar nueva fecha y racha local
-        PlayerPrefs.SetString("ultimaFecha", hoy.ToString("yyyy-MM-dd"));
-        PlayerPrefs.SetInt("rachaActual", rachaActualLocal);
-        PlayerPrefs.Save();
-
-        Debug.Log($"[Offline] Racha: {rachaActualLocal}");
         ActualizarUIRacha();
-        // Verificar con Firebase si hay conexión
+
+        // Solo si hay conexión a Internet
         if (Application.internetReachability != NetworkReachability.NotReachable)
         {
-            SincronizarConFirebase(hoy);
+            StartCoroutine(SincronizarConFirebase(hoy));
         }
+
+        VerificarYSumarXP(hoy);
     }
 
-    async void SincronizarConFirebase(DateTime hoy)
+    private void GuardarRachaLocal(DateTime fecha)
     {
-        if (userId == null) return;
+        PlayerPrefs.SetString("ultimaFecha", fecha.ToString("yyyy-MM-dd"));
+        PlayerPrefs.SetInt("rachaActual", rachaActualLocal);
+    }
 
-        DocumentReference docRef = db.Collection("users").Document(userId);
+    private void VerificarYSumarXP(DateTime hoy)
+    {
+        string fechaUltimoXP = PlayerPrefs.GetString("fechaUltimoXP", "");
 
-        try
+        if (fechaUltimoXP == hoy.ToString("yyyy-MM-dd"))
         {
-            DocumentSnapshot snap = await docRef.GetSnapshotAsync();
-            Debug.Log("📄 Snapshot obtenido de Firebase");
-
-            if (snap.Exists)
-            {
-                Debug.Log("📌 Documento existe en Firebase, verificando campos...");
-
-                if (snap.ContainsField("rachaActual") && snap.ContainsField("ultimaFecha"))
-                {
-                    DateTime ultimaFechaFirebase = snap.GetValue<Timestamp>("ultimaFecha").ToDateTime().Date;
-                    int rachaFirebase = snap.GetValue<int>("rachaActual");
-
-                    int diasDiferencia = (hoy - ultimaFechaFirebase).Days;
-
-                    // Evaluar la racha según la diferencia de días
-                    if (diasDiferencia == 1)
-                    {
-                        Debug.Log("❄️ Racha congelada por inactividad de 1 día.");
-                        // Racha congelada, no aumenta
-                    }
-                    else if (diasDiferencia >= 2)
-                    {
-                        Debug.Log("💥 Racha perdida por inactividad de más de 1 día.");
-                        rachaActualLocal = 0;
-                    }
-
-                    // Determinar XP según la duración de la racha
-                    int xpDiario = 1;
-                    if (rachaActualLocal >= 30)
-                        xpDiario = 5;
-                    else if (rachaActualLocal >= 15)
-                        xpDiario = 4;
-                    else if (rachaActualLocal >= 7)
-                        xpDiario = 3;
-                    else if (rachaActualLocal >= 1)
-                        xpDiario = 2;
-
-                    // Guardar local
-                    PlayerPrefs.SetString("ultimaFecha", hoy.ToString("yyyy-MM-dd"));
-                    PlayerPrefs.SetInt("rachaActual", rachaActualLocal);
-                    PlayerPrefs.SetInt("xpGanadaHoy", xpDiario);
-                    PlayerPrefs.Save();
-
-                    // XP Local y Firebase
-                    SumarXPTemporario(xpDiario);
-                    await Task.Delay(500);
-                    SumarXPFirebase(xpDiario);
-                    PlayerPrefs.SetInt("TempXP", 0);
-                    PlayerPrefs.Save();
-
-                    // Actualizar en Firebase
-                    await docRef.UpdateAsync(new Dictionary<string, object>
-                {
-                    { "rachaActual", rachaActualLocal },
-                    { "ultimaFecha", hoy }
-                });
-
-                    Debug.Log($"✅ Racha y XP actualizados en Firebase. XP Ganado hoy: {xpDiario}");
-                    ActualizarUIRacha();
-                }
-                else
-                {
-                    Debug.Log("⚠️ Campos no existen, creando datos en Firebase...");
-
-                    await docRef.UpdateAsync(new Dictionary<string, object>
-                {
-                    { "rachaActual", rachaActualLocal },
-                    { "ultimaFecha", hoy }
-                });
-
-                    SumarXPTemporario(1); // primera vez: 1 XP
-                    await Task.Delay(500);
-                     SumarXPFirebase(1);
-                    PlayerPrefs.SetInt("TempXP", 0);
-                    PlayerPrefs.Save();
-
-                    Debug.Log("✅ Campos creados correctamente en Firebase.");
-                    ActualizarUIRacha();
-                }
-            }
-            else
-            {
-                Debug.Log("📁 Documento no existe, creándolo...");
-
-                await docRef.SetAsync(new Dictionary<string, object>
-            {
-                { "rachaActual", rachaActualLocal },
-                { "ultimaFecha", hoy }
-            });
-
-                SumarXPTemporario(1); // primera vez: 1 XP
-                await Task.Delay(500);
-                SumarXPFirebase(1);
-                PlayerPrefs.SetInt("TempXP", 0);
-                PlayerPrefs.Save();
-
-                Debug.Log("✅ Documento creado correctamente en Firebase.");
-                ActualizarUIRacha();
-            }
-        }
-        catch (Exception e)
-        {
-            Debug.LogError("❌ Error durante sincronización: " + e.Message);
-        }
-    }
-
-    void ActualizarUIRacha()
-    {
-        if (Racha != null)
-            Racha.text = rachaActualLocal.ToString();
-    }
-
-    void SumarXPTemporario(int xp)
-    {
-        int xpTemp = PlayerPrefs.GetInt("TempXP", 0);
-        xpTemp += xp;
-        PlayerPrefs.SetInt("TempXP", xpTemp);
-        PlayerPrefs.Save();
-        Debug.Log($"🔄 XP {xp} sumado temporalmente. Total TempXP: {xpTemp}");
-    }
-
-    async void SumarXPFirebase(int xp)
-    {
-        var user = auth.CurrentUser;
-        if (user == null)
-        {
-            Debug.LogError("❌ No hay usuario.");
+            Debug.Log("XP ya otorgado hoy");
             return;
         }
 
-        DocumentReference userRef = db.Collection("users").Document(user.UserId);
-        try
+        int xp = CalcularXPSegunRacha(rachaActualLocal);
+        SumarXPTemporario(xp);
+        PlayerPrefs.SetString("fechaUltimoXP", hoy.ToString("yyyy-MM-dd"));
+
+        if (Application.internetReachability != NetworkReachability.NotReachable)
         {
-            DocumentSnapshot snapshot = await userRef.GetSnapshotAsync();
-            int xpActual = snapshot.Exists && snapshot.TryGetValue("xp", out int valor) ? valor : 0;
+            StartCoroutine(SumarXPFirebase(xp));
+        }
+    }
+
+    private int CalcularXPSegunRacha(int racha)
+    {
+        if (racha >= 30) return 5;
+        if (racha >= 15) return 4;
+        if (racha >= 7) return 3;
+        if (racha >= 3) return 2;
+        return 1;
+    }
+
+    private void SumarXPTemporario(int xp)
+    {
+        int xpTemp = PlayerPrefs.GetInt("xpTemporal", 0);
+        xpTemp += xp;
+        PlayerPrefs.SetInt("xpTemporal", xpTemp);
+        Debug.Log($"XP temporal actualizado: {xpTemp}");
+    }
+
+    private IEnumerator SumarXPFirebase(int xp)
+    {
+        if (string.IsNullOrEmpty(userId)) yield break;
+
+        DocumentReference docRef = db.Collection("users").Document(userId);
+        Task<DocumentSnapshot> task = docRef.GetSnapshotAsync();
+
+        yield return new WaitUntil(() => task.IsCompleted);
+
+        if (task.Result.Exists && task.Result.TryGetValue<int>("xp", out int xpActual))
+        {
             int nuevoXP = xpActual + xp;
-            await userRef.UpdateAsync("xp", nuevoXP);
-            Debug.Log($"✅ XP actualizado: {nuevoXP}");
+            docRef.UpdateAsync("xp", nuevoXP);
         }
-        catch (System.Exception e)
+    }
+
+    private IEnumerator SincronizarConFirebase(DateTime hoy)
+    {
+        if (string.IsNullOrEmpty(userId)) yield break;
+
+        DocumentReference docRef = db.Collection("users").Document(userId);
+        Task<DocumentSnapshot> task = docRef.GetSnapshotAsync();
+
+        yield return new WaitUntil(() => task.IsCompleted);
+
+        if (task.Result.Exists)
         {
-            Debug.LogError($"❌ Error al subir XP: {e.Message}");
+            DocumentSnapshot snapshot = task.Result;
+
+            DateTime? fechaFirestore = null;
+            int rachaFirestore = 0;
+
+            if (snapshot.TryGetValue("ultimaFecha", out Timestamp ts))
+                fechaFirestore = ts.ToDateTime().Date;
+
+            if (snapshot.TryGetValue("rachaActual", out int racha))
+                rachaFirestore = racha;
+
+            int diasDiferencia = (hoy - fechaFirestore.GetValueOrDefault(hoy)).Days;
+
+            if (diasDiferencia == 1)
+            {
+                rachaFirestore++;
+            }
+            else if (diasDiferencia > 1)
+            {
+                rachaFirestore = 1;
+            }
+
+            docRef.UpdateAsync(new Dictionary<string, object>
+            {
+                { "rachaActual", rachaFirestore },
+                { "ultimaFecha", Timestamp.FromDateTime(DateTime.UtcNow.Date.ToUniversalTime()) }
+            });
+
+            // También actualizamos local con datos de Firestore para mantener sincronía
+            rachaActualLocal = rachaFirestore;
+            GuardarRachaLocal(hoy);
+            ActualizarUIRacha();
         }
+    }
+
+    private void ActualizarUIRacha()
+    {
+        if (RachaTexto != null)
+            RachaTexto.text = rachaActualLocal.ToString();
+
+
     }
 }

@@ -72,6 +72,7 @@ public class DynamicMoleculeLoader : MonoBehaviour
 
         if (trackable)
         {
+            LimpiarModelos();
             trackable.OnTargetStatusChanged += OnImageDetected;
         }
 
@@ -91,16 +92,18 @@ public class DynamicMoleculeLoader : MonoBehaviour
         {
             string resultado = trackable.TargetName.Split('_')[1];
             elementoSeleccionado = resultado.ToLower();
-            LimpiarModelos();
             CargarJSON();
 
-            if (Application.internetReachability != NetworkReachability.NotReachable)
+            if (ruta == "Inicio")
             {
-                SumarXPFirebase(5);
-            }
-            else
-            {
-                SumarXPTemporario(5);
+                if (Application.internetReachability != NetworkReachability.NotReachable)
+                {
+                    SumarXPFirebase(5);
+                }
+                else
+                {
+                    SumarXPTemporario(5);
+                }
             }
 
             DesbloquearLogro(trackable.TargetName);
@@ -112,6 +115,8 @@ public class DynamicMoleculeLoader : MonoBehaviour
         if(ruta == "Misiones")
         {
             ControladorBotones.PanelBotonUI.SetActive(true);
+
+
             ControladorBotones.botonCompletarMision.interactable = true;
         }
     }

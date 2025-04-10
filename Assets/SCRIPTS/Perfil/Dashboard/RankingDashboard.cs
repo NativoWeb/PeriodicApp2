@@ -172,6 +172,7 @@ public class RankingDashboard : MonoBehaviour
             // Si el ID del documento coincide con el ID del usuario actual
             if (doc.Id == userId)
             {
+                PosicionRanking.text = posicion.ToString();
                 posiciontxt.text = "#" + posicion; // Muestra la posición en el ranking
                 PlayerPrefs.SetInt("posicion", posicion); // guardo posición para mostrarla offline --------------------------------
                 PlayerPrefs.Save();
@@ -200,3 +201,4 @@ public class RankingDashboard : MonoBehaviour
         PosicionRanking.text = PlayerPrefs.GetInt("posicion", 0).ToString();
     }
 }
+

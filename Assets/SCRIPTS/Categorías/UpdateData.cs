@@ -105,6 +105,7 @@ public class UpdateData : MonoBehaviour
     private async void ActualizarXPEnFirebase(string userId)
     {
         int tempXP = PlayerPrefs.GetInt("TempXP", 0); // Obtener XP temporal
+        int RachaXp = PlayerPrefs.GetInt("RachaXP", 0); // Obtener XP temporal
         DocumentReference userRef = db.Collection("users").Document(userId);
 
         try
@@ -114,7 +115,7 @@ public class UpdateData : MonoBehaviour
             if (snapshot.Exists)
             {
                 int xpActual = snapshot.GetValue<int>("xp"); // XP actual en Firebase
-
+                int tempXp = xpActual + RachaXp;
                 int nuevoXP = tempXP; // Actualiza XP
 
                 // Actualizar el XP en Firebase

@@ -22,6 +22,7 @@ public class GuardarMisionCompletada : MonoBehaviour
     public GameObject imagenMision; // Asigna el objeto desde el Inspector
     public GameObject panel;
     public AudioSource audioSource;
+    public TMP_Text TxtXp;
     private FirebaseAuth auth;
     private FirebaseFirestore db;
     private string userId;
@@ -96,7 +97,6 @@ public class GuardarMisionCompletada : MonoBehaviour
             .OnComplete(() => {
                 if (particulasMision != null)
                 {
-                    particulasMision.Stop(); // 🔴 Detener partículas
                     particulasMision.gameObject.SetActive(false);
                 }
                 CambiarEscena();
@@ -157,15 +157,19 @@ public class GuardarMisionCompletada : MonoBehaviour
                         // Validar si YA está completada
                         if (mision["completada"].AsBool)
                         {
-                            Debug.Log("⚠️ Misión ya estaba completada. No se suma XP.");
+                            Debug.Log("⚠️ Misión ya estaba completada. Solo se suma 3 XP.");
                             if (Application.internetReachability != NetworkReachability.NotReachable)
                             {
                                 await SubirMisionesJSON();
                                 SumarXPFirebase(3);
+                                TxtXp.text = 3.ToString();
+
                             }
                             else
                             {
                                 SumarXPTemporario(3);
+                                TxtXp.text = 3.ToString();
+
                             }
                             return; // salir sin hacer nada
                         }
@@ -177,6 +181,9 @@ public class GuardarMisionCompletada : MonoBehaviour
 
                         Debug.Log("✅ Misión completada por primera vez. Sumando XP.");
                         int xp = PlayerPrefs.GetInt("xp_mision", 0);
+
+                        TxtXp.text = xp.ToString();
+
                         if (Application.internetReachability != NetworkReachability.NotReachable)
                         {
                             await SubirMisionesJSON();
@@ -265,6 +272,7 @@ public class GuardarMisionCompletada : MonoBehaviour
 
             int xpNuevo = xpActual + xp;
 
+
             await userRef.UpdateAsync("xp", xpNuevo);
             Debug.Log($"✅ XP actualizado en Firebase: {xpNuevo}");
         }
@@ -283,7 +291,7 @@ public class GuardarMisionCompletada : MonoBehaviour
         }
 
         // Obtener JSON de misiones y categorías desde PlayerPrefs
-        string jsonMisiones = PlayerPrefs.GetString("misionesCategoriasJSON", "{}");
+        string jsonMisiones = PlayerPrefs.GetString("misionesCategoriasJSON");
 
         // Referencias a los documentos dentro de la colección del usuario
         DocumentReference misionesDoc = db.Collection("users").Document(userId).Collection("datos").Document("misiones");

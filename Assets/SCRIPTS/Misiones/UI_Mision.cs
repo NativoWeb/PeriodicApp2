@@ -22,6 +22,7 @@ public class UI_Mision : MonoBehaviour
 {
     public TMP_Text tituloText;
     public TMP_Text descripcionText;
+    public TMP_Text misioncompletada;
     public Image logoImage;
     public Button botonMision;
 
@@ -35,6 +36,11 @@ public class UI_Mision : MonoBehaviour
         if (ColorUtility.TryParseHtmlString(mision.colorBoton, out color))
         {
             botonMision.GetComponent<Image>().color = color;
+        }
+
+        if(mision.completada == true)
+        {
+            misioncompletada.text = "¡Completada!";
         }
 
         // Carga el logo de la misión (debe estar en `Resources`)

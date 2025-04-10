@@ -8,9 +8,6 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using System.Collections;
-using System.Text.RegularExpressions;
-using SimpleJSON;
-using Google.MiniJSON;
 using System.Threading.Tasks;
 
 public class LoginController : MonoBehaviour
@@ -299,11 +296,8 @@ public class LoginController : MonoBehaviour
         }
     }
 
-
-    /* ------------------------ 🔥 NUEVA FUNCIÓN PARA DESCARGAR MISIONES 🔥 ------------------------ */
     private void CheckAndDownloadMisiones(string userId)
     {
-        // Referencias a los documentos de Firestore
         DocumentReference categoriasDoc = firestore
             .Collection("users").Document(userId)
             .Collection("datos").Document("categorias");
@@ -312,7 +306,6 @@ public class LoginController : MonoBehaviour
             .Collection("users").Document(userId)
             .Collection("datos").Document("misiones");
 
-        // Ejecutar ambas consultas en paralelo
         Task<DocumentSnapshot> categoriasTask = categoriasDoc.GetSnapshotAsync();
         Task<DocumentSnapshot> misionesTask = misionesDoc.GetSnapshotAsync();
 
@@ -324,11 +317,9 @@ public class LoginController : MonoBehaviour
                 return;
             }
 
-            // Obtener resultados de las tareas
             DocumentSnapshot categoriasSnapshot = categoriasTask.Result;
             DocumentSnapshot misionesSnapshot = misionesTask.Result;
 
-            // Verificar existencia de documentos
             if (!categoriasSnapshot.Exists || !misionesSnapshot.Exists)
             {
                 Debug.LogWarning("⚠️ No se encontraron categorías o misiones en Firestore.");
@@ -336,12 +327,9 @@ public class LoginController : MonoBehaviour
                 return;
             }
 
-            // Obtener datos de Firestore
             string categoriasJson = categoriasSnapshot.ContainsField("categorias") ? categoriasSnapshot.GetValue<string>("categorias") : null;
             string misionesJson = misionesSnapshot.ContainsField("misiones") ? misionesSnapshot.GetValue<string>("misiones") : null;
 
-
-            // Validar si hay datos antes de guardar
             if (!string.IsNullOrEmpty(categoriasJson))
             {
                 PlayerPrefs.SetString("CategoriasOrdenadas", categoriasJson);
@@ -351,7 +339,15 @@ public class LoginController : MonoBehaviour
                 Debug.LogWarning("⚠️ No se guardaron categorías porque están vacías.");
             }
 
-            PlayerPrefs.SetString("CategoriasOrdenadas", misionesJson);
+            if (!string.IsNullOrEmpty(misionesJson))
+            {
+                PlayerPrefs.SetString("misionesCategoriasJSON", misionesJson);
+            }
+            else
+            {
+                Debug.LogWarning("⚠️ No se guardaron misiones porque están vacías.");
+            }
+
             PlayerPrefs.Save();
             Debug.Log("✅ Misiones y categorías guardadas en PlayerPrefs.");
             CheckUserStatus(userId);
