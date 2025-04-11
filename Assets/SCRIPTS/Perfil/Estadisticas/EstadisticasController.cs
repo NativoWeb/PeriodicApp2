@@ -226,23 +226,10 @@ public class EstadisticasController : MonoBehaviour
         Debug.Log("✅ Datos de misiones y categorías subidos en documentos separados.");
     }
 
-    // ========== 🚀 CIERRE DE SESIÓN + SUBIR JSON ==========
-    public async void Logout()
-    {
-        await SubirDatosJSON(); // Guardar el JSON antes de cerrar sesión
-
-        auth.SignOut();
-        PlayerPrefs.DeleteAll();
-
-       //PlayerPrefs.SetString("Estadouser", estadouser);
-        PlayerPrefs.Save();
-
-        Debug.Log("✅ Sesión cerrada correctamente.");
-        SceneManager.LoadScene("Start");
-    }
-
     // ============================ ACTUALIZAR SLIDER ============================
 
+
+   
     public void ActualizarSlider(int xp, string rango)
     {
         int xpMin = 0, xpMax = 1000;
@@ -281,8 +268,24 @@ public class EstadisticasController : MonoBehaviour
             default: return "Avatares/Rango1";
         }
     }
-
     // ============================ MOSTRAR PANTALLA DE LOGOUT ============================
+
+    // ========== 🚀 CIERRE DE SESIÓN + SUBIR JSON ==========
+    public async void Logout()
+    {
+        await SubirDatosJSON(); // Guardar el JSON antes de cerrar sesión
+
+        auth.SignOut();
+        PlayerPrefs.DeleteAll();
+
+       //PlayerPrefs.SetString("Estadouser", estadouser);
+        PlayerPrefs.Save();
+
+        Debug.Log("✅ Sesión cerrada correctamente.");
+        SceneManager.LoadScene("Start");
+    }
+
+ 
 
     public void showlogout()
     {

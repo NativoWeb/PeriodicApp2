@@ -130,8 +130,9 @@ public class RegisterController : MonoBehaviour
         }
         else
         {
-        {
-            m_SinInternetUI.SetActive(true);
+            {
+                m_SinInternetUI.SetActive(true);
+            }
         }
     }
 

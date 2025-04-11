@@ -252,7 +252,7 @@ public class ControladorEncuesta : MonoBehaviour
             }
             else
             {
-                SceneManager.LoadScene("SeleccinarEncuesta");
+                SceneManager.LoadScene("SeleccionarEncuesta");
             }
         }
     }

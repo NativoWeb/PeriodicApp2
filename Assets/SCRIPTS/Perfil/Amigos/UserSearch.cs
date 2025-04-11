@@ -237,11 +237,7 @@ public class SearchUsers : MonoBehaviour
                         }
                         else
                         {
-                            SetButtonState(button, Color.yellow, "Aceptar solicitud", true);
-                            // Aquí podrías cambiar el listener del botón para aceptar la solicitud
-                            AcceptRequest(userId);
-                            button.onClick.RemoveAllListeners();
-                            button.onClick.AddListener(() => AcceptFriendRequest(userId, button));
+                            SetButtonState(button, new Color(1f, 0.84f, 0f), "Te ha enviado solicitud", false);
                         }
                     }
                     else if (estado == "aceptada")
@@ -251,24 +247,24 @@ public class SearchUsers : MonoBehaviour
                 }
             });
     }
-    void AcceptRequest(string documentId)
-    {
-        Debug.Log("Aceptando solicitud con ID: " + documentId);
-        db.Collection("SolicitudesAmistad").Document(documentId)
-          .UpdateAsync("estado", "aceptada")
-          .ContinueWithOnMainThread(updateTask =>
-          {
-              if (updateTask.IsCompleted)
-              {
-                  Debug.Log("Solicitud aceptada.");
+    //void AcceptRequest(string documentId)
+    //{
+    //    Debug.Log("Aceptando solicitud con ID: " + documentId);
+    //    db.Collection("SolicitudesAmistad").Document(documentId)
+    //      .UpdateAsync("estado", "aceptada")
+    //      .ContinueWithOnMainThread(updateTask =>
+    //      {
+    //          if (updateTask.IsCompleted)
+    //          {
+    //              Debug.Log("Solicitud aceptada.");
                  
-              }
-              else
-              {
-                  Debug.LogError("Error al aceptar solicitud: " + updateTask.Exception);
-              }
-          });
-    }
+    //          }
+    //          else
+    //          {
+    //              Debug.LogError("Error al aceptar solicitud: " + updateTask.Exception);
+    //          }
+    //      });
+    //}
     void AddFriend(string friendId, string friendName, Button button)
     {
         string solicitudId = currentUserId + "_" + friendId;
@@ -296,35 +292,35 @@ public class SearchUsers : MonoBehaviour
             });
     }
 
-    void AcceptFriendRequest(string friendId, Button button)
-    {
-        string solicitudId1 = currentUserId + "_" + friendId;
-        string solicitudId2 = friendId + "_" + currentUserId;
+    //void AcceptFriendRequest(string friendId, Button button)
+    //{
+    //    string solicitudId1 = currentUserId + "_" + friendId;
+    //    string solicitudId2 = friendId + "_" + currentUserId;
 
-        // Actualizar ambas posibles solicitudes (por si acaso)
-        var batch = db.StartBatch();
+    //    // Actualizar ambas posibles solicitudes (por si acaso)
+    //    var batch = db.StartBatch();
 
-        // Actualizar solicitud donde currentUser es el remitente
-        var docRef1 = db.Collection("SolicitudesAmistad").Document(solicitudId1);
-        batch.Update(docRef1, new Dictionary<string, object> { { "estado", "aceptada" } });
+    //    // Actualizar solicitud donde currentUser es el remitente
+    //    var docRef1 = db.Collection("SolicitudesAmistad").Document(solicitudId1);
+    //    batch.Update(docRef1, new Dictionary<string, object> { { "estado", "aceptada" } });
 
-        // Actualizar solicitud donde friend es el remitente
-        var docRef2 = db.Collection("SolicitudesAmistad").Document(solicitudId2);
-        batch.Update(docRef2, new Dictionary<string, object> { { "estado", "aceptada" } });
+    //    // Actualizar solicitud donde friend es el remitente
+    //    var docRef2 = db.Collection("SolicitudesAmistad").Document(solicitudId2);
+    //    batch.Update(docRef2, new Dictionary<string, object> { { "estado", "aceptada" } });
 
-        batch.CommitAsync().ContinueWithOnMainThread(task =>
-        {
-            if (task.IsCompleted)
-            {
-                SetButtonState(button, Color.green, "Amigos", false);
-                Debug.Log("Solicitud de amistad aceptada");
-            }
-            else
-            {
-                Debug.LogError("Error al aceptar solicitud: " + task.Exception);
-            }
-        });
-    }
+    //    batch.CommitAsync().ContinueWithOnMainThread(task =>
+    //    {
+    //        if (task.IsCompleted)
+    //        {
+    //            SetButtonState(button, Color.green, "Amigos", false);
+    //            Debug.Log("Solicitud de amistad aceptada");
+    //        }
+    //        else
+    //        {
+    //            Debug.LogError("Error al aceptar solicitud: " + task.Exception);
+    //        }
+    //    });
+    //}
 
 
     void SetButtonState(Button button, Color color, string text, bool interactable)

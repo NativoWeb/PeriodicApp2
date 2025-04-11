@@ -12,20 +12,17 @@ public class NotificationBadge : MonoBehaviour
 
     private FirebaseFirestore db;
     private string currentUserId;
+    private ListenerRegistration listener; // 🔄 Referencia al listener
 
     void Start()
     {
-        // Inicializar Firebase
         db = FirebaseFirestore.DefaultInstance;
         currentUserId = FirebaseAuth.DefaultInstance.CurrentUser.UserId;
 
-        // Ocultar panel al inicio
-        notificationPanel.SetActive(false);
+        if (notificationPanel != null)
+            notificationPanel.SetActive(false);
 
-        // Comprobar solicitudes pendientes
         CheckPendingRequests();
-
-        // Opcional: Escuchar cambios en tiempo real
         SetupRealTimeListener();
     }
 
@@ -50,6 +47,8 @@ public class NotificationBadge : MonoBehaviour
 
     void UpdateNotificationUI(int count)
     {
+        if (notificationPanel == null || notificationCountText == null) return; // ❗ Seguridad
+
         if (count > 0)
         {
             notificationPanel.SetActive(true);
@@ -61,17 +60,20 @@ public class NotificationBadge : MonoBehaviour
         }
     }
 
-    // Opcional: Escucha en tiempo real
     void SetupRealTimeListener()
     {
-        db.Collection("SolicitudesAmistad")
+        listener = db.Collection("SolicitudesAmistad")
           .WhereEqualTo("idDestinatario", currentUserId)
           .WhereEqualTo("estado", "pendiente")
           .Listen(snapshot =>
           {
-              // snapshot ya ES un QuerySnapshot
-              int newCount = snapshot.Count; // ✅ Correcto
-              UpdateNotificationUI(newCount);
+              if (this == null || gameObject == null) return; // 🛡️ Protege de destrucción
+              UpdateNotificationUI(snapshot.Count);
           });
+    }
+
+    void OnDestroy()
+    {
+        listener?.Stop(); // ❌ Cancela el listener si el objeto es destruido
     }
 }
