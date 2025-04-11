@@ -72,7 +72,6 @@ public class DynamicMoleculeLoader : MonoBehaviour
 
         if (trackable)
         {
-            LimpiarModelos();
             trackable.OnTargetStatusChanged += OnImageDetected;
         }
 
@@ -176,6 +175,7 @@ public class DynamicMoleculeLoader : MonoBehaviour
 
     private IEnumerator LoadMoleculeModel(int electronLevels, int protons, int neutrons, int electrons, string modelName, List<string> electronModels)
     {
+        LimpiarModelos();
         // 1. Configuración exacta de distribución de electrones por nivel
         int[] levelCapacity = { 2, 8, 18, 32, 32, 18, 8 }; // Capacidad máxima por nivel
         float[] orbitRadii = { .2f, .25f, .3f, .35f, .4f, .45f, .5f }; // Radios para cada capa

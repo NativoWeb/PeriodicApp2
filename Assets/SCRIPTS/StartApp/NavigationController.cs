@@ -1,6 +1,5 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
-using System.Collections;
 using System.Collections.Generic;
 
 public class NavigationController : MonoBehaviour
@@ -9,7 +8,6 @@ public class NavigationController : MonoBehaviour
     private Stack<NavigationItem> navigationHistory = new Stack<NavigationItem>();
     private float edgeThreshold;
     private Vector2 touchStartPos;
-    private float touchStartTime; // Variable faltante declarada aquí
 
     // Para manejar paneles dentro de la escena actual
     private GameObject currentPanel;
@@ -18,7 +16,7 @@ public class NavigationController : MonoBehaviour
     private class NavigationItem
     {
         public string sceneName;
-        public GameObject panel;
+        public GameObject panel; // Panel activo cuando se guardó este item
 
         public NavigationItem(string scene, GameObject panel = null)
         {
@@ -40,7 +38,7 @@ public class NavigationController : MonoBehaviour
             return;
         }
 
-        edgeThreshold = Screen.width * 0.05f; // 5% del ancho de pantalla
+        edgeThreshold = Screen.width * 0.015f;
         SceneManager.sceneLoaded += OnSceneLoaded;
     }
 
@@ -50,48 +48,27 @@ public class NavigationController : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.Escape))
         {
             GoBack();
-            return;
         }
 
-        // Gestos táctiles en los bordes (solo para móviles)
-        if (Application.isMobilePlatform && Input.touchCount > 0)
+        // Gestos táctiles en los bordes
+        if (Input.touchCount > 0)
         {
             Touch touch = Input.GetTouch(0);
 
-            switch (touch.phase)
+            if (touch.phase == TouchPhase.Began)
             {
-                case TouchPhase.Began:
-                    // Verificar si el toque comenzó en el borde izquierdo o derecho
-                    if (touch.position.x < edgeThreshold || touch.position.x > Screen.width - edgeThreshold)
-                    {
-                        touchStartPos = touch.position;
-                        touchStartTime = Time.time; // Registramos el momento inicial
-                    }
-                    break;
+                touchStartPos = touch.position;
+            }
 
-                case TouchPhase.Ended:
-                    // Solo procesar si comenzó en el borde
-                    if (touchStartPos != Vector2.zero)
-                    {
-                        float swipeDistance = touch.position.x - touchStartPos.x;
-                        float swipeDuration = Time.time - touchStartTime;
+            if (touch.phase == TouchPhase.Ended)
+            {
+                float swipeDistance = Mathf.Abs(touch.position.x - touchStartPos.x);
+                bool isSwipe = swipeDistance > Screen.width * 0.1f;
 
-                        // Validar que sea un gesto rápido y con suficiente distancia
-                        if (Mathf.Abs(swipeDistance) > Screen.width * 0.1f && swipeDuration < 0.5f)
-                        {
-                            // Determinar dirección (izquierda o derecha)
-                            bool isBackSwipe = (touchStartPos.x < edgeThreshold && swipeDistance > 0) ||
-                                              (touchStartPos.x > Screen.width - edgeThreshold && swipeDistance < 0);
-
-                            if (isBackSwipe)
-                            {
-                                GoBack();
-                            }
-                        }
-
-                        touchStartPos = Vector2.zero; // Resetear
-                    }
-                    break;
+                if (isSwipe && (touchStartPos.x < edgeThreshold || touchStartPos.x > Screen.width - edgeThreshold))
+                {
+                    GoBack();
+                }
             }
         }
     }

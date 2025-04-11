@@ -144,7 +144,7 @@ public class RachaManager : MonoBehaviour
             DocumentSnapshot snapshot = task.Result;
 
             DateTime? fechaFirestore = null;
-            int rachaFirestore = 0;
+            int rachaFirestore = 1;
 
             if (snapshot.TryGetValue("ultimaFecha", out Timestamp ts))
                 fechaFirestore = ts.ToDateTime().Date;
