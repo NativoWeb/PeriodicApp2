@@ -213,7 +213,7 @@ public class SolicitudesManager : MonoBehaviour
         if (messageText != null)
         {
             messageText.text = message;
-            messageText.color = isError ? Color.red : Color.white;
+            
         }
     }
 }
