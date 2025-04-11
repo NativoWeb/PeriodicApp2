@@ -139,11 +139,11 @@ public class AmigosController : MonoBehaviour
 
     void LoadFriendRank(string amigoId, GameObject amigoUI)
     {
-        db.Collection("usuarios").Document(amigoId).GetSnapshotAsync().ContinueWithOnMainThread(task =>
+        db.Collection("users").Document(amigoId).GetSnapshotAsync().ContinueWithOnMainThread(task =>
         {
             if (task.IsCompleted && task.Result.Exists)
             {
-                string rango = task.Result.GetValue<string>("Rango") ?? "Novato";
+                string rango = task.Result.GetValue<string>("Rango") ?? "Novato de laboratorio";
                 var rangoText = amigoUI.transform.Find("Rangotxt")?.GetComponent<TMP_Text>();
                 if (rangoText != null) rangoText.text = rango;
             }
