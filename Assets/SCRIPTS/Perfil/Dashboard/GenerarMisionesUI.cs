@@ -28,6 +28,12 @@ public class GeneradorElementosUI : MonoBehaviour
 
     private JSONNode jsonData;
 
+    private string userId;
+    private string rango;
+
+    private FirebaseFirestore db;
+    private FirebaseAuth auth;
+
     [System.Serializable]
     public class Mision
     {
@@ -61,6 +67,11 @@ public class GeneradorElementosUI : MonoBehaviour
 
     void Start()
     {
+        db = FirebaseFirestore.DefaultInstance;
+        auth = FirebaseAuth.DefaultInstance;
+
+        userId = PlayerPrefs.GetString("userId", "").Trim();
+
         if (jsonData == null || !jsonData.HasKey("Misiones_Categorias") || !jsonData["Misiones_Categorias"].HasKey("Categorias"))
         {
             Debug.LogError("❌ Error: Estructura del JSON no válida.");
@@ -300,9 +311,12 @@ public class GeneradorElementosUI : MonoBehaviour
                 PlayerPrefs.SetString("DisplayName", displayName);
 
                 // Rango calculado por XP
-                string rango = ObtenerRangoSegunXP(xp);
+                rango = ObtenerRangoSegunXP(xp);
                 Rango.text = rango;
                 PlayerPrefs.SetString("Rango", rango);
+
+                //Actualiza rango en firebase
+                ActualizarRangoSegunXP(xp);
 
                 // 🖼 Avatar online
                 string rutaAvatar = ObtenerAvatarPorRango(rango);
@@ -327,6 +341,14 @@ public class GeneradorElementosUI : MonoBehaviour
         PlayerPrefs.Save();
 
         SceneManager.LoadScene("ranking");
+    }
+
+    public async void ActualizarRangoSegunXP(int xp)
+    {
+        string nuevoRango = ObtenerRangoSegunXP(xp);
+        DocumentReference userRef = db.Collection("users").Document(userId);
+        await userRef.UpdateAsync("Rango", nuevoRango);
+        rango = nuevoRango;
     }
 
     private string ObtenerRangoSegunXP(int xp)

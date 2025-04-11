@@ -218,8 +218,6 @@ public class UpdateData : MonoBehaviour
                     PlayerPrefs.SetString("TempOcupacion", ocupacion);
                     string rango = snapshot.GetValue<string>("Rango");
                     PlayerPrefs.SetString("Rango", rango);
-                    string avatar = snapshot.GetValue<string>("avatar");
-                    PlayerPrefs.SetString("TempAvatar", avatar);
 
                     // Verificamos si los campos existen ----------------------------- para guardarlos en playerprefs
 
