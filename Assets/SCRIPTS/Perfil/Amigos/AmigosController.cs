@@ -14,6 +14,7 @@ public class AmigosController : MonoBehaviour
     public TMP_InputField inputBuscar;
     public Button botonBuscar;
     public TMP_Text messageText; // Nuevo campo para mensajes de estado
+    public Button agregarAmigosButton; // Botón para agregar amigos
 
     [SerializeField] public GameObject m_AgregarAmigosUI = null;
     [SerializeField] public GameObject m_SolicitudesUI = null;
@@ -39,6 +40,12 @@ public class AmigosController : MonoBehaviour
                 ShowMessage($"Buscando: {nombreBuscar}");
                 CargarAmigos(nombreBuscar);
             });
+
+            // Configurar el botón de agregar amigos
+            if (agregarAmigosButton != null)
+            {
+                agregarAmigosButton.onClick.AddListener(ActivarPanelAgregarAmigos);
+            }
         }
         else
         {
@@ -132,11 +139,11 @@ public class AmigosController : MonoBehaviour
 
     void LoadFriendRank(string amigoId, GameObject amigoUI)
     {
-        db.Collection("usuarios").Document(amigoId).GetSnapshotAsync().ContinueWithOnMainThread(task =>
+        db.Collection("users").Document(amigoId).GetSnapshotAsync().ContinueWithOnMainThread(task =>
         {
             if (task.IsCompleted && task.Result.Exists)
             {
-                string rango = task.Result.GetValue<string>("Rango") ?? "Novato";
+                string rango = task.Result.GetValue<string>("Rango") ?? "Novato de laboratorio";
                 var rangoText = amigoUI.transform.Find("Rangotxt")?.GetComponent<TMP_Text>();
                 if (rangoText != null) rangoText.text = rango;
             }
@@ -145,20 +152,27 @@ public class AmigosController : MonoBehaviour
 
     void CheckSearchCompletion(string filtroNombre)
     {
-        if (!string.IsNullOrEmpty(filtroNombre))
+        if (amigosCargados == 0)
         {
-            if (amigosCargados > 0)
+            if (!string.IsNullOrEmpty(filtroNombre))
+            {
+                ShowMessage("No se encontraron amigos con ese nombre. ¡Prueba a agregar nuevos amigos!");
+            }
+            else
+            {
+                ShowMessage("No tienes amigos aún. ¡Agrega algunos amigos para comenzar!");
+            }
+        }
+        else
+        {
+            if (!string.IsNullOrEmpty(filtroNombre))
             {
                 ShowMessage($"{amigosCargados} amigos encontrados");
             }
             else
             {
-                ShowMessage("No se encontraron amigos con ese nombre");
+                ShowMessage($"{amigosCargados} amigos cargados");
             }
-        }
-        else if (amigosCargados > 0)
-        {
-            ShowMessage($"{amigosCargados} amigos cargados");
         }
     }
 
@@ -175,18 +189,21 @@ public class AmigosController : MonoBehaviour
         if (messageText != null)
         {
             messageText.text = message;
-            messageText.color = isError ? Color.red : Color.white;
+            
         }
     }
 
     public void ActivarPanelAgregarAmigos()
     {
         m_AgregarAmigosUI.SetActive(true);
+        m_SolicitudesUI.SetActive(false);
+        ShowMessage(""); // Limpiar mensaje al cambiar de panel
     }
 
     public void ActivarPanelSolicitudes()
     {
         m_AgregarAmigosUI.SetActive(false);
         m_SolicitudesUI.SetActive(true);
+        ShowMessage(""); // Limpiar mensaje al cambiar de panel
     }
 }
