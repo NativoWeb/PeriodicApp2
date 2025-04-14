@@ -88,12 +88,10 @@ public class GuardarMisionCompletada : MonoBehaviour
 
         Sequence secuenciaAnimacion = DOTween.Sequence();
         secuenciaAnimacion.Append(imagenMision.transform.DOScale(1.2f, 0.5f).SetEase(Ease.OutBounce))
-            .Join(imagenMision.GetComponent<Image>().DOFade(1, 0.5f).From(0))
             .Append(imagenMision.transform.DORotate(new Vector3(0, 0, 10f), 0.3f).SetEase(Ease.InOutSine))
             .Append(imagenMision.transform.DORotate(new Vector3(0, 0, -10f), 0.3f).SetEase(Ease.InOutSine))
             .Append(imagenMision.transform.DORotate(Vector3.zero, 0.3f).SetEase(Ease.InOutSine))
             .Append(imagenMision.transform.DOMoveY(imagenMision.transform.position.y + 50, 1f).SetEase(Ease.OutQuad))
-            .Join(imagenMision.GetComponent<Image>().DOFade(0, 1f))
             .OnComplete(() => {
                 if (particulasMision != null)
                 {

@@ -15,6 +15,11 @@ public class FirestoreBotones : MonoBehaviour
     public TextMeshProUGUI nombreTMP;
     public TextMeshProUGUI descripcionTMP;
 
+    public GameObject PanelCetegorias;
+    public GameObject PanelJuegos;
+    public Button BtnCategorias;
+    public Button BtnJuegos;
+
     private Button botonSeleccionado;
     private Color colorNormal = new Color(180f / 255f, 180f / 255f, 180f / 255f) ;
     private Color colorSeleccionado = new Color(0f / 255f, 162f / 255f, 148f / 255f)
@@ -24,6 +29,9 @@ public class FirestoreBotones : MonoBehaviour
 
     void Start()
     {
+        PanelCetegorias.SetActive(true);
+        BtnCategorias.onClick.AddListener(SeleccionarCategorias);
+        BtnJuegos.onClick.AddListener(SeleccionarJuegos);
         Debug.Log("📌 Cargando categorías desde PlayerPrefs...");
         CargarCategorias();
         string username = PlayerPrefs.GetString("DisplayName", "");
@@ -183,6 +191,22 @@ public class FirestoreBotones : MonoBehaviour
         }
 
         return totalMisiones > 0 ? (float)misionesCompletadas / totalMisiones : 0f;
+    }
+
+    private void SeleccionarCategorias()
+    {
+        PanelCetegorias.SetActive(true);
+        PanelJuegos.SetActive(false);
+        BtnCategorias.GetComponent<Image>().color = colorSeleccionado;
+        BtnJuegos.GetComponent<Image>().color = colorNormal;
+    }
+
+    private void SeleccionarJuegos()
+    {
+        PanelCetegorias.SetActive(false);
+        PanelJuegos.SetActive(true);
+        BtnCategorias.GetComponent<Image>().color = colorNormal;
+        BtnJuegos.GetComponent<Image>().color = colorSeleccionado;
     }
 }
 
