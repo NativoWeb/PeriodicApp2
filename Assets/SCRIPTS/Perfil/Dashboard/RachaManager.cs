@@ -21,6 +21,9 @@ public class RachaManager : MonoBehaviour
 
     private void Start()
     {
+        // Forzar orientación vertical
+        Screen.orientation = ScreenOrientation.Portrait;
+
         auth = FirebaseAuth.DefaultInstance;
         db = FirebaseFirestore.DefaultInstance;
         user = auth.CurrentUser;
