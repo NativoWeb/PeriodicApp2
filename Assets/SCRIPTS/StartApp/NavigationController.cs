@@ -9,7 +9,7 @@ public class NavigationController : MonoBehaviour
     private Stack<NavigationItem> navigationHistory = new Stack<NavigationItem>();
     private float edgeThreshold;
     private Vector2 touchStartPos;
-    private float touchStartTime; // Variable faltante declarada aquí
+    private float touchStartTime;
 
     // Para manejar paneles dentro de la escena actual
     private GameObject currentPanel;
@@ -46,6 +46,12 @@ public class NavigationController : MonoBehaviour
 
     void Update()
     {
+        // Si estamos en la escena "CombateQuimico", ignoramos toda la funcionalidad
+        if (SceneManager.GetActiveScene().name == "CombateQuimico")
+        {
+            return;
+        }
+
         // Botón "Atrás" en Android
         if (Input.GetKeyDown(KeyCode.Escape))
         {
@@ -65,7 +71,7 @@ public class NavigationController : MonoBehaviour
                     if (touch.position.x < edgeThreshold || touch.position.x > Screen.width - edgeThreshold)
                     {
                         touchStartPos = touch.position;
-                        touchStartTime = Time.time; // Registramos el momento inicial
+                        touchStartTime = Time.time;
                     }
                     break;
 
@@ -112,7 +118,9 @@ public class NavigationController : MonoBehaviour
     // Método para cambiar de panel dentro de la misma escena
     public void ShowPanel(GameObject panel)
     {
-        if (panel == null) return;
+        // Si estamos en la escena "CombateQuimico", no hacer nada
+        if (SceneManager.GetActiveScene().name == "CombateQuimico" || panel == null)
+            return;
 
         // Desactivar el panel actual si existe
         if (currentPanel != null)
@@ -134,6 +142,10 @@ public class NavigationController : MonoBehaviour
 
     public void GoBack()
     {
+        // Si estamos en la escena "CombateQuimico", no hacer nada
+        if (SceneManager.GetActiveScene().name == "CombateQuimico")
+            return;
+
         // Primero intentamos manejar paneles dentro de la misma escena
         if (panelHistory.Count > 0)
         {
@@ -167,19 +179,17 @@ public class NavigationController : MonoBehaviour
             // Reactivar el panel que estaba activo en esa escena (si había uno)
             if (previous.panel != null)
             {
-                // Necesitamos esperar a que la escena cargue completamente
-                // Podrías usar una corrutina para esto
                 StartCoroutine(ActivatePanelAfterSceneLoad(previous.panel));
             }
         }
         else
         {
-            // Si no hay más historial, salir de la aplicación (o lo que prefieras)
+            // Si no hay más historial, salir de la aplicación
             Application.Quit();
         }
     }
 
-    private System.Collections.IEnumerator ActivatePanelAfterSceneLoad(GameObject panel)
+    private IEnumerator ActivatePanelAfterSceneLoad(GameObject panel)
     {
         // Esperar hasta que la escena esté completamente cargada
         while (!SceneManager.GetActiveScene().isLoaded)

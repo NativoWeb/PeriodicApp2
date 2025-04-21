@@ -16,6 +16,11 @@ public class AmigosController : MonoBehaviour
     public TMP_Text messageText; // Nuevo campo para mensajes de estado
     public Button agregarAmigosButton; // Botón para agregar amigos
 
+    // Evitar Duplicados...
+    private bool isLoading = false;
+    private int consultasCompletadas = 0;
+
+
     [SerializeField] public GameObject m_AgregarAmigosUI = null;
     [SerializeField] public GameObject m_SolicitudesUI = null;
 
@@ -54,14 +59,21 @@ public class AmigosController : MonoBehaviour
         }
     }
 
+   
+
     void CargarAmigos(string filtroNombre)
     {
+        if (isLoading) return;
+
+        isLoading = true;
+        consultasCompletadas = 0; // Resetear contador
         amigosCargados = 0;
         ClearFriendList();
 
         if (string.IsNullOrEmpty(userId))
         {
             ShowMessage("Error: ID de usuario vacío", true);
+            isLoading = false;
             return;
         }
 
@@ -73,15 +85,15 @@ public class AmigosController : MonoBehaviour
           .WhereIn("estado", new List<object> { "aceptada" })
           .GetSnapshotAsync().ContinueWithOnMainThread(task =>
           {
-              if (task.IsCompleted)
+              if (task.IsCompleted && !task.IsFaulted)
               {
                   ProcessFriends(task.Result.Documents, true, filtroNombre, amigosMostrados);
-                  CheckSearchCompletion(filtroNombre);
               }
               else
               {
                   ShowMessage("Error al cargar amigos", true);
               }
+              ConsultaCompletada(filtroNombre);
           });
 
         // Consulta amigos donde el usuario es destinatario
@@ -90,12 +102,24 @@ public class AmigosController : MonoBehaviour
           .WhereIn("estado", new List<object> { "aceptada" })
           .GetSnapshotAsync().ContinueWithOnMainThread(task =>
           {
-              if (task.IsCompleted)
+              if (task.IsCompleted && !task.IsFaulted)
               {
                   ProcessFriends(task.Result.Documents, false, filtroNombre, amigosMostrados);
-                  CheckSearchCompletion(filtroNombre);
               }
+              ConsultaCompletada(filtroNombre);
           });
+    }
+
+    void ConsultaCompletada(string filtroNombre)
+    {
+        consultasCompletadas++;
+
+        // Solo cuando ambas consultas terminen
+        if (consultasCompletadas == 2)
+        {
+            CheckSearchCompletion(filtroNombre);
+            isLoading = false;
+        }
     }
 
     void ProcessFriends(IEnumerable<DocumentSnapshot> documents, bool isSender, string filtroNombre, HashSet<string> amigosMostrados)
