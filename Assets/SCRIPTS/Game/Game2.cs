@@ -6,6 +6,7 @@ using TMPro;
 using Firebase.Firestore;
 using Firebase.Auth;
 using System.Threading.Tasks;
+using System;
 
 [System.Serializable]
 public class PreguntaJuego
@@ -29,10 +30,11 @@ public class Game2 : MonoBehaviour
     public static Game2 Instancia;
 
     public TextMeshProUGUI txtPregunta;
-    public Image imgElemento;
     public Button[] botonesRespuestas;
-    public Text txtRacha;
-    public Text txtTemporizador;
+    public UnityEngine.UI.Image imgElemento;
+    public UnityEngine.UI.Text txtRacha;
+    public UnityEngine.UI.Text txtTemporizador;
+
 
     public GameObject panelPerdiste;
     public TextMeshProUGUI txtResumen;
@@ -66,10 +68,9 @@ public class Game2 : MonoBehaviour
         {
             tiempoActivo = false;
             PerderRacha();
-            // Ya no llamamos a SiguientePregunta() aquí
         }
     }
-    
+
 
     void CargarPreguntas()
     {
@@ -77,14 +78,15 @@ public class Game2 : MonoBehaviour
         if (json != null)
         {
             PreguntaData data = JsonUtility.FromJson<PreguntaData>(json.text);
-            preguntas = data.niveles.OrderBy(x => Random.value).ToList();
+            preguntas = data.niveles.OrderBy(x => UnityEngine.Random.value).ToList();
             MostrarPregunta();
         }
         else
         {
-            Debug.LogError("No se pudo cargar el archivo JSON de preguntas.");
+            UnityEngine.Debug.LogError("No se pudo cargar el archivo JSON de preguntas.");
         }
     }
+
 
     public void MostrarPregunta()
     {
@@ -93,7 +95,20 @@ public class Game2 : MonoBehaviour
         PreguntaJuego preguntaActual = preguntas[indiceActual];
         txtPregunta.text = preguntaActual.pregunta;
 
-        List<string> opciones = preguntaActual.opciones.OrderBy(x => Random.value).ToList();
+        // Cargar imagen desde Resources
+        Sprite imagenSprite = Resources.Load<Sprite>(preguntaActual.imagen);
+        if (imagenSprite != null)
+        {
+            imgElemento.sprite = imagenSprite;
+        }
+        else
+        {
+            // Cargar imagen por defecto si no se encuentra la especificada
+            imgElemento.sprite = Resources.Load<Sprite>("imagenes/default");
+            Debug.LogWarning($"⚠ Imagen no encontrada: {preguntaActual.imagen}. Se usó imagen por defecto.");
+        }
+
+        List<string> opciones = preguntaActual.opciones.OrderBy(x => UnityEngine.Random.value).ToList();
         for (int i = 0; i < botonesRespuestas.Length; i++)
         {
             if (i < opciones.Count)
