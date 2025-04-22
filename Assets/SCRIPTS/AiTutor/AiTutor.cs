@@ -1,145 +1,151 @@
 using UnityEngine;
-using UnityEngine.Networking;
-using System.Collections;
-using System.Text;
 using TMPro;
+using System.IO;
+using System.Collections.Generic;
+using System.Linq;
+
+
+[System.Serializable]
+public class ElementoQuimico
+{
+    public string id;
+    public string nombre;
+    public string simbolo;
+    public int numero_atomico;
+    public int grupo;
+    public int periodo;
+    public float masa_atomica;
+    public string estado;
+    public string tipo;
+    public string descripcion;
+}
 
 public class AiTutor : MonoBehaviour
 {
-    [Header("Clave API")]
-    string apiKey = "AIzaSyBx7SXpAy3o2fCKa1vT0bj_5fJCmth6Kyc";
-    string endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=";
-
     [Header("Referencias UI")]
     public TMP_InputField inputPregunta;
     public GameObject panelChatTutor;
-
-    [Header("Prefabs y Contenedor")]
     public GameObject bubbleUserPrefab;
     public GameObject bubbleAiPrefab;
     public Transform contentChat;
+    public EmbeddingsLoader loader;
+    public MiniLMEmbedder embedder;
+
+    private Dictionary<string, ElementoQuimico> elementos;
+    
+
 
     void Start()
     {
         panelChatTutor.SetActive(false);
+        CargarElementosDesdeJSONL();
+        embedder = GetComponent<MiniLMEmbedder>();
+        loader.CargarEmbeddings();
+
+    }
+
+    void CargarElementosDesdeJSONL()
+    {
+        elementos = new Dictionary<string, ElementoQuimico>();
+        string ruta = Path.Combine(Application.streamingAssetsPath, "periodic_master_118.jsonl");
+
+        foreach (string linea in File.ReadAllLines(ruta))
+        {
+            ElementoQuimico el = JsonUtility.FromJson<ElementoQuimico>(linea);
+            if (!elementos.ContainsKey(el.simbolo.ToLower()))
+                elementos[el.simbolo.ToLower()] = el;
+        }
     }
 
     public void EnviarPregunta()
     {
-        string pregunta = inputPregunta.text;
+        string pregunta = inputPregunta.text.ToLower();
         if (!string.IsNullOrEmpty(pregunta))
         {
-            Debug.Log("Pregunta enviada: " + pregunta);
             CrearBurbujaUsuario(pregunta);
-            StartCoroutine(SolicitarRespuestaIA(pregunta));
+            ProcesarPregunta(pregunta);
             inputPregunta.text = "";
+        }
+    }
+
+    public void ProcesarPregunta(string pregunta)
+    {
+
+        // 1. Búsqueda directa por nombre o símbolo
+        foreach (var par in elementos)
+        {
+            if (pregunta.ToLower().Contains(par.Value.simbolo.ToLower()) ||
+                pregunta.ToLower().Contains(par.Value.nombre.ToLower()))
+            {
+                CrearBurbujaIA(par.Value.descripcion);
+                return;
+            }
+        }
+
+        // 2. Búsqueda por similitud semántica (embeddings)
+        float[] embeddingPregunta = embedder.ObtenerEmbedding(pregunta);
+        int index = BuscarElementoMasParecido(embeddingPregunta);
+        string id = loader.ids[index];  // ids = lista de símbolos de los elementos
+
+        if (elementos.ContainsKey(id))
+        {
+            CrearBurbujaIA(elementos[id].descripcion);
         }
         else
         {
-            Debug.LogWarning("El campo de pregunta está vacío.");
+            CrearBurbujaIA("Lo siento, no encontré información relacionada con tu pregunta.");
         }
     }
+
+        int BuscarElementoMasParecido(float[] vector)
+    {
+        float maxSim = float.MinValue;
+        int mejorIndex = 0;
+
+        for (int i = 0; i < loader.embeddings.Count; i++)
+        {
+            float sim = CalcularSimilitudCoseno(vector, loader.embeddings[i]);
+            if (sim > maxSim)
+            {
+                maxSim = sim;
+                mejorIndex = i;
+            }
+        }
+
+        return mejorIndex;
+    }
+
+    float CalcularSimilitudCoseno(float[] a, float[] b)
+    {
+        float dot = 0f, magA = 0f, magB = 0f;
+        for (int i = 0; i < a.Length; i++)
+        {
+            dot += a[i] * b[i];
+            magA += a[i] * a[i];
+            magB += b[i] * b[i];
+        }
+        return dot / (Mathf.Sqrt(magA) * Mathf.Sqrt(magB) + 1e-6f);
+    }
+
+
+
 
     void CrearBurbujaUsuario(string texto)
     {
         GameObject burbuja = Instantiate(bubbleUserPrefab, contentChat);
-        TextMeshProUGUI textoUI = burbuja.GetComponentInChildren<TextMeshProUGUI>();
-        textoUI.text = texto;
+        burbuja.GetComponentInChildren<TextMeshProUGUI>().text = texto;
     }
 
     void CrearBurbujaIA(string texto)
     {
         GameObject burbuja = Instantiate(bubbleAiPrefab, contentChat);
-        TextMeshProUGUI textoUI = burbuja.GetComponentInChildren<TextMeshProUGUI>();
-        textoUI.text = texto;
-    }
-
-    IEnumerator SolicitarRespuestaIA(string pregunta)
-    {
-        string jsonBody = "{ \"contents\": [ { \"role\": \"user\", \"parts\": [ { \"text\": \"" + pregunta + "\" } ] } ] }";
-
-        UnityWebRequest request = new UnityWebRequest(endpoint + apiKey, "POST");
-        byte[] bodyRaw = Encoding.UTF8.GetBytes(jsonBody);
-        request.uploadHandler = new UploadHandlerRaw(bodyRaw);
-        request.downloadHandler = new DownloadHandlerBuffer();
-        request.SetRequestHeader("Content-Type", "application/json");
-
-        yield return request.SendWebRequest();
-
-        Debug.Log("Código de respuesta HTTP: " + request.responseCode);
-        Debug.Log("Respuesta completa:\n" + request.downloadHandler.text);
-
-        if (request.result == UnityWebRequest.Result.Success)
-        {
-            try
-            {
-                RespuestaGemini respuesta = JsonUtility.FromJson<RespuestaGemini>(request.downloadHandler.text);
-                string texto = respuesta.candidates[0].content.parts[0].text;
-                CrearBurbujaIA(texto);
-                Debug.Log("Respuesta IA: " + texto);
-            }
-            catch (System.Exception e)
-            {
-                Debug.LogError("Error al parsear respuesta de Gemini: " + e.Message);
-                CrearBurbujaIA("Error al procesar respuesta IA.");
-            }
-        }
-        else
-        {
-            Debug.LogError("Error en la petición: " + request.error);
-            CrearBurbujaIA("Error: " + request.error);
-        }
+        burbuja.GetComponentInChildren<TextMeshProUGUI>().text = texto;
     }
 
     public void ToggleChatPanel()
     {
-        if (panelChatTutor != null)
-        {
-            bool estadoActual = panelChatTutor.activeSelf;
-            panelChatTutor.SetActive(!estadoActual);
-        }
-        else
-        {
-            Debug.LogError("panelChatTutor no está asignado.");
-        }
+        panelChatTutor.SetActive(!panelChatTutor.activeSelf);
     }
 
-    [System.Serializable]
-    public class MensajeGemini
-    {
-        public Content content;
-        public MensajeGemini(string texto)
-        {
-            content = new Content(texto);
-        }
-    }
 
-    [System.Serializable]
-    public class Content
-    {
-        public Part[] parts;
-        public string role = "user";
-        public Content(string texto)
-        {
-            parts = new Part[] { new Part { text = texto } };
-        }
-    }
-
-    [System.Serializable]
-    public class Part
-    {
-        public string text;
-    }
-
-    [System.Serializable]
-    public class RespuestaGemini
-    {
-        public Candidate[] candidates;
-    }
-
-    [System.Serializable]
-    public class Candidate
-    {
-        public Content content;
-    }
 }
