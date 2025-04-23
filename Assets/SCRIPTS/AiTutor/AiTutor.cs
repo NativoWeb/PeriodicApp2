@@ -34,15 +34,43 @@ public class AiTutor : MonoBehaviour
     public GuardarMisionCompletada gestorMisiones;
 
     private Dictionary<string, ElementoQuimico> elementos;
-    
+
+    private string ultimoElementoActivo = "";
+    private string ultimaIntencion = "";
+
+
+    public class Intencion
+    {
+        public string nombre;
+        public string ejemplo;
+    }
+
+    private List<Intencion> intenciones = new List<Intencion>
+    {
+        new Intencion { nombre = "uso", ejemplo = "¿para qué sirve este elemento?" },
+        new Intencion { nombre = "ubicacion", ejemplo = "¿en qué grupo está este elemento?" },
+        new Intencion { nombre = "masa", ejemplo = "¿cuál es la masa atómica del elemento?" },
+        new Intencion { nombre = "estado", ejemplo = "¿es sólido, líquido o gas?" },
+        new Intencion { nombre = "tipo", ejemplo = "¿es un metal o no metal?" },
+        new Intencion { nombre = "general", ejemplo = "cuéntame del elemento" },
+    };
+
 
 
     void Start()
     {
         panelChatTutor.SetActive(false);
         CargarElementosDesdeJSONL();
-        embedder = GetComponent<MiniLMEmbedder>();
         loader.CargarEmbeddings();
+        if (embedder == null)
+        {
+            Debug.LogError("❌ El embedder no está asignado en el Start().");
+        }
+        else
+        {
+            Debug.Log("✅ Embedder activo en tiempo de ejecución.");
+        }
+
 
     }
 
@@ -56,9 +84,14 @@ public class AiTutor : MonoBehaviour
         foreach (string linea in File.ReadAllLines(ruta))
         {
             ElementoQuimico el = JsonUtility.FromJson<ElementoQuimico>(linea);
+
             if (!elementos.ContainsKey(el.simbolo.ToLower()))
                 elementos[el.simbolo.ToLower()] = el;
         }
+
+        Debug.Log("Elementos cargados: " + elementos.Count);
+        Debug.Log("Ejemplo clave: " + elementos.Keys.First());
+
     }
 
     public void EnviarPregunta()
@@ -74,22 +107,67 @@ public class AiTutor : MonoBehaviour
 
     public void ProcesarPregunta(string pregunta)
     {
+        Debug.Log("📍 Pregunta: " + pregunta);
 
-        // 1. Búsqueda directa por nombre o símbolo
-        foreach (var par in elementos)
+        string preguntaNormalizada = pregunta.Trim().ToLower();
+
+        if (ultimoElementoActivo != "" && (
+            preguntaNormalizada == "sí" ||
+            preguntaNormalizada.Contains("más") ||
+            preguntaNormalizada.Contains("cuéntame") ||
+            preguntaNormalizada.Contains("dime más") ||
+            preguntaNormalizada.Contains("quiero saber más")))
         {
-            if (pregunta.ToLower().Contains(par.Value.simbolo.ToLower()) ||
-                pregunta.ToLower().Contains(par.Value.nombre.ToLower()))
+            Debug.Log("🔁 Usuario quiere saber más sobre " + ultimoElementoActivo);
+
+            if (elementos.ContainsKey(ultimoElementoActivo))
             {
-                CrearBurbujaIA(par.Value.descripcion);
+                string respuestaExtendida = GenerarRespuestaExtendida(elementos[ultimoElementoActivo], ultimaIntencion);
+                CrearBurbujaIA(respuestaExtendida);
                 return;
             }
         }
 
+
+
+        // 1. Búsqueda directa por nombre o símbolo
+        string[] palabras = pregunta.ToLower().Split(' ', ',', '.', '?', '¿', '!', '¡');
+
+        foreach (var par in elementos)
+        {
+            string simbolo = par.Value.simbolo.ToLower();
+            string nombre = par.Value.nombre.ToLower();
+
+            if (palabras.Contains(simbolo) || palabras.Contains(nombre))
+            {
+                Debug.Log("🔁 Coincidencia exacta encontrada: " + simbolo + " o " + nombre);
+
+                ElementoQuimico el = par.Value;
+                string intencion = DetectarIntencionPorEmbedding(pregunta);
+                string respuesta = GenerarRespuestaConversacional(el, intencion);
+                ultimoElementoActivo = el.simbolo.ToLower(); // guarda el símbolo (ej. "o")
+                ultimaIntencion = intencion;
+
+                CrearBurbujaIA(respuesta);
+
+                return;
+            }
+
+        }
+
+
+        if (embedder == null)
+        {
+            Debug.LogError("❌ EL COMPONENTE embedder ESTÁ NULL en tiempo de ejecución.");
+            return;
+        }
+
+
         // 2. Búsqueda por similitud semántica (embeddings)
         float[] embeddingPregunta = embedder.ObtenerEmbedding(pregunta);
         int index = BuscarElementoMasParecido(embeddingPregunta);
-        string id = loader.ids[index];  // ids = lista de símbolos de los elementos
+        Debug.Log("🎯 Índice de mayor similitud: " + index);
+        string id = loader.ids[index].ToLower();  // ids = lista de símbolos de los elementos
 
         if (elementos.ContainsKey(id))
         {
@@ -218,6 +296,76 @@ public class AiTutor : MonoBehaviour
 
         CrearBurbujaIA(mensaje);
     }
+
+    string DetectarIntencionPorEmbedding(string pregunta)
+    {
+        float[] embPregunta = embedder.ObtenerEmbedding(pregunta);
+        float maxSim = float.MinValue;
+        string mejor = "general";
+
+        foreach (var intencion in intenciones)
+        {
+            float[] embEjemplo = embedder.ObtenerEmbedding(intencion.ejemplo);
+            float sim = CalcularSimilitudCoseno(embPregunta, embEjemplo);
+            if (sim > maxSim)
+            {
+                maxSim = sim;
+                mejor = intencion.nombre;
+            }
+        }
+
+        Debug.Log("🎯 Intención detectada: " + mejor);
+        return mejor;
+    }
+
+    string GenerarRespuestaConversacional(ElementoQuimico el, string intencion)
+    {
+        switch (intencion)
+        {
+            case "uso":
+                return $"🔬 ¡Gran pregunta! El {el.nombre} se utiliza frecuentemente en ciencia, industria o medicina. Por ejemplo: {el.descripcion.Split('.')[0]}. ¿Te interesa saber más usos?";
+
+            case "ubicacion":
+                return $"🧭 Claro, el {el.nombre} está ubicado en el grupo {el.grupo} y el periodo {el.periodo} de la tabla periódica. ¡Eso nos dice mucho sobre su comportamiento!";
+
+            case "masa":
+                return $"⚖️ La masa atómica del {el.nombre} es aproximadamente {el.masa_atomica} u. Es un dato útil cuando estudias reacciones químicas.";
+
+            case "estado":
+                return $"💧 En condiciones normales, el {el.nombre} se encuentra en estado {el.estado.ToLower()}. Esto influye en cómo lo puedes manejar o almacenar.";
+
+            case "tipo":
+                return $"🔎 El {el.nombre} es un {el.tipo.ToLower()}. Eso significa que comparte propiedades con otros elementos del mismo tipo.";
+
+            default:
+                return $"📘 El {el.nombre} ({el.simbolo}) tiene número atómico {el.numero_atomico}. Es un elemento fascinante. ¿Quieres saber para qué se usa o cómo se comporta?";
+        }
+    }
+
+    string GenerarRespuestaExtendida(ElementoQuimico el, string intencion)
+    {
+        switch (intencion)
+        {
+            case "uso":
+                return $"🧪 Además de su uso común, el {el.nombre} también juega un rol importante en muchos procesos industriales y naturales. Por ejemplo, {el.descripcion}";
+
+            case "ubicacion":
+                return $"📊 El {el.nombre} está en el grupo {el.grupo}, lo que indica su número de electrones de valencia, y en el periodo {el.periodo}, que indica cuántos niveles tiene su configuración electrónica.";
+
+            case "masa":
+                return $"📐 Su masa atómica precisa es de {el.masa_atomica}. Este valor se usa en cálculos estequiométricos para determinar proporciones en reacciones.";
+
+            case "estado":
+                return $"💡 Saber que el {el.nombre} es un {el.estado.ToLower()} nos ayuda a entender cómo almacenarlo y manipularlo, especialmente si trabajas en laboratorios.";
+
+            case "tipo":
+                return $"🧲 Como {el.tipo.ToLower()}, el {el.nombre} comparte propiedades con otros elementos similares, como su conductividad, brillo o reactividad química.";
+
+            default:
+                return $"📚 El {el.nombre} tiene muchas otras propiedades interesantes. Por ejemplo: {el.descripcion}";
+        }
+    }
+
 
 
 

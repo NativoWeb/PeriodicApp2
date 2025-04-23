@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using System.Collections.Generic;
 using System.IO;
 
@@ -17,8 +17,16 @@ public class EmbeddingsLoader : MonoBehaviour
     public void CargarEmbeddings()
     {
         string path = Path.Combine(Application.streamingAssetsPath, "chem_embeddings.json");
+        if (!File.Exists(path))
+        {
+            Debug.LogError("❌ No se encontró el archivo de embeddings en: " + path);
+            return;
+        }
+
+
         string json = File.ReadAllText(path);
         EmbeddingEntry[] items = JsonHelper.FromJsonArray<EmbeddingEntry>(json);
+        
 
         foreach (var item in items)
         {
@@ -27,5 +35,6 @@ public class EmbeddingsLoader : MonoBehaviour
         }
 
         Debug.Log("Embeddings cargados: " + embeddings.Count);
+        Debug.Log("✅ IDs cargados: " + ids.Count);
     }
 }
