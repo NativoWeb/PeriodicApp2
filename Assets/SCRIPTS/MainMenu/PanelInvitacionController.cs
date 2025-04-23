@@ -1,26 +1,26 @@
+﻿using Firebase.Auth;
+using Firebase.Database;
+using Firebase.Extensions;
 using System.Collections;
 using System.Threading.Tasks;
 using TMPro;
 using UnityEngine;
+using UnityEngine.PlayerLoop;
 using UnityEngine.UI;
 
 public class PanelInvitacionController : MonoBehaviour
 {
     public TMP_Text txtInfo;
     public Button btnAceptar;
-    public Button btnRechazar;
-
+    public Button btnRechazar; 
+    
+    private DatabaseReference realtime;
+    private string miUID;
     private string partidaId;
-
-    public async void Mostrar(string from, string juego, string _partidaId)
-    {
-        partidaId = _partidaId;
-        txtInfo.text = $"Has sido invitado por {from} a jugar: {juego}";
-        gameObject.SetActive(true);
-    }
 
     void Start()
     {
+        miUID = FirebaseAuth.DefaultInstance.CurrentUser.UserId;
         btnAceptar.onClick.AddListener(() =>
         {
             InvitacionManager.instancia.AceptarInvitacion();
@@ -32,6 +32,12 @@ public class PanelInvitacionController : MonoBehaviour
             InvitacionManager.instancia.RechazarInvitacion();
             gameObject.SetActive(false);
         });
+    }
+    public void Mostrar(string from, string juego, string _partidaId)
+    {
+        partidaId = _partidaId;
+        txtInfo.text = $"Has sido invitado por {from} a jugar: {juego}";
+        gameObject.SetActive(true);
     }
 
     IEnumerator AnimarEntrada()

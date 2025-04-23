@@ -13,6 +13,7 @@ public class InvitacionManager : MonoBehaviour
     
     public GameObject panelInvitacionGO; // Asigna desde el Inspector
     private PanelInvitacionController panelInvitacion;
+    public GameObject panelInvitacionP; // ← este es tu panel visual de invitación
 
     FirebaseFirestore db;
     private DatabaseReference realtime;
@@ -42,20 +43,7 @@ public class InvitacionManager : MonoBehaviour
     {
         db = FirebaseFirestore.DefaultInstance;
         realtime = FirebaseDatabase.DefaultInstance.RootReference;
-        //miUID = FirebaseAuth.DefaultInstance.CurrentUser.UserId;
-        miUID = FirebaseAuth.DefaultInstance.CurrentUser?.UserId;
-
-        if (string.IsNullOrEmpty(miUID))
-        {
-            Debug.LogError("❌ FirebaseAuth aún no tiene un usuario válido.");
-        }
-
-
-        if (FirebaseAuth.DefaultInstance.CurrentUser == null)
-        {
-            Debug.LogWarning("Usuario no autenticado aún.");
-            return;
-        }
+        miUID = FirebaseAuth.DefaultInstance.CurrentUser.UserId;
 
         EscucharInvitaciones();
     }
@@ -167,7 +155,12 @@ public class InvitacionManager : MonoBehaviour
 
                     // Guardar partidaId y cambiar escena
                     PlayerPrefs.SetString("PartidaId", partidaId);
+                    PlayerPrefs.SetString("modoJuego", "online");
                     PlayerPrefs.Save();
+
+                    // 👉 OCULTAR el panel de invitación inmediatamente
+                    if (panelInvitacionP != null)
+                        panelInvitacionP.SetActive(false);
 
                     // Cambiar el estado de la invitación
                     realtime.Child("invitaciones").Child(miUID).Child(invitacionIdSeleccionada).Child("estado")
@@ -193,6 +186,13 @@ public class InvitacionManager : MonoBehaviour
 
     public void RechazarInvitacion()
     {
-        realtime.Child("invitaciones").Child(miUID).Child("estado").SetValueAsync("rechazada");
+        // Cambiar estado de la invitación en Firebase
+        realtime.Child("invitaciones").Child(miUID).Child(invitacionIdSeleccionada).Child("estado")
+            .SetValueAsync("rechazada");
+
+        // 👉 Ocultar el panel sin esperar nada más
+        if (panelInvitacionP != null)
+            panelInvitacionP.SetActive(false);
     }
+
 }

@@ -9,7 +9,11 @@ using System.Collections.Generic;
 using static GeneradorElementosUI;
 using SimpleJSON;
 using System.Threading.Tasks;
-using Firebase.Extensions; // Al principio del archivo
+using Firebase.Extensions;
+using UnityEngine.SceneManagement; // Al principio del archivo
+using System.Collections.Generic; // Necesario para Dictionary, List, etc.
+using System.Linq;                // Necesario para .ToList(), .Count(), .FirstOrDefault(), etc.
+
 
 [System.Serializable]
 public class ElementoInfo
@@ -75,6 +79,8 @@ public class GameManager : MonoBehaviour
     public GameObject panelSeleccion;
     public GameObject panelEspera;
     public TMP_Text TxtNRonda;
+    public TMP_Text vidaA;
+    public TMP_Text vidaB;
 
     [Header("Datos del jugador")]
     public string miUID;
@@ -93,20 +99,18 @@ public class GameManager : MonoBehaviour
     private string primerElemento = null;
     private string segundoElemento = null;
 
-    private int vidaJugador = 100;
-    private int vidaEnemigo = 100;
+    private int vidaJugador;
+    private int vidaEnemigo;
 
     private bool esMiTurno;
     private DatabaseReference partidaRef;
     FirebaseFirestore db;
     private DatabaseReference realtime;
 
-
     public GameObject PrefabCarta;
     public Transform contenidoScroll; // el Content del ScrollView
 
     private bool esJugadorA;
-
 
     //Ruleta
     public GameObject combate;
@@ -122,6 +126,12 @@ public class GameManager : MonoBehaviour
 
     private bool girando = false;
 
+
+    private int rondaProcesadaLocal = -1;
+    int rondaCPU = 1;
+    private bool listenerJugadorB = false;
+
+
     void Awake()
     {
         if (instancia == null)
@@ -135,65 +145,112 @@ public class GameManager : MonoBehaviour
 
     void Start()
     {
-        // Forzar orientación vertical
         Screen.orientation = ScreenOrientation.LandscapeLeft;
 
+        bool modoCPU = PlayerPrefs.GetString("modoJuego") == "cpu";
+
         PanelRuleta.SetActive(true);
-
-        partidaId = PlayerPrefs.GetString("PartidaId");
-
-        partidaRef = FirebaseDatabase.DefaultInstance.GetReference("partidas").Child(partidaId);
-
-        miUID = FirebaseAuth.DefaultInstance.CurrentUser.UserId;
-        db = FirebaseFirestore.DefaultInstance;
-        realtime = FirebaseDatabase.DefaultInstance.RootReference;
-
-        TxtNRonda.text = "Ronda 1";
         barraVidaJugador.maxValue = 100;
         barraVidaEnemigo.maxValue = 100;
         btnLanzar.onClick.AddListener(LanzarElemento);
         btnCombinar.onClick.AddListener(CombinarElemento);
         btnCancelar.onClick.AddListener(CancelarSeleccion);
 
+        if (modoCPU)
+        {
+            // Configurar jugador local
+            miUID = "jugadorCPU"; // ID temporal
+            esJugadorA = true;
 
-        FirebaseDatabase.DefaultInstance.GetReference("partidas").Child(partidaId)
-            .Child("jugadorA").GetValueAsync().ContinueWithOnMainThread(task =>
-            {
-                if (task.IsCompleted && task.Result.Exists)
+            // Inicializar vidas
+            vidaJugador = 100;
+            vidaEnemigo = 100;
+
+            // Nombres fake
+            txtNombreJugador.text = PlayerPrefs.GetString("DisplayName", "Tú");
+            txtNombreEnemigo.text = "CPU";
+
+            vidaA.text = "100/100";
+            vidaB.text = "100/100";
+
+            // Girar ruleta directamente
+            GirarRuleta();
+        }
+        else
+        {
+            // 🔗 Modo Online
+            Debug.Log("🌐 Modo Online activado");
+
+            partidaId = PlayerPrefs.GetString("PartidaId");
+            partidaRef = FirebaseDatabase.DefaultInstance.GetReference("partidas").Child(partidaId);
+
+            miUID = FirebaseAuth.DefaultInstance.CurrentUser.UserId;
+            db = FirebaseFirestore.DefaultInstance;
+            realtime = FirebaseDatabase.DefaultInstance.RootReference;
+
+            EscucharCambiosVida();
+
+            FirebaseDatabase.DefaultInstance.GetReference("partidas").Child(partidaId)
+                .Child("jugadorA").GetValueAsync().ContinueWithOnMainThread(task =>
                 {
-                    string jugadorA = task.Result.Value.ToString();
-                    Debug.Log($"🔍 Comparando UID. miUID: {miUID}, jugadorA: {jugadorA}");
-
-                    if (miUID == jugadorA)
+                    if (task.IsCompleted && task.Result.Exists)
                     {
-                        // Yo soy el jugador A, giro la ruleta
-                        GirarRuleta();
-                    }
-                    else
-                    {
-                        EmpezarEscuchaCategoriaDesdeFirebasee(); // Yo soy jugador B, espero la categoría desde Firebase
-                    }
-                }
-            });
+                        string jugadorA = task.Result.Value.ToString();
 
-        StartCoroutine(CargarDatosPartida());
+                        if (miUID == jugadorA)
+                        {
+                            GirarRuleta();
+                        }
+                        else
+                        {
+                            EmpezarEscuchaCategoriaDesdeFirebasee();
+                        }
+                    }
+                });
+
+            StartCoroutine(CargarDatosPartida());
+            EscucharRondaProcesada();
+            EscucharCambioDeRonda();
+        }
     }
 
+    void EscucharCambioDeRonda()
+    {
+        partidaRef.Child("ronda").ValueChanged += (sender, args) =>
+        {
+            if (args.DatabaseError != null)
+            {
+                Debug.LogError("❌ Error al escuchar cambio de ronda: " + args.DatabaseError.Message);
+                return;
+            }
 
+            if (args.Snapshot.Exists)
+            {
+                int nuevaRonda = int.Parse(args.Snapshot.Value.ToString());
+                Debug.Log("🔄 Ronda actualizada a: " + nuevaRonda);
+
+                TxtNRonda.text = $"Ronda {nuevaRonda}";
+
+                if (vidaJugador > 0 && vidaEnemigo > 0)
+                {
+                    panelSeleccion.SetActive(true);
+                    textoTurno.text = "Selecciona tu jugada";
+                    LimpiarSeleccion();
+                }
+            }
+        };
+    }
     void EmpezarEscuchaCategoriaDesdeFirebasee()
     {
         textoCategoria.text = "Esperando selección de categoría...";
-        Debug.Log("alksdjlkasjdklasd");
+
         FirebaseDatabase.DefaultInstance
             .GetReference("partidas")
             .Child(partidaId)
             .ValueChanged += OnCategoriaSeleccionadaRecibida;
-        Debug.Log("alksdjlkasjdklasd");
     }
-
     private void OnCategoriaSeleccionadaRecibida(object sender, ValueChangedEventArgs args)
-    {
-        Debug.Log("alksdjlkasjdklasd");
+    { 
         if (args.DatabaseError != null)
         {
             Debug.LogError("❌ Error al escuchar cambios de categoría: " + args.DatabaseError.Message);
@@ -217,19 +274,22 @@ public class GameManager : MonoBehaviour
 
         textoCategoria.text = "Categoría: " + categoria;
         PlayerPrefs.SetString("CategoriaRuleta", categoria);
-        CargarJsons();
-        QuitarPanel();
+
+        if (!listenerJugadorB)
+        {
+            listenerJugadorB = true;
+            CargarJsons();
+            QuitarPanel();
+        }
     }
-
-
     public void GirarRuleta()
     {
         if (!girando)
             StartCoroutine(GirarAnimacion());
     }
-
     IEnumerator GirarAnimacion()
     {
+        bool modoCPU = PlayerPrefs.GetString("modoJuego") == "cpu";
         girando = true;
 
         float tiempo = 4f;
@@ -258,18 +318,25 @@ public class GameManager : MonoBehaviour
         string categoriaSeleccionada = Categorias[indice];
         textoCategoria.text = $"Categoría: {categoriaSeleccionada}";
 
-        // GUARDAR EN FIREBASE
-        FirebaseDatabase.DefaultInstance
-        .GetReference("partidas")
-        .Child(partidaId)
-        .Child("categoriaSeleccionada")
-        .SetValueAsync(categoriaSeleccionada);
-        PlayerPrefs.SetString("CategoriaRuleta", categoriaSeleccionada);
+        if (modoCPU)
+        {
+            PlayerPrefs.SetString("CategoriaRuleta", categoriaSeleccionada);
+        }
+        else
+        {
+            // GUARDAR EN FIREBASE
+            FirebaseDatabase.DefaultInstance
+            .GetReference("partidas")
+            .Child(partidaId)
+            .Child("categoriaSeleccionada")
+            .SetValueAsync(categoriaSeleccionada);
+            PlayerPrefs.SetString("CategoriaRuleta", categoriaSeleccionada);
+        }
+        
         girando = false;
         CargarJsons();
         QuitarPanel();
     }
-
     private async void QuitarPanel()
     {
         await Task.Delay(3000);
@@ -278,7 +345,6 @@ public class GameManager : MonoBehaviour
         await Task.Delay(3000);
         combate.SetActive(false);
     }
-
     public void CargarJsons()
     {
         TextAsset jsonInfo = Resources.Load<TextAsset>("Misiones_Categorias");
@@ -316,10 +382,6 @@ public class GameManager : MonoBehaviour
                 elementosDisponibles.Add(elemento);
             }
         }
-        else
-        {
-            Debug.LogWarning($"No se encontró la categoría: {categoriaSeleccionada}");
-        }
 
         // Reacciones sigue usando JsonUtility si está bien formado
         datosReaccion = JsonUtility.FromJson<ElementoReaccionLista>(jsonReacciones.text);
@@ -330,11 +392,7 @@ public class GameManager : MonoBehaviour
         }
 
         MostrarElementosEnScroll(elementosDisponibles);
-
-        Debug.Log($"📘 Elementos cargados: {infoPorNombre.Count}");
-        Debug.Log($"🔥 Reacciones cargadas: {reaccionPorNombre.Count}");
     }
-
     void MostrarElementosEnScroll(List<ElementoInfo> elementos)
     {
         foreach (Transform hijo in contenidoScroll)
@@ -356,7 +414,6 @@ public class GameManager : MonoBehaviour
             txtNombre.text = elemento.nombre;
         }
     }
-
     public void ElementoSeleccionado(string nombre, ElementoSeleccionable carta)
     {
         if (!modoCombinacion)
@@ -379,12 +436,9 @@ public class GameManager : MonoBehaviour
             cartaSeleccionada2.ToggleSeleccionVisual();
         }
     }
-
-
     IEnumerator CargarDatosPartida()
     {
-
-        float timeout = 5f; // espera máxima de 5 segundos
+        float timeout = 5f;
         float elapsed = 0f;
 
         while (elapsed < timeout)
@@ -400,92 +454,122 @@ public class GameManager : MonoBehaviour
                 string jugadorB = snapshot.Child("jugadorB").Value.ToString();
 
                 esJugadorA = (jugadorA == miUID);
-                enemigoUID = (jugadorA == miUID) ? jugadorB : jugadorA;
+                enemigoUID = esJugadorA ? jugadorB : jugadorA;
 
-                // Nombres
-                db.Collection("users").Document(jugadorA).GetSnapshotAsync().ContinueWith(task => {
+                string uidJugadorLocal = miUID;
+                string uidEnemigo = enemigoUID;
+
+                // Cargar nombres desde Firestore
+                db.Collection("users").Document(uidJugadorLocal).GetSnapshotAsync().ContinueWith(task =>
+                {
                     if (task.IsCompleted && task.Result.Exists)
                         txtNombreJugador.text = task.Result.GetValue<string>("DisplayName");
                 });
 
-                db.Collection("users").Document(jugadorB).GetSnapshotAsync().ContinueWith(task => {
+                db.Collection("users").Document(uidEnemigo).GetSnapshotAsync().ContinueWith(task =>
+                {
                     if (task.IsCompleted && task.Result.Exists)
                         txtNombreEnemigo.text = task.Result.GetValue<string>("DisplayName");
                 });
 
-                vidaJugador = int.Parse(snapshot.Child($"vida{(jugadorA == miUID ? "A" : "B")}").Value.ToString());
-                vidaEnemigo = int.Parse(snapshot.Child($"vida{(jugadorA == miUID ? "B" : "A")}").Value.ToString());
+                // Cargar vidas correctamente según si es jugadorA o B
+                if (esJugadorA)
+                {
+                    vidaJugador = int.Parse(snapshot.Child("vidaA").Value.ToString());
+                    vidaEnemigo = int.Parse(snapshot.Child("vidaB").Value.ToString());
+                }
+                else
+                {
+                    vidaJugador = int.Parse(snapshot.Child("vidaB").Value.ToString());
+                    vidaEnemigo = int.Parse(snapshot.Child("vidaA").Value.ToString());
+                }
 
-                yield break; // listo
+                vidaA.text = vidaJugador + "/100";
+                vidaB.text = vidaEnemigo + "/100";
+                barraVidaJugador.value = 100;
+                barraVidaEnemigo.value = 100;
+
+                // Mostrar ronda actual si existe
+                if (snapshot.HasChild("ronda"))
+                {
+                    int rondaActual = int.Parse(snapshot.Child("ronda").Value.ToString());
+                    TxtNRonda.text = $"Ronda {rondaActual}";
+                }
+
+                yield break;
             }
 
             yield return new WaitForSeconds(0.5f);
             elapsed += 0.5f;
-            var rondaTask = partidaRef.Child("ronda").GetValueAsync();
-            yield return new WaitUntil(() => rondaTask.IsCompleted);
-            if (rondaTask.Result.Exists)
-            {
-                int rondaActual = int.Parse(rondaTask.Result.Value.ToString());
-                TxtNRonda.text = $"Ronda {rondaActual}";
-            }
         }
 
-        Debug.LogError("❌ No se encontró la partida con datos completos tras el timeout.");
+        Debug.LogWarning("❌ Timeout: No se pudieron cargar los datos de la partida.");
     }
     public void RealizarJugada(string elemento1, string elemento2 = "")
     {
         panelSeleccion.SetActive(false);
         textoTurno.text = "Esperando al oponente...";
-        Debug.Log("🎯 RealizarJugada llamada. Esperando ronda...");
-
-        int rondaActual = 1;
-
-        partidaRef.Child("ronda").GetValueAsync().ContinueWithOnMainThread(task =>
-        {
-            if (task.Result.Exists)
-            {
-                rondaActual = int.Parse(task.Result.Value.ToString());
-            }
-
-            var jugada = new Dictionary<string, object>
-        {
-            { "elemento1", elemento1 },
-            { "elemento2", string.IsNullOrEmpty(elemento2) ? null : elemento2 },
-            { "ronda", rondaActual }
-        };
-
-            FirebaseDatabase.DefaultInstance
-                .GetReference("jugadas")
-                .Child(partidaId)
-                .Child(miUID)
-                .SetValueAsync(jugada)
-                .ContinueWithOnMainThread(setTask =>
-                {
-                    if (setTask.IsCompleted && !setTask.IsFaulted)
-                    {
-                        Debug.Log("✅ Jugada guardada correctamente.");
-                        EsperarJugadaEnemigo(); // 🟢 Solo escuchar después de guardar
-                    }
-                    else
-                    {
-                        Debug.LogError("❌ Error al guardar jugada: " + setTask.Exception);
-                    }
-                });
-        });
 
         modoCombinacion = false;
         LimpiarSeleccion();
+
+        bool modoCPU = PlayerPrefs.GetString("modoJuego") == "cpu";
+
+        if (modoCPU)
+        {
+            primerElemento = elemento1;
+            segundoElemento = elemento2;
+            RealizarJugadaCPU(); // Simula la jugada
+        }
+        else if (!modoCPU)
+        {
+            int rondaActual = 1;
+
+            partidaRef.Child("ronda").GetValueAsync().ContinueWithOnMainThread(task =>
+            {
+                if (task.Result.Exists)
+                {
+                    rondaActual = int.Parse(task.Result.Value.ToString());
+                }
+
+                var jugada = new Dictionary<string, object>
+            {
+                { "elemento1", elemento1 },
+                { "elemento2", string.IsNullOrEmpty(elemento2) ? null : elemento2 },
+                { "ronda", rondaActual }
+            };
+
+                FirebaseDatabase.DefaultInstance
+                    .GetReference("jugadas")
+                    .Child(partidaId)
+                    .Child(miUID)
+                    .SetValueAsync(jugada)
+                    .ContinueWithOnMainThread(setTask =>
+                    {
+                        if (setTask.IsCompleted && !setTask.IsFaulted)
+                        {
+                            EsperarJugadaEnemigo(); // 🟢 Solo escuchar después de guardar
+                        }
+                        else
+                        {
+                            Debug.LogError("❌ Error al guardar jugada: " + setTask.Exception);
+                        }
+                    });
+            });
+        }
     }
-
-
     void EsperarJugadaEnemigo()
     {
         FirebaseDatabase.DefaultInstance
             .GetReference("jugadas")
             .Child(partidaId)
-            .ValueChanged += OnJugadasActualizadas;
+            .ValueChanged -= OnJugadasActualizada; // elimina si existe
+        FirebaseDatabase.DefaultInstance
+            .GetReference("jugadas")
+            .Child(partidaId)
+            .ValueChanged += OnJugadasActualizada;
     }
-    void OnJugadasActualizadas(object sender, ValueChangedEventArgs args)
+    void OnJugadasActualizada(object sender, ValueChangedEventArgs args)
     {
         if (!args.Snapshot.Exists) return;
 
@@ -496,23 +580,17 @@ public class GameManager : MonoBehaviour
 
             int rondaMi = int.Parse(jugadaMi.Child("ronda").Value.ToString());
             int rondaEnemigo = int.Parse(jugadaEnemigo.Child("ronda").Value.ToString());
+            if (rondaMi == rondaProcesadaLocal) return; // ya procesada
 
-            if (rondaMi == rondaEnemigo)
+            if (esJugadorA && rondaMi == rondaEnemigo)
             {
-                // ✅ Muy importante: quitar el listener apenas validamos que ambas jugadas están listas
-                FirebaseDatabase.DefaultInstance
-                    .GetReference("jugadas")
-                    .Child(partidaId)
-                    .ValueChanged -= OnJugadasActualizadas;
-
-                Debug.Log("🛑 Listener eliminado. Procesando ronda...");
-                ProcesarRonda(jugadaMi, jugadaEnemigo);
+                rondaProcesadaLocal = rondaMi; // ✅ ANTES de procesar
+                ProcesarRondas(jugadaMi, jugadaEnemigo);
             }
+
         }
     }
-
-
-    void ProcesarRonda(DataSnapshot jugadaMi, DataSnapshot jugadaEnemigo)
+    void ProcesarRondas(DataSnapshot jugadaMi, DataSnapshot jugadaEnemigo)
     {
         string miElemento1 = jugadaMi.Child("elemento1").Value.ToString();
         string miElemento2 = jugadaMi.Child("elemento2").Value?.ToString() ?? "";
@@ -522,30 +600,69 @@ public class GameManager : MonoBehaviour
         string eElemento2 = jugadaEnemigo.Child("elemento2").Value?.ToString() ?? "";
         int dañoEnemigo = CalcularDaño(eElemento1, eElemento2);
 
-        // Aplica daño mutuo
-        vidaJugador -= dañoEnemigo;
-        vidaEnemigo -= miDaño;
+        // Solo jugadorA aplica el daño y actualiza Firebase
+        if (esJugadorA)
+        {
+            int nuevaVidaA = Mathf.Max(0, vidaJugador - dañoEnemigo);
+            int nuevaVidaB = Mathf.Max(0, vidaEnemigo - miDaño);
 
-        barraVidaJugador.value = vidaJugador;
-        barraVidaEnemigo.value = vidaEnemigo;
+            partidaRef.Child("vidaA").SetValueAsync(nuevaVidaA);
+            partidaRef.Child("vidaB").SetValueAsync(nuevaVidaB);
 
-        // Actualiza vidas en Firebase
-        string claveVidaYo = (txtNombreJugador.text == "nombreA") ? "vidaA" : "vidaB";
-        string claveVidaEnemigo = (claveVidaYo == "vidaA") ? "vidaB" : "vidaA";
+            // También actualiza ronda en Firebase
+            partidaRef.Child("ronda").GetValueAsync().ContinueWithOnMainThread(task =>
+            {
+                int rondaActual = 1;
+                if (task.Result.Exists)
+                    rondaActual = int.Parse(task.Result.Value.ToString());
 
-        partidaRef.Child(claveVidaYo).SetValueAsync(vidaJugador);
-        partidaRef.Child(claveVidaEnemigo).SetValueAsync(vidaEnemigo);
+                partidaRef.Child("ronda").SetValueAsync(rondaActual + 1);
+            });
 
-        // Mostrar panel "Ronda terminada"
-        StartCoroutine(MostrarResultadoYRonda());
-        LimpiarSeleccion();
-        FirebaseDatabase.DefaultInstance
-        .GetReference("jugadas")
-        .Child(partidaId)
-        .RemoveValueAsync();
+            // Limpia jugadas para siguiente ronda
+            FirebaseDatabase.DefaultInstance
+                .GetReference("jugadas")
+                .Child(partidaId)
+                .RemoveValueAsync();
+            // Ambos jugadores inician animación de resultado
+            StartCoroutine(MostrarResultadoYRonda());
+        }
 
     }
+    void EscucharRondaProcesada()
+    {
+        partidaRef.Child("ronda").ValueChanged += (sender, args) =>
+        {
+            if (args.DatabaseError != null || !args.Snapshot.Exists) return;
+            StartCoroutine(MostrarResultadoYRonda());
+        };
+    }
+    void EscucharCambiosVida()
+    {
+        partidaRef.ValueChanged += (sender, args) =>
+        {
+            if (!args.Snapshot.Exists) return;
 
+            var snap = args.Snapshot;
+
+            if (snap.HasChild("vidaA") && snap.HasChild("vidaB"))
+            {
+                int vidaAActual = int.Parse(snap.Child("vidaA").Value.ToString());
+                int vidaBActual = int.Parse(snap.Child("vidaB").Value.ToString());
+
+                // Actualizar vidas locales según quien soy
+                vidaJugador = esJugadorA ? vidaAActual : vidaBActual;
+                vidaEnemigo = esJugadorA ? vidaBActual : vidaAActual;
+
+                vidaA.text = vidaJugador + "/100";
+                vidaB.text = vidaEnemigo + "/100";
+
+                // En ambos casos el jugador local usa barraVidaJugador
+                barraVidaJugador.value = vidaJugador;
+                barraVidaEnemigo.value = vidaEnemigo;
+            }
+        };
+    }
     IEnumerator MostrarResultadoYRonda()
     {
         PanelRonda.SetActive(true);
@@ -553,7 +670,7 @@ public class GameManager : MonoBehaviour
         var rondaTask = partidaRef.Child("ronda").GetValueAsync();
         yield return new WaitUntil(() => rondaTask.IsCompleted);
 
-        int rondaActual = 1;
+        int rondaActual;
 
         if (rondaTask.Result.Exists)
         {
@@ -564,115 +681,76 @@ public class GameManager : MonoBehaviour
                 TxtNRonda.text = $"Ronda {rondaActual}";
         }
 
-        int nuevaRonda = rondaActual + 1;
-
-        if (esJugadorA)
-        {
-            partidaRef.Child("ronda").SetValueAsync(nuevaRonda);
-        }
-
         yield return new WaitForSeconds(2.5f);
 
-        // Esperar un momento a que se actualice la ronda si no soy jugadorA
-        if (!esJugadorA)
-        {
-            var rondaSyncTask = partidaRef.Child("ronda").GetValueAsync();
-            yield return new WaitUntil(() => rondaSyncTask.IsCompleted);
-
-            if (rondaSyncTask.Result.Exists)
-            {
-                int rondaSincronizada = int.Parse(rondaSyncTask.Result.Value.ToString());
-                if (TxtNRonda != null)
-                    TxtNRonda.text = $"Ronda {rondaSincronizada}";
-            }
-        }
         PanelRonda.SetActive(false);
 
         // Si aún hay vida, habilitamos el panel de selección
         if (vidaJugador > 0 && vidaEnemigo > 0)
         {
-            Debug.Log("🔄 Preparando nueva ronda. Puedes volver a seleccionar.");
-
             // Limpiar selección previa por seguridad
             LimpiarSeleccion();
-
             // Mostrar panel de selección
             panelSeleccion.SetActive(true);
+            EsperarJugadaEnemigo();
         }
         else
         {
             string resultado = vidaJugador <= 0 ? "¡Perdiste!" : "¡Ganaste!";
             TxtRonda.text = resultado;
             PanelRonda.SetActive(true);
+            LimpiarInvitaciones();
+            yield return new WaitForSeconds(2.5f);
+            SceneManager.LoadScene("Inicio");
         }
     }
-
-
-
-
     public void LanzarElemento()
     {
         if (string.IsNullOrEmpty(primerElemento))
         {
-            Debug.Log("No hay elemento seleccionado.");
+
+            textoTurno.text = "No hay elemento seleccionado.";
             return;
         }
 
         if (modoCombinacion && !string.IsNullOrEmpty(segundoElemento))
         {
             RealizarJugada(primerElemento, segundoElemento);
-            Debug.Log($"Lanzaste combinación {primerElemento} + {segundoElemento}");
         }
         else
         {
             RealizarJugada(primerElemento);
-            Debug.Log($"Lanzaste {primerElemento}");
         }
     }
-
     int CalcularDaño(string elemento1, string elemento2 = "")
     {
         if (!reaccionPorNombre.ContainsKey(elemento1))
-        {
-            Debug.LogWarning($"Elemento {elemento1} no encontrado.");
             return 0;
-        }
 
         var datos = reaccionPorNombre[elemento1];
 
         if (string.IsNullOrEmpty(elemento2))
-        {
-            // Jugada simple
             return datos.daño_base;
-        }
-        else
-        {
-            foreach (var reaccion in datos.reacciones)
-            {
-                if (reaccion.con == elemento2)
-                {
-                    // Es una combinación válida
-                    return reaccion.daño;
-                }
-            }
 
-            // Combinación inválida
-            return 5; // daño bajo
+        foreach (var reaccion in datos.reacciones)
+        {
+            if (reaccion.con == elemento2)
+                return reaccion.daño;
         }
+
+        return 5; // combinación inválida
     }
     public void CombinarElemento()
     {
         if (string.IsNullOrEmpty(primerElemento))
         {
-            Debug.Log("Selecciona un primer elemento antes de combinar.");
+            textoTurno.text = "Debes seleecionar primero un elemento antes de combinar.";
             return;
         }
 
+        textoTurno.text = "Selecciona otro elemento para combinar.";
         modoCombinacion = true;
-        Debug.Log("Modo combinación activado. Selecciona un segundo elemento.");
     }
-
-
     public void CancelarSeleccion()
     {
         modoCombinacion = false;
@@ -684,11 +762,7 @@ public class GameManager : MonoBehaviour
 
         cartaSeleccionada1 = null;
         cartaSeleccionada2 = null;
-
-        Debug.Log("Selección cancelada. Puedes volver a seleccionar.");
     }
-
-
     void LimpiarSeleccion()
     {
         if (cartaSeleccionada1 != null) cartaSeleccionada1.ResetVisual();
@@ -699,14 +773,94 @@ public class GameManager : MonoBehaviour
         primerElemento = null;
         segundoElemento = null;
     }
-    void ActualizarUI()
+    void LimpiarInvitaciones()
     {
+        FirebaseDatabase.DefaultInstance
+            .GetReference("invitaciones")
+            .Child(miUID)
+            .GetValueAsync().ContinueWithOnMainThread(task =>
+            {
+                if (task.IsCompleted && task.Result.Exists)
+                {
+                    foreach (var child in task.Result.Children)
+                    {
+                        string estado = child.Child("estado").Value.ToString();
+                        if (estado == "aceptado" || estado == "pendiente" || estado == "rechazada")
+                        {
+                            FirebaseDatabase.DefaultInstance
+                                .GetReference("invitaciones")
+                                .Child(miUID)
+                                .Child(child.Key)
+                                .RemoveValueAsync();
+                        }
+                    }
+                }
+            });
+    }
+
+
+    //------------------------------------------ Modo CPU --------------------------------------------------
+    void RealizarJugadaCPU()
+    {
+        var elementosDisponibles = infoPorNombre.Values.ToList();
+        var elementosValidos = elementosDisponibles.Where(e => reaccionPorNombre.ContainsKey(e.nombre)).ToList();
+
+        string cpuElemento1 = elementosValidos[Random.Range(0, elementosValidos.Count)].nombre;
+        string cpuElemento2 = "";
+
+        // 20% de probabilidad de combinación
+        if (Random.value < 0.5f)
+        {
+            var posiblesReacciones = reaccionPorNombre[cpuElemento1].reacciones;
+            if (posiblesReacciones != null && posiblesReacciones.Count() > 0)
+            {
+                cpuElemento2 = posiblesReacciones[Random.Range(0, posiblesReacciones.Count())].con;
+            }
+        }
+
+        // Simular el procesamiento con una pequeña espera para hacerlo más humano
+        StartCoroutine(ProcesarRondaContraCPU(cpuElemento1, cpuElemento2));
+    }
+    IEnumerator ProcesarRondaContraCPU(string cpuElemento1, string cpuElemento2)
+    {
+        yield return new WaitForSeconds(1f); // simula que la CPU piensa
+
+        int miDaño = CalcularDaño(primerElemento, segundoElemento);
+        int cpuDaño = CalcularDaño(cpuElemento1, cpuElemento2);
+
+        vidaJugador -= cpuDaño;
+        vidaEnemigo -= miDaño;
+
+        if (vidaJugador < 0) vidaJugador = 0;
+        if (vidaEnemigo < 0) vidaEnemigo = 0;
+
         barraVidaJugador.value = vidaJugador;
         barraVidaEnemigo.value = vidaEnemigo;
 
-        textoTurno.text = esMiTurno ? "¡Tu turno!" : "Turno del oponente";
-        panelSeleccion.SetActive(esMiTurno);
-        panelEspera.SetActive(!esMiTurno);
+        vidaA.text = vidaJugador + "/100";
+        vidaB.text = vidaEnemigo + "/100";
+
+        rondaCPU++;
+        TxtNRonda.text = $"Ronda {rondaCPU}";
+        TxtRonda.text = $"Ronda {rondaCPU} finalizada";
+        PanelRonda.SetActive(true);
+
+        yield return new WaitForSeconds(2.5f);
+        PanelRonda.SetActive(false);
+
+        if (vidaJugador > 0 && vidaEnemigo > 0)
+        {
+            LimpiarSeleccion();
+            panelSeleccion.SetActive(true);
+        }
+        else
+        {
+            TxtRonda.text = vidaJugador <= 0 ? "¡Perdiste!" : "¡Ganaste!";
+            PanelRonda.SetActive(true);
+            yield return new WaitForSeconds(2.5f);
+            SceneManager.LoadScene("Inicio");
+        }
     }
+
 
 }

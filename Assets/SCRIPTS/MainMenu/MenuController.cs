@@ -5,19 +5,19 @@ using UnityEngine.UI;
 
 public class MenuController : MonoBehaviour
 {
+    [Header("ReferenciasUI")]
+    public Button Volver;
+
     [Header("RawImages")]
     public RawImage rawCamara;
     public RawImage rawJuegos;
 
-
     [Header("Paneles")]
-
     public GameObject PanelMainMenu;
     public GameObject PanelSeleccion;
 
-
     [Header("Escenas")]
-    public string escenaCamara = "NombreDeTuEscenaAR";
+    public string escenaCamara = "VuforiaNuevo";
 
     public void SeleccionarCamaraAR()
     {
@@ -34,6 +34,7 @@ public class MenuController : MonoBehaviour
     {
         yield return new WaitForSeconds(.5f);
         PanelMainMenu.SetActive(false);
+        Volver.onClick.AddListener(cerrarPanel);
         PanelSeleccion.SetActive(true);
     }
 
@@ -47,5 +48,11 @@ public class MenuController : MonoBehaviour
         yield return new WaitForSeconds(0.5f);
 
         SceneManager.LoadScene(escena);
+    }
+
+    void cerrarPanel()
+    {
+        PanelMainMenu.SetActive(true);
+        PanelSeleccion.SetActive(false);
     }
 }

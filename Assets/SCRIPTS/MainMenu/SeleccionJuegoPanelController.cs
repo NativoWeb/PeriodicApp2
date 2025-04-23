@@ -38,6 +38,12 @@ public class SeleccionJuegoPanelController : MonoBehaviour
         realtime = FirebaseDatabase.DefaultInstance.RootReference;
     }
 
+    public void cerrarPanel()
+    {
+        panelSeleccionModo.SetActive(false);
+        PanelAmigos.SetActive(false);
+    }
+
     public void SeleccionarJuego()
     {
         // Mostrar panel de selección de modo
@@ -46,18 +52,19 @@ public class SeleccionJuegoPanelController : MonoBehaviour
 
     public void JugarConCPU()
     {
-        Debug.Log("Iniciar " + juegoActual + " contra CPU");
-        // Aquí llamás a SceneManager.LoadScene con base en juegoActual
+        PlayerPrefs.SetString("modoJuego", "cpu");
+        SceneManager.LoadScene("CombateQuimico");
     }
 
     public void JugarConAmigos()
     {
+        PlayerPrefs.SetString("modoJuego", "online");
         PanelAmigos.SetActive(true);
         panelSeleccionModo.SetActive(false);
 
         CargarAmigos("");
     }
-
+    //----------------------------------------------------------Modo Online---------------------------------------------------------------------//
     void CargarAmigos(string filtroNombre)
     {
         amigosCargados = 0;
@@ -95,12 +102,10 @@ public class SeleccionJuegoPanelController : MonoBehaviour
           {
               if (task.IsCompleted)
               {
-                  Debug.Log("amigos");
                   ProcessFriends(task.Result.Documents, false, filtroNombre, amigosMostrados);
               }
           });
     }
-
     void ProcessFriends(IEnumerable<DocumentSnapshot> documents, bool isSender, string filtroNombre, HashSet<string> amigosMostrados)
     {
         foreach (DocumentSnapshot document in documents)
@@ -119,13 +124,11 @@ public class SeleccionJuegoPanelController : MonoBehaviour
             }
         }
     }
-
     bool ShouldShowFriend(string nombreAmigo, string filtroNombre)
     {
         return string.IsNullOrEmpty(filtroNombre) ||
                nombreAmigo.ToLower().Contains(filtroNombre.ToLower());
     }
-
     void CreateFriendCard(string amigoId, string nombreAmigo)
     {
         nuevoAmigo = Instantiate(amigoPrefab, contentPanel);
@@ -134,7 +137,6 @@ public class SeleccionJuegoPanelController : MonoBehaviour
         // Cargar rango
         LoadFriendRank(amigoId, nuevoAmigo);
     }
-
     void LoadFriendRank(string amigoId, GameObject amigoUI)
     {
         db.Collection("users").Document(amigoId).GetSnapshotAsync().ContinueWithOnMainThread(task =>
@@ -147,7 +149,6 @@ public class SeleccionJuegoPanelController : MonoBehaviour
             }
         });
     }
-
     void ClearFriendList()
     {
         foreach (Transform child in contentPanel)
@@ -155,7 +156,6 @@ public class SeleccionJuegoPanelController : MonoBehaviour
             Destroy(child.gameObject);
         }
     }
-
     private void InvitarAmigo(string amigoUID, string juego)
     {
         PanelAmigos.SetActive(false);
@@ -171,7 +171,6 @@ public class SeleccionJuegoPanelController : MonoBehaviour
         { "jugadorB", amigoUID },
         { "juego", juego },
         { "estado", "esperando" },
-        { "turno", "" },
         { "vidaA", 100 },
         { "vidaB", 100 },
         { "ronda", 1 } // ✅ Asegúrate de agregar esto
@@ -197,8 +196,6 @@ public class SeleccionJuegoPanelController : MonoBehaviour
         {
             if (task.IsCompleted)
             {
-                Debug.Log("✅ Invitación enviada y partida creada.");
-
                 await Task.Delay(5000); // Espera de 5 segundos
 
                 // Consultamos si sigue pendiente
@@ -207,8 +204,6 @@ public class SeleccionJuegoPanelController : MonoBehaviour
                 if ((invitacionSnap.Exists && invitacionSnap.Child("estado").Value.ToString() == "pendiente") 
                 || (invitacionSnap.Exists && invitacionSnap.Child("estado").Value.ToString() == "rechazada"))
                 {
-                    Debug.Log("⌛ Invitación no aceptada o rechazada. Eliminando...");
-
                     var deleteUpdates = new Dictionary<string, object>
                     {
                         [$"invitaciones/{amigoUID}/{invitacionId}"] = null,
@@ -216,18 +211,12 @@ public class SeleccionJuegoPanelController : MonoBehaviour
                     };
 
                     await realtime.UpdateChildrenAsync(deleteUpdates);
-                    Debug.Log("🧹 Invitación y partida eliminadas por timeout.");
                 }
                 else
                 {
                     SceneManager.LoadScene("CombateQuimico");
                 }
             }
-            else
-            {
-                Debug.LogError("❌ Error al crear invitación: " + task.Exception);
-            }
         });
     }
-
 }
