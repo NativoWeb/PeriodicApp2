@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using TMPro;
 using System.IO;
 using System.Collections.Generic;
@@ -44,6 +44,8 @@ public class AiTutor : MonoBehaviour
 
     }
 
+
+
     void CargarElementosDesdeJSONL()
     {
         elementos = new Dictionary<string, ElementoQuimico>();
@@ -71,7 +73,7 @@ public class AiTutor : MonoBehaviour
     public void ProcesarPregunta(string pregunta)
     {
 
-        // 1. B�squeda directa por nombre o s�mbolo
+        // 1. Búsqueda directa por nombre o símbolo
         foreach (var par in elementos)
         {
             if (pregunta.ToLower().Contains(par.Value.simbolo.ToLower()) ||
@@ -82,10 +84,10 @@ public class AiTutor : MonoBehaviour
             }
         }
 
-        // 2. B�squeda por similitud sem�ntica (embeddings)
+        // 2. Búsqueda por similitud semántica (embeddings)
         float[] embeddingPregunta = embedder.ObtenerEmbedding(pregunta);
         int index = BuscarElementoMasParecido(embeddingPregunta);
-        string id = loader.ids[index];  // ids = lista de s�mbolos de los elementos
+        string id = loader.ids[index];  // ids = lista de símbolos de los elementos
 
         if (elementos.ContainsKey(id))
         {
@@ -93,7 +95,7 @@ public class AiTutor : MonoBehaviour
         }
         else
         {
-            CrearBurbujaIA("Lo siento, no encontr� informaci�n relacionada con tu pregunta.");
+            CrearBurbujaIA("😕 No entendí muy bien tu pregunta. ¿Podrías reformularla o mencionar un elemento químico?");
         }
     }
 
@@ -127,10 +129,7 @@ public class AiTutor : MonoBehaviour
         return dot / (Mathf.Sqrt(magA) * Mathf.Sqrt(magB) + 1e-6f);
     }
 
-
-
-
-    void CrearBurbujaUsuario(string texto)
+        void CrearBurbujaUsuario(string texto)
     {
         GameObject burbuja = Instantiate(bubbleUserPrefab, contentChat);
         burbuja.GetComponentInChildren<TextMeshProUGUI>().text = texto;
@@ -144,7 +143,13 @@ public class AiTutor : MonoBehaviour
 
     public void ToggleChatPanel()
     {
+        bool estadoActual = panelChatTutor.activeSelf;
         panelChatTutor.SetActive(!panelChatTutor.activeSelf);
+
+        if (!estadoActual)
+        {
+            CrearBurbujaIA("👋 ¡Hola! Soy tu tutor virtual de química. Pregúntame sobre cualquier elemento de la tabla periódica.");
+        }
     }
 
 
