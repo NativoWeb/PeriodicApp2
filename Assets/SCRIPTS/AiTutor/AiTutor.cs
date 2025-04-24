@@ -179,7 +179,7 @@ public class AiTutor : MonoBehaviour
         }
     }
 
-        int BuscarElementoMasParecido(float[] vector)
+    int BuscarElementoMasParecido(float[] vector)
     {
         float maxSim = float.MinValue;
         int mejorIndex = 0;
@@ -193,6 +193,7 @@ public class AiTutor : MonoBehaviour
                 mejorIndex = i;
             }
         }
+
 
         return mejorIndex;
     }
@@ -239,63 +240,10 @@ public class AiTutor : MonoBehaviour
         else
         {
             CrearBurbujaIA("❌ Esa no es la respuesta esperada. Intenta de nuevo.");
-            DarRecomendacion(categoria, elemento, idMision);
         }
     }
 
-    public void DarRecomendacion(string categoria, string elemento, int idMision)
-    {
-        string jsonString = PlayerPrefs.GetString("misionesCategoriasJSON", "");
-        var json = JSON.Parse(jsonString);
-        var categorias = json["Misiones_Categorias"]["Categorias"].AsObject;
-        var elementoJson = categorias[categoria]["Elementos"][elemento];
-        var misiones = elementoJson["misiones"].AsArray;
-
-        JSONNode misionFallida = null;
-        foreach (var m in misiones)
-        {
-            if (m.Value["id"].AsInt == idMision)
-            {
-                misionFallida = m.Value;
-                break;
-            }
-        }
-
-
-        if (misionFallida == null)
-        {
-            CrearBurbujaIA("😕 No encontré información suficiente para ayudarte.");
-            return;
-        }
-
-        string tipo = misionFallida["tipo"];
-        string descripcionElemento = elementoJson["descripcion"];
-        string mensaje = "";
-
-        switch (tipo)
-        {
-            case "QR":
-                mensaje = $"📲 ¡Intenta escanear el código QR del elemento {elemento} nuevamente! Asegúrate de tener buena luz y enfocar correctamente. ¿Sabías esto?: {descripcionElemento}";
-                break;
-            case "AR":
-                mensaje = $"🔍 ¿Ya exploraste el modelo 3D de {elemento}? Acércate y rota el objeto en realidad aumentada para ver detalles clave. Esto te ayudará a entender mejor la misión. 🧪\nDato: {descripcionElemento}";
-                break;
-            case "Juego":
-                mensaje = $"🎮 ¡Reintenta el mini juego del elemento {elemento}! Concéntrate en las pistas y recuerda que puedes repetirlo las veces que necesites. ¿Sabías que: {descripcionElemento}";
-                break;
-            case "Quiz":
-                mensaje = $"🧠 Si fallaste el quiz sobre {elemento}, revisa sus propiedades como número atómico, masa y electronegatividad. Aquí un dato útil: {descripcionElemento}";
-                break;
-            case "Evaluacion":
-                mensaje = $"📋 La evaluación final requiere que recuerdes todo sobre {elemento}. Repasa las otras misiones y lee bien las preguntas. Aquí va un dato importante: {descripcionElemento}";
-                break;
-            default:
-                mensaje = $"💡 ¿Sabías esto sobre {elemento}?: {descripcionElemento}";
-                break;
-        }
-
-        CrearBurbujaIA(mensaje);
-    }
+    
 
     string DetectarIntencionPorEmbedding(string pregunta)
     {
