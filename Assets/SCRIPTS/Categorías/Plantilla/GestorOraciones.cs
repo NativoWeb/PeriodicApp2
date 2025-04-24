@@ -293,7 +293,7 @@ public class GestorOraciones : MonoBehaviour
 
             
             DarRecomendacion(categoria, elemento, idMision);
-            
+            Debug.Log("❌ Misión fallida, activando retroalimentación.");
         }
 
     }
