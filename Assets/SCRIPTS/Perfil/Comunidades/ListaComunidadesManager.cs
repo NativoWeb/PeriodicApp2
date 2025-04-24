@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using TMPro;
 using System;
 using UnityEngine.UI;
+using System.Linq;
 
 public class ListaComunidadesManager : MonoBehaviour
 {
@@ -61,7 +62,7 @@ public class ListaComunidadesManager : MonoBehaviour
             Debug.LogWarning("No hay usuario autenticado");
         }
     }
-   
+
 
     // Nuevo método: Muestra mensajes de estado al usuario
     void MostrarMensajeEstado(string mensaje, bool mostrar = true)
@@ -255,61 +256,113 @@ public class ListaComunidadesManager : MonoBehaviour
             string uidUsuarioActual = auth.CurrentUser.UserId;
             bool esMiembro = miembros.Contains(uidUsuarioActual);
 
+            botonSolicitar.onClick.RemoveAllListeners(); // Limpiar listeners previos
+
             if (esMiembro)
             {
+                // Configurar botón como "Miembro"
                 botonSolicitar.interactable = false;
-                botonSolicitar.GetComponent<Image>().color = new Color32(0, 200, 0, 255); // Verde
+                botonSolicitar.GetComponent<Image>().color = new Color32(0, 200, 0, 255);
                 if (textoBoton != null) textoBoton.text = "Miembro";
             }
-            else
+            else if (tipo == "publica")
             {
-                // Buscar si ya envió solicitud
-                db.Collection("solicitudes_comunidad")
-                    .WhereEqualTo("idUsuario", uidUsuarioActual)
-                    .WhereEqualTo("idComunidad", idComunidad)
-                    .WhereEqualTo("estado", "pendiente")
-                    .GetSnapshotAsync()
+                // Lógica para comunidades públicas
+                botonSolicitar.interactable = true;
+                botonSolicitar.GetComponent<Image>().color = new Color32(0, 200, 0, 150);
+                if (textoBoton != null) textoBoton.text = "Unirme";
+
+                botonSolicitar.onClick.AddListener(() => {
+                    botonSolicitar.interactable = false;
+                    if (textoBoton != null) textoBoton.text = "Uniendo...";
+                    UnirseAComunidadDirectamente(idComunidad, uidUsuarioActual, botonSolicitar, textoBoton);
+                });
+            }
+            else
+                {
+                    // Buscar si ya envió solicitud
+                    db.Collection("solicitudes_comunidad")
+                        .WhereEqualTo("idUsuario", uidUsuarioActual)
+                        .WhereEqualTo("idComunidad", idComunidad)
+                        .WhereEqualTo("estado", "pendiente")
+                        .GetSnapshotAsync()
+                        .ContinueWithOnMainThread(task =>
+                        {
+                            if (task.IsCompleted && task.Result.Count > 0)
+                            {
+                                // Ya hay una solicitud enviada
+                                botonSolicitar.interactable = false;
+                                botonSolicitar.GetComponent<Image>().color = new Color32(55, 189, 247, 255); // Azul claro
+                                if (textoBoton != null) textoBoton.text = "Solicitud enviada";
+                            }
+                            else
+                            {
+                                // No hay solicitud, permitir enviar
+                                botonSolicitar.interactable = true;
+                                botonSolicitar.GetComponent<Image>().color = new Color32(55, 189, 247, 255); // Azul claro
+                                if (textoBoton != null) textoBoton.text = "Solicitar unirse";
+
+                                botonSolicitar.onClick.AddListener(() =>
+                                {
+                                    CrearSolicitudUnirse(nombre, idComunidad);
+                                    botonSolicitar.interactable = false;
+                                    if (textoBoton != null) textoBoton.text = "Solicitud enviada";
+                                });
+                            }
+                        });
+                }
+
+            }
+            void UnirseAComunidadDirectamente(string comunidadId, string usuarioId, Button boton, TMP_Text textoBoton)
+            {
+                DocumentReference comunidadRef = db.Collection("comunidades").Document(comunidadId);
+
+                // Usamos FieldValue.ArrayUnion para agregar el usuario sin duplicados
+                comunidadRef.UpdateAsync("miembros", FieldValue.ArrayUnion(usuarioId))
                     .ContinueWithOnMainThread(task =>
                     {
-                        if (task.IsCompleted && task.Result.Count > 0)
+                        if (task.IsCompleted && !task.IsFaulted)
                         {
-                            // Ya hay una solicitud enviada
-                            botonSolicitar.interactable = false;
-                            botonSolicitar.GetComponent<Image>().color = new Color32(55, 189, 247, 255); // Azul claro
-                            if (textoBoton != null) textoBoton.text = "Solicitud enviada";
+                            // Actualización UI inmediata
+                            boton.interactable = false;
+                            boton.GetComponent<Image>().color = new Color32(0, 200, 0, 255); // Verde sólido
+                            if (textoBoton != null) textoBoton.text = "Miembro";
+
+                            MostrarMensajeEstado("¡Te has unido a la comunidad!", true);
+
+                            // Opcional: Actualizar la lista local para reflejar el cambio
+                            if (!todasComunidades.Any(c => c.Id == comunidadId))
+                            {
+                                comunidadRef.GetSnapshotAsync().ContinueWithOnMainThread(snapTask =>
+                                {
+                                    if (snapTask.IsCompleted)
+                                    {
+                                        todasComunidades.Add(snapTask.Result);
+                                    }
+                                });
+                            }
                         }
                         else
                         {
-                            // No hay solicitud, permitir enviar
-                            botonSolicitar.interactable = true;
-                            botonSolicitar.GetComponent<Image>().color = new Color32(55, 189, 247, 255); // Azul claro
-                            if (textoBoton != null) textoBoton.text = "Solicitar unirse";
-
-                            botonSolicitar.onClick.AddListener(() =>
-                            {
-                                CrearSolicitudUnirse(nombre, idComunidad);
-                                botonSolicitar.interactable = false;
-                                if (textoBoton != null) textoBoton.text = "Solicitud enviada";
-                            });
+                            MostrarMensajeEstado("Error al unirse", true);
+                            Debug.LogError("Error al unirse: " + task.Exception?.Message);
                         }
                     });
             }
 
-        }
 
-
-        void CrearSolicitudUnirse(string nombreComunidad, string idComunidad)
-        {
-            if (auth.CurrentUser == null)
+            void CrearSolicitudUnirse(string nombreComunidad, string idComunidad)
             {
-                MostrarMensajeEstado("Usuario no autenticado", true);
-                return;
-            }
+                if (auth.CurrentUser == null)
+                {
+                    MostrarMensajeEstado("Usuario no autenticado", true);
+                    return;
+                }
 
-            string usuarioId = auth.CurrentUser.UserId;
-            string usuarioNombre = auth.CurrentUser.DisplayName ?? "Anónimo";
+                string usuarioId = auth.CurrentUser.UserId;
+                string usuarioNombre = auth.CurrentUser.DisplayName ?? "Anónimo";
 
-            Dictionary<string, object> solicitud = new Dictionary<string, object>
+                Dictionary<string, object> solicitud = new Dictionary<string, object>
     {
         { "idUsuario", usuarioId },
         { "nombreUsuario", usuarioNombre },
@@ -319,34 +372,34 @@ public class ListaComunidadesManager : MonoBehaviour
         { "fechaSolicitud", Timestamp.GetCurrentTimestamp() }
     };
 
-            db.Collection("solicitudes_comunidad").AddAsync(solicitud).ContinueWithOnMainThread(task =>
-            {
-                if (task.IsCompleted && !task.IsFaulted && !task.IsCanceled)
+                db.Collection("solicitudes_comunidad").AddAsync(solicitud).ContinueWithOnMainThread(task =>
                 {
-                    MostrarMensajeEstado("Solicitud enviada con éxito", true);
-                }
-                else
-                {
-                    MostrarMensajeEstado("Error al enviar la solicitud", true);
-                    Debug.LogError("Error al crear solicitud: " + task.Exception?.Message);
-                }
-            });
-        }
-
-
-        // Método auxiliar para encontrar hijos por nombre
-        GameObject FindChildByName(GameObject parent, string name)
-        {
-            foreach (Transform child in parent.transform)
-            {
-                if (child.name == name)
-                    return child.gameObject;
-
-                GameObject found = FindChildByName(child.gameObject, name);
-                if (found != null)
-                    return found;
+                    if (task.IsCompleted && !task.IsFaulted && !task.IsCanceled)
+                    {
+                        MostrarMensajeEstado("Solicitud enviada con éxito", true);
+                    }
+                    else
+                    {
+                        MostrarMensajeEstado("Error al enviar la solicitud", true);
+                        Debug.LogError("Error al crear solicitud: " + task.Exception?.Message);
+                    }
+                });
             }
-            return null;
+
+
+            // Método auxiliar para encontrar hijos por nombre
+            GameObject FindChildByName(GameObject parent, string name)
+            {
+                foreach (Transform child in parent.transform)
+                {
+                    if (child.name == name)
+                        return child.gameObject;
+
+                    GameObject found = FindChildByName(child.gameObject, name);
+                    if (found != null)
+                        return found;
+                }
+                return null;
+            }
         }
     }
-}

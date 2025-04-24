@@ -32,6 +32,15 @@ public class MisComunidadesManager : MonoBehaviour
     private List<Dictionary<string, object>> todasComunidades = new List<Dictionary<string, object>>();
 
 
+    // instanciamos nuevo panel 
+    [Header("Elementos panel detalle")]
+    public GameObject panelDetalleGrupo= null;
+    public TMP_Text detalleNombre;
+    public TMP_Text detalleDescripcion;
+    public TMP_Text detalleFecha;
+    public TMP_Text detalleCreador;
+    public TMP_Text detalleMiembros;
+
     // 👇 NUEVO BLOQUE
     void OnEnable()
     {
@@ -199,6 +208,7 @@ public class MisComunidadesManager : MonoBehaviour
         string nombre = dataComunidad.GetValueOrDefault("nombre", "Sin nombre").ToString();
         string descripcion = dataComunidad.GetValueOrDefault("descripcion", "Sin descripción").ToString();
         string tipo = dataComunidad.GetValueOrDefault("tipo", "publica").ToString().ToLower();
+        
 
         // Manejo de la fecha
         string fechaFormateada = "Fecha desconocida";
@@ -251,7 +261,17 @@ public class MisComunidadesManager : MonoBehaviour
             iconoPrivado.SetActive(tipo == "privada");
             iconoPublico.SetActive(tipo != "privada");
         }
+
+        // Configurar botón de detalle
+        Button botonDetalle = FindChildByName(tarjeta, "BotonVerDetalle")?.GetComponent<Button>();
+        if (botonDetalle != null)
+        {
+            botonDetalle.onClick.AddListener(() => MostrarDetalleComunidad(dataComunidad));
+        }
+
+
     }
+
 
     // Método auxiliar para encontrar hijos por nombre
     GameObject FindChildByName(GameObject parent, string name)
@@ -267,4 +287,51 @@ public class MisComunidadesManager : MonoBehaviour
         }
         return null;
     }
+    void MostrarDetalleComunidad(Dictionary<string, object> dataComunidad)
+    {
+        if (panelDetalleGrupo == null) return;
+
+        // Extraer datos
+        string nombre = dataComunidad.GetValueOrDefault("nombre", "Sin nombre").ToString();
+        string descripcion = dataComunidad.GetValueOrDefault("descripcion", "Sin descripción").ToString();
+        string tipo = dataComunidad.GetValueOrDefault("tipo", "publica").ToString().ToLower();
+        string creador = dataComunidad.GetValueOrDefault("creadorUsername", "Sin creador").ToString();
+
+        string fechaFormateada = "Fecha desconocida";
+        if (dataComunidad.TryGetValue("fechaCreacion", out object fechaObj))
+        {
+            if (fechaObj is Timestamp timestamp)
+            {
+                DateTime fecha = timestamp.ToDateTime();
+                fechaFormateada = fecha.ToString("dd MMMM yyyy", new System.Globalization.CultureInfo("es-ES"));
+            }
+            else if (fechaObj is string fechaString)
+            {
+                fechaFormateada = fechaString;
+            }
+        }
+
+        int cantidadMiembros = 0;
+        if (dataComunidad.TryGetValue("miembros", out object miembrosObj) && miembrosObj is List<object> miembros)
+        {
+            cantidadMiembros = miembros.Count;
+        }
+
+        // Llenar textos
+        detalleNombre.text = nombre;
+        detalleDescripcion.text = descripcion;
+        detalleFecha.text = $"creada el {fechaFormateada}";
+        detalleCreador.text = $"Creada por {creador}";
+        detalleMiembros.text = $"{cantidadMiembros} miembros";
+
+        // Mostrar panel
+        panelDetalleGrupo.SetActive(true);
+    }
+    public void CerrarPanelDetalle()
+    {
+        if (panelDetalleGrupo != null)
+            panelDetalleGrupo.SetActive(false);
+    }
+
+
 }
