@@ -49,24 +49,15 @@ public class MisComunidadesManager : MonoBehaviour
     public GameObject prefabMiembro; // Prefab de un TextMeshProUGUI o un diseño para cada miembro
     public Button btnVerMiembros; // Botón en el panel detalle que activará el panel miembros
 
-    //[Header("Panel Detalle Solicitudes")]
-    //public GameObject panelSolicitudes;
-    //public Button btnVerSolicitudes;
-
-    //[Header("Panel Detalle Invitaciones")]
-    //public GameObject panelInvitaciones;
-    //public Button btnVerInvitaciones;
+    [Header("Panel Solicitudes")]
+    public GameObject panelSolicitudes;
+    public Transform contenedorSolicitudes;
+    public GameObject prefabSolicitud;
+    public Button btnVerSolicitudes;  
+    private string comunidadActualId; // Guardar el ID al abrir el detalle
 
     // 👇 NUEVO BLOQUE
-    void OnEnable()
-    {
-        if (auth != null && auth.CurrentUser != null)
-        {
-            MostrarMensajeEstado(mensajeCargando, true);
-            CargarComunidadesDelUsuario();
-        }
-    }
-
+  
     void Start()
     {
         db = FirebaseFirestore.DefaultInstance;
@@ -98,9 +89,6 @@ public class MisComunidadesManager : MonoBehaviour
         
     }
 
-  
-
-
 
     // Nuevo método: Muestra mensajes de estado al usuario
     void MostrarMensajeEstado(string mensaje, bool mostrar = true)
@@ -130,7 +118,7 @@ public class MisComunidadesManager : MonoBehaviour
         }
     }
 
-    void CargarComunidadesDelUsuario()
+    public void CargarComunidadesDelUsuario()
     {
         Query query = db.Collection("comunidades")
                       .WhereArrayContains("miembros", usuarioActualId);
@@ -465,7 +453,160 @@ public class MisComunidadesManager : MonoBehaviour
         }
 
         panelMiembros.SetActive(true);
+
     }
+
+    //void MostrarSolicitudes(Dictionary<string, object> dataComunidad)
+    //{
+    //    if (panelSolicitudes == null || contenedorSolicitudes == null) return;
+
+    //    // Limpiar solicitudes anteriores
+    //    foreach (Transform child in contenedorSolicitudes)
+    //    {
+    //        Destroy(child.gameObject);
+    //    }
+
+    //    comunidadActualId = dataComunidad.GetValueOrDefault("id", "").ToString();
+    //    if (string.IsNullOrEmpty(comunidadActualId))
+    //    {
+    //        Debug.LogError("ID de comunidad no encontrado");
+    //        return;
+    //    }
+
+    //    // Consultar solicitudes pendientes
+    //    db.Collection("comunidades").Document(comunidadActualId)
+    //      .Collection("solicitudes")
+    //      .WhereEqualTo("estado", "pendiente")
+    //      .GetSnapshotAsync()
+    //      .ContinueWithOnMainThread(task =>
+    //      {
+    //          if (task.IsFaulted) return;
+
+    //          // 1. Recopilar todos los userIDs únicos
+    //          var userIDs = new List<string>();
+    //          foreach (DocumentSnapshot doc in task.Result.Documents)
+    //          {
+    //              var data = doc.ToDictionary();
+    //              userIDs.Add(data.GetValueOrDefault("usuarioId", "").ToString());
+    //          }
+
+    //          // 2. Cargar todos los usuarios en una sola consulta
+    //          db.Collection("users").WhereIn(FieldPath.DocumentId, userIDs).GetSnapshotAsync()
+    //            .ContinueWithOnMainThread(usersTask =>
+    //            {
+    //                if (usersTask.IsFaulted) return;
+
+    //                // 3. Mapear datos de usuarios por ID
+    //                var userDataMap = new Dictionary<string, Dictionary<string, object>>();
+    //                foreach (DocumentSnapshot userDoc in usersTask.Result.Documents)
+    //                {
+    //                    userDataMap[userDoc.Id] = userDoc.ToDictionary();
+    //                }
+
+    //                // 4. Crear las solicitudes con los datos combinados
+    //                foreach (DocumentSnapshot doc in task.Result.Documents)
+    //                {
+    //                    var dataSolicitud = doc.ToDictionary();
+    //                    string usuarioId = dataSolicitud.GetValueOrDefault("usuarioId", "").ToString();
+
+    //                    if (userDataMap.TryGetValue(usuarioId, out var userData))
+    //                    {
+    //                        string displayName = userData.GetValueOrDefault("DisplayName", "Usuario").ToString();
+    //                        string rango = userData.GetValueOrDefault("Rango", "Nuevo").ToString();
+
+    //                        CrearSolicitudUI(doc.Id, dataSolicitud, displayName, rango);
+    //                    }
+    //                }
+    //            });
+    //      });
+    //}
+    //void CrearSolicitudUI(string solicitudId, Dictionary<string, object> dataSolicitud, string displayName, string rango)
+    //{
+    //    GameObject solicitudGO = Instantiate(prefabSolicitud, contenedorSolicitudes);
+    //    TarjetaSolicitudUI ui = solicitudGO.GetComponent<TarjetaSolicitudUI>();
+
+    //    string usuarioId = dataSolicitud.GetValueOrDefault("usuarioId", "").ToString();
+
+    //    // Configurar datos temporales (mientras se carga la info del usuario)
+    //    ui.Configurar(
+    //        solicitudId,
+    //        comunidadActualId,
+    //        usuarioId,
+    //        "Cargando...",  // Nombre provisional
+    //        "...",          // Rango provisional
+    //        "Hoy",         // Fecha (puedes usar dataSolicitud["fecha"] si existe)
+    //        AceptarSolicitud,
+    //        RechazarSolicitud
+    //    );
+
+    //    // 👇 Cargar datos del usuario desde la colección `users`
+    //    db.Collection("users").Document(usuarioId).GetSnapshotAsync().ContinueWithOnMainThread(userTask =>
+    //    {
+    //        if (userTask.IsFaulted || !userTask.Result.Exists)
+    //        {
+    //            Debug.LogError("Error al cargar datos del usuario");
+    //            return;
+    //        }
+
+    //        var userData = userTask.Result.ToDictionary();
+    //        string displayName = userData.GetValueOrDefault("DisplayName", "Usuario").ToString();
+    //        string rango = userData.GetValueOrDefault("Rango", "Novato de laboratorio").ToString();
+
+    //        // Actualizar el UI con los datos reales
+    //        ui.textoNombre.text = displayName;
+    //        ui.textoRango.text = rango;
+    //    });
+    //}
+
+    //void AceptarSolicitud(string solicitudId, string comunidadId)
+    //{
+    //    var solicitudRef = db.Collection("comunidades").Document(comunidadId)
+    //                       .Collection("solicitudes").Document(solicitudId);
+
+    //    solicitudRef.GetSnapshotAsync().ContinueWithOnMainThread(solicitudTask =>
+    //    {
+    //        if (solicitudTask.IsFaulted) return;
+
+    //        var data = solicitudTask.Result.ToDictionary();
+    //        string usuarioId = data.GetValueOrDefault("usuarioId", "").ToString();
+
+    //        // 1. Añadir usuario a miembros
+    //        var comunidadRef = db.Collection("comunidades").Document(comunidadId);
+    //        comunidadRef.UpdateAsync("miembros", FieldValue.ArrayUnion(usuarioId))
+    //            .ContinueWithOnMainThread(updateTask =>
+    //            {
+    //                if (updateTask.IsFaulted) return;
+
+    //                // 2. Marcar solicitud como "aceptada"
+    //                solicitudRef.UpdateAsync("estado", "aceptada")
+    //                    .ContinueWithOnMainThread(_ => DestroySolicitudUI(solicitudId));
+    //            });
+    //    });
+    //}
+    //void RechazarSolicitud(string solicitudId, string comunidadId)
+    //{
+    //    db.Collection("comunidades").Document(comunidadId)
+    //      .Collection("solicitudes").Document(solicitudId)
+    //      .UpdateAsync("estado", "rechazada")
+    //      .ContinueWithOnMainThread(task =>
+    //      {
+    //          if (!task.IsFaulted)
+    //          {
+    //              DestroySolicitudUI(solicitudId);
+    //          }
+    //      });
+    //}
+    //void DestroySolicitudUI(string solicitudId)
+    //{
+    //    foreach (Transform child in contenedorSolicitudes)
+    //    {
+    //        if (child.gameObject.name == solicitudId)
+    //        {
+    //            Destroy(child.gameObject);
+    //            break;
+    //        }
+    //    }
+    //}
     public void CerrarPanelDetalle()
     {
         if (panelDetalleGrupo != null)

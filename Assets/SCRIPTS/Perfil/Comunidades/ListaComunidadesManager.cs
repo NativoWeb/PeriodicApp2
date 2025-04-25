@@ -92,7 +92,7 @@ public class ListaComunidadesManager : MonoBehaviour
         }
     }
 
-    void CargarComunidadesDelUsuario()
+    public void CargarComunidadesDelUsuario()
     {
         Query query = db.Collection("comunidades");
 
@@ -157,8 +157,7 @@ public class ListaComunidadesManager : MonoBehaviour
 
 
 
-
-    void MostrarTodasComunidades()
+   void MostrarTodasComunidades()
     {
         foreach (Transform child in contenedor)
         {
