@@ -58,13 +58,13 @@ public class MiembrosMisComunidades : MonoBehaviour
 
     void CargarYMostrarUsuario(string userId)
     {
-        FirebaseFirestore.DefaultInstance.Collection("usuarios").Document(userId)
+        FirebaseFirestore.DefaultInstance.Collection("users").Document(userId)
             .GetSnapshotAsync().ContinueWithOnMainThread(task =>
             {
                 if (task.IsCompleted && task.Result.Exists)
                 {
                     DocumentSnapshot userDoc = task.Result;
-                    string username = userDoc.GetValue<string>("username");
+                    string username = userDoc.GetValue<string>("DisplayName");
                     string rango = userDoc.GetValue<string>("rango"); 
 
                     GameObject nuevaTarjeta = Instantiate(tarjetaUsuarioPrefab, contenedorMiembros);
