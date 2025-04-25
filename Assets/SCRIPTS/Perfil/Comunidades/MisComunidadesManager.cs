@@ -7,6 +7,7 @@ using TMPro;
 using System;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
+using System.Collections;
 
 public class MisComunidadesManager : MonoBehaviour
 {
@@ -343,134 +344,128 @@ public class MisComunidadesManager : MonoBehaviour
         // Mostrar el panel de detalles
         panelDetalleGrupo.SetActive(true);
 
-        // Configurar el botón ver miembros aquí
-        if (btnVerMiembros != null)
-        {
-            btnVerMiembros.onClick.RemoveAllListeners(); // Limpiar listeners anteriores
-            btnVerMiembros.onClick.AddListener(() => MostrarMiembros(dataComunidad));
-        }
-        // Seleccionar el botón Ver Miembros automáticamente
-        EventSystem.current.SetSelectedGameObject(btnVerMiembros.gameObject);
-        btnVerMiembros.Select();
-        btnVerMiembros.onClick.RemoveAllListeners(); // Limpiar listeners anteriores
+        // Configurar el botón (por si el usuario quiere recargar)
+        btnVerMiembros.onClick.RemoveAllListeners();
         btnVerMiembros.onClick.AddListener(() => MostrarMiembros(dataComunidad));
 
+        // 👇 Llamar automáticamente a MostrarMiembros
+        MostrarMiembros(dataComunidad);
+
+        // Seleccionar el botón para navegación con teclado/controller
+        EventSystem.current.SetSelectedGameObject(btnVerMiembros.gameObject);
     }
 
-    //void MostrarMiembros(Dictionary<string, object> dataComunidad)
-    //{
-    //    if (panelMiembros == null || contenedorMiembros == null || prefabMiembro == null)
-    //    {
-    //        Debug.LogError("Faltan referencias en el panel de miembros");
-    //        return;
-    //    }
-
-    //    // Limpiar miembros anteriores
-    //    foreach (Transform hijo in contenedorMiembros)
-    //    {
-    //        Destroy(hijo.gameObject);
-    //    }
-
-    //    if (dataComunidad.TryGetValue("miembros", out object miembrosObj) && miembrosObj is List<object> miembros)
-    //    {
-    //        if (miembros.Count == 0)
-    //        {
-    //            Debug.Log("La comunidad no tiene miembros");
-    //            return;
-    //        }
-
-    //        foreach (object miembro in miembros)
-    //        {
-    //            string idMiembro = miembro.ToString();
-    //            ObtenerDetallesUsuario(idMiembro);
-    //        }
-    //    }
-    //    else
-    //    {
-    //        Debug.LogError("No se pudo obtener la lista de miembros");
-    //    }
-
-    //    // Mostrar el panel de miembros
-    //    panelMiembros.SetActive(true);
-    //}
 
     void MostrarMiembros(Dictionary<string, object> dataComunidad)
     {
+        // Limpiar miembros anteriores
+        foreach (Transform child in contenedorMiembros)
+        {
+            Destroy(child.gameObject);
+        }
         if (panelMiembros == null || contenedorMiembros == null || prefabMiembro == null) return;
 
-        // Limpiar miembros anteriores
+        // Limpiar TODOS los miembros anteriores (incluyendo mensajes de carga)
         foreach (Transform hijo in contenedorMiembros)
         {
             Destroy(hijo.gameObject);
         }
 
+        // Limpiar cualquier corrutina en progreso
+        StopAllCoroutines();
+
+        // Mostrar mensaje de carga
+        GameObject loadingItem = Instantiate(prefabMiembro, contenedorMiembros);
+        TMP_Text loadingText = loadingItem.GetComponentInChildren<TMP_Text>();
+        if (loadingText != null) loadingText.text = "Cargando miembros...";
+
         // Obtener la lista de miembros
         if (dataComunidad.TryGetValue("miembros", out object miembrosObj) && miembrosObj is List<object> miembros)
         {
-            foreach (object miembro in miembros)
+            if (miembros.Count == 0)
             {
-                string idMiembro = miembro.ToString(); // Aquí puedes mostrar solo el ID o luego hacer una consulta para obtener más info
-                GameObject item = Instantiate(prefabMiembro, contenedorMiembros);
-                TMP_Text texto = item.GetComponent<TMP_Text>();
-                if (texto != null)
-                    texto.text = idMiembro;
+                Destroy(loadingItem);
+                GameObject emptyItem = Instantiate(prefabMiembro, contenedorMiembros);
+                TMP_Text emptyText = emptyItem.GetComponentInChildren<TMP_Text>();
+                if (emptyText != null) emptyText.text = "No hay miembros en esta comunidad";
+                panelMiembros.SetActive(true);
+                return;
             }
-        }
 
-        // Mostrar el panel de miembros
-        panelMiembros.SetActive(true);
+            StartCoroutine(CargarMiembrosConInfo(miembros));
+        }
+        else
+        {
+            Destroy(loadingItem);
+            GameObject errorItem = Instantiate(prefabMiembro, contenedorMiembros);
+            TMP_Text errorText = errorItem.GetComponentInChildren<TMP_Text>();
+            if (errorText != null) errorText.text = "Error al obtener la lista de miembros";
+            panelMiembros.SetActive(true);
+        }
     }
 
-    //void ObtenerDetallesUsuario(string userId)
-    //{
-    //    FirebaseFirestore.DefaultInstance
-    //        .Collection("users")
-    //        .Document(userId)
-    //        .GetSnapshotAsync()
-    //        .ContinueWith(task =>
-    //        {
-    //            if (task.IsFaulted)
-    //            {
-    //                Debug.LogError("Error al obtener usuario: " + task.Exception);
-    //                return;
-    //            }
+    IEnumerator CargarMiembrosConInfo(List<object> miembros)
+    {
+        // Limpiar mensaje de carga
+        if (contenedorMiembros.childCount > 0)
+            Destroy(contenedorMiembros.GetChild(0).gameObject);
 
-    //            DocumentSnapshot snapshot = task.Result;
-    //            if (snapshot.Exists)
-    //            {
-    //                string displayName = "Sin nombre";
-    //                string rango = "Sin rango";
+        foreach (object miembro in miembros)
+        {
+            string idMiembro = miembro.ToString();
 
-    //                if (snapshot.ContainsField("DisplayName"))
-    //                {
-    //                    displayName = snapshot.GetValue<string>("DisplayName");
-    //                }
+            // 1. Crear el item inmediatamente
+            GameObject item = Instantiate(prefabMiembro, contenedorMiembros);
 
-    //                if (snapshot.ContainsField("Rango"))
-    //                {
-    //                    rango = snapshot.GetValue<string>("Rango");
-    //                }
+            // Obtener referencias a los componentes TMP_Text
+            TMP_Text[] textos = item.GetComponentsInChildren<TMP_Text>(true);
+            TMP_Text nombreText = textos.Length > 0 ? textos[0] : null;
+            TMP_Text rangoText = textos.Length > 1 ? textos[1] : null;
 
-    //                UnityMainThreadDispatcher.Instance().Enqueue(() =>
-    //                {
-    //                    CrearItemMiembroUI(displayName, rango);
-    //                });
-    //            }
-    //        });
-    //}
+            if (nombreText == null || rangoText == null)
+            {
+                Debug.LogError("No se encontraron los componentes TMP_Text necesarios en el prefab");
+                continue;
+            }
 
-    //void CrearItemMiembroUI(string nombre, string rango)
-    //{
-    //    GameObject item = Instantiate(prefabMiembro, contenedorMiembros);
+            // Texto temporal mientras carga
+            nombreText.text = "Cargando...";
+            rangoText.text = "";
 
-    //    TMP_Text nombreTMP = item.transform.Find("TextoNombre")?.GetComponent<TMP_Text>();
-    //    TMP_Text rangoTMP = item.transform.Find("TextoRango")?.GetComponent<TMP_Text>();
+            // 2. Obtener datos del usuario
+            var userRef = db.Collection("users").Document(idMiembro);
+            var task = userRef.GetSnapshotAsync();
 
-    //    if (nombreTMP != null) nombreTMP.text = nombre;
-    //    if (rangoTMP != null) rangoTMP.text = rango;
-    //}
+            yield return new WaitUntil(() => task.IsCompleted);
 
+            if (task.IsFaulted)
+            {
+                nombreText.text = $"{idMiembro} (error)";
+                rangoText.text = "";
+                Debug.LogError($"Error al cargar: {task.Exception}");
+                continue;
+            }
 
+            var userDoc = task.Result;
+
+            if (!userDoc.Exists)
+            {
+                nombreText.text = $"{idMiembro} (no existe)";
+                rangoText.text = "";
+                continue;
+            }
+
+            // 3. Actualizar con datos reales
+            var userData = userDoc.ToDictionary();
+            string displayName = userData.ContainsKey("DisplayName") ? userData["DisplayName"].ToString() : "Sin nombre";
+            string rango = userData.ContainsKey("Rango") ? userData["Rango"].ToString() : "Sin rango";
+
+            nombreText.text = displayName;
+            rangoText.text = rango;
+        }
+
+        panelMiembros.SetActive(true);
+    }
     public void CerrarPanelDetalle()
     {
         if (panelDetalleGrupo != null)
