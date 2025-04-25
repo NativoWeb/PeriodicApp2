@@ -27,6 +27,7 @@ public class PreguntaData
 
 public class Game2 : MonoBehaviour
 {
+    Animator anim;
     public static Game2 Instancia;
 
     public TextMeshProUGUI txtPregunta;
@@ -52,6 +53,7 @@ public class Game2 : MonoBehaviour
 
     void Awake()
     {
+        anim = GetComponent<Animator>();
         auth = FirebaseAuth.DefaultInstance;
         db = FirebaseFirestore.DefaultInstance;
         CargarPreguntas();
