@@ -66,7 +66,6 @@ public class NavegacionComunidades : MonoBehaviour
         m_InvitacionesUI.SetActive(true);
         m_InicioComunidadesUI.SetActive(false);
         m_ListaComunidadesUI.SetActive(false);
-        //m_DetallesComunidadUI.SetActive(false);
         m_MisComunidadesUI.SetActive(false);
         m_CrearComunidadUI.SetActive(false);
 

@@ -49,15 +49,14 @@ public class MisComunidadesManager : MonoBehaviour
     public GameObject prefabMiembro; // Prefab de un TextMeshProUGUI o un diseño para cada miembro
     public Button btnVerMiembros; // Botón en el panel detalle que activará el panel miembros
 
-    [Header("Panel Solicitudes")]
+    [Header("Panel Detalle Solicitudes")]
     public GameObject panelSolicitudes;
     public Transform contenedorSolicitudes;
     public GameObject prefabSolicitud;
-    public Button btnVerSolicitudes;  
-    private string comunidadActualId; // Guardar el ID al abrir el detalle
+    public Button btnVerSolicitudes;
 
-    // 👇 NUEVO BLOQUE
-  
+    
+
     void Start()
     {
         db = FirebaseFirestore.DefaultInstance;
@@ -137,6 +136,8 @@ public class MisComunidadesManager : MonoBehaviour
             foreach (DocumentSnapshot doc in task.Result.Documents)
             {
                 Dictionary<string, object> data = doc.ToDictionary();
+                // Añadir el ID del documento como un campo adicional
+                data["documentId"] = doc.Id; 
                 todasComunidades.Add(data);
             }
 
@@ -294,6 +295,8 @@ public class MisComunidadesManager : MonoBehaviour
     }
     void MostrarDetalleComunidad(Dictionary<string, object> dataComunidad)
     {
+        LimpiarYCerrarPaneles();
+
         if (panelDetalleGrupo == null) return;
 
         // Extraer datos de la comunidad
@@ -332,16 +335,25 @@ public class MisComunidadesManager : MonoBehaviour
         // Mostrar el panel de detalles
         panelDetalleGrupo.SetActive(true);
 
-        // Configurar el botón (por si el usuario quiere recargar)
+        // Configurar botones
         btnVerMiembros.onClick.RemoveAllListeners();
-        btnVerMiembros.onClick.AddListener(() => MostrarMiembros(dataComunidad));
+        btnVerMiembros.onClick.AddListener(() => {
+            LimpiarYCerrarPaneles();
+            MostrarMiembros(dataComunidad);
+        });
 
+        btnVerSolicitudes.onClick.RemoveAllListeners();
+        btnVerSolicitudes.onClick.AddListener(() => {
+            LimpiarYCerrarPaneles();
+            MostrarSolicitudes(dataComunidad);
+        });
         // 👇 Llamar automáticamente a MostrarMiembros
         MostrarMiembros(dataComunidad);
 
         // Seleccionar el botón para navegación con teclado/controller
         EventSystem.current.SetSelectedGameObject(btnVerMiembros.gameObject);
     }
+
 
 
     void MostrarMiembros(Dictionary<string, object> dataComunidad)
@@ -456,168 +468,177 @@ public class MisComunidadesManager : MonoBehaviour
 
     }
 
-    //void MostrarSolicitudes(Dictionary<string, object> dataComunidad)
-    //{
-    //    if (panelSolicitudes == null || contenedorSolicitudes == null) return;
-
-    //    // Limpiar solicitudes anteriores
-    //    foreach (Transform child in contenedorSolicitudes)
-    //    {
-    //        Destroy(child.gameObject);
-    //    }
-
-    //    comunidadActualId = dataComunidad.GetValueOrDefault("id", "").ToString();
-    //    if (string.IsNullOrEmpty(comunidadActualId))
-    //    {
-    //        Debug.LogError("ID de comunidad no encontrado");
-    //        return;
-    //    }
-
-    //    // Consultar solicitudes pendientes
-    //    db.Collection("comunidades").Document(comunidadActualId)
-    //      .Collection("solicitudes")
-    //      .WhereEqualTo("estado", "pendiente")
-    //      .GetSnapshotAsync()
-    //      .ContinueWithOnMainThread(task =>
-    //      {
-    //          if (task.IsFaulted) return;
-
-    //          // 1. Recopilar todos los userIDs únicos
-    //          var userIDs = new List<string>();
-    //          foreach (DocumentSnapshot doc in task.Result.Documents)
-    //          {
-    //              var data = doc.ToDictionary();
-    //              userIDs.Add(data.GetValueOrDefault("usuarioId", "").ToString());
-    //          }
-
-    //          // 2. Cargar todos los usuarios en una sola consulta
-    //          db.Collection("users").WhereIn(FieldPath.DocumentId, userIDs).GetSnapshotAsync()
-    //            .ContinueWithOnMainThread(usersTask =>
-    //            {
-    //                if (usersTask.IsFaulted) return;
-
-    //                // 3. Mapear datos de usuarios por ID
-    //                var userDataMap = new Dictionary<string, Dictionary<string, object>>();
-    //                foreach (DocumentSnapshot userDoc in usersTask.Result.Documents)
-    //                {
-    //                    userDataMap[userDoc.Id] = userDoc.ToDictionary();
-    //                }
-
-    //                // 4. Crear las solicitudes con los datos combinados
-    //                foreach (DocumentSnapshot doc in task.Result.Documents)
-    //                {
-    //                    var dataSolicitud = doc.ToDictionary();
-    //                    string usuarioId = dataSolicitud.GetValueOrDefault("usuarioId", "").ToString();
-
-    //                    if (userDataMap.TryGetValue(usuarioId, out var userData))
-    //                    {
-    //                        string displayName = userData.GetValueOrDefault("DisplayName", "Usuario").ToString();
-    //                        string rango = userData.GetValueOrDefault("Rango", "Nuevo").ToString();
-
-    //                        CrearSolicitudUI(doc.Id, dataSolicitud, displayName, rango);
-    //                    }
-    //                }
-    //            });
-    //      });
-    //}
-    //void CrearSolicitudUI(string solicitudId, Dictionary<string, object> dataSolicitud, string displayName, string rango)
-    //{
-    //    GameObject solicitudGO = Instantiate(prefabSolicitud, contenedorSolicitudes);
-    //    TarjetaSolicitudUI ui = solicitudGO.GetComponent<TarjetaSolicitudUI>();
-
-    //    string usuarioId = dataSolicitud.GetValueOrDefault("usuarioId", "").ToString();
-
-    //    // Configurar datos temporales (mientras se carga la info del usuario)
-    //    ui.Configurar(
-    //        solicitudId,
-    //        comunidadActualId,
-    //        usuarioId,
-    //        "Cargando...",  // Nombre provisional
-    //        "...",          // Rango provisional
-    //        "Hoy",         // Fecha (puedes usar dataSolicitud["fecha"] si existe)
-    //        AceptarSolicitud,
-    //        RechazarSolicitud
-    //    );
-
-    //    // 👇 Cargar datos del usuario desde la colección `users`
-    //    db.Collection("users").Document(usuarioId).GetSnapshotAsync().ContinueWithOnMainThread(userTask =>
-    //    {
-    //        if (userTask.IsFaulted || !userTask.Result.Exists)
-    //        {
-    //            Debug.LogError("Error al cargar datos del usuario");
-    //            return;
-    //        }
-
-    //        var userData = userTask.Result.ToDictionary();
-    //        string displayName = userData.GetValueOrDefault("DisplayName", "Usuario").ToString();
-    //        string rango = userData.GetValueOrDefault("Rango", "Novato de laboratorio").ToString();
-
-    //        // Actualizar el UI con los datos reales
-    //        ui.textoNombre.text = displayName;
-    //        ui.textoRango.text = rango;
-    //    });
-    //}
-
-    //void AceptarSolicitud(string solicitudId, string comunidadId)
-    //{
-    //    var solicitudRef = db.Collection("comunidades").Document(comunidadId)
-    //                       .Collection("solicitudes").Document(solicitudId);
-
-    //    solicitudRef.GetSnapshotAsync().ContinueWithOnMainThread(solicitudTask =>
-    //    {
-    //        if (solicitudTask.IsFaulted) return;
-
-    //        var data = solicitudTask.Result.ToDictionary();
-    //        string usuarioId = data.GetValueOrDefault("usuarioId", "").ToString();
-
-    //        // 1. Añadir usuario a miembros
-    //        var comunidadRef = db.Collection("comunidades").Document(comunidadId);
-    //        comunidadRef.UpdateAsync("miembros", FieldValue.ArrayUnion(usuarioId))
-    //            .ContinueWithOnMainThread(updateTask =>
-    //            {
-    //                if (updateTask.IsFaulted) return;
-
-    //                // 2. Marcar solicitud como "aceptada"
-    //                solicitudRef.UpdateAsync("estado", "aceptada")
-    //                    .ContinueWithOnMainThread(_ => DestroySolicitudUI(solicitudId));
-    //            });
-    //    });
-    //}
-    //void RechazarSolicitud(string solicitudId, string comunidadId)
-    //{
-    //    db.Collection("comunidades").Document(comunidadId)
-    //      .Collection("solicitudes").Document(solicitudId)
-    //      .UpdateAsync("estado", "rechazada")
-    //      .ContinueWithOnMainThread(task =>
-    //      {
-    //          if (!task.IsFaulted)
-    //          {
-    //              DestroySolicitudUI(solicitudId);
-    //          }
-    //      });
-    //}
-    //void DestroySolicitudUI(string solicitudId)
-    //{
-    //    foreach (Transform child in contenedorSolicitudes)
-    //    {
-    //        if (child.gameObject.name == solicitudId)
-    //        {
-    //            Destroy(child.gameObject);
-    //            break;
-    //        }
-    //    }
-    //}
     public void CerrarPanelDetalle()
     {
         if (panelDetalleGrupo != null)
             panelDetalleGrupo.SetActive(false);
 
-        // Limpiar scroll de miembros
-        foreach (Transform hijo in contenedorMiembros)
-        {
-            Destroy(hijo.gameObject);
-        }
     }
 
+    void LimpiarYCerrarPaneles()
+    {
+        // Limpiar panel de miembros
+        foreach (Transform child in contenedorMiembros)
+        {
+            Destroy(child.gameObject);
+        }
+        panelMiembros.SetActive(false);
 
+        // Limpiar panel de solicitudes
+        foreach (Transform child in contenedorSolicitudes)
+        {
+            Destroy(child.gameObject);
+        }
+        panelSolicitudes.SetActive(false);
+    }
+    void MostrarSolicitudes(Dictionary<string, object> dataComunidad)
+    {
+        // Limpiar solicitudes anteriores
+        foreach (Transform child in contenedorSolicitudes)
+        {
+            Destroy(child.gameObject);
+        }
+
+        if (!dataComunidad.ContainsKey("documentId"))
+        {
+            Debug.LogError("La comunidad no tiene documentId");
+            return;
+        }
+
+        string comunidadId = dataComunidad["documentId"].ToString();
+
+        GameObject loadingItem = Instantiate(prefabSolicitud, contenedorSolicitudes);
+        loadingItem.GetComponentInChildren<TMP_Text>().text = "Cargando solicitudes...";
+
+        // Desactivar todos los botones en el mensaje de carga
+        Button[] botones = loadingItem.GetComponentsInChildren<Button>(true);
+        foreach (Button btn in botones)
+        {
+            btn.gameObject.SetActive(false);
+        }
+
+        db.Collection("solicitudes_comunidad")
+          .WhereEqualTo("idComunidad", comunidadId)
+          .WhereEqualTo("estado", "pendiente")
+          .GetSnapshotAsync()
+          .ContinueWithOnMainThread(task =>
+          {
+              Destroy(loadingItem);
+
+              if (task.IsFaulted)
+              {
+                  GameObject errorItem = InstantiateErrorText("Error al cargar solicitudes");
+                  // Desactivar botones en mensaje de error
+                  Button[] errorButtons = errorItem.GetComponentsInChildren<Button>(true);
+                  foreach (Button btn in errorButtons)
+                  {
+                      btn.gameObject.SetActive(false);
+                  }
+                  Debug.LogError(task.Exception);
+                  return;
+              }
+
+              if (task.Result.Count == 0)
+              {
+                  GameObject noItems = InstantiateErrorText("No hay solicitudes pendientes");
+                  // Desactivar botones cuando no hay solicitudes
+                  Button[] noItemsButtons = noItems.GetComponentsInChildren<Button>(true);
+                  foreach (Button btn in noItemsButtons)
+                  {
+                      btn.gameObject.SetActive(false);
+                  }
+                  return;
+              }
+
+              foreach (DocumentSnapshot solicitudDoc in task.Result.Documents)
+              {
+                  var data = solicitudDoc.ToDictionary();
+                  CrearItemSolicitud(data, comunidadId, solicitudDoc.Id);
+              }
+
+              panelSolicitudes.SetActive(true);
+          });
+    }
+    void CrearItemSolicitud(Dictionary<string, object> dataSolicitud, string comunidadId, string solicitudId)
+    {
+        GameObject item = Instantiate(prefabSolicitud, contenedorSolicitudes);
+
+        // Guardar referencia al item en un componente temporal
+        var itemController = item.AddComponent<SolicitudItemController>();
+        itemController.Initialize(this, item, comunidadId, solicitudId);
+
+        // Configurar textos
+        if (dataSolicitud.ContainsKey("nombreUsuario"))
+        {
+            item.transform.Find("Nombretxt").GetComponent<TMP_Text>().text = dataSolicitud["nombreUsuario"].ToString();
+        }
+
+        if (dataSolicitud.ContainsKey("fechaSolicitud"))
+        {
+            Timestamp timestamp = (Timestamp)dataSolicitud["fechaSolicitud"];
+            DateTime fecha = timestamp.ToDateTime().ToLocalTime();
+            item.transform.Find("Fechatxt").GetComponent<TMP_Text>().text = fecha.ToString("dd/MM/yyyy HH:mm");
+        }
+
+        // Configurar botones
+        Button btnAceptar = item.transform.Find("AceptarBtn").GetComponent<Button>();
+        Button btnRechazar = item.transform.Find("RechazarBtn").GetComponent<Button>();
+
+        btnAceptar.onClick.AddListener(() => ProcesarSolicitud(item, comunidadId, solicitudId, dataSolicitud["idUsuario"].ToString(), true));
+        btnRechazar.onClick.AddListener(() => ProcesarSolicitud(item, comunidadId, solicitudId, dataSolicitud["idUsuario"].ToString(), false));
+    }
+    void ProcesarSolicitud(GameObject itemSolicitud, string comunidadId, string solicitudId, string usuarioId, bool aceptar)
+    {
+        // Eliminar el item inmediatamente
+        Destroy(itemSolicitud);
+
+        DocumentReference solicitudRef = db.Collection("solicitudes_comunidad").Document(solicitudId);
+        DocumentReference comunidadRef = db.Collection("comunidades").Document(comunidadId);
+
+        if (aceptar)
+        {
+            var batch = db.StartBatch();
+            batch.Update(solicitudRef, "estado", "aceptada");
+            batch.Update(comunidadRef, "miembros", FieldValue.ArrayUnion(usuarioId));
+
+            batch.CommitAsync().ContinueWithOnMainThread(task =>
+            {
+                if (!task.IsCompletedSuccessfully)
+                {
+                    Debug.LogError("Error al procesar solicitud: " + task.Exception);
+                    // Opcional: Podrías reinstanciar el item si falla
+                }
+            });
+        }
+        else
+        {
+            solicitudRef.UpdateAsync("estado", "rechazada")
+                       .ContinueWithOnMainThread(task =>
+                       {
+                           if (!task.IsCompletedSuccessfully)
+                           {
+                               Debug.LogError("Error al rechazar solicitud: " + task.Exception);
+                           }
+                       });
+        }
+    }
+    GameObject InstantiateErrorText(string message)
+    {
+        GameObject errorItem = Instantiate(prefabSolicitud, contenedorSolicitudes);
+        TMP_Text textComponent = errorItem.GetComponentInChildren<TMP_Text>();
+        if (textComponent != null)
+        {
+            textComponent.text = message;
+        }
+
+        // Desactivar todos los botones
+        Button[] buttons = errorItem.GetComponentsInChildren<Button>(true);
+        foreach (Button btn in buttons)
+        {
+            btn.gameObject.SetActive(false);
+        }
+
+        panelSolicitudes.SetActive(true);
+        return errorItem;
+    }
 }
