@@ -136,8 +136,14 @@ public class MisComunidadesManager : MonoBehaviour
             foreach (DocumentSnapshot doc in task.Result.Documents)
             {
                 Dictionary<string, object> data = doc.ToDictionary();
-                // Añadir el ID del documento como un campo adicional
-                data["documentId"] = doc.Id; 
+                data["documentId"] = doc.Id;
+
+                // Asegurarse de que el campo creadorId esté presente
+                if (!data.ContainsKey("creadorId") && data.ContainsKey("creador"))
+                {
+                    data["creadorId"] = data["creador"]; // Asumimos que 'creador' contiene el ID
+                }
+
                 todasComunidades.Add(data);
             }
 
@@ -304,7 +310,9 @@ public class MisComunidadesManager : MonoBehaviour
         string descripcion = dataComunidad.GetValueOrDefault("descripcion", "Sin descripción").ToString();
         string tipo = dataComunidad.GetValueOrDefault("tipo", "publica").ToString().ToLower();
         string creador = dataComunidad.GetValueOrDefault("creadorUsername", "Sin creador").ToString();
+        string creadorId = dataComunidad.GetValueOrDefault("creadorId", "").ToString();
 
+        // Manejo de la fecha
         string fechaFormateada = "Fecha desconocida";
         if (dataComunidad.TryGetValue("fechaCreacion", out object fechaObj))
         {
@@ -319,6 +327,7 @@ public class MisComunidadesManager : MonoBehaviour
             }
         }
 
+        // Obtener cantidad de miembros
         int cantidadMiembros = 0;
         if (dataComunidad.TryGetValue("miembros", out object miembrosObj) && miembrosObj is List<object> miembros)
         {
@@ -342,18 +351,32 @@ public class MisComunidadesManager : MonoBehaviour
             MostrarMiembros(dataComunidad);
         });
 
-        btnVerSolicitudes.onClick.RemoveAllListeners();
-        btnVerSolicitudes.onClick.AddListener(() => {
-            LimpiarYCerrarPaneles();
-            MostrarSolicitudes(dataComunidad);
-        });
-        // 👇 Llamar automáticamente a MostrarMiembros
+        // Configurar botón de solicitudes solo si el usuario actual es el creador
+        if (btnVerSolicitudes != null)
+        {
+            bool esCreador = usuarioActualId == creadorId;
+            btnVerSolicitudes.interactable = esCreador;
+            btnVerSolicitudes.gameObject.SetActive(esCreador);
+
+            if (esCreador)
+            {
+                btnVerSolicitudes.onClick.RemoveAllListeners();
+                btnVerSolicitudes.onClick.AddListener(() => {
+                    LimpiarYCerrarPaneles();
+                    MostrarSolicitudes(dataComunidad);
+                });
+            }
+        }
+
+        // Llamar automáticamente a MostrarMiembros
         MostrarMiembros(dataComunidad);
 
         // Seleccionar el botón para navegación con teclado/controller
-        EventSystem.current.SetSelectedGameObject(btnVerMiembros.gameObject);
+        if (btnVerMiembros != null && btnVerMiembros.gameObject != null)
+        {
+            EventSystem.current.SetSelectedGameObject(btnVerMiembros.gameObject);
+        }
     }
-
 
 
     void MostrarMiembros(Dictionary<string, object> dataComunidad)
