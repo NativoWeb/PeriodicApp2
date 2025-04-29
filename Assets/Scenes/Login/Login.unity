@@ -2370,7 +2370,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: -0.33306885, y: 475}
+  m_AnchoredPosition: {x: -0.33312988, y: 475}
   m_SizeDelta: {x: -186.52, y: -2173.7788}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &620637391
@@ -3246,7 +3246,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0.7964168}
   m_AnchorMax: {x: 1, y: 0.7964168}
-  m_AnchoredPosition: {x: 0.000030517578, y: -70.546}
+  m_AnchoredPosition: {x: 0, y: -70.54599}
   m_SizeDelta: {x: -207.4159, y: 159.1277}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &920117087
@@ -5508,7 +5508,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 22.5241, y: 4.2903}
+  m_AnchoredPosition: {x: 22.524048, y: 4.2903004}
   m_SizeDelta: {x: 45.0482, y: -8.5806}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1591276669
@@ -6898,23 +6898,22 @@ MonoBehaviour:
   m_GameObject: {fileID: 2067796218}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 88d2c32ace1856f47a782bba8cb84dc7, type: 3}
+  m_Script: {fileID: 11500000, guid: 556269b5315b3484da0a859a0045546e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  emailInput: {fileID: 1637598625}
+  passwordInput: {fileID: 1145489083}
+  errorText: {fileID: 920117087}
+  loginButton: {fileID: 359599426}
+  toggleRememberMe: {fileID: 1476049982}
   btnResetPassword: {fileID: 745354997}
   btnSendReset: {fileID: 1325031178}
   emailResetInput: {fileID: 520335930}
-  txtResetStatus: {fileID: 678377101}
-  PanelRestablecerUI: {fileID: 1965386420}
-  PanelLogin: {fileID: 1404585961}
-  PanelMessage: {fileID: 620637389}
-  emailInput: {fileID: 1637598625}
-  passwordInput: {fileID: 1145489083}
-  toggleRememberMe: {fileID: 1476049982}
-  loginButton: {fileID: 359599426}
-  messageButton: {fileID: 1609819654}
-  txtError: {fileID: 920117087}
-  m_SinInternetUI: {fileID: 613919598}
+  txtResetStatus: {fileID: 920117087}
+  panelLogin: {fileID: 1404585961}
+  panelRestablecerUI: {fileID: 1965386420}
+  panelMessage: {fileID: 620637389}
+  sinInternetPopup: {fileID: 613919598}
 --- !u!4 &2067796220
 Transform:
   m_ObjectHideFlags: 0
@@ -6982,63 +6981,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_Padding: {x: -8, y: -5, z: -8, w: -5}
   m_Softness: {x: 0, y: 0}
---- !u!1001 &2241991202838126413
-PrefabInstance:
-  m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 0}
-    m_Modifications:
-    - target: {fileID: 1946280160317745828, guid: 0a389d73e87648f4fbc9534d4d729825, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: 788.7494
-      objectReference: {fileID: 0}
-    - target: {fileID: 1946280160317745828, guid: 0a389d73e87648f4fbc9534d4d729825, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 1212.8715
-      objectReference: {fileID: 0}
-    - target: {fileID: 1946280160317745828, guid: 0a389d73e87648f4fbc9534d4d729825, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: -0.23073256
-      objectReference: {fileID: 0}
-    - target: {fileID: 1946280160317745828, guid: 0a389d73e87648f4fbc9534d4d729825, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 1946280160317745828, guid: 0a389d73e87648f4fbc9534d4d729825, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 1946280160317745828, guid: 0a389d73e87648f4fbc9534d4d729825, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 1946280160317745828, guid: 0a389d73e87648f4fbc9534d4d729825, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 1946280160317745828, guid: 0a389d73e87648f4fbc9534d4d729825, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 1946280160317745828, guid: 0a389d73e87648f4fbc9534d4d729825, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 1946280160317745828, guid: 0a389d73e87648f4fbc9534d4d729825, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 5224066127383067661, guid: 0a389d73e87648f4fbc9534d4d729825, type: 3}
-      propertyPath: m_Name
-      value: FirebaseManager
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents: []
-  m_SourcePrefab: {fileID: 100100000, guid: 0a389d73e87648f4fbc9534d4d729825, type: 3}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -7047,6 +6989,5 @@ SceneRoots:
   - {fileID: 1822695573}
   - {fileID: 276653796}
   - {fileID: 27721950}
-  - {fileID: 2241991202838126413}
   - {fileID: 2067796220}
   - {fileID: 792260385}
