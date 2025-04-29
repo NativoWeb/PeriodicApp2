@@ -8,6 +8,7 @@ using System;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
 using System.Collections;
+using UnityEngine.SceneManagement;
 
 public class MisComunidadesManager : MonoBehaviour
 {
@@ -48,16 +49,24 @@ public class MisComunidadesManager : MonoBehaviour
     public TMP_Text detalleMiembros;
 
     [Header("Panel Detalle Miembros")]
-    public GameObject panelMiembros; // Panel con el ScrollView
+    public GameObject panelMiembros = null; // Panel con el ScrollView
     public Transform contenedorMiembros; // Contenedor donde se instanciarán los miembros
     public GameObject prefabMiembro; // Prefab de un TextMeshProUGUI o un diseño para cada miembro
     public Button btnVerMiembros; // Botón en el panel detalle que activará el panel miembros
 
     [Header("Panel Detalle Solicitudes")]
-    public GameObject panelSolicitudes;
+    public GameObject panelSolicitudes = null;
     public Transform contenedorSolicitudes;
     public GameObject prefabSolicitud;
     public Button btnVerSolicitudes;
+
+    [Header("Botón Abandonar Comunidad")]
+    public GameObject panelConfirmacionAbandonar = null;
+    public Button btnAbandonarComunidad;
+    public TMP_Text textoConfirmacionAbandonar;
+    public Button btnCancelarAbandonar;
+    public Button btnConfirmarAbandonar;
+    private string comunidadActualId;
 
 
     void Start()
@@ -92,7 +101,20 @@ public class MisComunidadesManager : MonoBehaviour
             MostrarMensajeEstado("No hay usuario autenticado", true);
             Debug.LogWarning("No hay usuario autenticado");
         }
+        if (panelConfirmacionAbandonar != null)
+        {
+            panelConfirmacionAbandonar.SetActive(false);
 
+            if (btnConfirmarAbandonar != null)
+            {
+                btnConfirmarAbandonar.onClick.AddListener(ConfirmarAbandonarComunidad);
+            }
+
+            if (btnCancelarAbandonar != null)
+            {
+                btnCancelarAbandonar.onClick.AddListener(() => panelConfirmacionAbandonar.SetActive(false));
+            }
+        }
     }
 
     // Método para iniciar la búsqueda en tiempo real con un pequeño retraso
@@ -413,8 +435,67 @@ public class MisComunidadesManager : MonoBehaviour
         {
             EventSystem.current.SetSelectedGameObject(btnVerMiembros.gameObject);
         }
+        // configurar el btn de abandonarComunidad
+        if (btnAbandonarComunidad != null)
+        {
+            btnAbandonarComunidad.onClick.RemoveAllListeners();
+            btnAbandonarComunidad.onClick.AddListener(() => MostrarConfirmacionAbandonar(dataComunidad));
+
+            // Ocultar el botón si el usuario es el creador
+            bool esCreador = usuarioActualId == creadorId;
+            btnAbandonarComunidad.gameObject.SetActive(!esCreador);
+        }
+    }
+    void MostrarConfirmacionAbandonar(Dictionary<string, object> dataComunidad)
+    {
+        if (panelConfirmacionAbandonar == null) return;
+
+        comunidadActualId = dataComunidad["documentId"].ToString();
+        string nombreComunidad = dataComunidad.GetValueOrDefault("nombre", "esta comunidad").ToString();
+
+        textoConfirmacionAbandonar.text = $"¿Estás seguro que deseas abandonar {nombreComunidad}?";
+        panelConfirmacionAbandonar.SetActive(true);
+
+        // Seleccionar el botón de cancelar por defecto para mejor UX
+        EventSystem.current.SetSelectedGameObject(btnCancelarAbandonar.gameObject);
     }
 
+    void ConfirmarAbandonarComunidad()
+    {
+        if (string.IsNullOrEmpty(comunidadActualId) || string.IsNullOrEmpty(usuarioActualId))
+        {
+            Debug.LogError("Falta información para abandonar la comunidad");
+            return;
+        }
+
+        MostrarMensajeEstado("Abandonando comunidad...", true);
+        panelConfirmacionAbandonar.SetActive(false);
+
+        DocumentReference comunidadRef = db.Collection("comunidades").Document(comunidadActualId);
+
+        // Eliminar al usuario de la lista de miembros
+        comunidadRef.UpdateAsync("miembros", FieldValue.ArrayRemove(usuarioActualId))
+            .ContinueWithOnMainThread(task =>
+            {
+                if (task.IsFaulted || task.IsCanceled)
+                {
+                    MostrarMensajeEstado("Error al abandonar la comunidad", true);
+                    Debug.LogError("Error al abandonar comunidad: " + task.Exception);
+                    return;
+                }
+
+                MostrarMensajeEstado("Has abandonado la comunidad", true);
+
+                // Volver a cargar las comunidades del usuario después de un breve retraso
+                Invoke("VolverAScenaComunidades", 1.5f);
+            });
+    }
+
+    void VolverAScenaComunidades()
+    {
+        SceneManager.LoadScene("Comunidad");
+        
+    }
 
     void MostrarMiembros(Dictionary<string, object> dataComunidad)
     {
