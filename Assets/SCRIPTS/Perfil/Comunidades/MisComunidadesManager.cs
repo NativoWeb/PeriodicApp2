@@ -19,6 +19,10 @@ public class MisComunidadesManager : MonoBehaviour
     public TMP_Text textoEstado; // Nuevo: Texto para mostrar mensajes de estado
     public GameObject panelEstado; // Nuevo: Panel contenedor del texto de estado
 
+    [Header("Configuración Live Search")]
+    public float tiempoEsperaLiveSearch = 0.3f; // Tiempo en segundos para esperar entre búsquedas
+    private Coroutine liveSearchCoroutine; // Referencia a la corrutina de búsqueda
+
     [Header("Configuración de Mensajes")]
     public string mensajeCargando = "Cargando comunidades...";
     public string mensajeNoResultados = "No se encontraron coincidencias";
@@ -36,7 +40,7 @@ public class MisComunidadesManager : MonoBehaviour
 
     // instanciamos nuevo panel 
     [Header("Elementos panel detalle")]
-    public GameObject panelDetalleGrupo= null;
+    public GameObject panelDetalleGrupo = null;
     public TMP_Text detalleNombre;
     public TMP_Text detalleDescripcion;
     public TMP_Text detalleFecha;
@@ -55,7 +59,6 @@ public class MisComunidadesManager : MonoBehaviour
     public GameObject prefabSolicitud;
     public Button btnVerSolicitudes;
 
-    
 
     void Start()
     {
@@ -77,6 +80,10 @@ public class MisComunidadesManager : MonoBehaviour
 
             if (inputBusqueda != null)
             {
+                // Configurar el evento onValueChanged para el live search
+                inputBusqueda.onValueChanged.AddListener(IniciarLiveSearch);
+
+                // Mantener también el evento onSubmit para compatibilidad
                 inputBusqueda.onSubmit.AddListener(delegate { BuscarComunidades(); });
             }
         }
@@ -85,9 +92,31 @@ public class MisComunidadesManager : MonoBehaviour
             MostrarMensajeEstado("No hay usuario autenticado", true);
             Debug.LogWarning("No hay usuario autenticado");
         }
-        
+
     }
 
+    // Método para iniciar la búsqueda en tiempo real con un pequeño retraso
+    void IniciarLiveSearch(string texto)
+    {
+        // Cancelar cualquier búsqueda en progreso
+        if (liveSearchCoroutine != null)
+        {
+            StopCoroutine(liveSearchCoroutine);
+        }
+
+        // Iniciar una nueva búsqueda después de un pequeño retraso
+        liveSearchCoroutine = StartCoroutine(RealizarLiveSearch(texto));
+    }
+
+    // Corrutina para realizar la búsqueda después de un tiempo de espera
+    IEnumerator RealizarLiveSearch(string texto)
+    {
+        // Esperar un momento para evitar múltiples búsquedas mientras el usuario sigue escribiendo
+        yield return new WaitForSeconds(tiempoEsperaLiveSearch);
+
+        // Realizar la búsqueda con el texto actual
+        BuscarComunidades();
+    }
 
     // Nuevo método: Muestra mensajes de estado al usuario
     void MostrarMensajeEstado(string mensaje, bool mostrar = true)
@@ -145,6 +174,7 @@ public class MisComunidadesManager : MonoBehaviour
                 }
 
                 todasComunidades.Add(data);
+
             }
 
             MostrarTodasComunidades();
@@ -154,13 +184,21 @@ public class MisComunidadesManager : MonoBehaviour
 
     void BuscarComunidades()
     {
-        if (inputBusqueda == null || string.IsNullOrWhiteSpace(inputBusqueda.text))
+        if (inputBusqueda == null)
         {
             MostrarTodasComunidades();
             return;
         }
 
         string terminoBusqueda = inputBusqueda.text.Trim().ToLower();
+
+        // Si el campo de búsqueda está vacío, mostrar todas las comunidades
+        if (string.IsNullOrWhiteSpace(terminoBusqueda))
+        {
+            MostrarTodasComunidades();
+            return;
+        }
+
         int resultadosEncontrados = 0;
 
         // Limpiar contenedor
@@ -173,9 +211,8 @@ public class MisComunidadesManager : MonoBehaviour
         foreach (var comunidad in todasComunidades)
         {
             string nombre = comunidad.GetValueOrDefault("nombre", "").ToString().ToLower();
-            string descripcion = comunidad.GetValueOrDefault("descripcion", "").ToString().ToLower();
 
-            if (nombre.Contains(terminoBusqueda) || descripcion.Contains(terminoBusqueda))
+            if (nombre.Contains(terminoBusqueda))
             {
                 CrearTarjetaComunidad(comunidad);
                 resultadosEncontrados++;
@@ -221,7 +258,7 @@ public class MisComunidadesManager : MonoBehaviour
         string nombre = dataComunidad.GetValueOrDefault("nombre", "Sin nombre").ToString();
         string descripcion = dataComunidad.GetValueOrDefault("descripcion", "Sin descripción").ToString();
         string tipo = dataComunidad.GetValueOrDefault("tipo", "publica").ToString().ToLower();
-        
+
 
         // Manejo de la fecha
         string fechaFormateada = "Fecha desconocida";

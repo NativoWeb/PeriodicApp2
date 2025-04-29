@@ -8,7 +8,6 @@ public class NavegacionComunidades : MonoBehaviour
     [SerializeField] public GameObject m_MisComunidadesUI = null;
     [SerializeField] public GameObject m_CrearComunidadUI = null;
     [SerializeField] public GameObject m_ListaComunidadesUI = null;
-    [SerializeField] public GameObject m_InvitacionesUI = null;
     [SerializeField] public GameObject m_InicioComunidadesUI = null;
 
 
@@ -26,7 +25,7 @@ public class NavegacionComunidades : MonoBehaviour
         m_MisComunidadesUI.SetActive(false);
         m_CrearComunidadUI.SetActive(false);
         m_ListaComunidadesUI.SetActive(false);
-        m_InvitacionesUI.SetActive(false);
+ 
     }
 
     public void MostrarMisComunidades()
@@ -38,7 +37,7 @@ public class NavegacionComunidades : MonoBehaviour
         m_InicioComunidadesUI.SetActive(false);
         m_CrearComunidadUI.SetActive(false);
         m_ListaComunidadesUI.SetActive(false);
-        m_InvitacionesUI.SetActive(false);
+     
     }
     public void MostrarCrearComunidad()
     {
@@ -47,29 +46,20 @@ public class NavegacionComunidades : MonoBehaviour
         m_InicioComunidadesUI.SetActive(false);
         m_MisComunidadesUI.SetActive(false);
         m_ListaComunidadesUI.SetActive(false);
-        m_InvitacionesUI.SetActive(false);
+     
     }
    
     public void MostrarListaComunidades()
     {
         m_ListaComunidadesUI.SetActive(true);
         // recargamos el metodo de cargar cada vez que se activa el panel 
-        listaComunidadesManager.CargarComunidadesDelUsuario(); 
+        listaComunidadesManager.CargarComunidades();
 
         m_InicioComunidadesUI.SetActive(false);
         m_MisComunidadesUI.SetActive(false);
-        m_InvitacionesUI.SetActive(false);
         m_CrearComunidadUI.SetActive(false);
     }
-    public void MostrarInvitaciones()
-    {
-        m_InvitacionesUI.SetActive(true);
-        m_InicioComunidadesUI.SetActive(false);
-        m_ListaComunidadesUI.SetActive(false);
-        m_MisComunidadesUI.SetActive(false);
-        m_CrearComunidadUI.SetActive(false);
-
-    }
+    
 
 
 }
