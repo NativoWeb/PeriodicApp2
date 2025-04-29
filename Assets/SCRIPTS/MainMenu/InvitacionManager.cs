@@ -9,11 +9,10 @@ using System.Collections;
 
 public class InvitacionManager : MonoBehaviour
 {
-    public static InvitacionManager instancia; 
-    
+    public static InvitacionManager instancia;
+
     public GameObject panelInvitacionGO; // Asigna desde el Inspector
     private PanelInvitacionController panelInvitacion;
-    public GameObject panelInvitacionP; // ← este es tu panel visual de invitación
 
     FirebaseFirestore db;
     private DatabaseReference realtime;
@@ -22,9 +21,7 @@ public class InvitacionManager : MonoBehaviour
     string remitente; 
     private HashSet<string> invitacionesProcesadas = new HashSet<string>();
 
-
     private bool debeCambiarEscena = false;
-
     void Awake()
     {
         if (instancia == null)
@@ -43,7 +40,7 @@ public class InvitacionManager : MonoBehaviour
     {
         db = FirebaseFirestore.DefaultInstance;
         realtime = FirebaseDatabase.DefaultInstance.RootReference;
-        miUID = FirebaseAuth.DefaultInstance.CurrentUser.UserId;
+        miUID = FirebaseAuth.DefaultInstance.CurrentUser?.UserId;
 
         EscucharInvitaciones();
     }
@@ -127,7 +124,6 @@ public class InvitacionManager : MonoBehaviour
     {
         if (string.IsNullOrEmpty(invitacionIdSeleccionada))
         {
-            Debug.LogError("❌ No se ha seleccionado ninguna invitación.");
             return;
         }
 
@@ -136,7 +132,6 @@ public class InvitacionManager : MonoBehaviour
             {
                 if (task.IsFaulted)
                 {
-                    Debug.LogError("⚠️ Error al obtener la invitación: " + task.Exception);
                     return;
                 }
 
@@ -146,21 +141,15 @@ public class InvitacionManager : MonoBehaviour
 
                     if (!snap.HasChild("partidaId"))
                     {
-                        Debug.LogError("❌ La invitación no tiene 'partidaId'.");
                         return;
                     }
 
                     string partidaId = snap.Child("partidaId").Value.ToString();
-                    Debug.Log("🎯 Partida encontrada: " + partidaId);
 
                     // Guardar partidaId y cambiar escena
                     PlayerPrefs.SetString("PartidaId", partidaId);
                     PlayerPrefs.SetString("modoJuego", "online");
                     PlayerPrefs.Save();
-
-                    // 👉 OCULTAR el panel de invitación inmediatamente
-                    if (panelInvitacionP != null)
-                        panelInvitacionP.SetActive(false);
 
                     // Cambiar el estado de la invitación
                     realtime.Child("invitaciones").Child(miUID).Child(invitacionIdSeleccionada).Child("estado")
@@ -189,10 +178,6 @@ public class InvitacionManager : MonoBehaviour
         // Cambiar estado de la invitación en Firebase
         realtime.Child("invitaciones").Child(miUID).Child(invitacionIdSeleccionada).Child("estado")
             .SetValueAsync("rechazada");
-
-        // 👉 Ocultar el panel sin esperar nada más
-        if (panelInvitacionP != null)
-            panelInvitacionP.SetActive(false);
     }
 
 }

@@ -18,6 +18,7 @@ using UnityEngine.Video; // Agregar esto al inicio
 
 public class GuardarMisionCompletada : MonoBehaviour
 {
+    public static GuardarMisionCompletada instancia;
     public Button botonCompletarMision; // Asigna el botón desde el Inspector
     public GameObject imagenMision; // Asigna el objeto desde el Inspector
     public GameObject panel;
@@ -28,6 +29,18 @@ public class GuardarMisionCompletada : MonoBehaviour
     private string userId;
     public ParticleSystem particulasMision; // 🌟 Agregar en el Inspector
 
+    void Awake()
+    {
+        if (instancia == null)
+        {
+            instancia = this;
+            DontDestroyOnLoad(gameObject);
+        }
+        else
+        {
+            Destroy(gameObject); // Evitar duplicados
+        }
+    }
 
     void Start()
     {
@@ -240,7 +253,7 @@ public class GuardarMisionCompletada : MonoBehaviour
         }
     }
 
-    void SumarXPTemporario(int xp)
+    public void SumarXPTemporario(int xp)
     {
         int xpTemporal = PlayerPrefs.GetInt("TempXP", 0);
         xpTemporal += xp;
@@ -249,7 +262,7 @@ public class GuardarMisionCompletada : MonoBehaviour
         Debug.Log($"🔄 No hay conexión. XP {xp} guardado en TempXP. Total: {xpTemporal}");
     }
 
-    async void SumarXPFirebase(int xp)
+    public async void SumarXPFirebase(int xp)
     {
         var user = auth.CurrentUser;
         if (user == null)

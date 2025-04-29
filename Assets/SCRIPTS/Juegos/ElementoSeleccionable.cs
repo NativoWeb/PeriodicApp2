@@ -26,7 +26,7 @@ public class ElementoSeleccionable : MonoBehaviour
 
     void SeleccionarCarta()
     {
-        GameManager.instancia.ElementoSeleccionado(nombreElemento, this);
+        GameManager2.instancia.ElementoSeleccionado(nombreElemento, this);
     }
 
 

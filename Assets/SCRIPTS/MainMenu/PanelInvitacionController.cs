@@ -38,6 +38,15 @@ public class PanelInvitacionController : MonoBehaviour
         partidaId = _partidaId;
         txtInfo.text = $"Has sido invitado por {from} a jugar: {juego}";
         gameObject.SetActive(true);
+
+        Invoke("OcultarPanel", 5f);
+    }
+    void OcultarPanel()
+    {
+        if (gameObject != null && gameObject.activeSelf)
+        {
+            gameObject.SetActive(false);
+        }
     }
 
     IEnumerator AnimarEntrada()
