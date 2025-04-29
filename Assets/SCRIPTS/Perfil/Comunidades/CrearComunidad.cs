@@ -7,6 +7,7 @@ using System;
 using Firebase.Auth;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using UnityEngine.SceneManagement;
 
 public class CrearComunidad : MonoBehaviour
 {
@@ -90,24 +91,30 @@ public class CrearComunidad : MonoBehaviour
 
     private async void OnCrearComunidad()
     {
-        // Validar el formulario
-        if (!ValidarFormulario(out string mensajeError))
+        bool hayInternet = Application.internetReachability != NetworkReachability.NotReachable;
+
+        if (hayInternet)
         {
-            MostrarMensaje(mensajeError, true);
-            return;
-        }
 
-        try
-        {
-            // Obtener datos del formulario
-            string nombre = nombreInput.text.Trim();
-            string descripcion = descripcionInput.text.Trim();
-            string tipo = publicaToggle.isOn ? "publica" : "privada";
 
-            // Crear documento en Firestore
-            DocumentReference docRef = FirebaseFirestore.DefaultInstance.Collection("comunidades").Document();
+            // Validar el formulario
+            if (!ValidarFormulario(out string mensajeError))
+            {
+                MostrarMensaje(mensajeError, true);
+                return;
+            }
 
-            Dictionary<string, object> comunidad = new Dictionary<string, object>
+            try
+            {
+                // Obtener datos del formulario
+                string nombre = nombreInput.text.Trim();
+                string descripcion = descripcionInput.text.Trim();
+                string tipo = publicaToggle.isOn ? "publica" : "privada";
+
+                // Crear documento en Firestore
+                DocumentReference docRef = FirebaseFirestore.DefaultInstance.Collection("comunidades").Document();
+
+                Dictionary<string, object> comunidad = new Dictionary<string, object>
             {
                 { "nombre", nombre },
                 { "descripcion", descripcion },
@@ -118,23 +125,34 @@ public class CrearComunidad : MonoBehaviour
                 { "miembros", new List<string> { currentUserId } } // Añadir creador como miembro
             };
 
-            await docRef.SetAsync(comunidad);
+                await docRef.SetAsync(comunidad);
 
-            MostrarMensaje("Comunidad creada exitosamente!", false);
-            LimpiarFormulario();
+                MostrarMensaje("Comunidad creada exitosamente!", false);
+                LimpiarFormulario();
+            }
+            catch (Exception e)
+            {
+                MostrarMensaje($"Error al crear comunidad: {e.Message}", true);
+                Debug.LogError(e);
+            }
         }
-        catch (Exception e)
+        else
         {
-            MostrarMensaje($"Error al crear comunidad: {e.Message}", true);
-            Debug.LogError(e);
+            MostrarMensaje($"SIN CONEXION A INTERNET, esta operación no esta disponible por el momento, intente nuevamente más tarde", true);
+            Invoke("Volveralranking", 4f);
         }
     }
 
+    // función para volver al ranking si no tiene wifi
+    void Volveralranking()
+    {
+        SceneManager.LoadScene("ranking");
+    }
     private void MostrarMensaje(string mensaje, bool esError)
     {
         mensajeTexto.text = mensaje;
         CancelInvoke("OcultarMensaje");
-        Invoke("OcultarMensaje", 3f);
+        Invoke("OcultarMensaje", 4f);
     }
 
     private void OcultarMensaje()
