@@ -188,8 +188,6 @@ public class GeneradorElementosUI : MonoBehaviour
             int logrosPorCategoria = 0;
             int misionesPorCategoria = 0;
 
-            Debug.Log($"📁 Categoría: {categoria.Key}");
-
             // 🔹 Contar misiones y logros por elemento
             foreach (KeyValuePair<string, JSONNode> elemento in elementosJson)
             {
@@ -222,7 +220,6 @@ public class GeneradorElementosUI : MonoBehaviour
                     logrosPorCategoria++;
                 }
 
-                Debug.Log($"🔬 Elemento: {datosElemento["nombre"]} ({datosElemento["simbolo"]}) | {completadasElemento}/{misiones.Count} misiones | {(todasCompletadas ? "🏆 Logro" : "⏳ Incompleto")}");
             }
 
             // 🔹 Revisar misión final de la categoría
@@ -236,22 +233,18 @@ public class GeneradorElementosUI : MonoBehaviour
                     misionesPorCategoria++;
                     logrosPorCategoria++;
 
-                    Debug.Log($"🏁 Misión final de categoría '{categoria.Key}' completada. ¡+1 Misión y +1 Logro!");
                 }
                 else
                 {
-                    Debug.Log($"⏳ Misión final de categoría '{categoria.Key}' no completada.");
                 }
             }
 
-            Debug.Log($"📊 Resumen '{categoria.Key}': Misiones Completadas = {misionesPorCategoria}, Logros = {logrosPorCategoria}");
         }
 
         // 🔹 Mostrar totales en UI
         TotalMisionesCompletadas.text = totalMisiones.ToString();
         TotalLogrosDesbloqueados.text = totalLogros.ToString();
         ActualizarDatosUsuario();
-        Debug.Log($"✅ TOTAL GLOBAL: Misiones = {totalMisiones}, Logros = {totalLogros}");
     }
     void ActualizarDatosUsuario()
     {
@@ -277,7 +270,6 @@ public class GeneradorElementosUI : MonoBehaviour
             if (avatar != null) avatarImage.sprite = avatar;
             else Debug.LogWarning("⚠ Avatar no encontrado en ruta: " + rutaAvatar);
 
-            Debug.Log("📡 Sin internet. Datos cargados desde PlayerPrefs.");
             return;
         }
 
@@ -287,7 +279,6 @@ public class GeneradorElementosUI : MonoBehaviour
 
         if (user == null)
         {
-            Debug.LogWarning("⚠ No hay usuario autenticado.");
             return;
         }
 

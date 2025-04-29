@@ -24,10 +24,8 @@ public class StartAppManager : MonoBehaviour
 
         if ( db != null)
         {
-            Debug.Log("Conexion con firebase establecida");
         }
         
-        Debug.Log("⌛ Verificando conexión a Internet...");
         StartCoroutine(CheckInternetConnection());
 
         StartCoroutine(DeleteAccount()); // Eliminar la cuenta
@@ -42,12 +40,10 @@ public class StartAppManager : MonoBehaviour
 
         if (Application.internetReachability == NetworkReachability.NotReachable)
         {
-            Debug.Log("❌ No hay conexión a internet. Verificando usuario temporal...");
             HandleOfflineMode();
         }
         else
         {
-            Debug.Log("🌍 Conexión a internet detectada. Verificando datos guardados...");
             HandleOnlineMode();
         }
     }
@@ -71,7 +67,6 @@ public class StartAppManager : MonoBehaviour
         }
         else if (estadoUsuario == "local")
         {
-            Debug.Log("✅ Usuario temporal encontrado. Enviando a Categorías.");
             // Validar el estado de ambas encuestas para pasar a scena 
 
             bool estadoencuestaaprendizaje = PlayerPrefs.GetInt("EstadoEncuestaAprendizaje", 0) == 1;
@@ -99,7 +94,6 @@ public class StartAppManager : MonoBehaviour
         }
         else if (string.IsNullOrEmpty(estadoUsuario))
         {
-            Debug.Log("🆕 No se encontró usuario temporal. Creando usuario provisional...");
 
             CreateTemporaryUser();
             LoadSceneIfNotAlready("InicioOffline");
@@ -126,7 +120,6 @@ public class StartAppManager : MonoBehaviour
         // ---------------------------------------------- VALIDACIONES --------------------------------------------------------------------------
         if (EstadoUsuario == "local") 
         {
-            Debug.Log("📝 Datos temporales encontrados. Enviando a Registro.");
 
             SceneManager.LoadScene("Email");
 
@@ -183,7 +176,6 @@ public class StartAppManager : MonoBehaviour
         PlayerPrefs.SetInt("Nivel", 1);
         PlayerPrefs.SetString("Estadouser", "local");
         PlayerPrefs.Save();
-        Debug.Log("✅ Usuario provisional creado: " + username);
     }
 
     void AutoLogin()
@@ -197,7 +189,6 @@ public class StartAppManager : MonoBehaviour
             {
                 if (task.IsCompleted && !task.IsFaulted)
                 {
-                    Debug.Log("✅ Login automático exitoso");
                     FirebaseUser user = task.Result.User;
                     PlayerPrefs.SetString("userId", user.UserId);
                     PlayerPrefs.SetString("Estadouser", "nube");
@@ -235,7 +226,6 @@ public class StartAppManager : MonoBehaviour
         {
             if (task.IsFaulted || task.IsCanceled)
             {
-                Debug.LogError("❌ Error al obtener los datos del usuario.");
                 return;
             }
 
@@ -243,7 +233,6 @@ public class StartAppManager : MonoBehaviour
 
             if (!snapshot.Exists || !snapshot.ContainsField("misiones"))
             {
-                Debug.Log("📌 No hay misiones en Firestore. Continuando con el login normal.");
                 CheckUserStatus(userId);
                 return;
             }
@@ -254,7 +243,6 @@ public class StartAppManager : MonoBehaviour
             {
                 PlayerPrefs.SetString("misionesJSON", misionesJson);
                 PlayerPrefs.Save();
-                Debug.Log("✅ Misiones descargadas y guardadas localmente.");
             }
 
             CheckUserStatus(userId);
@@ -269,7 +257,6 @@ public class StartAppManager : MonoBehaviour
         {
             if (task.IsCanceled || task.IsFaulted)
             {
-                Debug.LogError("❌ Error al obtener los datos del usuario.");
                 return;
             }
 
@@ -277,7 +264,6 @@ public class StartAppManager : MonoBehaviour
 
             if (!snapshot.Exists)
             {
-                Debug.LogError("❌ No se encontraron datos para este usuario.");
                 return;
             }
 
@@ -287,9 +273,6 @@ public class StartAppManager : MonoBehaviour
             bool estadoencuestaaprendizaje = snapshot.ContainsField("EstadoEncuestaAprendizaje") ? snapshot.GetValue<bool>("EstadoEncuestaAprendizaje") : false;
 
             bool estadoencuestaconocimiento = snapshot.ContainsField("EstadoEncuestaConocimiento") ? snapshot.GetValue<bool>("EstadoEncuestaConocimiento") : false;  // Valor por defecto si el campo no existe
-
-
-            Debug.Log($"📌 Usuario: {ocupacion}, Estado Encuesta Aprendizaje: {estadoencuestaaprendizaje}, Estado Encuesta Conocimiento: {estadoencuestaconocimiento}");
 
             if (ocupacion == "Profesor")
             {
@@ -320,8 +303,6 @@ public class StartAppManager : MonoBehaviour
 
             if (email == savedEmail && password == savedPassword)
             {
-                
-                Debug.Log("📴 ✅ Inicio de sesión sin conexión exitoso.");
 
                 bool estadoencuestaaprendizaje = PlayerPrefs.GetInt("EstadoEncuestaAprendizaje", 0) == 1;
                 bool estadoencuestaconocimiento = PlayerPrefs.GetInt("EstadoEncuestaConocimiento", 0) == 1;
@@ -352,12 +333,10 @@ public class StartAppManager : MonoBehaviour
             }
             else if (email == savedEmail && password != savedPassword)
             {
-                Debug.LogError("📴 ❌ Datos incorrectos para el inicio de sesión offline.");
             }
         }
         else
         {
-            Debug.LogError("📴 ❌ No hay datos guardados para inicio de sesión offline.");
         }
     }
     private IEnumerator DeleteAccount()
@@ -375,18 +354,16 @@ public class StartAppManager : MonoBehaviour
 
                 if (deleteTask.IsCompletedSuccessfully)
                 {
-                    Debug.Log("Cuenta eliminada por falta de conexión.");
                     PlayerPrefs.DeleteKey("UsuarioEliminar");
                 }
                 else
                 {
-                    Debug.LogError("Error al eliminar la cuenta.");
+                    
                 }
             }
         }
         else
         {
-            Debug.Log("No hay Cuentas pendientes por eliminar. Desde StartApp");
         }
     }
 }

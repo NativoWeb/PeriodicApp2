@@ -838,6 +838,11 @@ namespace SimpleJSON
                 aSB.AppendLine().Append(' ', aIndent);
             aSB.Append(']');
         }
+
+        internal object FirstOrDefault(Func<object, bool> value)
+        {
+            throw new NotImplementedException();
+        }
     }
     // End of JSONArray
 
