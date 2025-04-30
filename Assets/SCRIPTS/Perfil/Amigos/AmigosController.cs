@@ -6,21 +6,23 @@ using Firebase.Firestore;
 using Firebase.Extensions;
 using TMPro;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
+using System.Collections;
 
 public class AmigosController : MonoBehaviour
 {
     public GameObject amigoPrefab;
     public Transform contentPanel;
     public TMP_InputField inputBuscar;
-    public Button botonBuscar;
+    public Button botonBuscar;  // Podemos mantenerlo como respaldo
     public TMP_Text messageText; // Nuevo campo para mensajes de estado
     public Button agregarAmigosButton; // Botón para agregar amigos
-
-  
+    public float liveSearchDelay = 0.3f; // Tiempo de espera en segundos para iniciar la búsqueda
 
     // Evitar Duplicados...
     private bool isLoading = false;
     private int consultasCompletadas = 0;
+    private Coroutine liveSearchCoroutine;
 
     [SerializeField] public GameObject m_AgregarAmigosUI = null;
     [SerializeField] public GameObject m_SolicitudesUI = null;
@@ -64,11 +66,21 @@ public class AmigosController : MonoBehaviour
             ShowMessage("Cargando amigos...");
             CargarAmigos("");
 
-            botonBuscar.onClick.AddListener(() => {
-                string nombreBuscar = inputBuscar.text.Trim();
-                ShowMessage($"Buscando: {nombreBuscar}");
-                CargarAmigos(nombreBuscar);
-            });
+            // Configurar el live search
+            if (inputBuscar != null)
+            {
+                inputBuscar.onValueChanged.AddListener(OnSearchInputChanged);
+            }
+
+            // Mantener el botón de búsqueda como respaldo
+            if (botonBuscar != null)
+            {
+                botonBuscar.onClick.AddListener(() => {
+                    string nombreBuscar = inputBuscar.text.Trim();
+                    ShowMessage($"Buscando: {nombreBuscar}");
+                    CargarAmigos(nombreBuscar);
+                });
+            }
 
             // Configurar el botón de agregar amigos
             if (agregarAmigosButton != null)
@@ -81,6 +93,34 @@ public class AmigosController : MonoBehaviour
             ShowMessage("No autenticado", true);
             Debug.LogError("No hay usuario autenticado.");
         }
+    }
+
+    void OnSearchInputChanged(string searchText)
+    {
+        // Detener cualquier búsqueda en progreso
+        if (liveSearchCoroutine != null)
+        {
+            StopCoroutine(liveSearchCoroutine);
+        }
+
+        // Iniciar una nueva búsqueda con delay
+        liveSearchCoroutine = StartCoroutine(DelayedSearch(searchText));
+    }
+
+    IEnumerator DelayedSearch(string searchText)
+    {
+        // Esperar un breve momento para permitir que el usuario termine de escribir
+        yield return new WaitForSeconds(liveSearchDelay);
+
+        // Si estamos en modo de eliminación, no realizar búsqueda
+        if (panelConfirmacionEliminar != null && panelConfirmacionEliminar.activeSelf)
+        {
+            yield break;
+        }
+
+        // Realizar la búsqueda
+        ShowMessage($"Buscando: {searchText}");
+        CargarAmigos(searchText);
     }
 
     void CargarAmigos(string filtroNombre)
@@ -202,6 +242,9 @@ public class AmigosController : MonoBehaviour
             textoConfirmacion.text = $"¿Estás seguro que deseas eliminar a {nombreAmigo} de tu lista de amigos?";
 
         panelConfirmacionEliminar.SetActive(true);
+
+        // Seleccionar el botón de cancelar por defecto para mejor UX
+        EventSystem.current.SetSelectedGameObject(botonCancelarEliminar.gameObject);
     }
 
     void EliminarAmigoConfirmado()
@@ -287,7 +330,6 @@ public class AmigosController : MonoBehaviour
         if (messageText != null)
         {
             messageText.text = message;
-
         }
     }
 
@@ -303,5 +345,14 @@ public class AmigosController : MonoBehaviour
         m_AgregarAmigosUI.SetActive(false);
         m_SolicitudesUI.SetActive(true);
         ShowMessage(""); // Limpiar mensaje al cambiar de panel
+    }
+
+    private void OnDestroy()
+    {
+        // Asegurarse de detener las corrutinas al destruir el objeto
+        if (liveSearchCoroutine != null)
+        {
+            StopCoroutine(liveSearchCoroutine);
+        }
     }
 }
