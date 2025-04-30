@@ -16,10 +16,11 @@ public class AmigosController : MonoBehaviour
     public TMP_Text messageText; // Nuevo campo para mensajes de estado
     public Button agregarAmigosButton; // Botón para agregar amigos
 
+  
+
     // Evitar Duplicados...
     private bool isLoading = false;
     private int consultasCompletadas = 0;
-
 
     [SerializeField] public GameObject m_AgregarAmigosUI = null;
     [SerializeField] public GameObject m_SolicitudesUI = null;
@@ -29,10 +30,33 @@ public class AmigosController : MonoBehaviour
     private string userId;
     private int amigosCargados = 0;
 
+    // Variables para el proceso de eliminación
+    private string amigoIdSeleccionado;
+    private string amigoNombreSeleccionado;
+    private string documentoSolicitudSeleccionado;
+
+    // Panel de confirmación para eliminar amigos
+    public GameObject panelConfirmacionEliminar;
+    public Button botonConfirmarEliminar;
+    public Button botonCancelarEliminar;
+    public TMP_Text textoConfirmacion;
+
     void Start()
     {
         auth = FirebaseAuth.DefaultInstance;
         db = FirebaseFirestore.DefaultInstance;
+
+        // Inicializar panel de confirmación
+        if (panelConfirmacionEliminar != null)
+        {
+            panelConfirmacionEliminar.SetActive(false);
+
+            if (botonConfirmarEliminar != null)
+                botonConfirmarEliminar.onClick.AddListener(EliminarAmigoConfirmado);
+
+            if (botonCancelarEliminar != null)
+                botonCancelarEliminar.onClick.AddListener(() => panelConfirmacionEliminar.SetActive(false));
+        }
 
         if (auth.CurrentUser != null)
         {
@@ -58,8 +82,6 @@ public class AmigosController : MonoBehaviour
             Debug.LogError("No hay usuario autenticado.");
         }
     }
-
-   
 
     void CargarAmigos(string filtroNombre)
     {
@@ -134,7 +156,7 @@ public class AmigosController : MonoBehaviour
                 amigosMostrados.Add(amigoId);
                 if (ShouldShowFriend(nombreAmigo, filtroNombre))
                 {
-                    CreateFriendCard(amigoId, nombreAmigo);
+                    CreateFriendCard(amigoId, nombreAmigo, document.Id);
                     amigosCargados++;
                 }
             }
@@ -147,7 +169,7 @@ public class AmigosController : MonoBehaviour
                nombreAmigo.ToLower().Contains(filtroNombre.ToLower());
     }
 
-    void CreateFriendCard(string amigoId, string nombreAmigo)
+    void CreateFriendCard(string amigoId, string nombreAmigo, string documentId)
     {
         GameObject nuevoAmigo = Instantiate(amigoPrefab, contentPanel);
         nuevoAmigo.transform.Find("Nombretxt").GetComponent<TMP_Text>().text = nombreAmigo;
@@ -157,8 +179,60 @@ public class AmigosController : MonoBehaviour
         panelEstado.GetComponent<Image>().color = new Color32(0x52, 0xD9, 0x99, 0xFF);
         nuevoAmigo.transform.Find("Estadotxt").GetComponent<TMP_Text>().text = "Amigos";
 
+        // Añadir botón de eliminar amigo
+        Button btnEliminar = nuevoAmigo.transform.Find("BtnEliminar")?.GetComponent<Button>();
+        if (btnEliminar != null)
+        {
+            btnEliminar.onClick.AddListener(() => MostrarConfirmacionEliminar(amigoId, nombreAmigo, documentId));
+        }
+
         // Cargar rango
         LoadFriendRank(amigoId, nuevoAmigo);
+    }
+
+    void MostrarConfirmacionEliminar(string amigoId, string nombreAmigo, string documentId)
+    {
+        if (panelConfirmacionEliminar == null) return;
+
+        amigoIdSeleccionado = amigoId;
+        amigoNombreSeleccionado = nombreAmigo;
+        documentoSolicitudSeleccionado = documentId;
+
+        if (textoConfirmacion != null)
+            textoConfirmacion.text = $"¿Estás seguro que deseas eliminar a {nombreAmigo} de tu lista de amigos?";
+
+        panelConfirmacionEliminar.SetActive(true);
+    }
+
+    void EliminarAmigoConfirmado()
+    {
+        if (string.IsNullOrEmpty(documentoSolicitudSeleccionado)) return;
+
+        ShowMessage($"Eliminando a {amigoNombreSeleccionado}...");
+
+        // Actualizar el estado a "eliminada" en lugar de borrar el documento
+        DocumentReference docRef = db.Collection("SolicitudesAmistad").Document(documentoSolicitudSeleccionado);
+        Dictionary<string, object> updates = new Dictionary<string, object>
+        {
+            { "estado", "eliminada" }
+        };
+
+        docRef.UpdateAsync(updates).ContinueWithOnMainThread(task => {
+            if (task.IsCompleted && !task.IsFaulted)
+            {
+                ShowMessage($"{amigoNombreSeleccionado} ha sido eliminado de tu lista de amigos");
+                panelConfirmacionEliminar.SetActive(false);
+
+                // Recargar la lista de amigos
+                CargarAmigos(inputBuscar.text.Trim());
+            }
+            else
+            {
+                ShowMessage("Error al eliminar amigo", true);
+                Debug.LogError($"Error: {task.Exception}");
+                panelConfirmacionEliminar.SetActive(false);
+            }
+        });
     }
 
     void LoadFriendRank(string amigoId, GameObject amigoUI)
@@ -213,7 +287,7 @@ public class AmigosController : MonoBehaviour
         if (messageText != null)
         {
             messageText.text = message;
-            
+
         }
     }
 
