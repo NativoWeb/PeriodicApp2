@@ -1139,6 +1139,7 @@ MonoBehaviour:
   botonBuscar: {fileID: 1830766619}
   messageText: {fileID: 1918200057}
   agregarAmigosButton: {fileID: 107563484}
+  liveSearchDelay: 0.3
   m_AgregarAmigosUI: {fileID: 484528640}
   m_SolicitudesUI: {fileID: 694660744}
   panelConfirmacionEliminar: {fileID: 1943160972}
@@ -1789,7 +1790,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 1209688460}
   m_Direction: 0
   m_Value: 0
-  m_Size: 0.999983
+  m_Size: 0.9999988
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -2187,6 +2188,8 @@ MonoBehaviour:
   searchInput: {fileID: 1727950037}
   searchButton: {fileID: 1430092355}
   messageText: {fileID: 1574300018}
+  searchDelay: 0.3
+  minSearchChars: 1
 --- !u!4 &646891136
 Transform:
   m_ObjectHideFlags: 0
@@ -2992,6 +2995,8 @@ MonoBehaviour:
   resultsContainer: {fileID: 1429996485}
   userResultPrefab: {fileID: 3149390947037206200, guid: 902a15bb5411abd46b250f1a314f0ee7, type: 3}
   messageText: {fileID: 135084371}
+  searchDelay: 0.3
+  minSearchChars: 2
 --- !u!4 &945595714
 Transform:
   m_ObjectHideFlags: 0
@@ -4022,7 +4027,7 @@ RectTransform:
   m_Father: {fileID: 369573814}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0.99998266, y: 1}
+  m_AnchorMax: {x: 0.9999988, y: 1}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 20, y: 20}
   m_Pivot: {x: 0.5, y: 0.5}
@@ -4773,7 +4778,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -483.39392, y: 257}
+  m_AnchoredPosition: {x: -483.4093, y: 257}
   m_SizeDelta: {x: 60, y: 60}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &1385528557
@@ -7456,8 +7461,8 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4292861927
-  m_fontColor: {r: 0.9056604, g: 0.8757565, b: 0.8757565, a: 1}
+    rgba: 4284835178
+  m_fontColor: {r: 0.41568628, g: 0.39607844, b: 0.39607844, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -7474,8 +7479,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 25
-  m_fontSizeBase: 25
+  m_fontSize: 35
+  m_fontSizeBase: 35
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18

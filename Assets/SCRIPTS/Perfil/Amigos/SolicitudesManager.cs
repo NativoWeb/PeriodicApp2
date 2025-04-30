@@ -15,10 +15,19 @@ public class SolicitudesManager : MonoBehaviour
     public Button searchButton;
     public TMP_Text messageText; // Texto para mostrar mensajes de estado
 
+    [Header("Live Search Settings")]
+    public float searchDelay = 0.3f; // Retraso en segundos antes de ejecutar la búsqueda
+    public int minSearchChars = 1; // Mínimo de caracteres para iniciar búsqueda
+
     private FirebaseFirestore db;
     private FirebaseAuth auth;
     private string currentUserId;
     private List<FriendRequest> allRequests = new List<FriendRequest>();
+
+    // Variables para live search
+    private string lastSearchText = "";
+    private float lastSearchTime;
+    private bool searchScheduled = false;
 
     private class FriendRequest
     {
@@ -42,8 +51,45 @@ public class SolicitudesManager : MonoBehaviour
         currentUserId = auth.CurrentUser.UserId;
         Debug.Log("Usuario actual: " + currentUserId);
 
+        // Configurar el listener para el campo de búsqueda
+        searchInput.onValueChanged.AddListener(OnSearchInputChanged);
+
+        // Mantener el botón de búsqueda tradicional también
         searchButton.onClick.AddListener(() => FilterRequests(searchInput.text));
+
         LoadPendingRequests();
+    }
+
+    void Update()
+    {
+        // Ejecutar la búsqueda programada cuando pase el tiempo de retraso
+        if (searchScheduled && Time.time >= lastSearchTime + searchDelay)
+        {
+            searchScheduled = false;
+            FilterRequests(lastSearchText);
+        }
+    }
+
+    void OnSearchInputChanged(string text)
+    {
+        lastSearchText = text;
+
+        // Si está vacío, mostrar todas las solicitudes
+        if (string.IsNullOrEmpty(text))
+        {
+            FilterRequests("");
+            return;
+        }
+
+        // Si no tiene suficientes caracteres, no hacer nada todavía
+        if (text.Length < minSearchChars)
+        {
+            return;
+        }
+
+        // Programar la búsqueda después del retraso
+        lastSearchTime = Time.time;
+        searchScheduled = true;
     }
 
     void LoadPendingRequests()
@@ -141,6 +187,10 @@ public class SolicitudesManager : MonoBehaviour
         {
             ShowMessage($"{matches} solicitudes coinciden con tu búsqueda");
         }
+        else
+        {
+            ShowMessage($"Mostrando {matches} solicitudes");
+        }
     }
 
     void CreateRequestUI(string fromUserId, string fromUserName, string userRank, string documentId)
@@ -155,7 +205,6 @@ public class SolicitudesManager : MonoBehaviour
         if (rankText != null)
         {
             rankText.text = userRank;
-
         }
         else
         {
@@ -213,7 +262,7 @@ public class SolicitudesManager : MonoBehaviour
         if (messageText != null)
         {
             messageText.text = message;
-            
+
         }
     }
 }
