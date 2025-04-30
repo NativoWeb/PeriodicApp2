@@ -1,10 +1,8 @@
 ﻿using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
-using Firebase.Auth;
 using System.Collections;
 using UnityEngine.SceneManagement;
-using Infrastructure.Services;
 public class LoginController : MonoBehaviour
 {
     [Header("UI Login")]

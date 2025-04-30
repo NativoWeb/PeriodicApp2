@@ -1,6 +1,5 @@
 using System.Threading.Tasks;
 using Firebase.Auth;
-using Firebase.Extensions;
 
 public class FirebaseAuthService : IServicioAutenticacion
 {
@@ -28,4 +27,16 @@ public class FirebaseAuthService : IServicioAutenticacion
     {
         await auth.SendPasswordResetEmailAsync(email);
     }
+
+    public async Task<bool> ActualizarPerfil(string displayName)
+    {
+        if (auth.CurrentUser == null)
+        return false;
+        
+
+        UserProfile profile = new UserProfile { DisplayName = displayName };
+        await auth.CurrentUser.UpdateUserProfileAsync(profile);
+        return true;
+    }
+
 }
