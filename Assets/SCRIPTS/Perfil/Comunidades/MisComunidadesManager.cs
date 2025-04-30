@@ -408,6 +408,7 @@ public class MisComunidadesManager : MonoBehaviour
         btnVerMiembros.onClick.AddListener(() => {
             LimpiarYCerrarPaneles();
             MostrarMiembros(dataComunidad);
+            ActualizarEstadoBotones(true, false); // Activar botón miembros, desactivar solicitudes
         });
 
         // Configurar botón de solicitudes solo si el usuario actual es el creador
@@ -423,18 +424,21 @@ public class MisComunidadesManager : MonoBehaviour
                 btnVerSolicitudes.onClick.AddListener(() => {
                     LimpiarYCerrarPaneles();
                     MostrarSolicitudes(dataComunidad);
+                    ActualizarEstadoBotones(false, true); // Desactivar botón miembros, activar solicitudes
                 });
             }
         }
 
         // Llamar automáticamente a MostrarMiembros
         MostrarMiembros(dataComunidad);
+        ActualizarEstadoBotones(true, false); // Inicialmente activar botón miembros
 
         // Seleccionar el botón para navegación con teclado/controller
         if (btnVerMiembros != null && btnVerMiembros.gameObject != null)
         {
             EventSystem.current.SetSelectedGameObject(btnVerMiembros.gameObject);
         }
+
         // configurar el btn de abandonarComunidad
         if (btnAbandonarComunidad != null)
         {
@@ -446,6 +450,34 @@ public class MisComunidadesManager : MonoBehaviour
             btnAbandonarComunidad.gameObject.SetActive(!esCreador);
         }
     }
+    // Nuevo método para actualizar el estado visual de los botones
+    void ActualizarEstadoBotones(bool miembrosSeleccionado, bool solicitudesSeleccionado)
+    {
+        // Consigue los componentes de la imagen de los botones
+        Image imgBtnMiembros = btnVerMiembros.GetComponent<Image>();
+        Image imgBtnSolicitudes = btnVerSolicitudes ? btnVerSolicitudes.GetComponent<Image>() : null;
+
+        // Configura color cuando está seleccionado (usa los colores que prefieras)
+        Color colorSeleccionado = new Color(55, 189, 247, 255); // Azul - ajusta según tu UI
+        Color colorNormal = Color.white; // Color normal - ajusta según tu UI
+
+        // Actualiza los colores según el estado de selección
+        if (imgBtnMiembros != null)
+        {
+            imgBtnMiembros.color = miembrosSeleccionado ? colorSeleccionado : colorNormal;
+        }
+
+        if (imgBtnSolicitudes != null)
+        {
+            imgBtnSolicitudes.color = solicitudesSeleccionado ? colorSeleccionado : colorNormal;
+        }
+
+
+        // Opcional: desactivar interacción con el botón seleccionado
+        btnVerMiembros.interactable = !miembrosSeleccionado;
+        if (btnVerSolicitudes) btnVerSolicitudes.interactable = !solicitudesSeleccionado;
+    }
+
     void MostrarConfirmacionAbandonar(Dictionary<string, object> dataComunidad)
     {
         if (panelConfirmacionAbandonar == null) return;
@@ -487,7 +519,7 @@ public class MisComunidadesManager : MonoBehaviour
                 MostrarMensajeEstado("Has abandonado la comunidad", true);
 
                 // Volver a cargar las comunidades del usuario después de un breve retraso
-                Invoke("VolverAScenaComunidades", 1.5f);
+                Invoke("VolverAScenaComunidades", 0.5f);
             });
     }
 
@@ -631,6 +663,12 @@ public class MisComunidadesManager : MonoBehaviour
             Destroy(child.gameObject);
         }
         panelSolicitudes.SetActive(false);
+
+        // Restaurar el estado visual de los botones si ningún panel está activo
+        if (btnVerMiembros != null && btnVerSolicitudes != null)
+        {
+            ActualizarEstadoBotones(false, false);
+        }
     }
     void MostrarSolicitudes(Dictionary<string, object> dataComunidad)
     {
