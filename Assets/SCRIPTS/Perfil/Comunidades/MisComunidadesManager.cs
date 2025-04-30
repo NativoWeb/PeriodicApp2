@@ -749,6 +749,11 @@ public class MisComunidadesManager : MonoBehaviour
                     Debug.LogError("Error al procesar solicitud: " + task.Exception);
                     // Opcional: Podrías reinstanciar el item si falla
                 }
+                else
+                {
+                    // Actualizar comunidad actual en memoria
+                    ActualizarDatosComunidadLocal(comunidadId, usuarioId);
+                }
             });
         }
         else
@@ -761,6 +766,39 @@ public class MisComunidadesManager : MonoBehaviour
                                Debug.LogError("Error al rechazar solicitud: " + task.Exception);
                            }
                        });
+        }
+    }
+
+    // Nuevo método para actualizar los datos de la comunidad en memoria
+    void ActualizarDatosComunidadLocal(string comunidadId, string nuevoMiembroId)
+    {
+        // Buscar la comunidad en la lista local
+        for (int i = 0; i < todasComunidades.Count; i++)
+        {
+            if (todasComunidades[i]["documentId"].ToString() == comunidadId)
+            {
+                // Actualizar la lista de miembros
+                if (todasComunidades[i].TryGetValue("miembros", out object miembrosObj) && miembrosObj is List<object> miembros)
+                {
+                    miembros.Add(nuevoMiembroId);
+
+                    // Si estamos viendo el detalle de esta comunidad, actualizar la UI
+                    if (panelDetalleGrupo != null && panelDetalleGrupo.activeSelf)
+                    {
+                        // Actualizar la cantidad de miembros mostrada
+                        detalleMiembros.text = $"{miembros.Count} miembros";
+
+                        // Actualizar lista de miembros si está visible
+                        if (panelMiembros != null && panelMiembros.activeSelf)
+                        {
+                            // Cargar la información del nuevo miembro
+                            Dictionary<string, object> comunidadActual = todasComunidades[i];
+                            MostrarMiembros(comunidadActual);
+                        }
+                    }
+                }
+                break;
+            }
         }
     }
     GameObject InstantiateErrorText(string message)
