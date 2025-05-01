@@ -6,4 +6,5 @@ public interface IServicioAutenticacion
     Task ResetPasswordAsync(string email);
 
     Task<bool> ActualizarPerfil(string displayName);
+    Task<Usuario> CrearUsuarioAsync(string email, string password);
 }

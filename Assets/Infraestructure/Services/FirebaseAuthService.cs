@@ -39,4 +39,17 @@ public class FirebaseAuthService : IServicioAutenticacion
         return true;
     }
 
+    public async Task<Usuario> CrearUsuarioAsync(string email, string password)
+    {
+        var result = await auth.CreateUserWithEmailAndPasswordAsync(email, password);
+        var user = result.User;
+
+        return new Usuario
+        {
+            Email = user.Email,
+            UserId = user.UserId,
+            DisplayName = user.DisplayName
+        };
+    }
+
 }
