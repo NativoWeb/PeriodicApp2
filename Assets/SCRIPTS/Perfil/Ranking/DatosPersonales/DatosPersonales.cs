@@ -50,8 +50,8 @@ public class DatosPersonales : MonoBehaviour
     {
         hayInternet = Application.internetReachability != NetworkReachability.NotReachable;
         string estadouser = PlayerPrefs.GetString("Estadouser", "");
-        // Actualizar estado de botones sociales al inicio
-        ActualizarEstadoBotonesSociales();
+        
+        
         if (hayInternet)
         {
             // instanciamos firebase
@@ -192,8 +192,7 @@ public class DatosPersonales : MonoBehaviour
         m_InfoBasicaUI.SetActive(true);
         btnActualizar.interactable = false;
 
-        // Actualizar estado de botones sociales
-        ActualizarEstadoBotonesSociales();
+        
         StartCoroutine(MostrarMensajeTemporal("Modo offline - Sin conexión a internet", 3f));
     }
 
@@ -344,7 +343,7 @@ public class DatosPersonales : MonoBehaviour
 
                     // Cambiar al panel de información y actualizar botones
                     ActivarPanelInfo();
-                    ActualizarEstadoBotonesSociales();
+                    
                 }
                 else
                 {
@@ -407,8 +406,7 @@ public class DatosPersonales : MonoBehaviour
         departamentoDropdown.interactable = false;
         ciudadDropdown.interactable = false;
 
-        // Actualizar estado de botones sociales
-        ActualizarEstadoBotonesSociales();
+       
     }
     private void CargarTotalementeDropDowns()
     {
@@ -471,29 +469,29 @@ public class DatosPersonales : MonoBehaviour
 
         EventSystem.current.SetSelectedGameObject(edadDropdown.gameObject);
     }
-    private void ActualizarEstadoBotonesSociales()
-    {
-        bool datosCompletos = PlayerPrefs.HasKey("Edad") &&
-                             PlayerPrefs.HasKey("Departamento") &&
-                             PlayerPrefs.HasKey("Ciudad");
+    //private void ActualizarEstadoBotonesSociales()
+    //{
+    //    bool datosCompletos = PlayerPrefs.HasKey("Edad") &&
+    //                         PlayerPrefs.HasKey("Departamento") &&
+    //                         PlayerPrefs.HasKey("Ciudad");
 
-        bool puedeInteractuar = hayInternet && datosCompletos;
+    //    bool puedeInteractuar = hayInternet && datosCompletos;
 
-        btnAmigos.interactable = puedeInteractuar;
-        btnComunidad.interactable = puedeInteractuar;
+    //    btnAmigos.interactable = puedeInteractuar;
+    //    btnComunidad.interactable = puedeInteractuar;
 
-        // Opcional: cambiar el color para indicar estado inactivo
-        if (!puedeInteractuar)
-        {
-            btnAmigos.image.color = Color.gray;
-            btnComunidad.image.color = Color.gray;
-        }
-        else
-        {
-            btnAmigos.image.color = Color.white;
-            btnComunidad.image.color = Color.white;
-        }
-    }
+    //    // Opcional: cambiar el color para indicar estado inactivo
+    //    if (!puedeInteractuar)
+    //    {
+    //        btnAmigos.image.color = Color.gray;
+    //        btnComunidad.image.color = Color.gray;
+    //    }
+    //    else
+    //    {
+    //        btnAmigos.image.color = Color.white;
+    //        btnComunidad.image.color = Color.white;
+    //    }
+    //}
     private IEnumerator MostrarMensajeTemporal(string mensaje, float tiempo = 3f)
     {
         Messagetxt.text = mensaje;
