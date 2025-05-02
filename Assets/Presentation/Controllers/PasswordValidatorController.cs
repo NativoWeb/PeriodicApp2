@@ -3,35 +3,52 @@ using TMPro;
 using UnityEngine.UI;
 using System.Text.RegularExpressions;
 
+/// 
+/// Controlador visual que muestra el estado de los requisitos de la contraseña
+/// mientras el usuario la escribe. No valida reglas de negocio.
+/// 
 public class PasswordValidatorController : MonoBehaviour
 {
+    [Header("Entradas")]
     public TMP_InputField passwordInput;
-    public TMP_InputField confirmPasswordInput;
+
+    [Header("Panel de Requisitos")]
     public GameObject requirementsPanel;
 
-    public TMP_Text minLengthText, uppercaseText, lowercaseText, specialCharText;
-    public RawImage Caracteres, Mayusculas, Minusculas, Especiales;
+    [Header("Textos de requisitos")]
+    public TMP_Text minLengthText;
+    public TMP_Text uppercaseText;
+    public TMP_Text lowercaseText;
+    public TMP_Text specialCharText;
+
+    [Header("Íconos visuales")]
+    public RawImage Caracteres;
+    public RawImage Mayusculas;
+    public RawImage Minusculas;
+    public RawImage Especiales;
     public Texture2D imagenActiva;
     public Texture2D imagenInactiva;
 
-    void Start()
+    private void Start()
     {
         requirementsPanel.SetActive(false);
+
         passwordInput.onSelect.AddListener(ShowRequirements);
         passwordInput.onDeselect.AddListener(HideRequirements);
-        passwordInput.onValueChanged.AddListener(ValidatePassword);
+        passwordInput.onValueChanged.AddListener(UpdateVisualFeedback);
     }
 
-    void ShowRequirements(string _) => requirementsPanel.SetActive(true);
-    void HideRequirements(string _) => requirementsPanel.SetActive(false);
+    private void ShowRequirements(string _) => requirementsPanel.SetActive(true);
+    private void HideRequirements(string _) => requirementsPanel.SetActive(false);
 
-    void ValidatePassword(string password)
+    private void UpdateVisualFeedback(string password)
     {
         bool hasMinLength = password.Length >= 6;
         bool hasUppercase = Regex.IsMatch(password, "[A-Z]");
         bool hasLowercase = Regex.IsMatch(password, "[a-z]");
-        bool hasSpecialChar = Regex.IsMatch(password, @"[\^\$\*\.\[\]\{\}\(\)\?\""!@#%&/\\,><':;|_~`]");
+        bool hasSpecialChar = Regex.IsMatch(password, @"[\W_]");
 
+        // Cambiar colores y texturas según validación
         minLengthText.color = hasMinLength ? Color.green : Color.white;
         Caracteres.texture = hasMinLength ? imagenActiva : imagenInactiva;
 
@@ -43,13 +60,5 @@ public class PasswordValidatorController : MonoBehaviour
 
         specialCharText.color = hasSpecialChar ? Color.green : Color.white;
         Especiales.texture = hasSpecialChar ? imagenActiva : imagenInactiva;
-    }
-
-    public bool CumpleRequisitos(string password)
-    {
-        return password.Length >= 6 &&
-               Regex.IsMatch(password, "[A-Z]") &&
-               Regex.IsMatch(password, "[a-z]") &&
-               Regex.IsMatch(password, @"[\^\$\*\.\[\]\{\}\(\)\?\""!@#%&/\\,><':;|_~`]");
     }
 }

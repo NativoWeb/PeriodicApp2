@@ -25,6 +25,11 @@ public class RegistroEmailController : MonoBehaviour
     public Button btnRegistrar;
     public Button btnVolver;
     public Button btnCerrarError;
+    public Button btnVerificar;
+
+    [Header("Validador visual de contraseña")]
+    public PasswordValidatorController passwordValidatorController;
+
 
     private string codigoVerificacion;
     private float tiempoRestante = 180f;

@@ -12,6 +12,7 @@ public class RegistroFlowController : MonoBehaviour
     public RegistroEmailController registroEmailController;
     public VerificacionCorreoController verificacionCorreoController;
 
+
     private void Start()
     {
         MostrarPanelRegistro();
