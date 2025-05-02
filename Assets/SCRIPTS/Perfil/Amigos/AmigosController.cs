@@ -6,15 +6,23 @@ using Firebase.Firestore;
 using Firebase.Extensions;
 using TMPro;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
+using System.Collections;
 
 public class AmigosController : MonoBehaviour
 {
     public GameObject amigoPrefab;
     public Transform contentPanel;
     public TMP_InputField inputBuscar;
-    public Button botonBuscar;
+    public Button botonBuscar;  // Podemos mantenerlo como respaldo
     public TMP_Text messageText; // Nuevo campo para mensajes de estado
     public Button agregarAmigosButton; // Botón para agregar amigos
+    public float liveSearchDelay = 0.3f; // Tiempo de espera en segundos para iniciar la búsqueda
+
+    // Evitar Duplicados...
+    private bool isLoading = false;
+    private int consultasCompletadas = 0;
+    private Coroutine liveSearchCoroutine;
 
     [SerializeField] public GameObject m_AgregarAmigosUI = null;
     [SerializeField] public GameObject m_SolicitudesUI = null;
@@ -24,10 +32,33 @@ public class AmigosController : MonoBehaviour
     private string userId;
     private int amigosCargados = 0;
 
+    // Variables para el proceso de eliminación
+    private string amigoIdSeleccionado;
+    private string amigoNombreSeleccionado;
+    private string documentoSolicitudSeleccionado;
+
+    // Panel de confirmación para eliminar amigos
+    public GameObject panelConfirmacionEliminar;
+    public Button botonConfirmarEliminar;
+    public Button botonCancelarEliminar;
+    public TMP_Text textoConfirmacion;
+
     void Start()
     {
         auth = FirebaseAuth.DefaultInstance;
         db = FirebaseFirestore.DefaultInstance;
+
+        // Inicializar panel de confirmación
+        if (panelConfirmacionEliminar != null)
+        {
+            panelConfirmacionEliminar.SetActive(false);
+
+            if (botonConfirmarEliminar != null)
+                botonConfirmarEliminar.onClick.AddListener(EliminarAmigoConfirmado);
+
+            if (botonCancelarEliminar != null)
+                botonCancelarEliminar.onClick.AddListener(() => panelConfirmacionEliminar.SetActive(false));
+        }
 
         if (auth.CurrentUser != null)
         {
@@ -35,11 +66,21 @@ public class AmigosController : MonoBehaviour
             ShowMessage("Cargando amigos...");
             CargarAmigos("");
 
-            botonBuscar.onClick.AddListener(() => {
-                string nombreBuscar = inputBuscar.text.Trim();
-                ShowMessage($"Buscando: {nombreBuscar}");
-                CargarAmigos(nombreBuscar);
-            });
+            // Configurar el live search
+            if (inputBuscar != null)
+            {
+                inputBuscar.onValueChanged.AddListener(OnSearchInputChanged);
+            }
+
+            // Mantener el botón de búsqueda como respaldo
+            if (botonBuscar != null)
+            {
+                botonBuscar.onClick.AddListener(() => {
+                    string nombreBuscar = inputBuscar.text.Trim();
+                    ShowMessage($"Buscando: {nombreBuscar}");
+                    CargarAmigos(nombreBuscar);
+                });
+            }
 
             // Configurar el botón de agregar amigos
             if (agregarAmigosButton != null)
@@ -54,14 +95,47 @@ public class AmigosController : MonoBehaviour
         }
     }
 
+    void OnSearchInputChanged(string searchText)
+    {
+        // Detener cualquier búsqueda en progreso
+        if (liveSearchCoroutine != null)
+        {
+            StopCoroutine(liveSearchCoroutine);
+        }
+
+        // Iniciar una nueva búsqueda con delay
+        liveSearchCoroutine = StartCoroutine(DelayedSearch(searchText));
+    }
+
+    IEnumerator DelayedSearch(string searchText)
+    {
+        // Esperar un breve momento para permitir que el usuario termine de escribir
+        yield return new WaitForSeconds(liveSearchDelay);
+
+        // Si estamos en modo de eliminación, no realizar búsqueda
+        if (panelConfirmacionEliminar != null && panelConfirmacionEliminar.activeSelf)
+        {
+            yield break;
+        }
+
+        // Realizar la búsqueda
+        ShowMessage($"Buscando: {searchText}");
+        CargarAmigos(searchText);
+    }
+
     void CargarAmigos(string filtroNombre)
     {
+        if (isLoading) return;
+
+        isLoading = true;
+        consultasCompletadas = 0; // Resetear contador
         amigosCargados = 0;
         ClearFriendList();
 
         if (string.IsNullOrEmpty(userId))
         {
             ShowMessage("Error: ID de usuario vacío", true);
+            isLoading = false;
             return;
         }
 
@@ -73,15 +147,15 @@ public class AmigosController : MonoBehaviour
           .WhereIn("estado", new List<object> { "aceptada" })
           .GetSnapshotAsync().ContinueWithOnMainThread(task =>
           {
-              if (task.IsCompleted)
+              if (task.IsCompleted && !task.IsFaulted)
               {
                   ProcessFriends(task.Result.Documents, true, filtroNombre, amigosMostrados);
-                  CheckSearchCompletion(filtroNombre);
               }
               else
               {
                   ShowMessage("Error al cargar amigos", true);
               }
+              ConsultaCompletada(filtroNombre);
           });
 
         // Consulta amigos donde el usuario es destinatario
@@ -90,12 +164,24 @@ public class AmigosController : MonoBehaviour
           .WhereIn("estado", new List<object> { "aceptada" })
           .GetSnapshotAsync().ContinueWithOnMainThread(task =>
           {
-              if (task.IsCompleted)
+              if (task.IsCompleted && !task.IsFaulted)
               {
                   ProcessFriends(task.Result.Documents, false, filtroNombre, amigosMostrados);
-                  CheckSearchCompletion(filtroNombre);
               }
+              ConsultaCompletada(filtroNombre);
           });
+    }
+
+    void ConsultaCompletada(string filtroNombre)
+    {
+        consultasCompletadas++;
+
+        // Solo cuando ambas consultas terminen
+        if (consultasCompletadas == 2)
+        {
+            CheckSearchCompletion(filtroNombre);
+            isLoading = false;
+        }
     }
 
     void ProcessFriends(IEnumerable<DocumentSnapshot> documents, bool isSender, string filtroNombre, HashSet<string> amigosMostrados)
@@ -110,7 +196,7 @@ public class AmigosController : MonoBehaviour
                 amigosMostrados.Add(amigoId);
                 if (ShouldShowFriend(nombreAmigo, filtroNombre))
                 {
-                    CreateFriendCard(amigoId, nombreAmigo);
+                    CreateFriendCard(amigoId, nombreAmigo, document.Id);
                     amigosCargados++;
                 }
             }
@@ -123,7 +209,7 @@ public class AmigosController : MonoBehaviour
                nombreAmigo.ToLower().Contains(filtroNombre.ToLower());
     }
 
-    void CreateFriendCard(string amigoId, string nombreAmigo)
+    void CreateFriendCard(string amigoId, string nombreAmigo, string documentId)
     {
         GameObject nuevoAmigo = Instantiate(amigoPrefab, contentPanel);
         nuevoAmigo.transform.Find("Nombretxt").GetComponent<TMP_Text>().text = nombreAmigo;
@@ -133,8 +219,63 @@ public class AmigosController : MonoBehaviour
         panelEstado.GetComponent<Image>().color = new Color32(0x52, 0xD9, 0x99, 0xFF);
         nuevoAmigo.transform.Find("Estadotxt").GetComponent<TMP_Text>().text = "Amigos";
 
+        // Añadir botón de eliminar amigo
+        Button btnEliminar = nuevoAmigo.transform.Find("BtnEliminar")?.GetComponent<Button>();
+        if (btnEliminar != null)
+        {
+            btnEliminar.onClick.AddListener(() => MostrarConfirmacionEliminar(amigoId, nombreAmigo, documentId));
+        }
+
         // Cargar rango
         LoadFriendRank(amigoId, nuevoAmigo);
+    }
+
+    void MostrarConfirmacionEliminar(string amigoId, string nombreAmigo, string documentId)
+    {
+        if (panelConfirmacionEliminar == null) return;
+
+        amigoIdSeleccionado = amigoId;
+        amigoNombreSeleccionado = nombreAmigo;
+        documentoSolicitudSeleccionado = documentId;
+
+        if (textoConfirmacion != null)
+            textoConfirmacion.text = $"¿Estás seguro que deseas eliminar a {nombreAmigo} de tu lista de amigos?";
+
+        panelConfirmacionEliminar.SetActive(true);
+
+        // Seleccionar el botón de cancelar por defecto para mejor UX
+        EventSystem.current.SetSelectedGameObject(botonCancelarEliminar.gameObject);
+    }
+
+    void EliminarAmigoConfirmado()
+    {
+        if (string.IsNullOrEmpty(documentoSolicitudSeleccionado)) return;
+
+        ShowMessage($"Eliminando a {amigoNombreSeleccionado}...");
+
+        // Actualizar el estado a "eliminada" en lugar de borrar el documento
+        DocumentReference docRef = db.Collection("SolicitudesAmistad").Document(documentoSolicitudSeleccionado);
+        Dictionary<string, object> updates = new Dictionary<string, object>
+        {
+            { "estado", "eliminada" }
+        };
+
+        docRef.UpdateAsync(updates).ContinueWithOnMainThread(task => {
+            if (task.IsCompleted && !task.IsFaulted)
+            {
+                ShowMessage($"{amigoNombreSeleccionado} ha sido eliminado de tu lista de amigos");
+                panelConfirmacionEliminar.SetActive(false);
+
+                // Recargar la lista de amigos
+                CargarAmigos(inputBuscar.text.Trim());
+            }
+            else
+            {
+                ShowMessage("Error al eliminar amigo", true);
+                Debug.LogError($"Error: {task.Exception}");
+                panelConfirmacionEliminar.SetActive(false);
+            }
+        });
     }
 
     void LoadFriendRank(string amigoId, GameObject amigoUI)
@@ -189,7 +330,6 @@ public class AmigosController : MonoBehaviour
         if (messageText != null)
         {
             messageText.text = message;
-            
         }
     }
 
@@ -205,5 +345,14 @@ public class AmigosController : MonoBehaviour
         m_AgregarAmigosUI.SetActive(false);
         m_SolicitudesUI.SetActive(true);
         ShowMessage(""); // Limpiar mensaje al cambiar de panel
+    }
+
+    private void OnDestroy()
+    {
+        // Asegurarse de detener las corrutinas al destruir el objeto
+        if (liveSearchCoroutine != null)
+        {
+            StopCoroutine(liveSearchCoroutine);
+        }
     }
 }
