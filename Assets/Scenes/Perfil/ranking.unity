@@ -4981,7 +4981,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &486556663
 RectTransform:
   m_ObjectHideFlags: 0
@@ -5606,6 +5606,10 @@ MonoBehaviour:
   nombreUsuarioText: {fileID: 879195853}
   xpUsuarioText: {fileID: 1259833699}
   posicionUsuarioText: {fileID: 682547143}
+  btnRankingGeneral: {fileID: 817752377}
+  btnRankingAmigos: {fileID: 1171258735}
+  rankingContentGeneral: {fileID: 972922290}
+  rankingContentAmigos: {fileID: 972922290}
 --- !u!4 &585540728
 Transform:
   m_ObjectHideFlags: 0
@@ -8530,7 +8534,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &979754342
 RectTransform:
   m_ObjectHideFlags: 0
@@ -14708,6 +14712,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1915067477}
   - component: {fileID: 1915067478}
+  - component: {fileID: 1915067479}
   m_Layer: 0
   m_Name: RankingPodioController
   m_TagString: Untagged
@@ -14751,6 +14756,28 @@ MonoBehaviour:
   primeroXP: {fileID: 1492570236}
   segundoXP: {fileID: 349349399}
   terceroXP: {fileID: 1341748845}
+--- !u!114 &1915067479
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1915067475}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b4aeb4444e211894ca81342ec6e4f253, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  prefabJugador: {fileID: 565556001445854711, guid: 04d379208077279468cf885cdbb9d94f, type: 3}
+  content: {fileID: 972922290}
+  RankingAmigosPanel: {fileID: 492648860}
+  primeroNombre: {fileID: 337243134}
+  segundoNombre: {fileID: 914312077}
+  terceroNombre: {fileID: 382420091}
+  primeroXP: {fileID: 1492570236}
+  segundoXP: {fileID: 349349399}
+  terceroXP: {fileID: 1341748845}
+  btnAmigos: {fileID: 1171258735}
 --- !u!1 &1947480433
 GameObject:
   m_ObjectHideFlags: 0
