@@ -11,7 +11,8 @@ using SimpleJSON;
 using System.Threading.Tasks;
 using Firebase.Extensions;
 using UnityEngine.SceneManagement; // Al principio del archivo
-using System.Linq;                // Necesario para .ToList(), .Count(), .FirstOrDefault(), etc.
+using System.Linq;
+using System;                // Necesario para .ToList(), .Count(), .FirstOrDefault(), etc.
 
 
 [System.Serializable]
@@ -50,7 +51,6 @@ public class ElementoInfoLista
 {
     public ElementoInfo[] elementos;
 }
-
 
 public class GameManager2 : MonoBehaviour
 {
@@ -100,6 +100,9 @@ public class GameManager2 : MonoBehaviour
     public string miUID;
     public string enemigoUID;
     public string partidaId;
+
+    private string IdA;
+    private string IdB;
 
     [Header("Panel Selección")]
     public GameObject panelOpciones;
@@ -158,6 +161,7 @@ public class GameManager2 : MonoBehaviour
 
     void Start()
     {
+        RegistrarPresencia(); // 👈 Marca al jugador como presente
         Screen.orientation = ScreenOrientation.LandscapeLeft;
 
         bool modoCPU = PlayerPrefs.GetString("modoJuego") == "cpu";
@@ -188,8 +192,6 @@ public class GameManager2 : MonoBehaviour
         }
         else
         {
-            // 🔗 Modo Online
-            Debug.Log("🌐 Modo Online activado");
 
             partidaId = PlayerPrefs.GetString("PartidaId");
             partidaRef = FirebaseDatabase.DefaultInstance.GetReference("partidas").Child(partidaId);
@@ -220,6 +222,8 @@ public class GameManager2 : MonoBehaviour
                 });
 
             StartCoroutine(CargarDatosPartida());
+
+            EscucharDesconexionDelOponente(); // 👂 Espera hasta tener el enemigoUID
         }
     }
     public void AbrirPausa()
@@ -227,6 +231,7 @@ public class GameManager2 : MonoBehaviour
         if (pausa == false)
         {
             PanelPausa.SetActive(true);
+            Time.timeScale = 0f;
             pausa = true;
         }
     }
@@ -234,15 +239,46 @@ public class GameManager2 : MonoBehaviour
     {
         PanelPausa.SetActive(false);
         PanelConfirmacion.SetActive(false);
+        Time.timeScale = 1f;
         pausa = false;
     }
     public void reiniciar()
     {
-        PanelConfirmacion.SetActive(true);
-        TxtInfo.text = "Seguro que quieres reiniciar la partida?";
-        Si.text = "Si, Reiniciar";
-        No.text = "No, Volver";
-        
+        bool modoCPU = PlayerPrefs.GetString("modoJuego") == "cpu";
+        if (modoCPU)
+        {
+            PanelConfirmacion.SetActive(true);
+            TxtInfo.text = "Seguro que quieres reiniciar la partida?";
+            Si.text = "Si, Reiniciar";
+            No.text = "No, Volver";
+            BtnSi.onClick.AddListener(() =>
+            {
+                Time.timeScale = 1f;
+                SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+            });
+
+            BtnNo.onClick.AddListener(() =>
+            {
+                PanelConfirmacion.SetActive(false);
+            });
+        }
+        else
+        {
+            PanelConfirmacion.SetActive(true);
+            TxtInfo.text = "No se puede reiniciar una partida multijugador.";
+            Si.text = "Voler";
+            No.text = "Volver";
+            BtnSi.onClick.AddListener(() =>
+            {
+                PanelConfirmacion.SetActive(false);
+            });
+
+            BtnNo.onClick.AddListener(() =>
+            {
+                PanelConfirmacion.SetActive(false);
+            });
+        }
+
     }
     public void salir()
     {
@@ -250,6 +286,16 @@ public class GameManager2 : MonoBehaviour
         TxtInfo.text = "Seguro que quieres salir de la partida?";
         Si.text = "Si, Salir";
         No.text = "No, Jugar";
+        BtnSi.onClick.AddListener(() =>
+        {
+            Time.timeScale = 1f;
+            SceneManager.LoadScene("Inicio");
+        });
+
+        BtnNo.onClick.AddListener(() =>
+        {
+            PanelConfirmacion.SetActive(false);
+        });
     }
     void EmpezarEscuchaCategoriaDesdeFirebasee()
     {
@@ -305,7 +351,7 @@ public class GameManager2 : MonoBehaviour
 
         float tiempo = 4f;
 
-        float anguloTotal = Random.Range(3, 6) * 360 + Random.Range(0, 360); // vueltas + aleatorio
+        float anguloTotal = UnityEngine.Random.Range(3, 6) * 360 + UnityEngine.Random.Range(0, 360); // vueltas + aleatorio
         float anguloInicial = ruleta.eulerAngles.z;
         float anguloFinal = anguloInicial + anguloTotal;
 
@@ -467,6 +513,9 @@ public class GameManager2 : MonoBehaviour
                 esJugadorA = (jugadorA == miUID);
                 enemigoUID = esJugadorA ? jugadorB : jugadorA;
 
+                IdA = jugadorA;
+                IdB = jugadorB;
+
                 string uidJugadorLocal = miUID;
                 string uidEnemigo = enemigoUID;
 
@@ -593,7 +642,7 @@ public class GameManager2 : MonoBehaviour
             if (rondaMi == rondaProcesadaLocal) return; // ya procesada
 
             if (esJugadorA && rondaMi == rondaEnemigo)
-            { 
+            {
                 rondaProcesadaLocal = rondaMi; // ✅ ahora sí: justo antes de procesar
                 ProcesarRondas(jugadaMi, jugadaEnemigo);
             }
@@ -740,7 +789,6 @@ public class GameManager2 : MonoBehaviour
             SceneManager.LoadScene("Inicio");
         }
     }
-
     async void SumarXPFirebase(int xp)
     {
         if (miUID == null)
@@ -748,9 +796,7 @@ public class GameManager2 : MonoBehaviour
             Debug.LogError("❌ No hay usuario autenticado.");
             return;
         }
-
         DocumentReference userRef = db.Collection("users").Document(miUID);
-
         try
         {
             DocumentSnapshot snapshot = await userRef.GetSnapshotAsync();
@@ -772,7 +818,6 @@ public class GameManager2 : MonoBehaviour
             Debug.LogError($"❌ Error al actualizar XP en Firebase: {e.Message}");
         }
     }
-
     public void LanzarElemento()
     {
         if (string.IsNullOrEmpty(primerElemento))
@@ -866,22 +911,80 @@ public class GameManager2 : MonoBehaviour
                 }
             });
     }
+    void RegistrarPresencia()
+    {
+        var presenciaRef = FirebaseDatabase.DefaultInstance
+            .GetReference("presencia")
+            .Child(miUID);
+
+        presenciaRef.SetValueAsync(true); // marca presencia
+        presenciaRef.OnDisconnect().RemoveValue(); // se borra si se desconecta
+        Debug.Log("🟢 Presencia registrada para: " + miUID);
+    }
+    void EscucharDesconexionDelOponente()
+    {
+        if (esJugadorA)
+        {
+            var presenciaEnemigoRef = FirebaseDatabase.DefaultInstance
+              .GetReference("presencia")
+              .Child(IdB);
+            presenciaEnemigoRef.ValueChanged += (sender, args) =>
+            {
+                if (!args.Snapshot.Exists)
+                {
+                    Debug.LogWarning("🔌 El oponente se ha desconectado.");
+                    TerminarPartidaPorDesconexion();
+                }
+            };
+        }
+        else
+        {
+            var presenciaEnemigoReff = FirebaseDatabase.DefaultInstance
+                .GetReference("presencia")
+                .Child(IdA);
+            presenciaEnemigoReff.ValueChanged += (sender, args) =>
+            {
+                if (!args.Snapshot.Exists)
+                {
+                    Debug.LogWarning("🔌 El oponente se ha desconectado.");
+                    TerminarPartidaPorDesconexion();
+                }
+            };
+        }
+    }
+
+    void TerminarPartidaPorDesconexion()
+    {
+        TxtRonda.text = "El oponente se ha desconectado. ¡Ganaste!";
+        PanelRonda.SetActive(true);
+
+        // Opcional: marcar la partida como terminada en Firebase
+        partidaRef.Child("estado").SetValueAsync("terminada");
+
+        // Puedes volver al menú después de unos segundos
+        StartCoroutine(VolverAlMenu());
+    }
+    IEnumerator VolverAlMenu()
+    {
+        yield return new WaitForSeconds(3f);
+        SceneManager.LoadScene("Inicio");
+    }
     //------------------------------------------ Modo CPU --------------------------------------------------
     void RealizarJugadaCPU()
     {
         var elementosDisponibles = infoPorNombre.Values.ToList();
         var elementosValidos = elementosDisponibles.Where(e => reaccionPorNombre.ContainsKey(e.nombre)).ToList();
 
-        string cpuElemento1 = elementosValidos[Random.Range(0, elementosValidos.Count)].nombre;
+        string cpuElemento1 = elementosValidos[UnityEngine.Random.Range(0, elementosValidos.Count)].nombre;
         string cpuElemento2 = "";
 
         // 20% de probabilidad de combinación
-        if (Random.value < 0.5f)
+        if (UnityEngine.Random.value < 0.5f)
         {
             var posiblesReacciones = reaccionPorNombre[cpuElemento1].reacciones;
             if (posiblesReacciones != null && posiblesReacciones.Count() > 0)
             {
-                cpuElemento2 = posiblesReacciones[Random.Range(0, posiblesReacciones.Count())].con;
+                cpuElemento2 = posiblesReacciones[UnityEngine.Random.Range(0, posiblesReacciones.Count())].con;
             }
         }
 
@@ -909,7 +1012,7 @@ public class GameManager2 : MonoBehaviour
 
         rondaCPU++;
         TxtNRonda.text = $"Ronda {rondaCPU}";
-        TxtRonda.text = $"Ronda {rondaCPU} finalizada";
+        TxtRonda.text = $"Ronda {rondaCPU - 1} finalizada";
         PanelRonda.SetActive(true);
 
         yield return new WaitForSeconds(2.5f);
@@ -939,6 +1042,4 @@ public class GameManager2 : MonoBehaviour
             SceneManager.LoadScene("Inicio");
         }
     }
-
-
 }
