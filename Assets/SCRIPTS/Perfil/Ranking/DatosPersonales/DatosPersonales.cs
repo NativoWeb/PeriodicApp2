@@ -88,12 +88,7 @@ public class DatosPersonales : MonoBehaviour
            
 
         }
-
-
         btnActualizar.onClick.AddListener(ActivarPanelDropdowns);
-
-     
-    
 }
 
     async void VerificarCampos()
