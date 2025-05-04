@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using System;
 using Firebase.Auth;
+using UnityEngine.SceneManagement;
 
 public class RegistroEmailController : MonoBehaviour
 {
@@ -20,6 +21,7 @@ public class RegistroEmailController : MonoBehaviour
     public TMP_Text mensajeVerificacionText;
     public GameObject panelCorreoInfo;
     public TMP_Text tiempoRestanteText;
+    public TMP_InputField inputCodigoVerificacion;
 
     [Header("Botones")]
     public Button btnRegistrar;
@@ -51,6 +53,8 @@ public class RegistroEmailController : MonoBehaviour
         btnRegistrar.onClick.AddListener(OnClickRegistrar);
         btnCerrarError.onClick.AddListener(() => panelError.SetActive(false));
         btnVolver.onClick.AddListener(VolverARegistro);
+        btnVerificar.onClick.AddListener(OnClickVerificarCodigo);
+
 
         panelVerificacion.SetActive(false);
         panelCorreoInfo.SetActive(false);
@@ -124,6 +128,35 @@ public class RegistroEmailController : MonoBehaviour
             MostrarError("Error al registrar usuario: " + ex.Message);
         }
     }
+
+    private void OnClickVerificarCodigo()
+    {
+        if (Application.internetReachability == NetworkReachability.NotReachable)
+        {
+            panelSinInternet.SetActive(true);
+            return;
+        }
+
+        string codigoIngresado = inputCodigoVerificacion.text.Trim();
+
+        if (string.IsNullOrEmpty(codigoIngresado))
+        {
+            MostrarError("Debes ingresar el código de verificación.");
+            return;
+        }
+
+        if (codigoIngresado == codigoVerificacion)
+        {
+            Debug.Log("✅ Código correcto. Registro finalizado.");
+            // Puedes cargar una nueva escena o mostrar mensaje
+            SceneManager.LoadScene("Registrar");
+        }
+        else
+        {
+            MostrarError("Código incorrecto. Intenta nuevamente.");
+        }
+    }
+
 
     private void VolverARegistro()
     {
