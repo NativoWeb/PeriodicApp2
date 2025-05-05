@@ -13,6 +13,7 @@ public class RankingManager2 : MonoBehaviour
 {
     public GameObject prefabJugador;
     public Transform content;
+    public GameObject panelRankignGeneral;
     FirebaseFirestore db;
     private Coroutine rankingCoroutine;
     private bool estaActualizando = false;
@@ -25,6 +26,10 @@ public class RankingManager2 : MonoBehaviour
     // Referencia al script ScrollToUser para coordinar las actualizaciones
     [SerializeField] private ScrollToUser scrollToUser;
 
+
+    // instanciar btn y panel amigos para desactivar
+    public Button BtnRankingAmigos;
+    public GameObject panelRankingAmigos;
     // Referencias al podio
     public TMP_Text primeroNombre, segundoNombre, terceroNombre;
     public TMP_Text primeroXP, segundoXP, terceroXP;
@@ -47,7 +52,9 @@ public class RankingManager2 : MonoBehaviour
             botonGeneral.onClick.RemoveAllListeners();
             // Añadir nuestro listener
             botonGeneral.onClick.AddListener(OnBotonGeneralClick);
+           
         }
+       
     }
 
     private void MostrarPanel()
@@ -101,8 +108,8 @@ public class RankingManager2 : MonoBehaviour
 
     private void OnBotonGeneralClick()
     {
-        // activamos el content nuevamente
-        content.gameObject.SetActive(true);
+        panelRankingAmigos.SetActive(false);
+        panelRankignGeneral.SetActive(true);
 
         // Ejecutar la lógica del ranking general
         ObtenerRanking();

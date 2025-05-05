@@ -16,7 +16,7 @@ public class RankingAmigosManager : MonoBehaviour
     private Coroutine rankingCoroutine;
     private bool estaActualizando = false;
 
-    [SerializeField] private GameObject RankingAmigosPanel = null;
+    
 
     // Referencias al podio
     public TMP_Text primeroNombre, segundoNombre, terceroNombre;
@@ -24,6 +24,11 @@ public class RankingAmigosManager : MonoBehaviour
 
     // Referencia al botón de Amigos
     public Button btnAmigos;
+    [SerializeField] private GameObject RankingAmigosPanel = null;
+
+    // instancia btn general
+    public Button btnGeneral;
+    public GameObject PanelRankingGeneral;
 
     private string usuarioActualID;
     private string usuarioActualNombre;
@@ -41,8 +46,19 @@ public class RankingAmigosManager : MonoBehaviour
             btnAmigos.onClick.AddListener(ActivarRankingAmigos);
         }
 
+        // desactivamos el panel 
+        if(btnAmigos == null)
+        {
+            RankingAmigosPanel.SetActive(false);
+        }
+
         // Obtenemos el XP del usuario actual
         ObtenerXPUsuarioActual();
+
+        if(btnGeneral != null)
+        {
+            RankingAmigosPanel.SetActive(false);
+        }
     }
 
     private void ObtenerXPUsuarioActual()
@@ -73,19 +89,13 @@ public class RankingAmigosManager : MonoBehaviour
         }
     }
 
-    //public void DesactivarRankingAmigos()
-    //{
-    //    RankingAmigosPanel.SetActive(false);
-
-    //    if (estaActualizando)
-    //    {
-    //        estaActualizando = false;
-    //        StopCoroutine(rankingCoroutine);
-    //    }
-    //}
+   
 
     public void ObtenerRankingAmigos()
     {
+
+        // desactivamos primero el panel de ranking general 
+        PanelRankingGeneral.SetActive(false);
         // Limpiar lista anterior
         foreach (Transform child in content)
         {
