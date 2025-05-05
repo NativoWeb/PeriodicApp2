@@ -9,11 +9,18 @@ public class CargarPreguntasEstiloUseCase
         var contenedor = JsonUtility.FromJson<ContenedorPreguntas>(json);
         var preguntas = new List<PreguntaEstilo>();
 
-        void Agregar(List<ControladorEncuestaApre.Pregunta> lista, string categoria)
-        {
+        void Agregar(List < Pregunta > lista, string categoria)
+{
             foreach (var p in lista)
-                preguntas.Add(new PreguntaEstilo { Texto = p.textoAfirmacion, Categoria = categoria });
+            {
+                preguntas.Add(new PreguntaEstilo
+                {
+                    Texto = p.textoAfirmacion,
+                    Categoria = categoria
+                });
+            }
         }
+
 
         var estilos = contenedor.preguntasEstiloBinario;
         Agregar(estilos.Gamificacion, "Gamificacion");

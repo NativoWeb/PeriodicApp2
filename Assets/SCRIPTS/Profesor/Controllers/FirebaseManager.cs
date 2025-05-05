@@ -62,7 +62,7 @@ public class FirebaseManager : MonoBehaviour
     //}
 
 
-    public void GuardarEncuesta(string encuestaID, string titulo, List<Pregunta> preguntas)
+    public void GuardarEncuesta(string encuestaID, string titulo, List<Preguntas> preguntas)
     {
         if (db == null)
         {
@@ -72,7 +72,7 @@ public class FirebaseManager : MonoBehaviour
 
         // Convierte las preguntas a un formato de diccionario compatible con Firestore
         List<Dictionary<string, object>> preguntasData = new List<Dictionary<string, object>>();
-        foreach (Pregunta pregunta in preguntas)
+        foreach (Preguntas pregunta in preguntas)
         {
             preguntasData.Add(new Dictionary<string, object>
             {

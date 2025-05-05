@@ -83,9 +83,9 @@ public class PreguntaController : MonoBehaviour
 
 
 
-    public Pregunta ObtenerPregunta()
+    public Preguntas ObtenerPregunta()
     {
-        Pregunta pregunta = new Pregunta(inputPregunta.text, new List<Opcion>(opciones));
+        Preguntas pregunta = new Preguntas(inputPregunta.text, new List<Opcion>(opciones));
 
         // 🛠 Debug para ver si se está marcando la opción correcta
         foreach (Opcion opcion in pregunta.opciones)
