@@ -7,6 +7,7 @@ using TMPro;
 using System.Collections;
 using System;
 using UnityEngine.SceneManagement;
+using UnityEngine.EventSystems;
 
 public class RankingManager2 : MonoBehaviour
 {
@@ -18,6 +19,12 @@ public class RankingManager2 : MonoBehaviour
 
     [SerializeField] private GameObject RankingPanel = null;
 
+    // Referencia al botón general que ya existe en el panel
+    [SerializeField] private Button botonGeneral = null;
+
+    // Referencia al script ScrollToUser para coordinar las actualizaciones
+    [SerializeField] private ScrollToUser scrollToUser;
+
     // Referencias al podio
     public TMP_Text primeroNombre, segundoNombre, terceroNombre;
     public TMP_Text primeroXP, segundoXP, terceroXP;
@@ -26,12 +33,28 @@ public class RankingManager2 : MonoBehaviour
     {
         db = FirebaseFirestore.DefaultInstance;
         MostrarPanel();
+
+        // Buscar la referencia a ScrollToUser si no está asignada
+        if (scrollToUser == null)
+        {
+            scrollToUser = FindFirstObjectByType<ScrollToUser>();
+        }
+        
+        // Configurar listener del botón general una sola vez al inicio
+        if (botonGeneral != null)
+        {
+            // Eliminar listeners existentes para evitar duplicados
+            botonGeneral.onClick.RemoveAllListeners();
+            // Añadir nuestro listener
+            botonGeneral.onClick.AddListener(OnBotonGeneralClick);
+        }
     }
+
     private void MostrarPanel()
     {
         string escenaguardada = PlayerPrefs.GetString("PanelRanking");
 
-        if(escenaguardada == "PanelRanking")
+        if (escenaguardada == "PanelRanking")
         {
             ActivarRanking();
             PlayerPrefs.SetString("PanelRanking", "");
@@ -42,18 +65,74 @@ public class RankingManager2 : MonoBehaviour
         }
     }
 
-
     public void ActivarRanking()
     {
         string estadouser = PlayerPrefs.GetString("Estadouser", "");
         if (estadouser == "nube")
         {
             RankingPanel.SetActive(true);
-            ObtenerRanking();
 
-        }else
+            // Seleccionar el botón general por defecto
+            SeleccionarBotonGeneral();
+
+            ObtenerRanking();
+        }
+        else
         {
             return;
+        }
+    }
+
+    private void SeleccionarBotonGeneral()
+    {
+        if (botonGeneral != null)
+        {
+            // Establecer el botón como elemento seleccionado en el sistema de eventos de Unity
+            EventSystem.current.SetSelectedGameObject(botonGeneral.gameObject);
+            
+            // Simular un clic para ejecutar la lógica del botón
+            botonGeneral.onClick.Invoke();
+        }
+        else
+        {
+            Debug.LogWarning("No se ha asignado el botón general en el Inspector");
+        }
+    }
+
+    private void OnBotonGeneralClick()
+    {
+        // activamos el content nuevamente
+        content.gameObject.SetActive(true);
+
+        // Ejecutar la lógica del ranking general
+        ObtenerRanking();
+
+        // Si tenemos referencia al ScrollToUser, asegurarnos de actualizar la UI y cambiar al modo general
+        if (scrollToUser != null)
+        {
+            // Cambiar al modo ranking general
+            scrollToUser.CambiarModoRanking(ScrollToUser.ModoRanking.General);
+
+            // Asegurarnos de que la UI se actualice
+            scrollToUser.ActualizarUISegunModo();
+
+            // Llamar al método para actualizar el contenido del ranking general
+            scrollToUser.ActualizarContenidoRankingGeneral();
+
+            // Hacer scroll a la posición del usuario después de que se haya actualizado el contenido
+            StartCoroutine(HacerScrollDespuesDeActualizar());
+        }
+    }
+
+    private IEnumerator HacerScrollDespuesDeActualizar()
+    {
+        // Esperar un momento para que se actualice el contenido
+        yield return new WaitForSeconds(0.5f);
+
+        // Hacer scroll a la posición del usuario
+        if (scrollToUser != null)
+        {
+            scrollToUser.ScrollToUserPosition();
         }
     }
 
@@ -85,7 +164,7 @@ public class RankingManager2 : MonoBehaviour
                       Destroy(child.gameObject);
                   }
 
-                  
+
                   List<(string, int)> listaJugadores = new List<(string, int)>();
 
                   foreach (DocumentSnapshot document in task.Result.Documents)

@@ -33,8 +33,8 @@ public class ScrollToUser : MonoBehaviour
     private int posicionGeneral = 0;
     private int posicionAmigos = 0;
 
-    // Modo de visualización actual
-    private enum ModoRanking { General, Amigos }
+    // Modo de visualización actual - Hacemos pública la enum para que RankingManager2 pueda acceder
+    public enum ModoRanking { General, Amigos }
     private ModoRanking modoActual = ModoRanking.General;
 
     private FirebaseFirestore db;
@@ -67,7 +67,8 @@ public class ScrollToUser : MonoBehaviour
         ObtenerInformacionUsuario();
     }
 
-    private void CambiarModoRanking(ModoRanking nuevoModo)
+    // Hacemos público este método para que pueda ser llamado desde RankingManager2
+    public void CambiarModoRanking(ModoRanking nuevoModo)
     {
         if (modoActual != nuevoModo)
         {
@@ -94,8 +95,19 @@ public class ScrollToUser : MonoBehaviour
         }
     }
 
-    private void ActualizarUISegunModo()
+    // Hacemos público este método para que pueda ser llamado desde RankingManager2
+    public void ActualizarUISegunModo()
     {
+        // Asegurarnos de que tenemos la información más reciente del usuario
+        if (auth.CurrentUser != null)
+        {
+            usuarioActualID = auth.CurrentUser.UserId;
+            usuarioActualNombre = auth.CurrentUser.DisplayName;
+        }
+
+        // Actualizar también la información de XP (opcional dependiendo de si quieres la info en tiempo real)
+        StartCoroutine(ActualizarXPUsuario());
+
         if (modoActual == ModoRanking.General)
         {
             // Actualizar la UI con la posición general
@@ -124,6 +136,36 @@ public class ScrollToUser : MonoBehaviour
             if (posicionAmigos == 0)
             {
                 ObtenerPosicionEntreAmigos();
+            }
+        }
+    }
+
+    // Corrutina para obtener la XP actual del usuario
+    private IEnumerator ActualizarXPUsuario()
+    {
+        if (auth.CurrentUser == null)
+        {
+            yield break;
+        }
+
+        Task<DocumentSnapshot> userTask = db.Collection("users").Document(usuarioActualID).GetSnapshotAsync();
+        yield return new WaitUntil(() => userTask.IsCompleted);
+
+        if (userTask.Exception == null && userTask.Result.Exists)
+        {
+            if (userTask.Result.TryGetValue<int>("xp", out int xpValue))
+            {
+                usuarioActualXP = xpValue;
+
+                // Actualizar la UI con el nuevo valor de XP
+                if (modoActual == ModoRanking.General)
+                {
+                    UpdateUIDirectly(usuarioActualNombre, usuarioActualXP, posicionGeneral);
+                }
+                else
+                {
+                    UpdateUIDirectly(usuarioActualNombre, usuarioActualXP, posicionAmigos);
+                }
             }
         }
     }
@@ -349,14 +391,17 @@ public class ScrollToUser : MonoBehaviour
             posicionUsuarioText.text = "#" + posicion.ToString();
     }
 
-    // Método para actualizar el contenido del ranking general
-    private void ActualizarContenidoRankingGeneral()
+    // Hacemos público este método para que pueda ser llamado desde RankingManager2
+    public void ActualizarContenidoRankingGeneral()
     {
         StartCoroutine(ActualizarContenidoRankingGeneralCoroutine());
     }
 
     private IEnumerator ActualizarContenidoRankingGeneralCoroutine()
     {
+        // Primero recalcular la posición general para asegurar que tenemos la información más actualizada
+        yield return StartCoroutine(ObtenerPosicionGeneral());
+
         // Solo continuar si tenemos el contenedor para el ranking general
         if (rankingContentGeneral == null) yield break;
 
@@ -373,8 +418,6 @@ public class ScrollToUser : MonoBehaviour
             yield break;
         }
 
- 
-
         // Forzar actualización del layout
         Canvas.ForceUpdateCanvases();
         LayoutRebuilder.ForceRebuildLayoutImmediate((RectTransform)rankingContentGeneral);
@@ -386,8 +429,8 @@ public class ScrollToUser : MonoBehaviour
         }
     }
 
-    // Método para actualizar el contenido del ranking de amigos
-    private void ActualizarContenidoRankingAmigos()
+    // Hacemos público este método para que pueda ser llamado desde RankingManager2
+    public void ActualizarContenidoRankingAmigos()
     {
         StartCoroutine(ActualizarContenidoRankingAmigosCoroutine());
     }
@@ -404,7 +447,6 @@ public class ScrollToUser : MonoBehaviour
         // Solo continuar si tenemos el contenedor para el ranking de amigos
         if (rankingContentAmigos == null) return;
 
-        
         // Forzar actualización del layout
         Canvas.ForceUpdateCanvases();
         LayoutRebuilder.ForceRebuildLayoutImmediate((RectTransform)rankingContentAmigos);

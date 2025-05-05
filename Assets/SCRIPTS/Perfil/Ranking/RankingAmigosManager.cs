@@ -73,16 +73,16 @@ public class RankingAmigosManager : MonoBehaviour
         }
     }
 
-    public void DesactivarRankingAmigos()
-    {
-        RankingAmigosPanel.SetActive(false);
+    //public void DesactivarRankingAmigos()
+    //{
+    //    RankingAmigosPanel.SetActive(false);
 
-        if (estaActualizando)
-        {
-            estaActualizando = false;
-            StopCoroutine(rankingCoroutine);
-        }
-    }
+    //    if (estaActualizando)
+    //    {
+    //        estaActualizando = false;
+    //        StopCoroutine(rankingCoroutine);
+    //    }
+    //}
 
     public void ObtenerRankingAmigos()
     {
@@ -232,8 +232,7 @@ public class RankingAmigosManager : MonoBehaviour
         // Si el usuario está entre los primeros 3, resaltamos su posición en el podio
         if (posicionUsuario <= 3 && posicionUsuario > 0)
         {
-            // Aquí puedes resaltar su posición en el podio si lo deseas
-            // Por ejemplo, cambiar el color del texto o añadir un icono
+            
         }
     }
 
