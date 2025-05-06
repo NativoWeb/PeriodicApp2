@@ -289,7 +289,7 @@ public class MisComunidadesManager : MonoBehaviour
             if (fechaObj is Timestamp timestamp)
             {
                 DateTime fecha = timestamp.ToDateTime();
-                // Formatear la fecha en español (ejemplo: "15 enero 2023")
+                // formatear fecha 
                 fechaFormateada = fecha.ToString("dd MMMM yyyy", new System.Globalization.CultureInfo("es-ES"));
             }
             else if (fechaObj is string fechaString)
@@ -458,7 +458,7 @@ public class MisComunidadesManager : MonoBehaviour
         Image imgBtnSolicitudes = btnVerSolicitudes ? btnVerSolicitudes.GetComponent<Image>() : null;
 
         // Configura color cuando está seleccionado (usa los colores que prefieras)
-        Color colorSeleccionado = new Color(55, 189, 247, 255); // Azul - ajusta según tu UI
+        Color colorSeleccionado = new Color(55, 189, 247, 255); // Azul 
         Color colorNormal = Color.white; // Color normal - ajusta según tu UI
 
         // Actualiza los colores según el estado de selección
@@ -480,6 +480,7 @@ public class MisComunidadesManager : MonoBehaviour
 
     void MostrarConfirmacionAbandonar(Dictionary<string, object> dataComunidad)
     {
+     
         if (panelConfirmacionAbandonar == null) return;
 
         comunidadActualId = dataComunidad["documentId"].ToString();
@@ -494,6 +495,13 @@ public class MisComunidadesManager : MonoBehaviour
 
     void ConfirmarAbandonarComunidad()
     {
+        if (!HayConexion())
+        {
+            MostrarMensajeEstado("No hay conexión a internet. Algunas funciones pueden no estar disponibles.", true);
+            textoConfirmacionAbandonar.text = ("No puedes abandonar esta comunidad sin conexión a internet");
+            Invoke("ocultarPanelConfirmarAbandonarComunidad", 3f);
+            return;
+        }
         if (string.IsNullOrEmpty(comunidadActualId) || string.IsNullOrEmpty(usuarioActualId))
         {
             Debug.LogError("Falta información para abandonar la comunidad");
@@ -521,6 +529,11 @@ public class MisComunidadesManager : MonoBehaviour
                 // Volver a cargar las comunidades del usuario después de un breve retraso
                 Invoke("VolverAScenaComunidades", 0.5f);
             });
+    }
+    public void ocultarPanelConfirmarAbandonarComunidad()
+    {
+        if(panelConfirmacionAbandonar != null)
+        panelConfirmacionAbandonar.SetActive(false);
     }
 
     void VolverAScenaComunidades()
@@ -762,9 +775,16 @@ public class MisComunidadesManager : MonoBehaviour
         // Configurar botones
         Button btnAceptar = item.transform.Find("AceptarBtn").GetComponent<Button>();
         Button btnRechazar = item.transform.Find("RechazarBtn").GetComponent<Button>();
-
-        btnAceptar.onClick.AddListener(() => ProcesarSolicitud(item, comunidadId, solicitudId, dataSolicitud["idUsuario"].ToString(), true));
-        btnRechazar.onClick.AddListener(() => ProcesarSolicitud(item, comunidadId, solicitudId, dataSolicitud["idUsuario"].ToString(), false));
+        if (HayConexion())
+        {
+            btnAceptar.onClick.AddListener(() => ProcesarSolicitud(item, comunidadId, solicitudId, dataSolicitud["idUsuario"].ToString(), true));
+            btnRechazar.onClick.AddListener(() => ProcesarSolicitud(item, comunidadId, solicitudId, dataSolicitud["idUsuario"].ToString(), false));
+        }
+        else
+        {
+            btnAceptar.interactable = false;
+            btnRechazar.interactable = false;
+        }
     }
     void ProcesarSolicitud(GameObject itemSolicitud, string comunidadId, string solicitudId, string usuarioId, bool aceptar)
     {
@@ -857,5 +877,17 @@ public class MisComunidadesManager : MonoBehaviour
 
         panelSolicitudes.SetActive(true);
         return errorItem;
+    }
+    public bool HayConexion()
+    {
+        bool hayConexion = Application.internetReachability != NetworkReachability.NotReachable;
+
+        // Mostrar u ocultar mensaje de conexión
+        if (!hayConexion)
+        {
+            MostrarMensajeEstado("No hay conexión a internet. Algunas funciones pueden no estar disponibles.", true);
+        }
+
+        return hayConexion;
     }
 }

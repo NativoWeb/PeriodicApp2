@@ -16,7 +16,8 @@ public class RankingAmigosManager : MonoBehaviour
     private Coroutine rankingCoroutine;
     private bool estaActualizando = false;
 
-    
+    // Referencia al rankingGeneralManager2
+    [SerializeField] private RankingGeneralManager rankingGeneralManager;
 
     // Referencias al podio
     public TMP_Text primeroNombre, segundoNombre, terceroNombre;
@@ -40,14 +41,21 @@ public class RankingAmigosManager : MonoBehaviour
         usuarioActualID = Firebase.Auth.FirebaseAuth.DefaultInstance.CurrentUser.UserId;
         usuarioActualNombre = Firebase.Auth.FirebaseAuth.DefaultInstance.CurrentUser.DisplayName;
 
+        // Buscar la referencia a rankingGeneralManager2 si no está asignada
+        if (rankingGeneralManager == null)
+        {
+            rankingGeneralManager = FindFirstObjectByType<RankingGeneralManager>();
+        }
+
         // Asignamos el listener al botón de amigos
         if (btnAmigos != null)
         {
+            btnAmigos.onClick.RemoveAllListeners();
             btnAmigos.onClick.AddListener(ActivarRankingAmigos);
         }
 
         // desactivamos el panel 
-        if(btnAmigos == null)
+        if (btnAmigos == null)
         {
             RankingAmigosPanel.SetActive(false);
         }
@@ -55,12 +63,77 @@ public class RankingAmigosManager : MonoBehaviour
         // Obtenemos el XP del usuario actual
         ObtenerXPUsuarioActual();
 
-        if(btnGeneral != null)
+        if (btnGeneral != null)
         {
+            btnGeneral.onClick.RemoveAllListeners();
+            btnGeneral.onClick.AddListener(ActivarRankingGeneral);
             RankingAmigosPanel.SetActive(false);
         }
     }
 
+    public void ActivarRankingAmigos()
+    {
+        string estadouser = PlayerPrefs.GetString("Estadouser", "");
+        if (estadouser == "nube")
+        {
+            // Activar nuestro panel
+            RankingAmigosPanel.SetActive(true);
+
+            // Desactivar el panel de ranking general si existe
+            if (PanelRankingGeneral != null)
+            {
+                PanelRankingGeneral.SetActive(false);
+            }
+
+            // Marcar el botón de amigos como seleccionado
+            if (rankingGeneralManager != null && btnAmigos != null)
+            {
+                rankingGeneralManager.MarcarBotonSeleccionado(btnAmigos);
+
+                // Desmarcar el botón general si existe
+                if (btnGeneral != null)
+                {
+                    rankingGeneralManager.DesmarcarBoton(btnGeneral);
+                }
+            }
+
+            ObtenerRankingAmigos();
+        }
+    }
+
+    public void ActivarRankingGeneral()
+    {
+        string estadouser = PlayerPrefs.GetString("Estadouser", "");
+        if (estadouser == "nube")
+        {
+            // Desactivar nuestro panel
+            RankingAmigosPanel.SetActive(false);
+
+            // Activar el panel de ranking general si existe
+            if (PanelRankingGeneral != null)
+            {
+                PanelRankingGeneral.SetActive(true);
+
+                // Llamar al método ObtenerRanking del rankingGeneralManager2
+                if (rankingGeneralManager != null)
+                {
+                    rankingGeneralManager.ObtenerRanking();
+                }
+            }
+
+            // Marcar el botón general como seleccionado
+            if (rankingGeneralManager != null && btnGeneral != null)
+            {
+                rankingGeneralManager.MarcarBotonSeleccionado(btnGeneral);
+
+                // Desmarcar el botón de amigos si existe
+                if (btnAmigos != null)
+                {
+                    rankingGeneralManager.DesmarcarBoton(btnAmigos);
+                }
+            }
+        }
+    }
     private void ObtenerXPUsuarioActual()
     {
         db.Collection("users").Document(usuarioActualID).GetSnapshotAsync().ContinueWithOnMainThread(task =>
@@ -78,18 +151,6 @@ public class RankingAmigosManager : MonoBehaviour
             }
         });
     }
-
-    public void ActivarRankingAmigos()
-    {
-        string estadouser = PlayerPrefs.GetString("Estadouser", "");
-        if (estadouser == "nube")
-        {
-            RankingAmigosPanel.SetActive(true);
-            ObtenerRankingAmigos();
-        }
-    }
-
-   
 
     public void ObtenerRankingAmigos()
     {

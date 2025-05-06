@@ -47,6 +47,11 @@ public class AmigosController : MonoBehaviour
     {
         auth = FirebaseAuth.DefaultInstance;
         db = FirebaseFirestore.DefaultInstance;
+        // Verificar conexión al inicio
+        if (!HayConexion())
+        {
+            ShowMessage("No hay conexión a internet. Algunas funciones pueden no estar disponibles.", true);
+        }
 
         // Inicializar panel de confirmación
         if (panelConfirmacionEliminar != null)
@@ -127,8 +132,15 @@ public class AmigosController : MonoBehaviour
     {
         if (isLoading) return;
 
+        // Verificar conexión antes de cargar amigos
+        if (!HayConexion())
+        {
+            ShowMessage("No hay conexión a internet.", true);
+           
+        }
+
         isLoading = true;
-        consultasCompletadas = 0; // Resetear contador
+        consultasCompletadas = 0;
         amigosCargados = 0;
         ClearFriendList();
 
@@ -234,6 +246,13 @@ public class AmigosController : MonoBehaviour
     {
         if (panelConfirmacionEliminar == null) return;
 
+        // Verificar conexión antes de mostrar el panel de confirmación
+        if (!HayConexion())
+        {
+            ShowMessage("No puedes eliminar amigos sin conexión a internet", true);
+            return;
+        }
+
         amigoIdSeleccionado = amigoId;
         amigoNombreSeleccionado = nombreAmigo;
         documentoSolicitudSeleccionado = documentId;
@@ -324,12 +343,16 @@ public class AmigosController : MonoBehaviour
             Destroy(child.gameObject);
         }
     }
-
     void ShowMessage(string message, bool isError = false)
     {
         if (messageText != null)
         {
             messageText.text = message;
+            // Cambiar color según si es error o no
+            messageText.color = isError ? Color.red : Color.white;
+
+            // Si el mensaje está vacío, ocultar el texto
+            messageText.gameObject.SetActive(!string.IsNullOrEmpty(message));
         }
     }
 
@@ -354,5 +377,17 @@ public class AmigosController : MonoBehaviour
         {
             StopCoroutine(liveSearchCoroutine);
         }
+    }
+    public bool HayConexion()
+    {
+        bool hayConexion = Application.internetReachability != NetworkReachability.NotReachable;
+
+        // Mostrar u ocultar mensaje de conexión
+        if (!hayConexion)
+        {
+            ShowMessage("No hay conexión a internet. Algunas funciones pueden no estar disponibles.", true);
+        }
+
+        return hayConexion;
     }
 }
