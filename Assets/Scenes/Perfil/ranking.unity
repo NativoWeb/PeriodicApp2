@@ -3011,7 +3011,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 0}
-  m_AnchoredPosition: {x: 1.2288818, y: -88.043945}
+  m_AnchoredPosition: {x: 1.2287598, y: -88.043945}
   m_SizeDelta: {x: 105.3964, y: 236.2489}
   m_Pivot: {x: 0.5, y: 0}
 --- !u!114 &260146249
@@ -5237,21 +5237,24 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a44245fadcb8ef744889210137a82bdc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  comunidadesDropdown: {fileID: 765469055}
+  rankingGeneralManager: {fileID: 1915067478}
+  rankingAmigosManager: {fileID: 1430995351}
   prefabJugador: {fileID: 565556001445854711, guid: 04d379208077279468cf885cdbb9d94f, type: 3}
   content: {fileID: 1461331067}
-  comunidadesDropdown: {fileID: 765469055}
+  panelRankingComunidades: {fileID: 1474432508}
   primeroNombre: {fileID: 337243134}
   segundoNombre: {fileID: 914312077}
   terceroNombre: {fileID: 382420091}
   primeroXP: {fileID: 1492570236}
   segundoXP: {fileID: 349349399}
   terceroXP: {fileID: 1341748845}
-  RankingComunidadPanel: {fileID: 1474432508}
-  PanelRankingGeneral: {fileID: 1827935501}
-  btnComunidad: {fileID: 1971300884}
+  btnComunidades: {fileID: 1971300884}
+  panelRankingGeneral: {fileID: 1827935501}
+  panelRankingAmigos: {fileID: 492648860}
   btnGeneral: {fileID: 2044759437}
   btnAmigos: {fileID: 1171258735}
-  rankingGeneralManager: {fileID: 1915067478}
+  scrollToUser: {fileID: 585540727}
 --- !u!4 &487129616
 Transform:
   m_ObjectHideFlags: 0
@@ -5835,8 +5838,13 @@ MonoBehaviour:
   posicionUsuarioText: {fileID: 682547143}
   btnRankingGeneral: {fileID: 2044759437}
   btnRankingAmigos: {fileID: 1171258735}
+  btnRankingComunidades: {fileID: 1971300884}
   rankingContentGeneral: {fileID: 104658733}
   rankingContentAmigos: {fileID: 972922290}
+  rankingContentComunidades: {fileID: 1461331067}
+  rankingGeneralManager: {fileID: 1915067478}
+  rankingAmigosManager: {fileID: 1430995351}
+  rankingComunidadesManager: {fileID: 487129615}
 --- !u!4 &585540728
 Transform:
   m_ObjectHideFlags: 0
@@ -10047,8 +10055,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: -6.2971}
-  m_SizeDelta: {x: 324, y: 72}
+  m_AnchoredPosition: {x: -191, y: -6.2971}
+  m_SizeDelta: {x: 172.7817, y: 72}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1171258735
 MonoBehaviour:
@@ -15589,14 +15597,16 @@ MonoBehaviour:
   RankingPanel: {fileID: 979754341}
   botonGeneral: {fileID: 2044759437}
   scrollToUser: {fileID: 585540727}
-  BtnRankingAmigos: {fileID: 1171258735}
-  panelRankingAmigos: {fileID: 492648860}
   primeroNombre: {fileID: 337243134}
   segundoNombre: {fileID: 914312077}
   terceroNombre: {fileID: 382420091}
   primeroXP: {fileID: 1492570236}
   segundoXP: {fileID: 349349399}
   terceroXP: {fileID: 1341748845}
+  BtnRankingAmigos: {fileID: 1171258735}
+  panelRankingAmigos: {fileID: 492648860}
+  BtnRankingComunidades: {fileID: 1971300884}
+  panelRankingComunidades: {fileID: 1474432508}
 --- !u!1 &1947480433
 GameObject:
   m_ObjectHideFlags: 0
@@ -15874,8 +15884,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -361, y: -107}
-  m_SizeDelta: {x: 324, y: 72}
+  m_AnchoredPosition: {x: 35, y: -9.6826}
+  m_SizeDelta: {x: 197.6086, y: 65.229}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1971300884
 MonoBehaviour:
@@ -16708,8 +16718,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -361, y: -6.2971}
-  m_SizeDelta: {x: 324, y: 72}
+  m_AnchoredPosition: {x: -417.42474, y: -6.2971}
+  m_SizeDelta: {x: 211.1505, y: 72}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &2044759437
 MonoBehaviour:

@@ -11,6 +11,15 @@ using System.Threading.Tasks;
 
 public class ScrollToUser : MonoBehaviour
 {
+    // Enumeración para identificar el modo de ranking actual (ampliada con Comunidades)
+    public enum ModoRanking
+    {
+        General,
+        Amigos,
+        Comunidades
+    }
+
+    // Referencias UI originales
     public ScrollRect scrollRect; // Asigna el ScrollRect del ranking
     public Transform content; // Asigna el Content del ScrollView
 
@@ -21,10 +30,12 @@ public class ScrollToUser : MonoBehaviour
     // Referencias a los botones de cambio de ranking
     public Button btnRankingGeneral;
     public Button btnRankingAmigos;
+    public Button btnRankingComunidades; // Nuevo botón para comunidades
 
     // Referencia a la lista de contenido a actualizar
     public Transform rankingContentGeneral;
     public Transform rankingContentAmigos;
+    public Transform rankingContentComunidades; // Nuevo contenido para comunidades
 
     // Variables para almacenar la información del usuario
     private string usuarioActualID;
@@ -32,10 +43,15 @@ public class ScrollToUser : MonoBehaviour
     private int usuarioActualXP;
     private int posicionGeneral = 0;
     private int posicionAmigos = 0;
+    private int posicionComunidades = 0; // Nueva posición para comunidades
 
-    // Modo de visualización actual - Hacemos pública la enum para que RankingManager2 pueda acceder
-    public enum ModoRanking { General, Amigos }
+    // Modo de visualización actual
     private ModoRanking modoActual = ModoRanking.General;
+
+    // Referencias a los managers (nuevas)
+    [SerializeField] private RankingGeneralManager rankingGeneralManager;
+    [SerializeField] private RankingAmigosManager rankingAmigosManager;
+    [SerializeField] private RankingComunidadesManager rankingComunidadesManager;
 
     private FirebaseFirestore db;
     private FirebaseAuth auth;
@@ -52,6 +68,16 @@ public class ScrollToUser : MonoBehaviour
             usuarioActualNombre = auth.CurrentUser.DisplayName;
         }
 
+        // Buscar managers si no están asignados
+        if (rankingGeneralManager == null)
+            rankingGeneralManager = FindFirstObjectByType<RankingGeneralManager>();
+
+        if (rankingAmigosManager == null)
+            rankingAmigosManager = FindFirstObjectByType<RankingAmigosManager>();
+
+        if (rankingComunidadesManager == null)
+            rankingComunidadesManager = FindFirstObjectByType<RankingComunidadesManager>();
+
         // Agregar listeners a los botones
         if (btnRankingGeneral != null)
         {
@@ -63,9 +89,15 @@ public class ScrollToUser : MonoBehaviour
             btnRankingAmigos.onClick.AddListener(() => CambiarModoRanking(ModoRanking.Amigos));
         }
 
+        if (btnRankingComunidades != null)
+        {
+            btnRankingComunidades.onClick.AddListener(() => CambiarModoRanking(ModoRanking.Comunidades));
+        }
+
         // Inicializar con información del usuario
         ObtenerInformacionUsuario();
     }
+
 
     // Hacemos público este método para que pueda ser llamado desde RankingManager2
     public void CambiarModoRanking(ModoRanking nuevoModo)
@@ -441,6 +473,169 @@ public class ScrollToUser : MonoBehaviour
         yield return StartCoroutine(ObtenerPosicionEntreAmigosCoroutine());
     }
 
+    // Método para hacer scroll (combinado)
+    public void ScrollToUserPosition()
+    {
+        switch (modoActual)
+        {
+            case ModoRanking.General:
+                ScrollToUserInGeneral();
+                break;
+            case ModoRanking.Amigos:
+                ScrollToUserInAmigos();
+                break;
+            case ModoRanking.Comunidades:
+                ScrollToUserInComunidades();
+                break;
+        }
+    }
+    private void ScrollToUserInGeneral()
+    {
+        // Implementación mejorada que combina ambas versiones
+        if (scrollRect != null && rankingContentGeneral != null)
+        {
+            // Primera opción: buscar por color (del segundo script)
+            Image[] elementos = rankingContentGeneral.GetComponentsInChildren<Image>();
+
+            for (int i = 0; i < elementos.Length; i++)
+            {
+                if (ColorUtility.TryParseHtmlString("#E6FFED", out Color customColor) &&
+                    elementos[i].color == customColor)
+                {
+                    float posicionNormalizada = (float)i / (float)(elementos.Length - 1);
+                    posicionNormalizada = Mathf.Clamp01(posicionNormalizada);
+
+                    scrollRect.verticalNormalizedPosition = 1 - posicionNormalizada;
+                    return;
+                }
+            }
+
+            // Segunda opción: buscar por nombre (del primer script)
+            string usuarioActual = usuarioActualNombre.Trim().ToLower();
+            foreach (Transform child in rankingContentGeneral)
+            {
+                TMP_Text nombre = child.GetComponentInChildren<TMP_Text>(true);
+                if (nombre == null) continue;
+
+                string nombreTexto = nombre.text.Trim().ToLower();
+
+                if (nombreTexto == usuarioActual)
+                {
+                    Canvas.ForceUpdateCanvases();
+                    LayoutRebuilder.ForceRebuildLayoutImmediate((RectTransform)rankingContentGeneral);
+
+                    RectTransform targetRect = child.GetComponent<RectTransform>();
+                    RectTransform contentRect = (RectTransform)rankingContentGeneral;
+
+                    float contentHeight = contentRect.rect.height;
+                    float targetY = Mathf.Abs(targetRect.anchoredPosition.y);
+                    float normalizedPosition = 1 - (targetY / contentHeight);
+
+                    StartCoroutine(SmoothScrollToPosition(normalizedPosition));
+                    StartCoroutine(AnimateUserBox(child));
+                    break;
+                }
+            }
+        }
+    }
+    private void ScrollToUserInAmigos()
+    {
+        // Implementación similar para amigos
+        if (scrollRect != null && rankingContentAmigos != null)
+        {// Primera opción: buscar por color (del segundo script)
+            Image[] elementos = rankingContentGeneral.GetComponentsInChildren<Image>();
+
+            for (int i = 0; i < elementos.Length; i++)
+            {
+                if (ColorUtility.TryParseHtmlString("#E6FFED", out Color customColor) &&
+                    elementos[i].color == customColor)
+                {
+                    float posicionNormalizada = (float)i / (float)(elementos.Length - 1);
+                    posicionNormalizada = Mathf.Clamp01(posicionNormalizada);
+
+                    scrollRect.verticalNormalizedPosition = 1 - posicionNormalizada;
+                    return;
+                }
+            }
+
+            // Segunda opción: buscar por nombre (del primer script)
+            string usuarioActual = usuarioActualNombre.Trim().ToLower();
+            foreach (Transform child in rankingContentGeneral)
+            {
+                TMP_Text nombre = child.GetComponentInChildren<TMP_Text>(true);
+                if (nombre == null) continue;
+
+                string nombreTexto = nombre.text.Trim().ToLower();
+
+                if (nombreTexto == usuarioActual)
+                {
+                    Canvas.ForceUpdateCanvases();
+                    LayoutRebuilder.ForceRebuildLayoutImmediate((RectTransform)rankingContentGeneral);
+
+                    RectTransform targetRect = child.GetComponent<RectTransform>();
+                    RectTransform contentRect = (RectTransform)rankingContentGeneral;
+
+                    float contentHeight = contentRect.rect.height;
+                    float targetY = Mathf.Abs(targetRect.anchoredPosition.y);
+                    float normalizedPosition = 1 - (targetY / contentHeight);
+
+                    StartCoroutine(SmoothScrollToPosition(normalizedPosition));
+                    StartCoroutine(AnimateUserBox(child));
+                    break;
+                }
+            }
+        }
+    }
+    private void ScrollToUserInComunidades()
+    {
+        // Implementación similar para comunidades
+        if (scrollRect != null && rankingContentComunidades != null)
+        {// Primera opción: buscar por color (del segundo script)
+            Image[] elementos = rankingContentGeneral.GetComponentsInChildren<Image>();
+
+            for (int i = 0; i < elementos.Length; i++)
+            {
+                if (ColorUtility.TryParseHtmlString("#E6FFED", out Color customColor) &&
+                    elementos[i].color == customColor)
+                {
+                    float posicionNormalizada = (float)i / (float)(elementos.Length - 1);
+                    posicionNormalizada = Mathf.Clamp01(posicionNormalizada);
+
+                    scrollRect.verticalNormalizedPosition = 1 - posicionNormalizada;
+                    return;
+                }
+            }
+
+            // Segunda opción: buscar por nombre (del primer script)
+            string usuarioActual = usuarioActualNombre.Trim().ToLower();
+            foreach (Transform child in rankingContentGeneral)
+            {
+                TMP_Text nombre = child.GetComponentInChildren<TMP_Text>(true);
+                if (nombre == null) continue;
+
+                string nombreTexto = nombre.text.Trim().ToLower();
+
+                if (nombreTexto == usuarioActual)
+                {
+                    Canvas.ForceUpdateCanvases();
+                    LayoutRebuilder.ForceRebuildLayoutImmediate((RectTransform)rankingContentGeneral);
+
+                    RectTransform targetRect = child.GetComponent<RectTransform>();
+                    RectTransform contentRect = (RectTransform)rankingContentGeneral;
+
+                    float contentHeight = contentRect.rect.height;
+                    float targetY = Mathf.Abs(targetRect.anchoredPosition.y);
+                    float normalizedPosition = 1 - (targetY / contentHeight);
+
+                    StartCoroutine(SmoothScrollToPosition(normalizedPosition));
+                    StartCoroutine(AnimateUserBox(child));
+                    break;
+                }
+            }
+        }
+    }
+
+
     // Método para llenar el contenido de amigos con la lista ordenada
     private void LlenarContenidoAmigos(List<(string id, string nombre, int xp)> listaOrdenada)
     {
@@ -467,39 +662,39 @@ public class ScrollToUser : MonoBehaviour
         }
     }
 
-    public void ScrollToUserPosition()
-    {
-        string usuarioActual = usuarioActualNombre.Trim().ToLower();
-        Debug.Log("Usuario actual: " + usuarioActual);
-        Debug.Log("Número de elementos en content: " + content.childCount);
+    //public void ScrollToUserPosition()
+    //{
+    //    string usuarioActual = usuarioActualNombre.Trim().ToLower();
+    //    Debug.Log("Usuario actual: " + usuarioActual);
+    //    Debug.Log("Número de elementos en content: " + content.childCount);
 
-        foreach (Transform child in content)
-        {
-            TMP_Text nombre = child.GetComponentInChildren<TMP_Text>(true);
-            if (nombre == null) continue;
+    //    foreach (Transform child in content)
+    //    {
+    //        TMP_Text nombre = child.GetComponentInChildren<TMP_Text>(true);
+    //        if (nombre == null) continue;
 
-            string nombreTexto = nombre.text.Trim().ToLower();
+    //        string nombreTexto = nombre.text.Trim().ToLower();
 
-            if (nombreTexto == usuarioActual)
-            {
-                Debug.Log("Usuario encontrado en: " + child.name);
+    //        if (nombreTexto == usuarioActual)
+    //        {
+    //            Debug.Log("Usuario encontrado en: " + child.name);
 
-                Canvas.ForceUpdateCanvases();
-                LayoutRebuilder.ForceRebuildLayoutImmediate((RectTransform)content);
+    //            Canvas.ForceUpdateCanvases();
+    //            LayoutRebuilder.ForceRebuildLayoutImmediate((RectTransform)content);
 
-                RectTransform targetRect = child.GetComponent<RectTransform>();
-                RectTransform contentRect = (RectTransform)content;
+    //            RectTransform targetRect = child.GetComponent<RectTransform>();
+    //            RectTransform contentRect = (RectTransform)content;
 
-                float contentHeight = contentRect.rect.height;
-                float targetY = Mathf.Abs(targetRect.anchoredPosition.y);
-                float normalizedPosition = 1 - (targetY / contentHeight);
+    //            float contentHeight = contentRect.rect.height;
+    //            float targetY = Mathf.Abs(targetRect.anchoredPosition.y);
+    //            float normalizedPosition = 1 - (targetY / contentHeight);
 
-                StartCoroutine(SmoothScrollToPosition(normalizedPosition));
-                StartCoroutine(AnimateUserBox(child));
-                break;
-            }
-        }
-    }
+    //            StartCoroutine(SmoothScrollToPosition(normalizedPosition));
+    //            StartCoroutine(AnimateUserBox(child));
+    //            break;
+    //        }
+    //    }
+    //}
 
     IEnumerator SmoothScrollToPosition(float targetPosition)
     {

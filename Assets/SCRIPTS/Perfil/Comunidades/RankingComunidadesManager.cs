@@ -3,120 +3,141 @@ using UnityEngine;
 using UnityEngine.UI;
 using Firebase.Firestore;
 using Firebase.Extensions;
+using Firebase.Auth;
 using TMPro;
 using System.Linq;
-using Firebase.Auth;
+using UnityEngine.EventSystems;
+using System.Collections;
 
-public class RankingComunidadManager : MonoBehaviour
+public class RankingComunidadesManager : MonoBehaviour
 {
-    public GameObject prefabJugador;
-    public Transform content;
-    public TMP_Dropdown comunidadesDropdown;
-    private FirebaseFirestore db;
-    private FirebaseAuth auth;
-    private string usuarioActualID;
-    private string usuarioActualNombre;
-    private int usuarioActualXP;
+    //instanciamos dropdown
+    [SerializeField] public TMP_Dropdown comunidadesDropdown;
+
+    // Referencia a los otros scripts de ranking
+    [SerializeField] private RankingGeneralManager rankingGeneralManager;
+    [SerializeField] private RankingAmigosManager rankingAmigosManager;
+
+    // Prefab y contenedor para la lista de jugadores
+    [SerializeField] private GameObject prefabJugador;
+    [SerializeField] private Transform content;
+    [SerializeField] private GameObject panelRankingComunidades;
 
     // Referencias al podio
-    public TMP_Text primeroNombre, segundoNombre, terceroNombre;
-    public TMP_Text primeroXP, segundoXP, terceroXP;
+    [SerializeField] private TMP_Text primeroNombre, segundoNombre, terceroNombre;
+    [SerializeField] private TMP_Text primeroXP, segundoXP, terceroXP;
 
-    // Referencias a los paneles
-    [SerializeField] private GameObject RankingComunidadPanel = null;
-    public GameObject PanelRankingGeneral;
+    // Botón para este ranking
+    [SerializeField] private Button btnComunidades;
 
-    // Referencias a los botones
-    public Button btnComunidad;
-    public Button btnGeneral;
-    public Button btnAmigos;
+    // Referencias a los otros paneles y botones para poder activar/desactivar
+    [SerializeField] private GameObject panelRankingGeneral;
+    [SerializeField] private GameObject panelRankingAmigos;
+    [SerializeField] private Button btnGeneral;
+    [SerializeField] private Button btnAmigos;
 
-    // Referencia al rankingGeneralManager
-    [SerializeField] private RankingGeneralManager rankingGeneralManager;
+    // Referencia al ScrollToUser para coordinar las actualizaciones
+    [SerializeField] private ScrollToUser scrollToUser;
 
-    // Lista para almacenar IDs y nombres de las comunidades
-    private List<string> comunidadesIDs = new List<string>();
+    // Variables para Firebase
+    private FirebaseFirestore db;
+    private FirebaseAuth auth;
+    private string miUserID;
+    private string miUserName;
+    private int miUserXP;
+
+    // Almacenar las comunidades
+    private Dictionary<string, string> comunidadesDict = new Dictionary<string, string>(); // <Nombre, ID>
+    private string comunidadSeleccionadaID;
 
     void Start()
     {
-        // Inicializar Firebase
-        db = FirebaseFirestore.DefaultInstance;
+        // Inicializar Firebase Auth y Firestore
         auth = FirebaseAuth.DefaultInstance;
+        db = FirebaseFirestore.DefaultInstance;
 
-        // Obtener datos del usuario
+        // Buscar referencias si no están asignadas
+        if (rankingGeneralManager == null)
+            rankingGeneralManager = FindFirstObjectByType<RankingGeneralManager>();
+
+        if (rankingAmigosManager == null)
+            rankingAmigosManager = FindFirstObjectByType<RankingAmigosManager>();
+
+        if (scrollToUser == null)
+            scrollToUser = FindFirstObjectByType<ScrollToUser>();
+
+        // Verificar si hay un usuario autenticado
         if (auth.CurrentUser != null)
         {
-            usuarioActualID = auth.CurrentUser.UserId;
-            usuarioActualNombre = auth.CurrentUser.DisplayName;
+            // Obtener el ID del usuario actual
+            miUserID = auth.CurrentUser.UserId;
+            miUserName = auth.CurrentUser.DisplayName;
+            Debug.Log("Usuario autenticado: " + miUserID);
+
+            // Obtener XP del usuario actual
             ObtenerXPUsuarioActual();
+
+            // Configurar el dropdown
+            ConfigurarDropdown();
+
+            // Configurar el listener del botón
+            if (btnComunidades != null)
+            {
+                btnComunidades.onClick.RemoveAllListeners();
+                btnComunidades.onClick.AddListener(ActivarRankingComunidades);
+            }
+
+            // Configurar listener del dropdown
+            comunidadesDropdown.onValueChanged.AddListener(OnComunidadSeleccionada);
+
+            // Por defecto, panel desactivado
+            if (panelRankingComunidades != null)
+                panelRankingComunidades.SetActive(false);
         }
-
-        // Buscar la referencia a rankingGeneralManager si no está asignada
-        if (rankingGeneralManager == null)
+        else
         {
-            rankingGeneralManager = FindFirstObjectByType<RankingGeneralManager>();
-        }
-
-        // Configurar el dropdown de comunidades
-        if (comunidadesDropdown != null)
-        {
-            // Limpiar opciones existentes
-            comunidadesDropdown.ClearOptions();
-
-            // Agregar el listener para cuando cambie la selección
-            comunidadesDropdown.onValueChanged.AddListener(delegate {
-                ComunidadSeleccionadaChanged();
-            });
-
-            // Cargar las comunidades
-            CargarComunidades();
-        }
-
-        // Asignar listeners a los botones
-        if (btnComunidad != null)
-        {
-            btnComunidad.onClick.RemoveAllListeners();
-            btnComunidad.onClick.AddListener(ActivarRankingComunidad);
-        }
-
-        if (btnGeneral != null)
-        {
-            btnGeneral.onClick.RemoveAllListeners();
-            btnGeneral.onClick.AddListener(ActivarRankingGeneral);
-        }
-
-        // Desactivar panel inicialmente
-        if (RankingComunidadPanel != null)
-        {
-            RankingComunidadPanel.SetActive(false);
+            Debug.LogWarning("No hay ningún usuario autenticado");
+            if (comunidadesDropdown != null)
+                comunidadesDropdown.AddOptions(new List<string> { "Inicia sesión para ver tus comunidades" });
         }
     }
 
     private void ObtenerXPUsuarioActual()
     {
-        db.Collection("users").Document(usuarioActualID).GetSnapshotAsync().ContinueWithOnMainThread(task =>
+        db.Collection("users").Document(miUserID).GetSnapshotAsync().ContinueWithOnMainThread(task =>
         {
             if (task.IsCompleted && task.Result.Exists)
             {
                 if (task.Result.TryGetValue<int>("xp", out int xp))
                 {
-                    usuarioActualXP = xp;
+                    miUserXP = xp;
                 }
                 else
                 {
-                    usuarioActualXP = 0;
+                    miUserXP = 0;
                 }
             }
         });
     }
 
+    private void ConfigurarDropdown()
+    {
+        // Limpiar el dropdown y el diccionario
+        comunidadesDropdown.ClearOptions();
+        comunidadesDict.Clear();
+
+        // Agregar opción por defecto
+        List<string> opciones = new List<string> { "Selecciona una comunidad" };
+        comunidadesDropdown.AddOptions(opciones);
+
+        // Cargar las comunidades
+        CargarComunidades();
+    }
+
     void CargarComunidades()
     {
-        // Limpiar listas
-        comunidadesDropdown.ClearOptions();
-        comunidadesIDs.Clear();
-
-        List<TMP_Dropdown.OptionData> opcionesComunidades = new List<TMP_Dropdown.OptionData>();
+        // Lista para almacenar las opciones del dropdown
+        List<string> opcionesComunidades = new List<string>();
 
         // Referencia a la colección de comunidades
         CollectionReference comunidadesRef = db.Collection("comunidades");
@@ -135,30 +156,29 @@ public class RankingComunidadManager : MonoBehaviour
                     // Verificar si la comunidad tiene un campo 'miembros'
                     if (datos.ContainsKey("miembros"))
                     {
+                        // Obtener la lista de miembros
+                        List<object> miembros = datos["miembros"] as List<object>;
+
                         // Verificar si mi ID está en la lista de miembros
                         bool soyMiembro = false;
 
-                        // Comprobamos si 'miembros' es una lista
-                        if (datos["miembros"] is List<object> miembros)
+                        foreach (object miembro in miembros)
                         {
-                            foreach (object miembro in miembros)
+                            // Si el miembro es directamente un string
+                            if (miembro is string && miembro.ToString() == miUserID)
                             {
-                                // Si el miembro es directamente un string con ID
-                                if (miembro is string && miembro.ToString() == usuarioActualID)
+                                soyMiembro = true;
+                                break;
+                            }
+                            // Si el miembro es un objeto (como se ve en tu imagen, parece tener una estructura más compleja)
+                            else if (miembro is Dictionary<string, object> miembroDict)
+                            {
+                                foreach (var item in miembroDict)
                                 {
-                                    soyMiembro = true;
-                                    break;
-                                }
-                                // Si el miembro es un objeto que contiene ID
-                                else if (miembro is Dictionary<string, object> miembroDict)
-                                {
-                                    foreach (var item in miembroDict)
+                                    if (item.Value != null && item.Value.ToString() == miUserID)
                                     {
-                                        if (item.Value != null && item.Value.ToString() == usuarioActualID)
-                                        {
-                                            soyMiembro = true;
-                                            break;
-                                        }
+                                        soyMiembro = true;
+                                        break;
                                     }
                                 }
                             }
@@ -166,132 +186,121 @@ public class RankingComunidadManager : MonoBehaviour
 
                         if (soyMiembro)
                         {
-                            // Obtener el nombre de la comunidad
+                            // Agregar el nombre de la comunidad a las opciones del dropdown
                             string nombreComunidad = datos.ContainsKey("nombre") ? datos["nombre"].ToString() : documento.Id;
+                            opcionesComunidades.Add(nombreComunidad);
 
-                            // Agregar a lista de opciones
-                            opcionesComunidades.Add(new TMP_Dropdown.OptionData(nombreComunidad));
+                            // Guardar la relación nombre-ID
+                            comunidadesDict[nombreComunidad] = documento.Id;
 
-                            // Guardar el ID en la lista de IDs
-                            comunidadesIDs.Add(documento.Id);
-
-                            Debug.Log("Comunidad añadida: " + nombreComunidad + " (ID: " + documento.Id + ")");
+                            Debug.Log("Eres miembro de la comunidad: " + nombreComunidad);
                         }
                     }
                 }
 
                 // Actualizar el dropdown con las comunidades encontradas
-                if (opcionesComunidades.Count > 0)
-                {
-                    comunidadesDropdown.AddOptions(opcionesComunidades);
+                comunidadesDropdown.AddOptions(opcionesComunidades);
 
-                    // Cargar el ranking de la primera comunidad automáticamente
-                    ComunidadSeleccionadaChanged();
-                }
-                else
+                // Si no hay comunidades, agregar una opción por defecto
+                if (opcionesComunidades.Count == 0)
                 {
-                    // Si no hay comunidades, mostrar opción por defecto
-                    comunidadesDropdown.AddOptions(new List<TMP_Dropdown.OptionData>
-                    {
-                        new TMP_Dropdown.OptionData("No perteneces a ninguna comunidad")
-                    });
+                    comunidadesDropdown.ClearOptions();
+                    comunidadesDropdown.AddOptions(new List<string> { "No perteneces a ninguna comunidad" });
                 }
+            }
+            else
+            {
+                Debug.LogError("Error al obtener las comunidades: " + task.Exception);
             }
         });
     }
 
-    void ComunidadSeleccionadaChanged()
-    {
-        int selectedIndex = comunidadesDropdown.value;
-
-        // Verificar que el índice sea válido
-        if (selectedIndex >= 0 && selectedIndex < comunidadesIDs.Count)
-        {
-            string comunidadID = comunidadesIDs[selectedIndex];
-            ObtenerRankingComunidad(comunidadID);
-        }
-    }
-
-    public void ActivarRankingComunidad()
+    public void ActivarRankingComunidades()
     {
         string estadouser = PlayerPrefs.GetString("Estadouser", "");
         if (estadouser == "nube")
         {
             // Activar nuestro panel
-            if (RankingComunidadPanel != null)
-            {
-                RankingComunidadPanel.SetActive(true);
-            }
+            panelRankingComunidades.SetActive(true);
 
-            // Desactivar otros paneles
-            if (PanelRankingGeneral != null)
-            {
-                PanelRankingGeneral.SetActive(false);
-            }
+            // Desactivar los otros paneles
+            if (panelRankingGeneral != null)
+                panelRankingGeneral.SetActive(false);
 
-            // Marcar el botón de comunidad como seleccionado
-            if (rankingGeneralManager != null && btnComunidad != null)
-            {
-                rankingGeneralManager.MarcarBotonSeleccionado(btnComunidad);
+            if (panelRankingAmigos != null)
+                panelRankingAmigos.SetActive(false);
 
-                // Desmarcar otros botones
+            // Marcar el botón de comunidades como seleccionado
+            if (rankingGeneralManager != null && btnComunidades != null)
+            {
+                rankingGeneralManager.MarcarBotonSeleccionado(btnComunidades);
+
+                // Desmarcar los otros botones
                 if (btnGeneral != null)
-                {
                     rankingGeneralManager.DesmarcarBoton(btnGeneral);
-                }
+
                 if (btnAmigos != null)
-                {
                     rankingGeneralManager.DesmarcarBoton(btnAmigos);
-                }
             }
 
-            // Cargar el ranking de la comunidad seleccionada
-            ComunidadSeleccionadaChanged();
+            // Si tenemos una comunidad seleccionada, actualizar ranking
+            if (comunidadSeleccionadaID != null && comunidadSeleccionadaID.Length > 0)
+            {
+                ObtenerRankingComunidad(comunidadSeleccionadaID);
+            }
+
+            // Si tenemos referencia al ScrollToUser, actualizar el modo
+            if (scrollToUser != null)
+            {
+                // Asumo que deberías agregar un nuevo modo en ScrollToUser
+                if (typeof(ScrollToUser.ModoRanking).GetField("Comunidades") != null)
+                {
+                    scrollToUser.CambiarModoRanking(ScrollToUser.ModoRanking.Comunidades);
+                    scrollToUser.ActualizarUISegunModo();
+
+                    // Esperar un momento y hacer scroll a la posición del usuario
+                    StartCoroutine(HacerScrollDespuesDeActualizar());
+                }
+            }
         }
     }
 
-    public void ActivarRankingGeneral()
+    private IEnumerator HacerScrollDespuesDeActualizar()
     {
-        string estadouser = PlayerPrefs.GetString("Estadouser", "");
-        if (estadouser == "nube")
+        // Esperar un momento para que se actualice el contenido
+        yield return new WaitForSeconds(0.5f);
+
+        // Hacer scroll a la posición del usuario
+        if (scrollToUser != null)
         {
-            // Desactivar nuestro panel
-            if (RankingComunidadPanel != null)
-            {
-                RankingComunidadPanel.SetActive(false);
-            }
-
-            // Activar panel de ranking general
-            if (PanelRankingGeneral != null)
-            {
-                PanelRankingGeneral.SetActive(true);
-
-                // Llamar al método ObtenerRanking del rankingGeneralManager
-                if (rankingGeneralManager != null)
-                {
-                    rankingGeneralManager.ObtenerRanking();
-                }
-            }
-
-            // Marcar el botón general como seleccionado
-            if (rankingGeneralManager != null && btnGeneral != null)
-            {
-                rankingGeneralManager.MarcarBotonSeleccionado(btnGeneral);
-
-                // Desmarcar otros botones
-                if (btnComunidad != null)
-                {
-                    rankingGeneralManager.DesmarcarBoton(btnComunidad);
-                }
-                if (btnAmigos != null)
-                {
-                    rankingGeneralManager.DesmarcarBoton(btnAmigos);
-                }
-            }
+            scrollToUser.ScrollToUserPosition();
         }
     }
 
-    public void ObtenerRankingComunidad(string comunidadID)
+    public void OnComunidadSeleccionada(int index)
+    {
+        // Ignorar la selección por defecto (índice 0)
+        if (index > 0)
+        {
+            string nombreComunidad = comunidadesDropdown.options[index].text;
+
+            if (comunidadesDict.TryGetValue(nombreComunidad, out string comunidadID))
+            {
+                comunidadSeleccionadaID = comunidadID;
+                Debug.Log("Comunidad seleccionada: " + nombreComunidad + " (ID: " + comunidadID + ")");
+
+                // Obtener ranking de esta comunidad
+                ObtenerRankingComunidad(comunidadID);
+            }
+        }
+        else
+        {
+            // Limpiar la lista si se selecciona "Selecciona una comunidad"
+            LimpiarRanking();
+        }
+    }
+
+    private void LimpiarRanking()
     {
         // Limpiar lista anterior
         foreach (Transform child in content)
@@ -306,29 +315,38 @@ public class RankingComunidadManager : MonoBehaviour
         segundoXP.text = "0 xp";
         terceroNombre.text = "---";
         terceroXP.text = "0 xp";
+    }
 
-        // Obtener el documento de la comunidad para acceder a los miembros
+    public void ObtenerRankingComunidad(string comunidadID)
+    {
+        // Limpiar el ranking anterior
+        LimpiarRanking();
+
+        // Obtener los miembros de la comunidad
         db.Collection("comunidades").Document(comunidadID).GetSnapshotAsync().ContinueWithOnMainThread(task =>
         {
             if (task.IsCompleted && task.Result.Exists)
             {
+                // Obtener la lista de miembros
                 Dictionary<string, object> datos = task.Result.ToDictionary();
 
-                // Verificar si la comunidad tiene miembros
-                if (datos.ContainsKey("miembros") && datos["miembros"] is List<object> miembros)
+                if (datos.ContainsKey("miembros"))
                 {
                     List<string> idsMiembros = new List<string>();
 
-                    // Extraer los IDs de los miembros
+                    // Obtener los IDs de los miembros
+                    List<object> miembros = datos["miembros"] as List<object>;
+
                     foreach (object miembro in miembros)
                     {
+                        // Si el miembro es directamente un string
                         if (miembro is string)
                         {
                             idsMiembros.Add(miembro.ToString());
                         }
+                        // Si el miembro es un objeto
                         else if (miembro is Dictionary<string, object> miembroDict)
                         {
-                            // Si es un objeto, buscamos el valor del ID
                             foreach (var item in miembroDict)
                             {
                                 if (item.Value != null)
@@ -340,22 +358,23 @@ public class RankingComunidadManager : MonoBehaviour
                         }
                     }
 
-                    // Obtener datos de todos los miembros
+                    // Una vez tenemos todos los IDs de miembros, obtenemos sus datos
                     ObtenerDatosMiembros(idsMiembros);
                 }
-                else
-                {
-                    Debug.Log("La comunidad no tiene miembros o el formato es incorrecto");
-                }
+            }
+            else
+            {
+                Debug.LogError("Error al obtener la comunidad: " + task.Exception);
             }
         });
     }
 
     private void ObtenerDatosMiembros(List<string> idsMiembros)
     {
+        // Lista para almacenar los datos de los miembros
         List<(string id, string nombre, int xp)> listaMiembros = new List<(string, string, int)>();
 
-        // Si no hay miembros, mostrar mensaje vacío
+        // Si no hay miembros, mostrar mensaje
         if (idsMiembros.Count == 0)
         {
             MostrarRankingFinal(listaMiembros);
@@ -415,37 +434,40 @@ public class RankingComunidadManager : MonoBehaviour
             terceroXP.text = listaOrdenada[2].xp + " xp";
         }
 
-        // Agregar miembros a la lista desde la posición 4 en adelante
+        // Agregar jugadores a la lista desde la posición 4 en adelante
         for (int i = 3; i < listaOrdenada.Count; i++)
         {
-            GameObject miembroUI = CrearElementoRanking(i + 1, listaOrdenada[i].nombre, listaOrdenada[i].xp);
+            GameObject jugadorUI = CrearElementoRanking(i + 1, listaOrdenada[i].nombre, listaOrdenada[i].xp);
 
             // Resaltar al usuario actual
-            if (listaOrdenada[i].id == usuarioActualID)
+            if (listaOrdenada[i].id == miUserID)
             {
                 ColorUtility.TryParseHtmlString("#E6FFED", out Color customColor);
-                miembroUI.GetComponent<Image>().color = customColor;
+                jugadorUI.GetComponent<Image>().color = customColor;
             }
         }
 
-        // Si el usuario no está entre los primeros 3, buscar su posición
-        int posicionUsuario = listaOrdenada.FindIndex(j => j.id == usuarioActualID) + 1;
+        // Si el usuario no está entre los primeros 3, buscamos su posición
+        int posicionUsuario = listaOrdenada.FindIndex(j => j.id == miUserID) + 1;
 
-        // Si el usuario está entre los primeros 3, no necesitamos hacer nada adicional
-        // El podio ya muestra al usuario resaltado
+        // Si el usuario está entre los primeros 3, resaltamos su posición en el podio
+        if (posicionUsuario <= 3 && posicionUsuario > 0)
+        {
+            // Aquí podrías agregar un efecto visual para resaltar al usuario en el podio
+        }
     }
 
     GameObject CrearElementoRanking(int posicion, string nombre, int xp)
     {
-        GameObject miembroUI = Instantiate(prefabJugador, content);
-        TMP_Text nombreTMP = miembroUI.transform.Find("Nombre").GetComponent<TMP_Text>();
-        TMP_Text xpTMP = miembroUI.transform.Find("XP").GetComponent<TMP_Text>();
-        TMP_Text posicionTMP = miembroUI.transform.Find("Posicion").GetComponent<TMP_Text>();
+        GameObject jugadorUI = Instantiate(prefabJugador, content);
+        TMP_Text nombreTMP = jugadorUI.transform.Find("Nombre").GetComponent<TMP_Text>();
+        TMP_Text xpTMP = jugadorUI.transform.Find("XP").GetComponent<TMP_Text>();
+        TMP_Text posicionTMP = jugadorUI.transform.Find("Posicion").GetComponent<TMP_Text>();
 
         nombreTMP.text = nombre;
         xpTMP.text = "EXP \n" + xp;
         posicionTMP.text = "#" + posicion.ToString();
 
-        return miembroUI;
+        return jugadorUI;
     }
 }

@@ -33,13 +33,18 @@ public class RankingGeneralManager: MonoBehaviour
     // Referencia al script ScrollToUser para coordinar las actualizaciones
     [SerializeField] private ScrollToUser scrollToUser;
 
+    // Referencias al podio
+    public TMP_Text primeroNombre, segundoNombre, terceroNombre;
+    public TMP_Text primeroXP, segundoXP, terceroXP;
 
     // instanciar btn y panel amigos para desactivar
     public Button BtnRankingAmigos;
     public GameObject panelRankingAmigos;
-    // Referencias al podio
-    public TMP_Text primeroNombre, segundoNombre, terceroNombre;
-    public TMP_Text primeroXP, segundoXP, terceroXP;
+
+    // Referencias al btn y panel comunidades para desactivar 
+    public Button BtnRankingComunidades;
+    public GameObject panelRankingComunidades;
+    
 
     void Start()
     {
@@ -80,13 +85,15 @@ public class RankingGeneralManager: MonoBehaviour
         MarcarBotonSeleccionado(botonGeneral);
 
         // Desmarcar el botón de amigos si existe
-        if (BtnRankingAmigos != null)
+        if (BtnRankingAmigos != null && BtnRankingComunidades != null)
         {
             DesmarcarBoton(BtnRankingAmigos);
-        }
+            panelRankignGeneral.SetActive(true);
+            panelRankingAmigos.SetActive(false);
+            panelRankingComunidades.SetActive(false);
 
-        panelRankingAmigos.SetActive(false);
-        panelRankignGeneral.SetActive(true);
+            
+        }
 
         // Ejecutar la lógica del ranking general
         ObtenerRanking();
