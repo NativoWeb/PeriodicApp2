@@ -27,14 +27,12 @@ public class RankingComunidadesManager : MonoBehaviour
     [SerializeField] private TMP_Text primeroNombre, segundoNombre, terceroNombre;
     [SerializeField] private TMP_Text primeroXP, segundoXP, terceroXP;
 
-    // Botón para este ranking
-    [SerializeField] private Button btnComunidades;
-
     // Referencias a los otros paneles y botones para poder activar/desactivar
     [SerializeField] private GameObject panelRankingGeneral;
     [SerializeField] private GameObject panelRankingAmigos;
     [SerializeField] private Button btnGeneral;
     [SerializeField] private Button btnAmigos;
+    [SerializeField] private Button btnComunidades; // Añadido para poder marcar/desmarcar
 
     // Referencia al ScrollToUser para coordinar las actualizaciones
     [SerializeField] private ScrollToUser scrollToUser;
@@ -48,7 +46,13 @@ public class RankingComunidadesManager : MonoBehaviour
 
     // Almacenar las comunidades
     private Dictionary<string, string> comunidadesDict = new Dictionary<string, string>(); // <Nombre, ID>
-    private string comunidadSeleccionadaID;
+    public string comunidadSeleccionadaID;
+
+    // Referencia al contenedor del ranking de comunidades para el ScrollToUser
+    public Transform rankingContentComunidades;
+
+    // Flag para evitar múltiples llamadas
+    private bool isUpdatingRanking = false;
 
     void Start()
     {
@@ -66,6 +70,12 @@ public class RankingComunidadesManager : MonoBehaviour
         if (scrollToUser == null)
             scrollToUser = FindFirstObjectByType<ScrollToUser>();
 
+        // Asignar el content al ScrollToUser si aún no está asignado
+        if (scrollToUser != null && content != null)
+        {
+            scrollToUser.rankingContentComunidades = content;
+        }
+
         // Verificar si hay un usuario autenticado
         if (auth.CurrentUser != null)
         {
@@ -80,13 +90,6 @@ public class RankingComunidadesManager : MonoBehaviour
             // Configurar el dropdown
             ConfigurarDropdown();
 
-            // Configurar el listener del botón
-            if (btnComunidades != null)
-            {
-                btnComunidades.onClick.RemoveAllListeners();
-                btnComunidades.onClick.AddListener(ActivarRankingComunidades);
-            }
-
             // Configurar listener del dropdown
             comunidadesDropdown.onValueChanged.AddListener(OnComunidadSeleccionada);
 
@@ -99,6 +102,52 @@ public class RankingComunidadesManager : MonoBehaviour
             Debug.LogWarning("No hay ningún usuario autenticado");
             if (comunidadesDropdown != null)
                 comunidadesDropdown.AddOptions(new List<string> { "Inicia sesión para ver tus comunidades" });
+        }
+
+        // Suscribirse a eventos de activación de otros paneles
+        if (rankingGeneralManager != null)
+        {
+            // Buscar método para suscribirse a evento de activación del panel general
+            Button btnRankingGeneral = GameObject.FindWithTag("BtnRankingGeneral")?.GetComponent<Button>();
+
+            if (btnRankingGeneral != null)
+            {
+                btnRankingGeneral.onClick.AddListener(ResetearPanelComunidades);
+            }
+        }
+
+        if (rankingAmigosManager != null)
+        {
+            // Buscar método para suscribirse a evento de activación del panel amigos
+            Button btnRankingAmigos = GameObject.FindWithTag("BtnRankingAmigos")?.GetComponent<Button>();
+            if (btnRankingAmigos != null)
+            {
+                btnRankingAmigos.onClick.AddListener(ResetearPanelComunidades);
+            }
+        }
+    }
+
+    // Método para resetear el panel cuando se active otro ranking
+    public void ResetearPanelComunidades()
+    {
+        // Desactivar el panel de comunidades
+        if (panelRankingComunidades != null)
+            panelRankingComunidades.SetActive(false);
+
+        // Resetear el dropdown a la primera opción
+        if (comunidadesDropdown != null)
+        {
+            comunidadesDropdown.value = 0;
+            comunidadesDropdown.RefreshShownValue();
+        }
+
+        // Limpiar el ranking
+        LimpiarRanking();
+
+        // Desmarcar el botón de comunidades si está marcado
+        if (rankingGeneralManager != null && btnComunidades != null)
+        {
+            rankingGeneralManager.DesmarcarBoton(btnComunidades);
         }
     }
 
@@ -207,6 +256,12 @@ public class RankingComunidadesManager : MonoBehaviour
                     comunidadesDropdown.ClearOptions();
                     comunidadesDropdown.AddOptions(new List<string> { "No perteneces a ninguna comunidad" });
                 }
+                else
+                {
+                    // Si hay comunidades, seleccionar la primera por defecto (valor 0 = "Selecciona una comunidad")
+                    comunidadesDropdown.value = 0;
+                    comunidadesDropdown.RefreshShownValue();
+                }
             }
             else
             {
@@ -231,36 +286,39 @@ public class RankingComunidadesManager : MonoBehaviour
                 panelRankingAmigos.SetActive(false);
 
             // Marcar el botón de comunidades como seleccionado
-            if (rankingGeneralManager != null && btnComunidades != null)
+            if (rankingGeneralManager != null)
             {
-                rankingGeneralManager.MarcarBotonSeleccionado(btnComunidades);
-
                 // Desmarcar los otros botones
                 if (btnGeneral != null)
                     rankingGeneralManager.DesmarcarBoton(btnGeneral);
 
                 if (btnAmigos != null)
                     rankingGeneralManager.DesmarcarBoton(btnAmigos);
+
+                // Marcar el botón de comunidades si existe
+                //if (btnComunidades != null)
+                //    rankingGeneralManager.MarcarBoton(btnComunidades);
             }
 
             // Si tenemos una comunidad seleccionada, actualizar ranking
-            if (comunidadSeleccionadaID != null && comunidadSeleccionadaID.Length > 0)
+            if (!string.IsNullOrEmpty(comunidadSeleccionadaID) && comunidadesDropdown.value > 0)
             {
                 ObtenerRankingComunidad(comunidadSeleccionadaID);
+            }
+            else
+            {
+                // Si no hay comunidad seleccionada, limpiar ranking
+                LimpiarRanking();
             }
 
             // Si tenemos referencia al ScrollToUser, actualizar el modo
             if (scrollToUser != null)
             {
-                // Asumo que deberías agregar un nuevo modo en ScrollToUser
-                if (typeof(ScrollToUser.ModoRanking).GetField("Comunidades") != null)
-                {
-                    scrollToUser.CambiarModoRanking(ScrollToUser.ModoRanking.Comunidades);
-                    scrollToUser.ActualizarUISegunModo();
+                scrollToUser.CambiarModoRanking(ScrollToUser.ModoRanking.Comunidades);
+                scrollToUser.ActualizarUISegunModo();
 
-                    // Esperar un momento y hacer scroll a la posición del usuario
-                    StartCoroutine(HacerScrollDespuesDeActualizar());
-                }
+                // Esperar un momento y hacer scroll a la posición del usuario
+                StartCoroutine(HacerScrollDespuesDeActualizar());
             }
         }
     }
@@ -279,6 +337,10 @@ public class RankingComunidadesManager : MonoBehaviour
 
     public void OnComunidadSeleccionada(int index)
     {
+        // Ignorar si ya estamos actualizando el ranking
+        if (isUpdatingRanking)
+            return;
+
         // Ignorar la selección por defecto (índice 0)
         if (index > 0)
         {
@@ -291,12 +353,16 @@ public class RankingComunidadesManager : MonoBehaviour
 
                 // Obtener ranking de esta comunidad
                 ObtenerRankingComunidad(comunidadID);
+
+                // Activar el panel de comunidades automáticamente
+                ActivarRankingComunidades();
             }
         }
         else
         {
             // Limpiar la lista si se selecciona "Selecciona una comunidad"
             LimpiarRanking();
+            comunidadSeleccionadaID = null;
         }
     }
 
@@ -319,6 +385,12 @@ public class RankingComunidadesManager : MonoBehaviour
 
     public void ObtenerRankingComunidad(string comunidadID)
     {
+        // Evitar múltiples llamadas simultáneas
+        if (isUpdatingRanking)
+            return;
+
+        isUpdatingRanking = true;
+
         // Limpiar el ranking anterior
         LimpiarRanking();
 
@@ -361,10 +433,16 @@ public class RankingComunidadesManager : MonoBehaviour
                     // Una vez tenemos todos los IDs de miembros, obtenemos sus datos
                     ObtenerDatosMiembros(idsMiembros);
                 }
+                else
+                {
+                    // Si no hay miembros, terminar actualización
+                    isUpdatingRanking = false;
+                }
             }
             else
             {
                 Debug.LogError("Error al obtener la comunidad: " + task.Exception);
+                isUpdatingRanking = false;
             }
         });
     }
@@ -378,6 +456,7 @@ public class RankingComunidadesManager : MonoBehaviour
         if (idsMiembros.Count == 0)
         {
             MostrarRankingFinal(listaMiembros);
+            isUpdatingRanking = false;
             return;
         }
 
@@ -407,6 +486,7 @@ public class RankingComunidadesManager : MonoBehaviour
                 if (contadorMiembros >= idsMiembros.Count)
                 {
                     MostrarRankingFinal(listaMiembros);
+                    isUpdatingRanking = false;
                 }
             });
         }
@@ -434,6 +514,9 @@ public class RankingComunidadesManager : MonoBehaviour
             terceroXP.text = listaOrdenada[2].xp + " xp";
         }
 
+        // Variable para almacenar la posición del usuario actual en la comunidad
+        int posicionUsuarioEnComunidad = 0;
+
         // Agregar jugadores a la lista desde la posición 4 en adelante
         for (int i = 3; i < listaOrdenada.Count; i++)
         {
@@ -444,16 +527,37 @@ public class RankingComunidadesManager : MonoBehaviour
             {
                 ColorUtility.TryParseHtmlString("#E6FFED", out Color customColor);
                 jugadorUI.GetComponent<Image>().color = customColor;
+                posicionUsuarioEnComunidad = i + 1;
             }
         }
 
         // Si el usuario no está entre los primeros 3, buscamos su posición
-        int posicionUsuario = listaOrdenada.FindIndex(j => j.id == miUserID) + 1;
+        if (posicionUsuarioEnComunidad == 0)
+        {
+            posicionUsuarioEnComunidad = listaOrdenada.FindIndex(j => j.id == miUserID) + 1;
+        }
 
         // Si el usuario está entre los primeros 3, resaltamos su posición en el podio
-        if (posicionUsuario <= 3 && posicionUsuario > 0)
+        if (posicionUsuarioEnComunidad > 0 && posicionUsuarioEnComunidad <= 3)
         {
             // Aquí podrías agregar un efecto visual para resaltar al usuario en el podio
+        }
+
+        // Actualizar el ScrollToUser con los datos del usuario en la comunidad
+        if (scrollToUser != null)
+        {
+            // Actualiza la posición del usuario en comunidades
+            scrollToUser.ActualizarPosicionComunidades(posicionUsuarioEnComunidad);
+
+            // Forzar la actualización del layout
+            Canvas.ForceUpdateCanvases();
+            LayoutRebuilder.ForceRebuildLayoutImmediate((RectTransform)content);
+
+            // Si estamos en modo comunidades, hacer scroll a la posición del usuario
+            if (scrollToUser.GetModoActual() == ScrollToUser.ModoRanking.Comunidades)
+            {
+                StartCoroutine(HacerScrollDespuesDeActualizar());
+            }
         }
     }
 

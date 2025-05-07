@@ -2707,7 +2707,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0.00024414062}
+  m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0.0001, y: -0.00012207}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &222517906
@@ -5154,7 +5154,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0.00024414062}
+  m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0.0001, y: -0.00012207}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &486581375
@@ -5249,12 +5249,14 @@ MonoBehaviour:
   primeroXP: {fileID: 1492570236}
   segundoXP: {fileID: 349349399}
   terceroXP: {fileID: 1341748845}
-  btnComunidades: {fileID: 1971300884}
   panelRankingGeneral: {fileID: 1827935501}
   panelRankingAmigos: {fileID: 492648860}
   btnGeneral: {fileID: 2044759437}
   btnAmigos: {fileID: 1171258735}
+  btnComunidades: {fileID: 1971300884}
   scrollToUser: {fileID: 585540727}
+  comunidadSeleccionadaID: 
+  rankingContentComunidades: {fileID: 1461331067}
 --- !u!4 &487129616
 Transform:
   m_ObjectHideFlags: 0
@@ -6189,7 +6191,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0.00024414062}
+  m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0.0001, y: -0.00012207}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &622863565
@@ -7069,7 +7071,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: -0.155}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 4.5253906, y: -7.0354004}
+  m_AnchoredPosition: {x: 4.5253906, y: -7.0351562}
   m_SizeDelta: {x: -111.8182, y: -14.1226}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &700930606
@@ -7902,7 +7904,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: -0.155}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 4.5253906, y: -7.0354004}
+  m_AnchoredPosition: {x: 4.5253906, y: -7.0351562}
   m_SizeDelta: {x: -111.8182, y: -14.1226}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &806548829
@@ -12573,6 +12575,8 @@ MonoBehaviour:
   RankingAmigosPanel: {fileID: 492648860}
   btnGeneral: {fileID: 2044759437}
   PanelRankingGeneral: {fileID: 1827935501}
+  btnComunidades: {fileID: 1971300884}
+  PanelRankingComunidades: {fileID: 1474432508}
 --- !u!4 &1430995352
 Transform:
   m_ObjectHideFlags: 0
@@ -14334,7 +14338,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: -0.155}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 4.5253906, y: -7.0354004}
+  m_AnchoredPosition: {x: 4.5253906, y: -7.0351562}
   m_SizeDelta: {x: -111.8182, y: -14.1226}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1772209560
@@ -15866,7 +15870,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1971300883
 RectTransform:
   m_ObjectHideFlags: 0

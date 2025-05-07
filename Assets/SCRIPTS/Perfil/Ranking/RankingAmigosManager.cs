@@ -31,6 +31,10 @@ public class RankingAmigosManager : MonoBehaviour
     public Button btnGeneral;
     public GameObject PanelRankingGeneral;
 
+    // instancia a  comunidades 
+    public Button btnComunidades;
+    public GameObject PanelRankingComunidades;
+
     private string usuarioActualID;
     private string usuarioActualNombre;
     private int usuarioActualXP;
@@ -69,6 +73,7 @@ public class RankingAmigosManager : MonoBehaviour
             btnGeneral.onClick.AddListener(ActivarRankingGeneral);
             RankingAmigosPanel.SetActive(false);
         }
+        
     }
 
     public void ActivarRankingAmigos()
@@ -76,14 +81,20 @@ public class RankingAmigosManager : MonoBehaviour
         string estadouser = PlayerPrefs.GetString("Estadouser", "");
         if (estadouser == "nube")
         {
-            // Activar nuestro panel
-            RankingAmigosPanel.SetActive(true);
-
             // Desactivar el panel de ranking general si existe
+
             if (PanelRankingGeneral != null)
             {
                 PanelRankingGeneral.SetActive(false);
             }
+
+          
+                PanelRankingComunidades.SetActive(false);
+            
+            // Activar nuestro panel
+            RankingAmigosPanel.SetActive(true);
+
+         
 
             // Marcar el botón de amigos como seleccionado
             if (rankingGeneralManager != null && btnAmigos != null)
@@ -94,6 +105,10 @@ public class RankingAmigosManager : MonoBehaviour
                 if (btnGeneral != null)
                 {
                     rankingGeneralManager.DesmarcarBoton(btnGeneral);
+                }
+                if(btnComunidades != null)
+                {
+                    rankingGeneralManager.DesmarcarBoton(btnComunidades);
                 }
             }
 

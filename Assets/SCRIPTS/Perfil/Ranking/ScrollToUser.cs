@@ -98,7 +98,6 @@ public class ScrollToUser : MonoBehaviour
         ObtenerInformacionUsuario();
     }
 
-
     // Hacemos público este método para que pueda ser llamado desde RankingManager2
     public void CambiarModoRanking(ModoRanking nuevoModo)
     {
@@ -107,10 +106,11 @@ public class ScrollToUser : MonoBehaviour
             modoActual = nuevoModo;
 
             // Actualizar visibilidad de los contenidos
-            if (rankingContentGeneral != null && rankingContentAmigos != null)
+            if (rankingContentGeneral != null && rankingContentAmigos != null && rankingContentComunidades != null)
             {
                 rankingContentGeneral.gameObject.SetActive(nuevoModo == ModoRanking.General);
                 rankingContentAmigos.gameObject.SetActive(nuevoModo == ModoRanking.Amigos);
+                rankingContentComunidades.gameObject.SetActive(nuevoModo == ModoRanking.Comunidades);
             }
 
             ActualizarUISegunModo();
@@ -120,10 +120,39 @@ public class ScrollToUser : MonoBehaviour
             {
                 ActualizarContenidoRankingGeneral();
             }
-            else
+            else if (nuevoModo == ModoRanking.Amigos)
             {
                 ActualizarContenidoRankingAmigos();
             }
+            else if (nuevoModo == ModoRanking.Comunidades)
+            {
+                ActualizarContenidoRankingComunidades();
+            }
+        }
+    }
+
+    // Nuevo método para actualizar el contenido del ranking de comunidades
+    public void ActualizarContenidoRankingComunidades()
+    {
+        if (rankingComunidadesManager != null && !string.IsNullOrEmpty(rankingComunidadesManager.comunidadSeleccionadaID))
+        {
+            rankingComunidadesManager.ObtenerRankingComunidad(rankingComunidadesManager.comunidadSeleccionadaID);
+        }
+    }
+
+    // Método para obtener el modo actual
+    public ModoRanking GetModoActual()
+    {
+        return modoActual;
+    }
+
+    // Método para actualizar la posición del usuario en el ranking de comunidades
+    public void ActualizarPosicionComunidades(int posicion)
+    {
+        posicionComunidades = posicion;
+        if (modoActual == ModoRanking.Comunidades)
+        {
+            UpdateUIDirectly(usuarioActualNombre, usuarioActualXP, posicionComunidades);
         }
     }
 
@@ -152,7 +181,7 @@ public class ScrollToUser : MonoBehaviour
                 content = rankingContentGeneral;
             }
         }
-        else // ModoRanking.Amigos
+        else if (modoActual == ModoRanking.Amigos)
         {
             // Actualizar la UI con la posición entre amigos
             UpdateUIDirectly(usuarioActualNombre, usuarioActualXP, posicionAmigos);
@@ -168,6 +197,18 @@ public class ScrollToUser : MonoBehaviour
             if (posicionAmigos == 0)
             {
                 ObtenerPosicionEntreAmigos();
+            }
+        }
+        else if (modoActual == ModoRanking.Comunidades)
+        {
+            // Actualizar la UI con la posición en la comunidad
+            UpdateUIDirectly(usuarioActualNombre, usuarioActualXP, posicionComunidades);
+
+            // Cambiar el content del ScrollRect si es necesario
+            if (rankingContentComunidades != null)
+            {
+                scrollRect.content = rankingContentComunidades.GetComponent<RectTransform>();
+                content = rankingContentComunidades;
             }
         }
     }
@@ -189,14 +230,18 @@ public class ScrollToUser : MonoBehaviour
             {
                 usuarioActualXP = xpValue;
 
-                // Actualizar la UI con el nuevo valor de XP
-                if (modoActual == ModoRanking.General)
+                // Actualizar la UI con el nuevo valor de XP según modo
+                switch (modoActual)
                 {
-                    UpdateUIDirectly(usuarioActualNombre, usuarioActualXP, posicionGeneral);
-                }
-                else
-                {
-                    UpdateUIDirectly(usuarioActualNombre, usuarioActualXP, posicionAmigos);
+                    case ModoRanking.General:
+                        UpdateUIDirectly(usuarioActualNombre, usuarioActualXP, posicionGeneral);
+                        break;
+                    case ModoRanking.Amigos:
+                        UpdateUIDirectly(usuarioActualNombre, usuarioActualXP, posicionAmigos);
+                        break;
+                    case ModoRanking.Comunidades:
+                        UpdateUIDirectly(usuarioActualNombre, usuarioActualXP, posicionComunidades);
+                        break;
                 }
             }
         }
@@ -249,13 +294,17 @@ public class ScrollToUser : MonoBehaviour
             ActualizarUISegunModo();
 
             // Inicializar el contenido según el modo actual
-            if (modoActual == ModoRanking.General)
+            switch (modoActual)
             {
-                ActualizarContenidoRankingGeneral();
-            }
-            else
-            {
-                ActualizarContenidoRankingAmigos();
+                case ModoRanking.General:
+                    ActualizarContenidoRankingGeneral();
+                    break;
+                case ModoRanking.Amigos:
+                    ActualizarContenidoRankingAmigos();
+                    break;
+                case ModoRanking.Comunidades:
+                    ActualizarContenidoRankingComunidades();
+                    break;
             }
         }
     }
@@ -489,6 +538,7 @@ public class ScrollToUser : MonoBehaviour
                 break;
         }
     }
+
     private void ScrollToUserInGeneral()
     {
         // Implementación mejorada que combina ambas versiones
@@ -538,12 +588,14 @@ public class ScrollToUser : MonoBehaviour
             }
         }
     }
+
     private void ScrollToUserInAmigos()
     {
         // Implementación similar para amigos
         if (scrollRect != null && rankingContentAmigos != null)
-        {// Primera opción: buscar por color (del segundo script)
-            Image[] elementos = rankingContentGeneral.GetComponentsInChildren<Image>();
+        {
+            // Primera opción: buscar por color
+            Image[] elementos = rankingContentAmigos.GetComponentsInChildren<Image>();
 
             for (int i = 0; i < elementos.Length; i++)
             {
@@ -558,9 +610,9 @@ public class ScrollToUser : MonoBehaviour
                 }
             }
 
-            // Segunda opción: buscar por nombre (del primer script)
+            // Segunda opción: buscar por nombre
             string usuarioActual = usuarioActualNombre.Trim().ToLower();
-            foreach (Transform child in rankingContentGeneral)
+            foreach (Transform child in rankingContentAmigos)
             {
                 TMP_Text nombre = child.GetComponentInChildren<TMP_Text>(true);
                 if (nombre == null) continue;
@@ -570,10 +622,10 @@ public class ScrollToUser : MonoBehaviour
                 if (nombreTexto == usuarioActual)
                 {
                     Canvas.ForceUpdateCanvases();
-                    LayoutRebuilder.ForceRebuildLayoutImmediate((RectTransform)rankingContentGeneral);
+                    LayoutRebuilder.ForceRebuildLayoutImmediate((RectTransform)rankingContentAmigos);
 
                     RectTransform targetRect = child.GetComponent<RectTransform>();
-                    RectTransform contentRect = (RectTransform)rankingContentGeneral;
+                    RectTransform contentRect = (RectTransform)rankingContentAmigos;
 
                     float contentHeight = contentRect.rect.height;
                     float targetY = Mathf.Abs(targetRect.anchoredPosition.y);
@@ -586,12 +638,14 @@ public class ScrollToUser : MonoBehaviour
             }
         }
     }
+
     private void ScrollToUserInComunidades()
     {
-        // Implementación similar para comunidades
+        // Implementación para comunidades
         if (scrollRect != null && rankingContentComunidades != null)
-        {// Primera opción: buscar por color (del segundo script)
-            Image[] elementos = rankingContentGeneral.GetComponentsInChildren<Image>();
+        {
+            // Primera opción: buscar por color
+            Image[] elementos = rankingContentComunidades.GetComponentsInChildren<Image>();
 
             for (int i = 0; i < elementos.Length; i++)
             {
@@ -602,13 +656,14 @@ public class ScrollToUser : MonoBehaviour
                     posicionNormalizada = Mathf.Clamp01(posicionNormalizada);
 
                     scrollRect.verticalNormalizedPosition = 1 - posicionNormalizada;
+                    StartCoroutine(AnimateUserBox(elementos[i].transform));
                     return;
                 }
             }
 
-            // Segunda opción: buscar por nombre (del primer script)
+            // Segunda opción: buscar por nombre
             string usuarioActual = usuarioActualNombre.Trim().ToLower();
-            foreach (Transform child in rankingContentGeneral)
+            foreach (Transform child in rankingContentComunidades)
             {
                 TMP_Text nombre = child.GetComponentInChildren<TMP_Text>(true);
                 if (nombre == null) continue;
@@ -618,10 +673,10 @@ public class ScrollToUser : MonoBehaviour
                 if (nombreTexto == usuarioActual)
                 {
                     Canvas.ForceUpdateCanvases();
-                    LayoutRebuilder.ForceRebuildLayoutImmediate((RectTransform)rankingContentGeneral);
+                    LayoutRebuilder.ForceRebuildLayoutImmediate((RectTransform)rankingContentComunidades);
 
                     RectTransform targetRect = child.GetComponent<RectTransform>();
-                    RectTransform contentRect = (RectTransform)rankingContentGeneral;
+                    RectTransform contentRect = (RectTransform)rankingContentComunidades;
 
                     float contentHeight = contentRect.rect.height;
                     float targetY = Mathf.Abs(targetRect.anchoredPosition.y);
@@ -634,7 +689,6 @@ public class ScrollToUser : MonoBehaviour
             }
         }
     }
-
 
     // Método para llenar el contenido de amigos con la lista ordenada
     private void LlenarContenidoAmigos(List<(string id, string nombre, int xp)> listaOrdenada)
@@ -661,40 +715,6 @@ public class ScrollToUser : MonoBehaviour
             Destroy(child.gameObject);
         }
     }
-
-    //public void ScrollToUserPosition()
-    //{
-    //    string usuarioActual = usuarioActualNombre.Trim().ToLower();
-    //    Debug.Log("Usuario actual: " + usuarioActual);
-    //    Debug.Log("Número de elementos en content: " + content.childCount);
-
-    //    foreach (Transform child in content)
-    //    {
-    //        TMP_Text nombre = child.GetComponentInChildren<TMP_Text>(true);
-    //        if (nombre == null) continue;
-
-    //        string nombreTexto = nombre.text.Trim().ToLower();
-
-    //        if (nombreTexto == usuarioActual)
-    //        {
-    //            Debug.Log("Usuario encontrado en: " + child.name);
-
-    //            Canvas.ForceUpdateCanvases();
-    //            LayoutRebuilder.ForceRebuildLayoutImmediate((RectTransform)content);
-
-    //            RectTransform targetRect = child.GetComponent<RectTransform>();
-    //            RectTransform contentRect = (RectTransform)content;
-
-    //            float contentHeight = contentRect.rect.height;
-    //            float targetY = Mathf.Abs(targetRect.anchoredPosition.y);
-    //            float normalizedPosition = 1 - (targetY / contentHeight);
-
-    //            StartCoroutine(SmoothScrollToPosition(normalizedPosition));
-    //            StartCoroutine(AnimateUserBox(child));
-    //            break;
-    //        }
-    //    }
-    //}
 
     IEnumerator SmoothScrollToPosition(float targetPosition)
     {
