@@ -1624,7 +1624,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &579777728
 RectTransform:
   m_ObjectHideFlags: 0
@@ -3015,6 +3015,60 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 933574146}
   m_CullTransparentMesh: 1
+--- !u!1 &953705009
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 953705011}
+  - component: {fileID: 953705010}
+  m_Layer: 0
+  m_Name: ModoQuimicadosController
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &953705010
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 953705009}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ce7087cc6408878438a2012d8e5b1d41, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  panelSeleccionJuego: {fileID: 579777727}
+  panelSeleccionModo: {fileID: 1058432478}
+  PanelAmigos: {fileID: 1470050412}
+  amigoPrefab: {fileID: 6920067149134508660, guid: f7137670f76a13e458a77e8c4656fd5c, type: 3}
+  contentPanel: {fileID: 380484562}
+  Cpu: {fileID: 2058004637}
+  Amigos: {fileID: 1267930091}
+  nuevoAmigo: {fileID: 0}
+  juegoActual: 
+  amigosCargados: 0
+--- !u!4 &953705011
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 953705009}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 590.0687, y: 1293.5372, z: 0.27641058}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &961117342
 GameObject:
   m_ObjectHideFlags: 0
@@ -3063,8 +3117,10 @@ MonoBehaviour:
   panelSeleccionJuego: {fileID: 579777727}
   panelSeleccionModo: {fileID: 1058432478}
   PanelAmigos: {fileID: 1470050412}
-  amigoPrefab: {fileID: 806078508448025764, guid: e34c639134484bc4aafa424f56766a4c, type: 3}
+  amigoPrefab: {fileID: 6920067149134508660, guid: f7137670f76a13e458a77e8c4656fd5c, type: 3}
   contentPanel: {fileID: 380484562}
+  CombateQuimico: {fileID: 402468753}
+  Quimicados: {fileID: 1435155774}
 --- !u!114 &961117346
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -6787,4 +6843,5 @@ SceneRoots:
   - {fileID: 2072230445}
   - {fileID: 693578909}
   - {fileID: 961117344}
+  - {fileID: 953705011}
   - {fileID: 1836739741}
