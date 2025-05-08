@@ -13,17 +13,22 @@ public class RankingComunidadesManager : BaseRankingManager
     [SerializeField] private TMP_Dropdown comunidadesDropdown;
     [SerializeField] private Image dropdownBackground;
     [SerializeField] private Color colorNormal = Color.white;
-    [SerializeField] private Color colorSeleccionado = new Color(0.8f, 1f, 0.8f);
+    [SerializeField] private Color colorSeleccionado = new Color(0f, 0.4f, 0f);
 
     private Dictionary<string, string> comunidadesDict = new Dictionary<string, string>();
     private ScrollToUser scrollToUser;
     private bool isUpdatingRanking = false;
     private string comunidadSeleccionadaID;
 
+    [Header("Dropdown Styling")]
+    [SerializeField] private Color textColorNormal = Color.black;
+    [SerializeField] private Color textColorSelected = new Color(0f, 0.4f, 0f);
+    [SerializeField] private TMP_Text dropdownLabel;
+
+
     protected override void Start()
     {
         base.Start();
-
         scrollToUser = FindFirstObjectByType<ScrollToUser>();
 
         if (associatedButton != null)
@@ -41,31 +46,66 @@ public class RankingComunidadesManager : BaseRankingManager
         ConfigurarDropdown();
     }
 
+    
     public override void OnRankingStateChanged(RankingMode newMode, string comunidadId)
     {
         if (newMode == RankingMode.Comunidades)
         {
-            if (!panel.activeSelf)
+            panel.SetActive(true);
+            MarkButtonAsSelected(true);
+
+            // Resaltar dropdown si ya hay comunidad seleccionada
+            if (!string.IsNullOrEmpty(comunidadSeleccionadaID))
             {
-                panel.SetActive(true);
-                if (!string.IsNullOrEmpty(comunidadId))
-                {
-                    ObtenerRankingComunidad(comunidadId);
-                }
+                HighlightDropdown();
+            }
+            else
+            {
+                ResetDropdownAppearance();
             }
         }
-        else if (panel.activeSelf)
+        else
         {
             panel.SetActive(false);
-            ResetDropdownAppearance();
+            MarkButtonAsSelected(false);
+
+            // Resetear dropdown cuando se cambia a General/Amigos
+            ResetDropdownToDefault();
         }
     }
 
+    // Nuevo método para resetear el dropdown
+    private void ResetDropdownToDefault()
+    {
+        if (comunidadesDropdown != null)
+        {
+            comunidadesDropdown.value = 0;
+            comunidadesDropdown.RefreshShownValue();
+            ResetDropdownAppearance();
+        }
+    }
+    private void MarkButtonAsSelected(bool selected)
+    {
+        if (associatedButton != null)
+        {
+            Image buttonImage = associatedButton.GetComponent<Image>();
+            if (buttonImage != null)
+            {
+                buttonImage.color = selected ? colorSeleccionado : colorNormal;
+            }
+
+            TextMeshProUGUI buttonText = associatedButton.GetComponentInChildren<TextMeshProUGUI>();
+            if (buttonText != null)
+            {
+                buttonText.fontStyle = selected ? FontStyles.Bold : FontStyles.Normal;
+            }
+        }
+    }
     private void OnComunidadSeleccionada(int index)
     {
         if (isUpdatingRanking) return;
 
-        if (index > 0)
+        if (index > 0) // Comunidad seleccionada
         {
             string nombreComunidad = comunidadesDropdown.options[index].text;
             if (comunidadesDict.TryGetValue(nombreComunidad, out string comunidadId))
@@ -73,13 +113,14 @@ public class RankingComunidadesManager : BaseRankingManager
                 comunidadSeleccionadaID = comunidadId;
                 HighlightDropdown();
                 RankingStateManager.Instance.SwitchToComunidades(comunidadId);
+                ObtenerRankingComunidad(comunidadId);
             }
         }
-        else
+        else // "Selecciona una comunidad"
         {
-            ClearRanking();
+            comunidadSeleccionadaID = null;
             ResetDropdownAppearance();
-            RankingStateManager.Instance.SwitchToGeneral();
+            ClearRanking();
         }
     }
 
@@ -263,6 +304,10 @@ public class RankingComunidadesManager : BaseRankingManager
         {
             dropdownBackground.color = colorSeleccionado;
         }
+        if (dropdownLabel != null)
+        {
+            dropdownLabel.color = textColorSelected;
+        }
     }
 
     private void ResetDropdownAppearance()
@@ -270,6 +315,10 @@ public class RankingComunidadesManager : BaseRankingManager
         if (dropdownBackground != null)
         {
             dropdownBackground.color = colorNormal;
+        }
+        if (dropdownLabel != null)
+        {
+            dropdownLabel.color = textColorNormal;
         }
     }
 }

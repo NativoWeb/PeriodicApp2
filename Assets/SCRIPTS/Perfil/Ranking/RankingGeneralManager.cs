@@ -19,22 +19,26 @@ public class RankingGeneralManager : BaseRankingManager
     // instanciamos el PanelRanking
     [SerializeField] public GameObject RankingPanel = null;
 
+    // Añade estas variables al inicio de la clase
+    private bool firstLoadCompleted = false;
+    private int pendingUserPosition = -1;
+
+    
     protected override void Start()
     {
         base.Start();
 
         scrollToUser = FindFirstObjectByType<ScrollToUser>();
 
-        // Forzar carga inicial
         if (panel != null)
         {
             panel.SetActive(true);
-            ObtenerRanking();
             MarkButtonAsSelected(true);
-            scrollToUser?.ScrollToUserPosition();
+
+            // Cargar datos pero retrasar el scroll hasta que todo esté listo
+            StartCoroutine(InitialLoadSequence());
         }
 
-        // Configurar botón
         if (associatedButton != null)
         {
             associatedButton.onClick.AddListener(() =>
@@ -46,6 +50,27 @@ public class RankingGeneralManager : BaseRankingManager
             });
         }
     }
+    // Nuevo método para secuencia de carga inicial
+    private IEnumerator InitialLoadSequence()
+    {
+        // Paso 1: Cargar datos del ranking
+        yield return StartCoroutine(ObtenerRankingCoroutine());
+
+        // Paso 2: Esperar a que el layout se actualice completamente
+        yield return new WaitForEndOfFrame();
+        Canvas.ForceUpdateCanvases();
+
+        // Paso 3: Ejecutar scroll si tenemos una posición pendiente
+        if (pendingUserPosition != -1 && scrollToUser != null)
+        {
+            scrollToUser.UpdateUserPosition(pendingUserPosition);
+            yield return new WaitForEndOfFrame(); // Esperar un frame más
+            scrollToUser.ScrollToUserPosition();
+        }
+
+        firstLoadCompleted = true;
+    }
+
 
 
     public void ActivarRanking()
@@ -55,7 +80,7 @@ public class RankingGeneralManager : BaseRankingManager
         {
                 RankingPanel.SetActive(true);
                 ObtenerRanking();
-                scrollToUser.ScrollToUserPosition();
+                
         }
         else
         {
@@ -80,26 +105,17 @@ public class RankingGeneralManager : BaseRankingManager
     {
         bool shouldActivate = (newMode == RankingMode.General);
 
-        // Activar/desactivar el panel
         if (panel != null)
         {
             panel.SetActive(shouldActivate);
         }
 
-        // Resaltar el botón correspondiente
         MarkButtonAsSelected(shouldActivate);
 
-        // Solo cargar datos si estamos en modo General y el panel está activo
         if (shouldActivate && panel.activeSelf)
         {
             Debug.Log("Cargando ranking general...");
             ObtenerRanking();
-
-            // Scroll al usuario después de una pequeña espera
-            if (scrollToUser != null && gameObject.activeInHierarchy)
-            {
-                StartCoroutine(ScrollAfterUpdate());
-            }
         }
     }
     private void ObtenerRanking()
@@ -148,12 +164,11 @@ public class RankingGeneralManager : BaseRankingManager
             }
 
             int userPosition = listaJugadores.FindIndex(j => j.id == currentUserId) + 1;
-            scrollToUser?.UpdateUserPosition(userPosition);
+            pendingUserPosition = userPosition; // Guardamos la posición para usarla después
 
-            // Forzar scroll al usuario después de actualizar
-            if (scrollToUser != null)
+            if (firstLoadCompleted && scrollToUser != null)
             {
-                yield return new WaitForSeconds(0.1f); // Pequeño delay
+                scrollToUser.UpdateUserPosition(userPosition);
                 scrollToUser.ScrollToUserPosition();
             }
         }

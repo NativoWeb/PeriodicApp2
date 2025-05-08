@@ -181,31 +181,26 @@ public class ScrollToUser : MonoBehaviour, IRankingObserver
 
     public void ScrollToUserPosition()
     {
-        StartCoroutine(ScrollAfterLayoutUpdate());
+        if (gameObject.activeInHierarchy)
+        {
+            StartCoroutine(ScrollAfterLayoutUpdate(0.1f)); // Pequeño delay adicional
+        }
     }
 
     private IEnumerator ScrollAfterLayoutUpdate(float initialDelay = 0f)
     {
-        if (initialDelay > 0)
-        {
-            yield return new WaitForSeconds(initialDelay);
-        }
+        yield return new WaitForSeconds(initialDelay);
 
         // Esperar a que se actualice el layout
         yield return new WaitForEndOfFrame();
         Canvas.ForceUpdateCanvases();
+        yield return new WaitForEndOfFrame(); // Frame adicional
 
-        // Encontrar el elemento del usuario
         var userElement = FindUserElementInContent();
         if (userElement == null) yield break;
 
-        // Calcular posición de scroll (centrado)
         float normalizedPosition = CalculateCenteredScrollPosition(userElement);
-
-        // Animación suave
         yield return StartCoroutine(SmoothScroll(normalizedPosition));
-
-        // Efecto de resaltado
         yield return StartCoroutine(HighlightElement(userElement));
     }
 
