@@ -1,195 +1,87 @@
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
-using Firebase.Firestore;
-using Firebase.Extensions;
 using TMPro;
+using Firebase.Firestore;
 using System.Collections;
-using System;
+using System.Collections.Generic;
 using System.Linq;
+using Firebase.Extensions;
 
-public class RankingAmigosManager : MonoBehaviour
+public class RankingAmigosManager : BaseRankingManager
 {
-    public GameObject prefabJugador;
-    public Transform content;
-    FirebaseFirestore db;
-    private Coroutine rankingCoroutine;
-    private bool estaActualizando = false;
+    [Header("Friends Configuration")]
+    [SerializeField] private Color colorBotonSeleccionado = new Color(0.0f, 0.4f, 0.0f);
+    [SerializeField] private Color colorBotonNormal = Color.white;
 
-    // Referencia al rankingGeneralManager2
-    [SerializeField] private RankingGeneralManager rankingGeneralManager;
-
-    // Referencias al podio
-    public TMP_Text primeroNombre, segundoNombre, terceroNombre;
-    public TMP_Text primeroXP, segundoXP, terceroXP;
-
-    // Referencia al botón de Amigos
-    public Button btnAmigos;
-    [SerializeField] private GameObject RankingAmigosPanel = null;
-
-    // instancia btn general
-    public Button btnGeneral;
-    public GameObject PanelRankingGeneral;
-
-    // instancia a  comunidades 
-    public Button btnComunidades;
-    public GameObject PanelRankingComunidades;
-
-    private string usuarioActualID;
-    private string usuarioActualNombre;
+    private ScrollToUser scrollToUser;
     private int usuarioActualXP;
 
-    void Start()
+    protected override void Start()
     {
-        db = FirebaseFirestore.DefaultInstance;
-        usuarioActualID = Firebase.Auth.FirebaseAuth.DefaultInstance.CurrentUser.UserId;
-        usuarioActualNombre = Firebase.Auth.FirebaseAuth.DefaultInstance.CurrentUser.DisplayName;
+        base.Start();
 
-        // Buscar la referencia a rankingGeneralManager2 si no está asignada
-        if (rankingGeneralManager == null)
+        scrollToUser = FindFirstObjectByType<ScrollToUser>();
+
+        if (associatedButton != null)
         {
-            rankingGeneralManager = FindFirstObjectByType<RankingGeneralManager>();
+            associatedButton.onClick.AddListener(() =>
+            {
+                if (!panel.activeSelf)
+                {
+                    RankingStateManager.Instance.SwitchToAmigos();
+                }
+            });
         }
 
-        // Asignamos el listener al botón de amigos
-        if (btnAmigos != null)
-        {
-            btnAmigos.onClick.RemoveAllListeners();
-            btnAmigos.onClick.AddListener(ActivarRankingAmigos);
-        }
-
-        // desactivamos el panel 
-        if (btnAmigos == null)
-        {
-            RankingAmigosPanel.SetActive(false);
-        }
-
-        // Obtenemos el XP del usuario actual
         ObtenerXPUsuarioActual();
-
-        if (btnGeneral != null)
-        {
-            btnGeneral.onClick.RemoveAllListeners();
-            btnGeneral.onClick.AddListener(ActivarRankingGeneral);
-            RankingAmigosPanel.SetActive(false);
-        }
-        
     }
 
-    public void ActivarRankingAmigos()
+    public override void OnRankingStateChanged(RankingMode newMode, string comunidadId)
     {
-        string estadouser = PlayerPrefs.GetString("Estadouser", "");
-        if (estadouser == "nube")
+        if (newMode == RankingMode.Amigos)
         {
-            // Desactivar el panel de ranking general si existe
-
-            if (PanelRankingGeneral != null)
+            if (!panel.activeSelf)
             {
-                PanelRankingGeneral.SetActive(false);
-            }
+                panel.SetActive(true);
+                MarkButtonAsSelected(true);
+                ObtenerRankingAmigos();
 
-          
-                PanelRankingComunidades.SetActive(false);
-            
-            // Activar nuestro panel
-            RankingAmigosPanel.SetActive(true);
-
-         
-
-            // Marcar el botón de amigos como seleccionado
-            if (rankingGeneralManager != null && btnAmigos != null)
-            {
-                rankingGeneralManager.MarcarBotonSeleccionado(btnAmigos);
-
-                // Desmarcar el botón general si existe
-                if (btnGeneral != null)
+                if (scrollToUser != null)
                 {
-                    rankingGeneralManager.DesmarcarBoton(btnGeneral);
-                }
-                if(btnComunidades != null)
-                {
-                    rankingGeneralManager.DesmarcarBoton(btnComunidades);
-                }
-            }
-
-            ObtenerRankingAmigos();
-        }
-    }
-
-    public void ActivarRankingGeneral()
-    {
-        string estadouser = PlayerPrefs.GetString("Estadouser", "");
-        if (estadouser == "nube")
-        {
-            // Desactivar nuestro panel
-            RankingAmigosPanel.SetActive(false);
-
-            // Activar el panel de ranking general si existe
-            if (PanelRankingGeneral != null)
-            {
-                PanelRankingGeneral.SetActive(true);
-
-                // Llamar al método ObtenerRanking del rankingGeneralManager2
-                if (rankingGeneralManager != null)
-                {
-                    rankingGeneralManager.ObtenerRanking();
-                }
-            }
-
-            // Marcar el botón general como seleccionado
-            if (rankingGeneralManager != null && btnGeneral != null)
-            {
-                rankingGeneralManager.MarcarBotonSeleccionado(btnGeneral);
-
-                // Desmarcar el botón de amigos si existe
-                if (btnAmigos != null)
-                {
-                    rankingGeneralManager.DesmarcarBoton(btnAmigos);
+                    StartCoroutine(ScrollAfterUpdate());
                 }
             }
         }
+        else if (panel.activeSelf)
+        {
+            panel.SetActive(false);
+            MarkButtonAsSelected(false);
+        }
     }
+
     private void ObtenerXPUsuarioActual()
     {
-        db.Collection("users").Document(usuarioActualID).GetSnapshotAsync().ContinueWithOnMainThread(task =>
-        {
-            if (task.IsCompleted && task.Result.Exists)
+        FirebaseFirestore.DefaultInstance.Collection("users").Document(currentUserId)
+            .GetSnapshotAsync().ContinueWithOnMainThread(task =>
             {
-                if (task.Result.TryGetValue<int>("xp", out int xp))
+                if (task.IsCompleted && task.Result.Exists)
                 {
-                    usuarioActualXP = xp;
+                    if (task.Result.TryGetValue<int>("xp", out int xp))
+                    {
+                        usuarioActualXP = xp;
+                    }
                 }
-                else
-                {
-                    usuarioActualXP = 0;
-                }
-            }
-        });
+            });
     }
 
-    public void ObtenerRankingAmigos()
+    private void ObtenerRankingAmigos()
     {
+        ClearRanking();
 
-        // desactivamos primero el panel de ranking general 
-        PanelRankingGeneral.SetActive(false);
-        // Limpiar lista anterior
-        foreach (Transform child in content)
-        {
-            Destroy(child.gameObject);
-        }
-
-        // Resetear textos del podio
-        primeroNombre.text = "---";
-        primeroXP.text = "0 xp";
-        segundoNombre.text = "---";
-        segundoXP.text = "0 xp";
-        terceroNombre.text = "---";
-        terceroXP.text = "0 xp";
-
-        // Primero obtenemos las solicitudes de amistad aceptadas
-        db.Collection("SolicitudesAmistad")
+        // Primero obtenemos las solicitudes de amistad aceptadas donde somos remitentes
+        FirebaseFirestore.DefaultInstance.Collection("SolicitudesAmistad")
             .WhereEqualTo("estado", "aceptada")
-            .WhereEqualTo("idRemitente", usuarioActualID)
+            .WhereEqualTo("idRemitente", currentUserId)
             .GetSnapshotAsync()
             .ContinueWithOnMainThread(task =>
             {
@@ -197,14 +89,13 @@ public class RankingAmigosManager : MonoBehaviour
                 {
                     List<string> idsAmigos = new List<string>();
 
-                    // Agregamos los IDs de los destinatarios (amigos)
                     foreach (DocumentSnapshot document in task.Result.Documents)
                     {
                         string idAmigo = document.GetValue<string>("idDestinatario");
                         idsAmigos.Add(idAmigo);
                     }
 
-                    // También buscamos solicitudes donde somos el destinatario
+                    // Luego obtenemos donde somos destinatarios
                     ObtenerSolicitudesComoDestinatario(idsAmigos);
                 }
             });
@@ -212,22 +103,23 @@ public class RankingAmigosManager : MonoBehaviour
 
     private void ObtenerSolicitudesComoDestinatario(List<string> idsAmigos)
     {
-        db.Collection("SolicitudesAmistad")
+        FirebaseFirestore.DefaultInstance.Collection("SolicitudesAmistad")
             .WhereEqualTo("estado", "aceptada")
-            .WhereEqualTo("idDestinatario", usuarioActualID)
+            .WhereEqualTo("idDestinatario", currentUserId)
             .GetSnapshotAsync()
             .ContinueWithOnMainThread(task =>
             {
                 if (task.IsCompleted)
                 {
-                    // Agregamos los IDs de los remitentes (también amigos)
                     foreach (DocumentSnapshot document in task.Result.Documents)
                     {
                         string idAmigo = document.GetValue<string>("idRemitente");
-                        idsAmigos.Add(idAmigo);
+                        if (!idsAmigos.Contains(idAmigo))
+                        {
+                            idsAmigos.Add(idAmigo);
+                        }
                     }
 
-                    // Una vez tenemos todos los IDs de amigos, obtenemos sus datos
                     ObtenerDatosAmigos(idsAmigos);
                 }
             });
@@ -235,104 +127,75 @@ public class RankingAmigosManager : MonoBehaviour
 
     private void ObtenerDatosAmigos(List<string> idsAmigos)
     {
-        // Agregamos al usuario actual a la lista para comparación
         List<(string id, string nombre, int xp)> listaJugadores = new List<(string, string, int)>();
-        listaJugadores.Add((usuarioActualID, usuarioActualNombre, usuarioActualXP));
+        listaJugadores.Add((currentUserId, currentUserName, usuarioActualXP));
 
-        // Si no hay amigos, mostramos solo al usuario
         if (idsAmigos.Count == 0)
         {
             MostrarRankingFinal(listaJugadores);
             return;
         }
 
-        // Contador para saber cuándo hemos procesado a todos los amigos
         int contadorAmigos = 0;
 
         foreach (string idAmigo in idsAmigos)
         {
-            db.Collection("users").Document(idAmigo).GetSnapshotAsync().ContinueWithOnMainThread(task =>
-            {
-                contadorAmigos++;
-
-                if (task.IsCompleted && task.Result.Exists)
+            FirebaseFirestore.DefaultInstance.Collection("users").Document(idAmigo)
+                .GetSnapshotAsync().ContinueWithOnMainThread(task =>
                 {
-                    string nombre = task.Result.GetValue<string>("DisplayName");
-                    int xp = 0;
+                    contadorAmigos++;
 
-                    if (task.Result.TryGetValue<int>("xp", out int xpValue))
+                    if (task.IsCompleted && task.Result.Exists)
                     {
-                        xp = xpValue;
+                        string nombre = task.Result.GetValue<string>("DisplayName");
+                        int xp = task.Result.GetValue<int>("xp");
+                        listaJugadores.Add((idAmigo, nombre, xp));
                     }
 
-                    listaJugadores.Add((idAmigo, nombre, xp));
-                }
-
-                // Si ya procesamos a todos los amigos, mostramos el ranking
-                if (contadorAmigos >= idsAmigos.Count)
-                {
-                    MostrarRankingFinal(listaJugadores);
-                }
-            });
+                    if (contadorAmigos >= idsAmigos.Count)
+                    {
+                        MostrarRankingFinal(listaJugadores);
+                    }
+                });
         }
     }
 
     private void MostrarRankingFinal(List<(string id, string nombre, int xp)> listaJugadores)
     {
-        // Ordenar por XP de mayor a menor
         var listaOrdenada = listaJugadores.OrderByDescending(j => j.xp).ToList();
+        UpdatePodio(listaOrdenada);
 
-        // Asignar valores al podio
-        if (listaOrdenada.Count > 0)
-        {
-            primeroNombre.text = listaOrdenada[0].nombre;
-            primeroXP.text = listaOrdenada[0].xp + " xp";
-        }
-        if (listaOrdenada.Count > 1)
-        {
-            segundoNombre.text = listaOrdenada[1].nombre;
-            segundoXP.text = listaOrdenada[1].xp + " xp";
-        }
-        if (listaOrdenada.Count > 2)
-        {
-            terceroNombre.text = listaOrdenada[2].nombre;
-            terceroXP.text = listaOrdenada[2].xp + " xp";
-        }
-
-        // Agregar jugadores a la lista desde la posición 4 en adelante
         for (int i = 3; i < listaOrdenada.Count; i++)
         {
-            GameObject jugadorUI = CrearElementoRanking(i + 1, listaOrdenada[i].nombre, listaOrdenada[i].xp);
-
-            // Resaltar al usuario actual
-            if (listaOrdenada[i].id == usuarioActualID)
-            {
-                ColorUtility.TryParseHtmlString("#E6FFED", out Color customColor);
-                jugadorUI.GetComponent<Image>().color = customColor;
-            }
+            bool highlight = listaOrdenada[i].id == currentUserId;
+            CreateRankingElement(i + 1, listaOrdenada[i].nombre, listaOrdenada[i].xp, highlight);
         }
 
-        // Si el usuario no está entre los primeros 3, buscamos su posición
-        int posicionUsuario = listaOrdenada.FindIndex(j => j.id == usuarioActualID) + 1;
+        int userPosition = listaOrdenada.FindIndex(j => j.id == currentUserId) + 1;
+        scrollToUser?.UpdateUserPosition(userPosition);
+    }
 
-        // Si el usuario está entre los primeros 3, resaltamos su posición en el podio
-        if (posicionUsuario <= 3 && posicionUsuario > 0)
+    private void MarkButtonAsSelected(bool selected)
+    {
+        if (associatedButton != null)
         {
-            
+            Image buttonImage = associatedButton.GetComponent<Image>();
+            if (buttonImage != null)
+            {
+                buttonImage.color = selected ? colorBotonSeleccionado : colorBotonNormal;
+            }
+
+            TextMeshProUGUI buttonText = associatedButton.GetComponentInChildren<TextMeshProUGUI>();
+            if (buttonText != null)
+            {
+                buttonText.fontStyle = selected ? FontStyles.Bold : FontStyles.Normal;
+            }
         }
     }
 
-    GameObject CrearElementoRanking(int posicion, string nombre, int xp)
+    private IEnumerator ScrollAfterUpdate()
     {
-        GameObject jugadorUI = Instantiate(prefabJugador, content);
-        TMP_Text nombreTMP = jugadorUI.transform.Find("Nombre").GetComponent<TMP_Text>();
-        TMP_Text xpTMP = jugadorUI.transform.Find("XP").GetComponent<TMP_Text>();
-        TMP_Text posicionTMP = jugadorUI.transform.Find("Posicion").GetComponent<TMP_Text>();
-
-        nombreTMP.text = nombre;
-        xpTMP.text = "EXP \n" + xp;
-        posicionTMP.text = "#" + posicion.ToString();
-
-        return jugadorUI;
+        yield return new WaitForSeconds(0.5f);
+        scrollToUser?.ScrollToUserPosition();
     }
 }

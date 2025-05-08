@@ -5237,26 +5237,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a44245fadcb8ef744889210137a82bdc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  comunidadesDropdown: {fileID: 765469055}
-  rankingGeneralManager: {fileID: 1915067478}
-  rankingAmigosManager: {fileID: 1430995351}
   prefabJugador: {fileID: 565556001445854711, guid: 04d379208077279468cf885cdbb9d94f, type: 3}
   content: {fileID: 1461331067}
-  panelRankingComunidades: {fileID: 1474432508}
+  panel: {fileID: 1474432508}
+  associatedButton: {fileID: 1971300884}
   primeroNombre: {fileID: 337243134}
   segundoNombre: {fileID: 914312077}
   terceroNombre: {fileID: 382420091}
   primeroXP: {fileID: 1492570236}
   segundoXP: {fileID: 349349399}
   terceroXP: {fileID: 1341748845}
-  panelRankingGeneral: {fileID: 1827935501}
-  panelRankingAmigos: {fileID: 492648860}
-  btnGeneral: {fileID: 2044759437}
-  btnAmigos: {fileID: 1171258735}
-  btnComunidades: {fileID: 1971300884}
-  scrollToUser: {fileID: 585540727}
-  comunidadSeleccionadaID: 
-  rankingContentComunidades: {fileID: 1461331067}
+  comunidadesDropdown: {fileID: 765469055}
+  dropdownBackground: {fileID: 310079350}
+  colorNormal: {r: 1, g: 1, b: 1, a: 1}
+  colorSeleccionado: {r: 0.14901961, g: 0.6784314, b: 0.16470589, a: 1}
 --- !u!4 &487129616
 Transform:
   m_ObjectHideFlags: 0
@@ -5838,15 +5832,16 @@ MonoBehaviour:
   nombreUsuarioText: {fileID: 879195853}
   xpUsuarioText: {fileID: 1259833699}
   posicionUsuarioText: {fileID: 682547143}
-  btnRankingGeneral: {fileID: 2044759437}
-  btnRankingAmigos: {fileID: 1171258735}
-  btnRankingComunidades: {fileID: 1971300884}
   rankingContentGeneral: {fileID: 104658733}
   rankingContentAmigos: {fileID: 972922290}
   rankingContentComunidades: {fileID: 1461331067}
-  rankingGeneralManager: {fileID: 1915067478}
-  rankingAmigosManager: {fileID: 1430995351}
-  rankingComunidadesManager: {fileID: 487129615}
+  btnRankingGeneral: {fileID: 2044759437}
+  btnRankingAmigos: {fileID: 1171258735}
+  btnRankingComunidades: {fileID: 1971300884}
+  scrollDuration: 0.5
+  highlightColor: {r: 0.9, g: 1, b: 0.9, a: 1}
+  highlightFlashDuration: 0.3
+  highlightFlashCount: 3
 --- !u!4 &585540728
 Transform:
   m_ObjectHideFlags: 0
@@ -8864,8 +8859,8 @@ RectTransform:
   - {fileID: 418324284}
   - {fileID: 1211176101}
   - {fileID: 1827935502}
-  - {fileID: 492648861}
   - {fileID: 1474432509}
+  - {fileID: 492648861}
   - {fileID: 1438310846}
   m_Father: {fileID: 1652232586}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -9528,6 +9523,50 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1042684428}
   m_CullTransparentMesh: 1
+--- !u!1 &1073123310
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1073123312}
+  - component: {fileID: 1073123311}
+  m_Layer: 0
+  m_Name: RankingStateController
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1073123311
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1073123310}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 486ddfded9ebc81448a2855d45581758, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!4 &1073123312
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1073123310}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 1092.5255, y: 124.624756, z: -5.786731}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1087888524
 GameObject:
   m_ObjectHideFlags: 0
@@ -12564,19 +12603,16 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   prefabJugador: {fileID: 565556001445854711, guid: 04d379208077279468cf885cdbb9d94f, type: 3}
   content: {fileID: 972922290}
-  rankingGeneralManager: {fileID: 1915067478}
+  panel: {fileID: 492648860}
+  associatedButton: {fileID: 1171258735}
   primeroNombre: {fileID: 337243134}
   segundoNombre: {fileID: 914312077}
   terceroNombre: {fileID: 382420091}
   primeroXP: {fileID: 1492570236}
   segundoXP: {fileID: 349349399}
   terceroXP: {fileID: 1341748845}
-  btnAmigos: {fileID: 1171258735}
-  RankingAmigosPanel: {fileID: 492648860}
-  btnGeneral: {fileID: 2044759437}
-  PanelRankingGeneral: {fileID: 1827935501}
-  btnComunidades: {fileID: 1971300884}
-  PanelRankingComunidades: {fileID: 1474432508}
+  colorBotonSeleccionado: {r: 0.14901961, g: 0.6784314, b: 0.16470589, a: 1}
+  colorBotonNormal: {r: 1, g: 1, b: 1, a: 1}
 --- !u!4 &1430995352
 Transform:
   m_ObjectHideFlags: 0
@@ -12829,7 +12865,7 @@ RectTransform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1474432508}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -12839,8 +12875,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: -0.75878906, y: -426.9541}
-  m_SizeDelta: {x: -1.5178, y: -1372.7484}
+  m_AnchoredPosition: {x: -0.7590332, y: -426.95422}
+  m_SizeDelta: {x: -1.5178604, y: -1372.7482}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1474432510
 MonoBehaviour:
@@ -15592,25 +15628,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 127313d8a5eeb3543929b5cc27a054d3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  rankingAmigosManager: {fileID: 1430995351}
-  colorBotonSeleccionado: {r: 0.26099145, g: 0.8018868, b: 0.27906978, a: 1}
-  colorBotonNormal: {r: 1, g: 1, b: 1, a: 1}
   prefabJugador: {fileID: 565556001445854711, guid: 04d379208077279468cf885cdbb9d94f, type: 3}
   content: {fileID: 104658733}
-  panelRankignGeneral: {fileID: 1827935501}
-  RankingPanel: {fileID: 979754341}
-  botonGeneral: {fileID: 2044759437}
-  scrollToUser: {fileID: 585540727}
+  panel: {fileID: 1827935501}
+  associatedButton: {fileID: 2044759437}
   primeroNombre: {fileID: 337243134}
   segundoNombre: {fileID: 914312077}
   terceroNombre: {fileID: 382420091}
   primeroXP: {fileID: 1492570236}
   segundoXP: {fileID: 349349399}
   terceroXP: {fileID: 1341748845}
-  BtnRankingAmigos: {fileID: 1171258735}
-  panelRankingAmigos: {fileID: 492648860}
-  BtnRankingComunidades: {fileID: 1971300884}
-  panelRankingComunidades: {fileID: 1474432508}
+  colorBotonSeleccionado: {r: 0.1505874, g: 0.6792453, b: 0.16602261, a: 1}
+  colorBotonNormal: {r: 1, g: 1, b: 1, a: 1}
+  RankingPanel: {fileID: 979754341}
 --- !u!1 &1947480433
 GameObject:
   m_ObjectHideFlags: 0
@@ -15870,7 +15900,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &1971300883
 RectTransform:
   m_ObjectHideFlags: 0
@@ -17102,6 +17132,7 @@ SceneRoots:
   - {fileID: 1652232586}
   - {fileID: 70528131}
   - {fileID: 1019146905}
+  - {fileID: 1073123312}
   - {fileID: 487129616}
   - {fileID: 1430995352}
   - {fileID: 1915067477}
