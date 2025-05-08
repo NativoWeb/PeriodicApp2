@@ -10,8 +10,6 @@ using Firebase.Extensions;
 
 public class ScrollToUser : MonoBehaviour, IRankingObserver
 {
-    public enum ModoRanking { General, Amigos, Comunidades }
-
     [Header("UI References")]
     public ScrollRect scrollRect;
     public RectTransform content;
@@ -41,7 +39,7 @@ public class ScrollToUser : MonoBehaviour, IRankingObserver
     private int posicionGeneral;
     private int posicionAmigos;
     private int posicionComunidades;
-    private ModoRanking currentMode = ModoRanking.General;
+    private RankingMode currentMode = RankingMode.General; // Cambiado a RankingMode
 
     private bool isInitialLoad = true;
 
@@ -50,6 +48,14 @@ public class ScrollToUser : MonoBehaviour, IRankingObserver
         InitializeUserData();
         SetupButtonListeners();
         RankingStateManager.Instance.RegisterObserver(this);
+    }
+
+    public void SetContentReady(RankingMode mode)
+    {
+        if (this.currentMode == mode)
+        {
+            StartCoroutine(ScrollAfterLayoutUpdate(0.1f));
+        }
     }
 
     private void OnDestroy()
@@ -93,35 +99,34 @@ public class ScrollToUser : MonoBehaviour, IRankingObserver
             btnRankingComunidades.onClick.AddListener(() => RankingStateManager.Instance.SwitchToComunidades());
     }
 
+    // Implementación correcta de la interfaz IRankingObserver
     public void OnRankingStateChanged(RankingMode newMode, string comunidadId)
     {
+        currentMode = newMode;
+
         switch (newMode)
         {
             case RankingMode.General:
-                currentMode = ModoRanking.General;
                 SetActiveContent(rankingContentGeneral);
                 break;
             case RankingMode.Amigos:
-                currentMode = ModoRanking.Amigos;
                 SetActiveContent(rankingContentAmigos);
                 break;
             case RankingMode.Comunidades:
-                currentMode = ModoRanking.Comunidades;
                 SetActiveContent(rankingContentComunidades);
                 break;
         }
 
         UpdateUserUI();
 
-        // Solo hacer scroll automático en la carga inicial
         if (isInitialLoad)
         {
             isInitialLoad = false;
-            StartCoroutine(ScrollAfterLayoutUpdate(0.7f)); // Pequeño delay para asegurar carga
+            StartCoroutine(ScrollAfterLayoutUpdate(0.7f));
         }
     }
 
-    private void SetActiveContent(RectTransform activeContent)
+    public void SetActiveContent(RectTransform activeContent)
     {
         if (rankingContentGeneral != null)
             rankingContentGeneral.gameObject.SetActive(activeContent == rankingContentGeneral);
@@ -138,13 +143,13 @@ public class ScrollToUser : MonoBehaviour, IRankingObserver
     {
         switch (currentMode)
         {
-            case ModoRanking.General:
+            case RankingMode.General:
                 posicionGeneral = position;
                 break;
-            case ModoRanking.Amigos:
+            case RankingMode.Amigos:
                 posicionAmigos = position;
                 break;
-            case ModoRanking.Comunidades:
+            case RankingMode.Comunidades:
                 posicionComunidades = position;
                 break;
         }
@@ -158,13 +163,13 @@ public class ScrollToUser : MonoBehaviour, IRankingObserver
 
         switch (currentMode)
         {
-            case ModoRanking.General:
+            case RankingMode.General:
                 currentPosition = posicionGeneral;
                 break;
-            case ModoRanking.Amigos:
+            case RankingMode.Amigos:
                 currentPosition = posicionAmigos;
                 break;
-            case ModoRanking.Comunidades:
+            case RankingMode.Comunidades:
                 currentPosition = posicionComunidades;
                 break;
         }
@@ -183,18 +188,16 @@ public class ScrollToUser : MonoBehaviour, IRankingObserver
     {
         if (gameObject.activeInHierarchy)
         {
-            StartCoroutine(ScrollAfterLayoutUpdate(0.1f)); // Pequeño delay adicional
+            StartCoroutine(ScrollAfterLayoutUpdate(0.1f));
         }
     }
 
-    private IEnumerator ScrollAfterLayoutUpdate(float initialDelay = 0f)
+    private IEnumerator ScrollAfterLayoutUpdate(float delay)
     {
-        yield return new WaitForSeconds(initialDelay);
-
-        // Esperar a que se actualice el layout
+        yield return new WaitForSeconds(delay);
         yield return new WaitForEndOfFrame();
         Canvas.ForceUpdateCanvases();
-        yield return new WaitForEndOfFrame(); // Frame adicional
+        yield return new WaitForEndOfFrame();
 
         var userElement = FindUserElementInContent();
         if (userElement == null) yield break;
@@ -213,7 +216,6 @@ public class ScrollToUser : MonoBehaviour, IRankingObserver
         float targetY = Mathf.Abs(target.anchoredPosition.y);
         float targetHeight = target.rect.height;
 
-        // Calcular posición centrada
         float centeredPosition = 1 - ((targetY - (viewportHeight / 2) + (targetHeight / 2)) / (contentHeight - viewportHeight));
         return Mathf.Clamp01(centeredPosition);
     }
@@ -222,7 +224,6 @@ public class ScrollToUser : MonoBehaviour, IRankingObserver
     {
         if (content == null) return null;
 
-        // Buscar por color de resaltado primero
         foreach (RectTransform child in content)
         {
             Image img = child.GetComponent<Image>();
@@ -232,7 +233,6 @@ public class ScrollToUser : MonoBehaviour, IRankingObserver
             }
         }
 
-        // Buscar por nombre si no se encontró por color
         foreach (RectTransform child in content)
         {
             TMP_Text nameText = child.GetComponentInChildren<TMP_Text>();
@@ -243,19 +243,6 @@ public class ScrollToUser : MonoBehaviour, IRankingObserver
         }
 
         return null;
-    }
-
-    private float CalculateNormalizedScrollPosition(RectTransform target)
-    {
-        if (content == null || target == null) return 1f;
-
-        float contentHeight = content.rect.height;
-        float viewportHeight = scrollRect.viewport.rect.height;
-        float targetY = Mathf.Abs(target.anchoredPosition.y);
-
-        // Calcular posición normalizada (0-1) donde 0 es abajo y 1 es arriba
-        float normalizedPosition = 1 - (targetY / (contentHeight - viewportHeight));
-        return Mathf.Clamp01(normalizedPosition);
     }
 
     private IEnumerator SmoothScroll(float targetPosition)

@@ -10,11 +10,12 @@ public class RankingGeneralManager : BaseRankingManager
     [Header("General Configuration")]
     [SerializeField] private Color colorBotonSeleccionado = new Color(0.0f, 0.4f, 0.0f);
     [SerializeField] private Color colorBotonNormal = Color.white;
+    [SerializeField] private RectTransform rankingContentGeneral; // Añadido
 
     private ScrollToUser scrollToUser;
     private Coroutine rankingCoroutine;
     private bool estaActualizando = false;
-
+    private RankingMode currentMode; // Añadido
 
     // instanciamos el PanelRanking
     [SerializeField] public GameObject RankingPanel = null;
@@ -23,10 +24,11 @@ public class RankingGeneralManager : BaseRankingManager
     private bool firstLoadCompleted = false;
     private int pendingUserPosition = -1;
 
-    
+
     protected override void Start()
     {
         base.Start();
+        currentMode = RankingMode.General; // Inicializar el modo
 
         scrollToUser = FindFirstObjectByType<ScrollToUser>();
 
@@ -34,8 +36,6 @@ public class RankingGeneralManager : BaseRankingManager
         {
             panel.SetActive(true);
             MarkButtonAsSelected(true);
-
-            // Cargar datos pero retrasar el scroll hasta que todo esté listo
             StartCoroutine(InitialLoadSequence());
         }
 
@@ -50,22 +50,28 @@ public class RankingGeneralManager : BaseRankingManager
             });
         }
     }
+
     // Nuevo método para secuencia de carga inicial
     private IEnumerator InitialLoadSequence()
     {
-        // Paso 1: Cargar datos del ranking
+        // Notificar al ScrollToUser qué content usar
+        if (scrollToUser != null && rankingContentGeneral != null)
+        {
+            scrollToUser.SetActiveContent(rankingContentGeneral);
+        }
+
         yield return StartCoroutine(ObtenerRankingCoroutine());
 
-        // Paso 2: Esperar a que el layout se actualice completamente
-        yield return new WaitForEndOfFrame();
+        // Esperar múltiples frames para asegurar la actualización del layout
+        for (int i = 0; i < 3; i++)
+        {
+            yield return new WaitForEndOfFrame();
+        }
         Canvas.ForceUpdateCanvases();
 
-        // Paso 3: Ejecutar scroll si tenemos una posición pendiente
-        if (pendingUserPosition != -1 && scrollToUser != null)
+        if (scrollToUser != null)
         {
-            scrollToUser.UpdateUserPosition(pendingUserPosition);
-            yield return new WaitForEndOfFrame(); // Esperar un frame más
-            scrollToUser.ScrollToUserPosition();
+            scrollToUser.SetContentReady(RankingMode.General);
         }
 
         firstLoadCompleted = true;
@@ -76,25 +82,20 @@ public class RankingGeneralManager : BaseRankingManager
     public void ActivarRanking()
     {
         string estadouser = PlayerPrefs.GetString("Estadouser", "");
-        if ( estadouser == "nube")
+        if (estadouser == "nube")
         {
-                RankingPanel.SetActive(true);
-                ObtenerRanking();
-                
-        }
-        else
-        {
-            return;
+            RankingPanel.SetActive(true);
+            ObtenerRanking();
         }
     }
 
     public void DesactivarRanking()
     {
-        if( RankingPanel != null)
+        if (RankingPanel != null)
         {
             RankingPanel.SetActive(false);
         }
-         if (estaActualizando)
+        if (estaActualizando)
         {
             estaActualizando = false;
             StopCoroutine(rankingCoroutine);
@@ -104,6 +105,7 @@ public class RankingGeneralManager : BaseRankingManager
     public override void OnRankingStateChanged(RankingMode newMode, string comunidadId)
     {
         bool shouldActivate = (newMode == RankingMode.General);
+        currentMode = newMode; // Actualizar el modo actual
 
         if (panel != null)
         {
@@ -115,7 +117,14 @@ public class RankingGeneralManager : BaseRankingManager
         if (shouldActivate && panel.activeSelf)
         {
             Debug.Log("Cargando ranking general...");
-            ObtenerRanking();
+            if (!firstLoadCompleted)
+            {
+                StartCoroutine(InitialLoadSequence());
+            }
+            else
+            {
+                ObtenerRanking();
+            }
         }
     }
     private void ObtenerRanking()
