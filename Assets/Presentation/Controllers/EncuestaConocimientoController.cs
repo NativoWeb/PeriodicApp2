@@ -8,6 +8,7 @@ public class EncuestaConocimientoController : MonoBehaviour
     public TextMeshProUGUI textoPregunta;
     public ToggleGroup grupoOpcionesUI;
     public Toggle[] opcionesToggleUI;
+    public Slider barraProgreso;
     public Text txtRacha;
     public Text txtTimer;
 
@@ -53,31 +54,40 @@ public class EncuestaConocimientoController : MonoBehaviour
 
     private void MostrarPregunta()
     {
-        if (indiceActual >= preguntas.Count)
+        if (indiceActual < preguntas.Count)
+        {
+           
+            barraProgreso.value = (float)indiceActual / preguntas.Count;
+        }
+        else
         {
             FinalizarEncuesta();
             return;
         }
+        
 
         var pregunta = preguntas[indiceActual];
         textoPregunta.text = pregunta.Texto;
-        var opciones = pregunta.Opciones;
+        var opcionesAleatorias = AleatorizarOpciones(pregunta.Opciones, pregunta.IndiceCorrecto);
+        var respuestaCorrecta = pregunta.Opciones[pregunta.IndiceCorrecto];
+        pregunta.IndiceCorrecto = opcionesAleatorias.IndexOf(respuestaCorrecta); // reasignar índice
 
-
+        // 🎨 Resetear colores y mostrar opciones
         for (int i = 0; i < opcionesToggleUI.Length; i++)
         {
-            if (i < opciones.Count)
+            if (i < opcionesAleatorias.Count)
             {
                 opcionesToggleUI[i].gameObject.SetActive(true);
-                opcionesToggleUI[i].GetComponentInChildren<TextMeshProUGUI>().text = opciones[i];
+                opcionesToggleUI[i].GetComponentInChildren<TextMeshProUGUI>().text = opcionesAleatorias[i];
                 opcionesToggleUI[i].isOn = false;
-                opcionesToggleUI[i].image.color = colorNormal; 
+                opcionesToggleUI[i].image.color = colorNormal;
             }
             else
             {
                 opcionesToggleUI[i].gameObject.SetActive(false);
             }
         }
+
         ActivarInteractividadOpciones();
         preguntaRespondida = false;
         tiempoRestante = 10f;
@@ -150,6 +160,35 @@ public class EncuestaConocimientoController : MonoBehaviour
         indiceActual++;
         MostrarPregunta();
     }
+
+    private List<string> AleatorizarOpciones(List<string> opciones, int indiceCorrecto)
+    {
+        List<string> opcionesAleatorias = new List<string>(opciones);
+
+        if (indiceCorrecto < 0 || indiceCorrecto >= opcionesAleatorias.Count)
+        {
+            Debug.LogError("Índice de respuesta correcta fuera de rango: " + indiceCorrecto + ". Se asignará el índice 0 por defecto.");
+            indiceCorrecto = 0;
+        }
+
+        string respuestaCorrecta = opcionesAleatorias[indiceCorrecto];
+
+        for (int i = 0; i < opcionesAleatorias.Count - 1; i++)
+        {
+            int randomIndex = UnityEngine.Random.Range(i, opcionesAleatorias.Count);
+            string temp = opcionesAleatorias[randomIndex];
+            opcionesAleatorias[randomIndex] = opcionesAleatorias[i];
+            opcionesAleatorias[i] = temp;
+        }
+
+        if (!opcionesAleatorias.Contains(respuestaCorrecta))
+        {
+            opcionesAleatorias[0] = respuestaCorrecta;
+        }
+
+        return opcionesAleatorias;
+    }
+
 
     private void FinalizarEncuesta()
     {

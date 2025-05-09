@@ -69,7 +69,7 @@ public class RegisterController : MonoBehaviour
         string temOcupacion = PlayerPrefs.GetString("TemOcupacion", "").Trim();
         bool ocupacionGuardada = !string.IsNullOrEmpty(temOcupacion);
 
-        if (roles.value != 0 && !ocupacionGuardada)
+        if (roles.value == 0 && !ocupacionGuardada)
         {
             MostrarMensaje("Debes seleccionar una ocupación antes de continuar", Color.red);
             return;

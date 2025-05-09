@@ -1,5 +1,6 @@
-using Firebase.Firestore;
+﻿using Firebase.Firestore;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using UnityEngine;
 using static ControladorEncuesta;
@@ -14,21 +15,45 @@ public class EncuestaConocimientoFirebase : IEncuestaConocimientoRepositorio
         var preguntas = new List<PreguntaEntity>();
         var wrapper = JsonUtility.FromJson<GrupoPreguntasWrapper>(json.text);
 
+        if (wrapper == null || wrapper.gruposPreguntas == null)
+        {
+            Debug.LogError("Error al deserializar JSON o estructura inesperada.");
+            return preguntas;
+        }
+
+        System.Random rnd = new System.Random();
+
         foreach (var grupo in wrapper.gruposPreguntas)
         {
+            List<ControladorEncuesta.Pregunta> preguntasGrupo = new List<ControladorEncuesta.Pregunta>();
+
+
             foreach (var elemento in grupo.elementos)
             {
-                foreach (var pregunta in elemento.preguntas)
+                preguntasGrupo.AddRange(elemento.preguntas);
+            }
+
+            var seleccionadas = preguntasGrupo
+                .OrderBy(x => rnd.Next())
+                .Take(5) // máx. 5 por grupo
+                .ToList();
+
+            foreach (var p in seleccionadas)
+            {
+                preguntas.Add(new PreguntaEntity
                 {
-                    preguntas.Add(new PreguntaEntity
-                    {
-                        Texto = pregunta.textoPregunta,
-                        Opciones = pregunta.opcionesRespuesta,
-                        IndiceCorrecto = pregunta.indiceRespuestaCorrecta,
-                        Grupo = pregunta.grupoPregunta.grupo,
-                        Dificultad = pregunta.dificultadPregunta
-                    });
-                }
+                    Texto = p.textoPregunta,
+                    Opciones = p.opcionesRespuesta,
+                    IndiceCorrecto = p.indiceRespuestaCorrecta,
+                    Grupo = p.grupoPregunta.grupo,
+                    Dificultad = p.dificultadPregunta
+                });
+            }
+
+            if (preguntas.Count >= 54)
+            {
+                preguntas = preguntas.Take(54).ToList();
+                break;
             }
         }
 
