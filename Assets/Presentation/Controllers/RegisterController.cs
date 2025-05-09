@@ -27,11 +27,20 @@ public class RegisterController : MonoBehaviour
     private string ocupacionSeleccionada;
 
 
-    private void Start()
+    private async void Start()
     {
+        bool inicializado = await FirebaseServiceLocator.InicializarFirebase();
+        if (!inicializado)
+        {
+            MostrarMensaje("Error al inicializar Firebase", Color.red);
+            return;
+        }
+
         //Iniciar Servicios
+        localStorage = new LocalStorageService();
         var firestore = new FirestoreService(FirebaseServiceLocator.Firestore);
         var auth = new FirebaseAuthService(FirebaseServiceLocator.Auth);
+
 
         //Casos de Uso
         validarNombreUsuarioUseCase = new ValidarNombreUsuario(firestore);
@@ -122,7 +131,7 @@ public class RegisterController : MonoBehaviour
         ocupacionSeleccionada = PlayerPrefs.HasKey("TemOcupacion") ? PlayerPrefs.GetString("TemOcupacion", "") : roles.options[roles.value].text;
 
         var userData = new System.Collections.Generic.Dictionary<string, object>
-        { { "DisplarName", FirebaseServiceLocator.Auth.CurrentUser.DisplayName },
+        { { "DisplayName", FirebaseServiceLocator.Auth.CurrentUser.DisplayName },
             {"Email", FirebaseServiceLocator.Auth.CurrentUser.Email },
             {"Ocupacion", ocupacionSeleccionada },
             {"EstadoEncuestaAprendizaje", PlayerPrefs.GetInt("EstadoEncuestaAprendizaje", 0) == 1 },

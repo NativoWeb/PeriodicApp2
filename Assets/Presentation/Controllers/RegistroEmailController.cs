@@ -106,7 +106,16 @@ public class RegistroEmailController : MonoBehaviour
 
             // ✅ Enviar correo de verificación
             codigoVerificacion = UnityEngine.Random.Range(100000, 999999).ToString();
-            string html = $"<p>Tu código de verificación es:</p><h2>{codigoVerificacion}</h2><p>Expira en 3 minutos.</p>";
+            string html = $"<div style='font-family: Arial, sans-serif; text-align: center; background-color: #f4f4f4; padding: 20px;'>" +
+        "<div style='max-width: 500px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);'>" +
+        "<h2 style='color: #332C85;'>🔐 Código de Verificación</h2>" +
+        "<p style='font-size: 16px; color: #333;'>¡Hola! Gracias por registrarte en <strong>PeriodicApp</strong>. Para continuar, usa el siguiente código de verificación:</p>" +
+        $"<div style='font-size: 24px; font-weight: bold; color: #ffffff; background: #332C85; padding: 10px; display: inline-block; border-radius: 5px; margin: 10px 0;'>{codigoVerificacion}</div>" +
+        "<p style='font-size: 14px; color: #666;'>Este código expirará en 10 minutos.</p>" +
+        "<hr style='border: none; border-top: 1px solid #ddd; margin: 20px 0;'>" +
+        "<p style='font-size: 12px; color: #777;'>Si no solicitaste este código, puedes ignorar este mensaje.</p>" +
+        "</div></div>";
+
 
             bool enviado = await emailSender.EnviarCorreoAsync(correo, "Código de Verificación", html);
 
