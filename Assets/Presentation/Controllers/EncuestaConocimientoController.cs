@@ -63,11 +63,6 @@ public class EncuestaConocimientoController : MonoBehaviour
         textoPregunta.text = pregunta.Texto;
         var opciones = pregunta.Opciones;
 
-        foreach (var toggle in opcionesToggleUI)
-        {
-            toggle.image.color = colorNormal;
-        }
-
 
         for (int i = 0; i < opcionesToggleUI.Length; i++)
         {
@@ -76,15 +71,32 @@ public class EncuestaConocimientoController : MonoBehaviour
                 opcionesToggleUI[i].gameObject.SetActive(true);
                 opcionesToggleUI[i].GetComponentInChildren<TextMeshProUGUI>().text = opciones[i];
                 opcionesToggleUI[i].isOn = false;
+                opcionesToggleUI[i].image.color = colorNormal; 
             }
             else
             {
                 opcionesToggleUI[i].gameObject.SetActive(false);
             }
         }
-
+        ActivarInteractividadOpciones();
         preguntaRespondida = false;
         tiempoRestante = 10f;
+    }
+
+    void ActivarInteractividadOpciones()
+    {
+        foreach (Toggle toggle in opcionesToggleUI)
+        {
+            toggle.interactable = true; // Reactiva la interactividad de cada Toggle de opci�n
+        }
+    }
+
+    void DesactivarInteractividadOpciones()
+    {
+        foreach (Toggle toggle in opcionesToggleUI)
+        {
+            toggle.interactable = false; // Desactiva la interactividad de cada Toggle de opci�n
+        }
     }
 
     public void OnRespuestaSeleccionada(int indice)
@@ -93,15 +105,13 @@ public class EncuestaConocimientoController : MonoBehaviour
 
         var esCorrecta = indice == preguntas[indiceActual].IndiceCorrecto;
         preguntaRespondida = true;
+        DesactivarInteractividadOpciones();
         MostrarResultado(esCorrecta);
     }
 
     private void MostrarResultado(bool correcta)
     {
-        // Mostrar panel de feedback
-        panelFeedback.SetActive(true); // ACTIVAR panel
-        textoFeedback.text = correcta ? "Correcto" : "Incorrecto";
-        panelFeedback.GetComponent<Image>().color = correcta ? colorFondoCorrecto : colorFondoIncorrecto;
+        
 
         if (correcta)
         {
@@ -125,6 +135,11 @@ public class EncuestaConocimientoController : MonoBehaviour
             else
                 opcionesToggleUI[i].image.color = colorNormal;
         }
+
+        // Mostrar panel de feedback
+        panelFeedback.SetActive(true);
+        textoFeedback.text = correcta ? "Correcto" : "Incorrecto";
+        panelFeedback.GetComponent<Image>().color = correcta ? colorFondoCorrecto : colorFondoIncorrecto;
 
         Invoke(nameof(OcultarFeedbackYContinuar), 1.5f); // Separa esto para ocultar feedback
     }
