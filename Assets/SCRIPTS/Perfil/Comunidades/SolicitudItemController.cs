@@ -2,12 +2,12 @@ using UnityEngine;
 
 public class SolicitudItemController : MonoBehaviour
 {
-    private MisComunidadesManager manager;
+    private ComunidadDetalleManager manager;
     private GameObject itemInstance;
     private string comunidadId;
     private string solicitudId;
 
-    public void Initialize(MisComunidadesManager manager, GameObject itemInstance, string comunidadId, string solicitudId)
+    public void Initialize(ComunidadDetalleManager manager, GameObject itemInstance, string comunidadId, string solicitudId)
     {
         this.manager = manager;
         this.itemInstance = itemInstance;
