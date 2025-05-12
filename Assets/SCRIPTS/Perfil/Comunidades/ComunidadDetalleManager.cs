@@ -193,32 +193,46 @@ public class ComunidadDetalleManager : MonoBehaviour
 
     void ConfirmarAbandonarComunidad()
     {
-        if (string.IsNullOrEmpty(comunidadActualId) || string.IsNullOrEmpty(usuarioActualId))
+        bool hayConexion = Application.internetReachability != NetworkReachability.NotReachable;
+        if (hayConexion)
         {
-            Debug.LogError("Falta información para abandonar la comunidad");
-            return;
-        }
 
-        panelConfirmacionAbandonar.SetActive(false);
-        DocumentReference comunidadRef = db.Collection("comunidades").Document(comunidadActualId);
 
-        comunidadRef.UpdateAsync("miembros", FieldValue.ArrayRemove(usuarioActualId))
-            .ContinueWithOnMainThread(task =>
+            if (string.IsNullOrEmpty(comunidadActualId) || string.IsNullOrEmpty(usuarioActualId))
             {
-                if (task.IsFaulted || task.IsCanceled)
-                {
-                    Debug.LogError("Error al abandonar comunidad: " + task.Exception);
-                    return;
-                }
+                Debug.LogError("Falta información para abandonar la comunidad");
+                return;
+            }
 
-                SceneManager.LoadScene("Comunidad");
-            });
+            panelConfirmacionAbandonar.SetActive(false);
+            DocumentReference comunidadRef = db.Collection("comunidades").Document(comunidadActualId);
+
+            comunidadRef.UpdateAsync("miembros", FieldValue.ArrayRemove(usuarioActualId))
+                .ContinueWithOnMainThread(task =>
+                {
+                    if (task.IsFaulted || task.IsCanceled)
+                    {
+                        Debug.LogError("Error al abandonar comunidad: " + task.Exception);
+                        return;
+                    }
+
+                    SceneManager.LoadScene("Comunidad");
+                });
+        }
+        else
+        {
+            textoConfirmacionAbandonar.text = ("SIN CONEXIÓN A INTERNET, NO ES POSIBLE REALIZAR ESTA OPERACIÓN EN ESTE MOMENTO, INTENTE MÁS TARDE");
+            Invoke("OcultarPanelConfirmarAbandonarComunidad", 4f);
+        }
     }
 
     public void OcultarPanelConfirmarAbandonarComunidad()
     {
         if (panelConfirmacionAbandonar != null)
+        {
             panelConfirmacionAbandonar.SetActive(false);
+            EventSystem.current.SetSelectedGameObject(btnCancelarAbandonar.gameObject);
+        }
     }
 
     void MostrarMiembros(Dictionary<string, object> dataComunidad = null)
