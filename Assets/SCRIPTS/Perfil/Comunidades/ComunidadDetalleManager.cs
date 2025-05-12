@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using Firebase.Firestore;
 using Firebase.Extensions;
 using System.Collections.Generic;
@@ -32,14 +32,19 @@ public class ComunidadDetalleManager : MonoBehaviour
     public GameObject prefabSolicitud;
     public Button btnVerSolicitudes;
 
-    [Header("Bot�n Abandonar Comunidad")]
+    [Header("Botón Abandonar Comunidad")]
     public GameObject panelConfirmacionAbandonar;
     public Button btnAbandonarComunidad;
     public TMP_Text textoConfirmacionAbandonar;
     public Button btnCancelarAbandonar;
     public Button btnConfirmarAbandonar;
 
+    [Header("Notificación Solicitudes a Comunidad")]
+    public GameObject notificationPanel; // Panel que contendrá el número
+    public TMP_Text notificationCountText; // Texto para mostrar el número
+    private ListenerRegistration listener; // 🔄 Referencia al listener
 
+    [Header("Referencia a Mis comunidades")]
     public MisComunidadesManager miscomunidadesManager;
     private string comunidadActualId;
     private string usuarioActualId;
@@ -61,6 +66,7 @@ public class ComunidadDetalleManager : MonoBehaviour
         {
             btnCerrarPanelDetalle.onClick.AddListener(CerrarPanelDetalle);
         }
+        
     }
 
     public void MostrarDetalle(Dictionary<string, object> dataComunidad, string usuarioId)
@@ -68,11 +74,15 @@ public class ComunidadDetalleManager : MonoBehaviour
         usuarioActualId = usuarioId;
         datosComunidadActual = new Dictionary<string, object>(dataComunidad);
         LimpiarYCerrarPaneles();
-
+        
         if (!gameObject.activeSelf) gameObject.SetActive(true);
 
         comunidadActualId = dataComunidad["documentId"].ToString();
         ActualizarInterfazConDatos(dataComunidad);
+
+        // notificaciones
+        CheckPendingRequests(comunidadActualId);
+        SetupRealTimeListener(comunidadActualId);
 
         PanelDetalleGrupo.SetActive(true);
 
@@ -84,12 +94,72 @@ public class ComunidadDetalleManager : MonoBehaviour
         {
             EventSystem.current.SetSelectedGameObject(btnVerMiembros.gameObject);
         }
+
     }
+    // ----------------------------------NOTIFICACIONES SE SOLICITUDES A COMUNIDAD-----------------------------------
+    public void CheckPendingRequests(string comunidadActualId)
+    {
+
+        //comunidadActualId = dataComunidad["documentId"].ToString();
+
+        db.Collection("solicitudes_comunidad")
+          .WhereEqualTo("idComunidad", comunidadActualId)
+          .WhereEqualTo("estado", "pendiente")
+          .GetSnapshotAsync()
+          .ContinueWithOnMainThread(task =>
+          {
+              if (task.IsFaulted)
+              {
+                  Debug.LogError("Error al obtener solicitudes: " + task.Exception);
+                  return;
+              }
+
+              int pendingCount = task.Result.Count;
+              UpdateNotificationUI(pendingCount);
+          });
+    }
+
+    void UpdateNotificationUI(int count)
+    {
+        if (notificationPanel == null || notificationCountText == null) return; // ❗ Seguridad
+
+        if (count > 0)
+        {
+            notificationPanel.SetActive(true);
+            notificationCountText.text = count.ToString();
+        }
+        else
+        {
+            notificationPanel.SetActive(false);
+        }
+    }
+
+    void SetupRealTimeListener(string comunidadActualId)
+    {
+
+        listener = db.Collection("solicitudes_comunidad")
+          .WhereEqualTo("idComunidad", comunidadActualId)
+          .WhereEqualTo("estado", "pendiente")
+          .Listen(snapshot =>
+          {
+              if (this == null || gameObject == null) return; // 🛡️ Protege de destrucción
+              UpdateNotificationUI(snapshot.Count);
+          });
+    }
+
+    void OnDestroy()
+    {
+        listener?.Stop(); // ❌ Cancela el listener si el objeto es destruido
+    }
+
+    // ----------------------------------NOTIFICACIONES SE SOLICITUDES A COMUNIDAD-----------------------------------
+
+   
 
     private void ActualizarInterfazConDatos(Dictionary<string, object> dataComunidad)
     {
         string nombre = dataComunidad.GetValueOrDefault("nombre", "Sin nombre").ToString();
-        string descripcion = dataComunidad.GetValueOrDefault("descripcion", "Sin descripci�n").ToString();
+        string descripcion = dataComunidad.GetValueOrDefault("descripcion", "Sin descripción").ToString();
         string creador = dataComunidad.GetValueOrDefault("creadorUsername", "Sin creador").ToString();
         string creadorId = dataComunidad.GetValueOrDefault("creadorId", "").ToString();
 
@@ -186,7 +256,7 @@ public class ComunidadDetalleManager : MonoBehaviour
         if (panelConfirmacionAbandonar == null) return;
 
         string nombreComunidad = dataComunidad.GetValueOrDefault("nombre", "esta comunidad").ToString();
-        textoConfirmacionAbandonar.text = $"�Est�s seguro que deseas abandonar {nombreComunidad}?";
+        textoConfirmacionAbandonar.text = $"¿Estás seguro que deseas abandonar {nombreComunidad}?";
         panelConfirmacionAbandonar.SetActive(true);
         EventSystem.current.SetSelectedGameObject(btnCancelarAbandonar.gameObject);
     }
@@ -200,7 +270,7 @@ public class ComunidadDetalleManager : MonoBehaviour
 
             if (string.IsNullOrEmpty(comunidadActualId) || string.IsNullOrEmpty(usuarioActualId))
             {
-                Debug.LogError("Falta informaci�n para abandonar la comunidad");
+                Debug.LogError("Falta información para abandonar la comunidad");
                 return;
             }
 
@@ -221,10 +291,11 @@ public class ComunidadDetalleManager : MonoBehaviour
         }
         else
         {
-            textoConfirmacionAbandonar.text = ("SIN CONEXI�N A INTERNET, NO ES POSIBLE REALIZAR ESTA OPERACI�N EN ESTE MOMENTO, INTENTE M�S TARDE");
+            textoConfirmacionAbandonar.text = ("SIN CONEXIÓN A INTERNET, NO ES POSIBLE REALIZAR ESTA OPERACIÓN EN ESTE MOMENTO, INTENTE MÁS TARDE");
             Invoke("OcultarPanelConfirmarAbandonarComunidad", 4f);
         }
     }
+
 
     public void OcultarPanelConfirmarAbandonarComunidad()
     {
@@ -429,7 +500,7 @@ public class ComunidadDetalleManager : MonoBehaviour
                     // Mostrar feedback visual
                     StartCoroutine(MostrarFeedbackMiembroAgregado(usuarioId));
                     
-                    // Si el panel de miembros est� visible, actualizarlo
+                    // Si el panel de miembros está visible, actualizarlo
                     if (panelMiembros.activeSelf)
                     {
                         MostrarMiembros(comunidadActualizada);
