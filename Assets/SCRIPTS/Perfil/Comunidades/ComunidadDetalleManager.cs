@@ -39,6 +39,8 @@ public class ComunidadDetalleManager : MonoBehaviour
     public Button btnCancelarAbandonar;
     public Button btnConfirmarAbandonar;
 
+
+    public MisComunidadesManager miscomunidadesManager;
     private string comunidadActualId;
     private string usuarioActualId;
     private FirebaseFirestore db;
@@ -516,6 +518,7 @@ public class ComunidadDetalleManager : MonoBehaviour
             PanelDetalleGrupo.SetActive(false);
             // Actualizar datos cuando se cierre el panel
             ActualizarDatosComunidad();
+            
         }
     }
 }
