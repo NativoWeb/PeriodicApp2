@@ -366,6 +366,8 @@ public class EncuestaManager : MonoBehaviour
             if (task.IsCompleted)
             {
                 Debug.Log("✅ Encuesta activada correctamente.");
+                string tempocpacion = PlayerPrefs.GetString("TempOcupacion", "");
+                Debug.Log($" la ocupacion actuall es::: {tempocpacion}");
 
                 // Buscar la tarjeta en la UI y actualizar su color
                 foreach (Transform child in contenedorEncuestas)

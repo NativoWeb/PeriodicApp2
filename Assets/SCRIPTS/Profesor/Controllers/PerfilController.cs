@@ -2,7 +2,6 @@ using UnityEngine;
 using UnityEngine.UI;
 using System.Linq;
 using UnityEngine.EventSystems;
-using UnityEngine.UI;
 
 public class PerfilController : MonoBehaviour
 {

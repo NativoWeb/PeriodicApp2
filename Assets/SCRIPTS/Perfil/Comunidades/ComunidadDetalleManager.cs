@@ -96,7 +96,7 @@ public class ComunidadDetalleManager : MonoBehaviour
         }
 
     }
-    // ----------------------------------NOTIFICACIONES SE SOLICITUDES A COMUNIDAD-----------------------------------
+    // ----------------------------------NOTIFICACIONES DE SOLICITUDES A COMUNIDAD-----------------------------------
     public void CheckPendingRequests(string comunidadActualId)
     {
 
@@ -152,7 +152,7 @@ public class ComunidadDetalleManager : MonoBehaviour
         listener?.Stop(); // ❌ Cancela el listener si el objeto es destruido
     }
 
-    // ----------------------------------NOTIFICACIONES SE SOLICITUDES A COMUNIDAD-----------------------------------
+    // ----------------------------------NOTIFICACIONES DE SOLICITUDES A COMUNIDAD-----------------------------------
 
    
 

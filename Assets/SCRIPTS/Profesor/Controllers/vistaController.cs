@@ -13,7 +13,7 @@ public class vistaController : MonoBehaviour
 
     void Start()
     {
-        encuestaManager = FindObjectOfType<EncuestaManager>(); // Buscar automáticamente el script en la escena
+        encuestaManager = FindFirstObjectByType<EncuestaManager>(); // Buscar automáticamente el script en la escena
     }
 
     // Mostrar el panel de inicio
