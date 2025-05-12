@@ -9,7 +9,7 @@ using System.Collections; // Importa para trabajar con corutinas (funciones así
 using UnityEngine.SceneManagement;
 using Firebase.Auth;
 using Unity;
-public class RankingController : MonoBehaviour
+public class PerfilManager : MonoBehaviour
 {
     private FirebaseFirestore db; // Base de datos de Firebase
     private FirebaseAuth auth;
@@ -22,6 +22,7 @@ public class RankingController : MonoBehaviour
     public Image avatarimage; // Imagen que muestra el avatar del usuario
     public TMP_Text rangotext; // Texto que muestra el rango del usuario
 
+  
 
     // instanciamos panel 
     [SerializeField] public GameObject m_logoutUI = null;
@@ -276,4 +277,15 @@ public class RankingController : MonoBehaviour
         m_logoutUI.SetActive(false);
 
     }
+    public void ActivarRanking()
+    {
+        string estadouser = PlayerPrefs.GetString("Estadouser", "");
+        if (estadouser == "nube")
+        {
+            SceneManager.LoadScene("Ranking1");
+            
+        }
+    }
+
+    
 }

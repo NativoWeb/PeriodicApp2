@@ -9,7 +9,7 @@ using Firebase.Extensions;
 using UnityEngine.EventSystems;
 using System.Collections;
 
-public class DatosPersonales : MonoBehaviour
+public class DatosPersonalesManager : MonoBehaviour
 {
     [SerializeField] private TMP_Dropdown edadDropdown;
     [SerializeField] private TMP_Dropdown departamentoDropdown;

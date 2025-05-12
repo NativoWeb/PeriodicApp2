@@ -44,6 +44,7 @@ public class RankingGeneralManager : BaseRankingManager
         {
             panel.SetActive(true);
             MarkButtonAsSelected(true);
+            //ObtenerRanking();
 
             // Iniciar la carga con una pequeña demora para permitir que otros componentes se inicialicen
             StartCoroutine(DelayedInitialLoad(0.2f));
@@ -122,16 +123,6 @@ public class RankingGeneralManager : BaseRankingManager
         Debug.Log("Layout actualizado correctamente");
     }
 
-    public void ActivarRanking()
-    {
-        string estadouser = PlayerPrefs.GetString("Estadouser", "");
-        if (estadouser == "nube")
-        {
-            RankingPanel.SetActive(true);
-            ObtenerRanking();
-        }
-    }
-
     public void DesactivarRanking()
     {
         string ocupacion = PlayerPrefs.GetString("TempOcupacion", "");
@@ -141,11 +132,11 @@ public class RankingGeneralManager : BaseRankingManager
             if (ocupacion == "Profesor")
             {
                 SceneManager.LoadScene("InicioProfesor");
-                RankingPanel.SetActive(false);
+                
             }
             else
             {
-                RankingPanel.SetActive(false);
+                SceneManager.LoadScene("Perfil_Usuario");
             }
         }
         if (estaActualizando)

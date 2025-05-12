@@ -28,7 +28,7 @@ public class cambiarescena : MonoBehaviour
         string Ocupacion = PlayerPrefs.GetString("TempOcupacion", "");
         if(Ocupacion == "Estudiante")
         {
-            SceneManager.LoadScene("ranking");
+            SceneManager.LoadScene("Perfil_Usuario");
         }
         else
         {
