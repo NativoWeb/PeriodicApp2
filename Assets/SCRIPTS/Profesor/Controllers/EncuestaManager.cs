@@ -17,9 +17,11 @@ public class EncuestaManager : MonoBehaviour
     public Transform contenedorPreguntas;
     public GameObject preguntaPrefab;
     private List<PreguntaController> listaPreguntas = new List<PreguntaController>();
+
     [Header("Referencias para Mostrar Encuestas")]
     public Transform contenedorEncuestas;
     public GameObject tarjetaEncuestaPrefab;
+
     [Header("Referencias de Detalles")]
     public GameObject panelDetallesEncuesta;
     public TMP_Text txtTituloEncuesta;
@@ -366,8 +368,7 @@ public class EncuestaManager : MonoBehaviour
             if (task.IsCompleted)
             {
                 Debug.Log("✅ Encuesta activada correctamente.");
-                string tempocpacion = PlayerPrefs.GetString("TempOcupacion", "");
-                Debug.Log($" la ocupacion actuall es::: {tempocpacion}");
+                string tempocupacion = PlayerPrefs.GetString("TempOcupacion", "");
 
                 // Buscar la tarjeta en la UI y actualizar su color
                 foreach (Transform child in contenedorEncuestas)

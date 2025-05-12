@@ -4,6 +4,7 @@ using TMPro;
 using Firebase.Firestore;
 using System.Collections;
 using System.Collections.Generic;
+using UnityEngine.SceneManagement;
 
 public class RankingGeneralManager : BaseRankingManager
 {
@@ -26,6 +27,7 @@ public class RankingGeneralManager : BaseRankingManager
     private bool layoutUpdated = false;
     private const float LAYOUT_UPDATE_DELAY = 0.5f;
 
+    
     protected override void Start()
     {
         base.Start();
@@ -58,6 +60,8 @@ public class RankingGeneralManager : BaseRankingManager
             });
         }
     }
+
+  
 
     private IEnumerator DelayedInitialLoad(float delay)
     {
@@ -130,9 +134,19 @@ public class RankingGeneralManager : BaseRankingManager
 
     public void DesactivarRanking()
     {
+        string ocupacion = PlayerPrefs.GetString("TempOcupacion", "");
+
         if (RankingPanel != null)
         {
-            RankingPanel.SetActive(false);
+            if (ocupacion == "Profesor")
+            {
+                SceneManager.LoadScene("InicioProfesor");
+                RankingPanel.SetActive(false);
+            }
+            else
+            {
+                RankingPanel.SetActive(false);
+            }
         }
         if (estaActualizando)
         {
