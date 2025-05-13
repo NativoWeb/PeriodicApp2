@@ -11,14 +11,14 @@ using System.Collections;
 
 public class DatosPersonalesManager : MonoBehaviour
 {
+    [Header("panel y dropdowns")]
+    [SerializeField] private GameObject m_dropdownsUI = null;
     [SerializeField] private TMP_Dropdown edadDropdown;
     [SerializeField] private TMP_Dropdown departamentoDropdown;
     [SerializeField] private TMP_Dropdown ciudadDropdown;
 
-    //panel dropdowns
-    [SerializeField] private GameObject m_dropdownsUI = null;
-
     //panel para mostrar la información básica
+    [Header("Panel Información básica")]
     [SerializeField] private GameObject m_InfoBasicaUI = null;
     public TMP_Text edadtxt;
     public TMP_Text departamentotxt;
@@ -26,11 +26,14 @@ public class DatosPersonalesManager : MonoBehaviour
     public TMP_Text Messagetxt;
 
     //Panel de entrada información básica
+    [Header("Panel pop-up")]
     [SerializeField] private GameObject m_PanelentradaUI = null;
 
-    //
+    [Header("btns información personal")]
     public Button btnGuardar;
     public Button btnActualizar;
+
+    [Header("btns comunidades, amigos")]
     public Button btnAmigos;
     public Button btnComunidad;
 

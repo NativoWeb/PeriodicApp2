@@ -10,6 +10,7 @@ using Firebase.Auth;
 using System.Net;
 using System.Collections;
 
+
 public class EncuestaManager : MonoBehaviour
 {
     [Header("Referencias para Crear Encuestas")]
@@ -34,11 +35,20 @@ public class EncuestaManager : MonoBehaviour
     private bool isDragging = false;
     private Vector2 pointerStartPosition;
     private string encuestaActualID;
+
+  //  instanciamos variables firestore
     private FirebaseFirestore db;
+    private FirebaseAuth auth;
+    private FirebaseUser currentUser;
+    private string userId;
+
+
     void Start()
     {
         db = FirebaseFirestore.DefaultInstance;
-
+        auth = FirebaseAuth.DefaultInstance;
+        currentUser = auth.CurrentUser;
+        userId = currentUser.UserId;
         StartCoroutine(VerificarConexionPeriodicamente());
 
         // Escuchar cambios en la colección "encuestas"
@@ -147,7 +157,7 @@ public class EncuestaManager : MonoBehaviour
 
     public void CargarEncuestasOffline()
     {
-        string usuarioActual = PlayerPrefs.GetString("UsuarioActual", "");
+        string usuarioActual = userId;
         if (string.IsNullOrEmpty(usuarioActual))
         {
             Debug.LogError("⚠ No hay un usuario autenticado.");
@@ -178,8 +188,6 @@ public class EncuestaManager : MonoBehaviour
         int numeroPreguntas = encuesta.preguntas.Count;
         CrearTarjetaEncuesta(encuesta.titulo, encuesta.codigoAcceso, numeroPreguntas, 0, encuesta.id, encuesta.activo);
     }
-
-
 
     // Método para obtener todas las claves de PlayerPrefs (IDs de encuestas guardadas)
     private List<string> PlayerPrefsKeys()
@@ -400,7 +408,7 @@ public class EncuestaManager : MonoBehaviour
     {
         { "activo", false }
     };
-        db.Collection("encuestas").Document(encuestaID).UpdateAsync(updateData).ContinueWithOnMainThread(task =>
+        db.Collection("encuestasProfesor").Document(encuestaID).UpdateAsync(updateData).ContinueWithOnMainThread(task =>
         {
             if (task.IsCompleted)
             {
