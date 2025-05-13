@@ -107,5 +107,7 @@ public class EditarPerfilManager : MonoBehaviour
         panelEditar.SetActive(false);
     }
 
-
+    // quedan faltando modificar que la primera edad sea seleccionar 
+    // falta del metodo de actualizar todos los datos cuando se de en guardar y jugar con las validaciones de wifi
+    // modificar el editar perfil en perfil del estudiante pq se ve feo 
 }
