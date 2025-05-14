@@ -2,43 +2,157 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using Firebase.Auth;
+using Firebase.Firestore;
+using System;
+using Firebase.Extensions;
+using System.Security.Cryptography;
+using System.Runtime.Remoting.Messaging;
+using System.Net;
+
 
 public class EditarPerfilManager : MonoBehaviour
 {
+    // instancias firebase 
+    private FirebaseAuth auth;
+    private FirebaseFirestore db;
+    private FirebaseUser currentUser;
+    private string userId;
+
 
     [Header("Panel Editar Perfil y componentes")]
     [SerializeField] public GameObject panelEditar;
     [SerializeField] private TMP_Dropdown edadDropdown;
     [SerializeField] private TMP_Dropdown departamentoDropdown;
     [SerializeField] private TMP_Dropdown ciudadDropdown;
+    [SerializeField] private TMP_Text messageTxt; // Referencia al texto para mensajes
+    public Button GuardarCambios;
 
+    
     private Dictionary<string, List<string>> ciudadesPorDepartamento = new Dictionary<string, List<string>>();
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
+
     void Start()
     {
+        // inicializamos firebase
+        auth = FirebaseAuth.DefaultInstance;
+        db = FirebaseFirestore.DefaultInstance;
+        currentUser = auth.CurrentUser;
+        userId = currentUser.UserId;
+
+        if (string.IsNullOrEmpty(userId))
+        {
+            Debug.Log(" Sin usuario autenticado, desde editarPerfilProfesor");
+            return;
+        }
         CargarTotalementeDropDowns();
+        verificarCampos();
+        GuardarCambios.onClick.AddListener(ActualizarDatos);
     }
+
+    private async void verificarCampos()
+    {
+        if (!HayInternet())
+        {
+            messageTxt.text = ("no hay CONEXION A INTERNET");
+            messageTxt.color = Color.red;
+            return;
+        }
+        DocumentReference userRef = db.Collection("users").Document(userId);
+        DocumentSnapshot snapshot = await userRef.GetSnapshotAsync();
+        if (snapshot.Exists)
+        {
+            Dictionary<string, object> datos = snapshot.ToDictionary();
+            
+                bool tieneedad = datos.ContainsKey("Edad");
+                bool tienedepartamento = datos.ContainsKey("Departamento");
+                bool tieneciudad = datos.ContainsKey("Ciudad");
+
+            if( tieneedad && tieneciudad && tienedepartamento)
+            {
+                GetuserData();
+            }
+            else
+            {
+                CargarTotalementeDropDowns();
+            }
+        }
+    }
+
+    private async void GetuserData()
+    {
+        DocumentReference UserRef = db.Collection("users").Document(userId);
+
+        try
+        {
+            DocumentSnapshot snapshot = await UserRef.GetSnapshotAsync();
+            if (snapshot.Exists)
+            {
+                int edad = snapshot.GetValue<int>("Edad");
+                string departamento = snapshot.GetValue<string>("Departamento");
+                string ciudad = snapshot.GetValue<string>("Ciudad");
+
+                // llenamos los dropdowns con la información ya del usuario 
+                for (int i = 0; i < edadDropdown.options.Count; i++)
+                {
+                    if (edadDropdown.options[i].text == edad.ToString())
+                    {
+                        edadDropdown.value = i;
+                        break;
+                    }
+                }
+
+                // Establecer departamento
+                for (int i = 0; i < departamentoDropdown.options.Count; i++)
+                {
+                    if (departamentoDropdown.options[i].text == departamento)
+                    {
+                        departamentoDropdown.value = i;
+                        break;
+                    }
+                }
+
+                // Actualizar ciudades para el departamento seleccionado
+                ActualizarCiudades();
+
+                // Establecer ciudad (después de actualizar las ciudades)
+                for (int i = 0; i < ciudadDropdown.options.Count; i++)
+                {
+                    if (ciudadDropdown.options[i].text == ciudad)
+                    {
+                        ciudadDropdown.value = i;
+                        break;
+                    }
+                }
+            }
+
+        }catch (Exception e)
+        {
+            Debug.Log($"Error al conseguir los datos del usuario : {e.Message}");
+        }
+    }
+
     void LlenarDropdowns()
     {
-        // Lista de edades (1 a 100 años)
-        List<string> edades = new List<string>();
+        // Lista de edades con opción inicial "Seleccione edad"
+        List<string> edades = new List<string> { "Seleccione edad" };
         for (int i = 10; i <= 100; i++)
         {
             edades.Add(i.ToString());
         }
         ActualizarDropdown(edadDropdown, edades);
 
-        // Lista de departamentos de Colombia
-        List<string> departamentos = new List<string>(ciudadesPorDepartamento.Keys);
+        // Lista de departamentos de Colombia con opción inicial
+        List<string> departamentos = new List<string> { "Seleccione departamento" };
+        departamentos.AddRange(ciudadesPorDepartamento.Keys);
         ActualizarDropdown(departamentoDropdown, departamentos);
 
-        // Inicializar ciudades con el primer departamento
-        ActualizarCiudades();
+        // Inicializar ciudades con opción inicial
+        List<string> ciudadesInicial = new List<string> { "Seleccione ciudad" };
+        ActualizarDropdown(ciudadDropdown, ciudadesInicial);
     }
 
     void LlenarCiudadesPorDepartamento()
     {
-        ciudadesPorDepartamento["Seleccionar"] = new List<string> { "Seleccione un departamento" };
         ciudadesPorDepartamento["Amazonas"] = new List<string> { "Leticia", "Puerto Nariño" };
         ciudadesPorDepartamento["Antioquia"] = new List<string> { "Medellín", "Bello", "Envigado", "Itagüí", "Rionegro", "Apartadó", "Turbo", "Sabaneta" };
         ciudadesPorDepartamento["Arauca"] = new List<string> { "Arauca", "Saravena", "Tame", "Arauquita" };
@@ -73,20 +187,29 @@ public class EditarPerfilManager : MonoBehaviour
         ciudadesPorDepartamento["Vichada"] = new List<string> { "Puerto Carreño", "La Primavera" };
     }
 
-
     void ActualizarCiudades()
     {
         string departamentoSeleccionado = departamentoDropdown.options[departamentoDropdown.value].text;
+
+        if (departamentoSeleccionado == "Seleccione departamento")
+        {
+            List<string> ciudadesInicial = new List<string> { "Seleccione ciudad" };
+            ActualizarDropdown(ciudadDropdown, ciudadesInicial);
+            return;
+        }
+
         if (ciudadesPorDepartamento.ContainsKey(departamentoSeleccionado))
         {
-            ActualizarDropdown(ciudadDropdown, ciudadesPorDepartamento[departamentoSeleccionado]);
+            List<string> ciudades = new List<string> { "Seleccione ciudad" };
+            ciudades.AddRange(ciudadesPorDepartamento[departamentoSeleccionado]);
+            ActualizarDropdown(ciudadDropdown, ciudades);
         }
     }
 
     void ActualizarDropdown(TMP_Dropdown dropdown, List<string> opciones)
     {
-        dropdown.ClearOptions(); // Limpiar opciones anteriores
-        dropdown.AddOptions(opciones); // Agregar nuevas opciones
+        dropdown.ClearOptions();
+        dropdown.AddOptions(opciones);
     }
 
     private void CargarTotalementeDropDowns()
@@ -95,19 +218,103 @@ public class EditarPerfilManager : MonoBehaviour
         LlenarDropdowns();
         departamentoDropdown.onValueChanged.AddListener(delegate { ActualizarCiudades(); });
     }
-    
+
     public void activarPanelEditar()
     {
-     
-            panelEditar.SetActive(true);
-    }
-    public void desactivarPanelEditar()
-    {
-        if (panelEditar != null )
-        panelEditar.SetActive(false);
+        panelEditar.SetActive(true);
     }
 
-    // quedan faltando modificar que la primera edad sea seleccionar 
-    // falta del metodo de actualizar todos los datos cuando se de en guardar y jugar con las validaciones de wifi
-    // modificar el editar perfil en perfil del estudiante pq se ve feo 
+    public void desactivarPanelEditar()
+    {
+        if (HayInternet())
+        {
+            // Validar que todos los campos estén seleccionados
+            if (edadDropdown.options[edadDropdown.value].text == "Seleccione edad" ||
+                departamentoDropdown.options[departamentoDropdown.value].text == "Seleccione departamento" ||
+                ciudadDropdown.options[ciudadDropdown.value].text == "Seleccione ciudad")
+            {
+                messageTxt.text = "Por favor complete todos los campos";
+                messageTxt.color = Color.red;
+                return;
+            }
+        }
+        // limpiamos el messageText al salir del panel 
+
+        if (panelEditar != null)
+            panelEditar.SetActive(false);
+
+        messageTxt.text = ("");
+        
+    }
+
+    // Método para guardar los cambios en el perfil
+    private void ActualizarDatos()
+    {
+        if (!HayInternet())
+        {
+            messageTxt.text = ("no hay CONEXION A INTERNET");
+            messageTxt.color = Color.red;
+            return;
+        }
+        // Validar que todos los campos estén seleccionados
+        if (edadDropdown.options[edadDropdown.value].text == "Seleccione edad" ||
+            departamentoDropdown.options[departamentoDropdown.value].text == "Seleccione departamento" ||
+            ciudadDropdown.options[ciudadDropdown.value].text == "Seleccione ciudad")
+        {
+            messageTxt.text = "Por favor complete todos los campos";
+            messageTxt.color = Color.red;
+            return;
+        }
+
+        // Todos los campos son válidos, proceder a actualizar
+        int edad = int.Parse(edadDropdown.options[edadDropdown.value].text);
+        string departamento = departamentoDropdown.options[departamentoDropdown.value].text;
+        string ciudad = ciudadDropdown.options[ciudadDropdown.value].text;
+
+
+        // Si todo está bien, proceder con el guardado
+        
+        // si todo es válido entramos a actualizar el perfil 
+        DocumentReference userRef = db.Collection("users").Document(userId);
+        Dictionary<string, object> datosUsuario = new Dictionary<string, object>
+        {
+            { "Edad", edad },
+            { "Departamento", departamento },
+            { "Ciudad", ciudad }
+        };
+
+        userRef.SetAsync(datosUsuario, SetOptions.MergeAll).ContinueWithOnMainThread(Task =>
+        {
+            if (Task.IsCompletedSuccessfully)
+            {
+                Debug.Log("Datos actualizados Correctamente");
+            }
+            else
+            {
+                Debug.LogError("Error al guardar los datos: " + Task.Exception);
+                messageTxt.text = "Error al actualizar los datos";
+                messageTxt.color = Color.red;
+            }
+        });
+
+        messageTxt.text = "Perfil actualizado correctamente";
+        messageTxt.color = Color.green;
+
+        
+    }
+    public bool HayInternet()
+    {
+        try
+        {
+            using (var client = new WebClient())
+            using (var stream = client.OpenRead("http://www.google.com"))
+            {
+                return true;
+            }
+        }
+        catch
+        {
+            return false;
+        }
+    }
 }

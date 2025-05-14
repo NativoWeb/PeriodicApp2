@@ -467,29 +467,7 @@ public class DatosPersonalesManager : MonoBehaviour
 
         EventSystem.current.SetSelectedGameObject(edadDropdown.gameObject);
     }
-    //private void ActualizarEstadoBotonesSociales()
-    //{
-    //    bool datosCompletos = PlayerPrefs.HasKey("Edad") &&
-    //                         PlayerPrefs.HasKey("Departamento") &&
-    //                         PlayerPrefs.HasKey("Ciudad");
-
-    //    bool puedeInteractuar = hayInternet && datosCompletos;
-
-    //    btnAmigos.interactable = puedeInteractuar;
-    //    btnComunidad.interactable = puedeInteractuar;
-
-    //    // Opcional: cambiar el color para indicar estado inactivo
-    //    if (!puedeInteractuar)
-    //    {
-    //        btnAmigos.image.color = Color.gray;
-    //        btnComunidad.image.color = Color.gray;
-    //    }
-    //    else
-    //    {
-    //        btnAmigos.image.color = Color.white;
-    //        btnComunidad.image.color = Color.white;
-    //    }
-    //}
+   
     private IEnumerator MostrarMensajeTemporal(string mensaje, float tiempo = 3f)
     {
         Messagetxt.text = mensaje;
