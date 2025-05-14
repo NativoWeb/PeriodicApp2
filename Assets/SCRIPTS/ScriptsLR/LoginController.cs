@@ -400,7 +400,7 @@ public class LoginController : MonoBehaviour
 
             if (ocupacion == "Profesor")
             {
-                SceneManager.LoadScene("InicioProfesor");
+                SceneManager.LoadScene("InicioProfesor1");
             }
             else if (ocupacion == "Estudiante")
             {

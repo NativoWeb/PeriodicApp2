@@ -8,6 +8,8 @@ using System.Net;
 using Firebase.Database;
 using System;
 using System.Collections.Generic;
+using UnityEditor.Search;
+using UnityEngine.SceneManagement;
 
 
 public class PerfilProfesorManager : MonoBehaviour
@@ -34,6 +36,12 @@ public class PerfilProfesorManager : MonoBehaviour
     [Header("Referencia panel editar")]
     [SerializeField] public GameObject panelEditar = null;
 
+    [Header("Referencias Logout")]
+    public Button BtnpanelLogout;
+    public Button BtnLogout;
+    public Button btnOcultarLogout;
+    [SerializeField] public GameObject panelLogout = null;
+
  
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
@@ -59,8 +67,19 @@ public class PerfilProfesorManager : MonoBehaviour
         });
         verificarCampos();
         btnContinuarEditar.onClick.AddListener(activarPanelEditar);
+
+        // Eventos del Logout
+
+        // mostrar panel logout
+        BtnpanelLogout.onClick.AddListener(showLogout);
+        // salir de la aplicación 
+        BtnLogout.onClick.AddListener(logout);
+        // Ocultar el panel logout 
+        btnOcultarLogout.onClick.AddListener(ocultarLogout);
+
     }
 
+    
    
     private async void verificarCampos()
     {
@@ -159,4 +178,29 @@ public class PerfilProfesorManager : MonoBehaviour
         }
     }
   
+    public void showLogout()
+    {
+        panelLogout.SetActive(true);
+    }
+
+    public void ocultarLogout()
+    {
+        if(panelLogout != null)
+        {
+            panelLogout.SetActive(false);
+        }
+    }
+    public void logout() // ################################################################ Método para cerrar sesión
+    {
+        // await SubirMisionesJSON(); ponerlo apenas se pueda URGENTE
+        auth.SignOut(); // Cierra la sesión en Firebase
+        PlayerPrefs.DeleteAll(); // Elimina el ID del usuario guardado
+        PlayerPrefs.Save(); // Guarda los cambios
+
+        Debug.Log("Sesión cerrada correctamente");
+
+        // Opcional: Redirigir a la escena de login
+        SceneManager.LoadScene("Start");
+    }
+
 }

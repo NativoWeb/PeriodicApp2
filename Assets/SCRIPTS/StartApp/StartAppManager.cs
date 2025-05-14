@@ -81,8 +81,8 @@ public class StartAppManager : MonoBehaviour
 
             if (ocupacion == "Profesor")
             {
-                SceneManager.LoadScene("InicioProfesor");
-            }
+                SceneManager.LoadScene("InicioProfesor1");
+            }   
             else if (ocupacion == "Estudiante")
             {
                 if (estadoencuestaaprendizaje == true && estadoencuestaconocimiento == true)
@@ -293,7 +293,7 @@ public class StartAppManager : MonoBehaviour
 
             if (ocupacion == "Profesor")
             {
-                SceneManager.LoadScene("InicioProfesor");
+                SceneManager.LoadScene("InicioProfesor1");
             }
             else if (ocupacion == "Estudiante")
             {
@@ -334,7 +334,7 @@ public class StartAppManager : MonoBehaviour
 
                 if (ocupacion == "Profesor")
                 {
-                    SceneManager.LoadScene("InicioProfesor");
+                    SceneManager.LoadScene("InicioProfesor1");
                 }
                 else if (ocupacion == "Estudiante")
                 {
