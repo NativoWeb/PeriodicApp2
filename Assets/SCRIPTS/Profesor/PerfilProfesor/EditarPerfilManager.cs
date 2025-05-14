@@ -288,6 +288,7 @@ public class EditarPerfilManager : MonoBehaviour
             if (Task.IsCompletedSuccessfully)
             {
                 Debug.Log("Datos actualizados Correctamente");
+                Invoke("cerrarPanelEditar", 2f);
             }
             else
             {
@@ -301,6 +302,15 @@ public class EditarPerfilManager : MonoBehaviour
         messageTxt.color = Color.green;
 
         
+    }
+
+    public void cerrarPanelEditar()
+    {
+        if(panelEditar != null)
+        {
+            panelEditar.SetActive(false);
+            messageTxt.text = ("");
+        }
     }
     public bool HayInternet()
     {
