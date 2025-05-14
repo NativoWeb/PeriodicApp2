@@ -33,10 +33,6 @@ public class DatosPersonalesManager : MonoBehaviour
     public Button btnGuardar;
     public Button btnActualizar;
 
-    [Header("btns comunidades, amigos")]
-    public Button btnAmigos;
-    public Button btnComunidad;
-
     // instanciamos wifi 
     private bool hayInternet = false;
 
