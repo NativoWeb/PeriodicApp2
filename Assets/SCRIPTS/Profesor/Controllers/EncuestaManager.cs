@@ -10,7 +10,6 @@ using Firebase.Auth;
 using System.Net;
 using System.Collections;
 
-
 public class EncuestaManager : MonoBehaviour
 {
     [Header("Referencias para Crear Encuestas")]
@@ -27,180 +26,406 @@ public class EncuestaManager : MonoBehaviour
     public GameObject panelDetallesEncuesta;
     public TMP_Text txtTituloEncuesta;
     public TMP_Text txtCodigoEncuesta;
-    public UnityEngine.UI.Button btnActivarEncuesta;
-    public UnityEngine.UI.Button btnDesactivarEncuesta;
-    public UnityEngine.UI.Button btnCancelar;
+    public Button btnActivarEncuesta;
+    public Button btnDesactivarEncuesta;
+    public Button btnCancelar;
     public GameObject PanelGris;
     public vistaController vistaController;
+
     private bool isDragging = false;
     private Vector2 pointerStartPosition;
     private string encuestaActualID;
 
-  //  instanciamos variables firestore
     private FirebaseFirestore db;
     private FirebaseAuth auth;
     private FirebaseUser currentUser;
     private string userId;
 
-
     void Start()
+    {
+        InitializeFirebase();
+        StartCoroutine(VerificarConexionPeriodicamente());
+        CargarEncuestas();
+    }
+
+    private void InitializeFirebase()
     {
         db = FirebaseFirestore.DefaultInstance;
         auth = FirebaseAuth.DefaultInstance;
         currentUser = auth.CurrentUser;
-        userId = currentUser.UserId;
-        StartCoroutine(VerificarConexionPeriodicamente());
+        userId = currentUser != null ? currentUser.UserId : null;
+
+        if (string.IsNullOrEmpty(userId))
+        {
+            Debug.LogError("Usuario no autenticado");
+        }
 
         // Escuchar cambios en la colección "encuestas"
-        db.Collection("encuestas").Listen(snapshot =>
+        db.Collection("encuestas").WhereEqualTo("userId", userId).Listen(snapshot =>
         {
-            CargarEncuestas(); // Llamar a la función cuando haya cambios
+            UnityMainThreadDispatcher.Instance().Enqueue(() => CargarEncuestas());
         });
     }
-
 
     private IEnumerator VerificarConexionPeriodicamente()
     {
         while (true)
         {
-            yield return new WaitForSeconds(10); // Verifica cada 10 segundos
+            yield return new WaitForSeconds(10);
             if (HayInternet())
             {
                 SincronizarEncuestasConFirebase();
             }
         }
     }
+
     public void AgregarPregunta()
     {
+        if (preguntaPrefab == null || contenedorPreguntas == null)
+        {
+            Debug.LogError("Referencias no asignadas en el inspector");
+            return;
+        }
+
         GameObject nuevaPregunta = Instantiate(preguntaPrefab, contenedorPreguntas);
         PreguntaController controlador = nuevaPregunta.GetComponent<PreguntaController>();
-        listaPreguntas.Add(controlador);
+        if (controlador != null)
+        {
+            listaPreguntas.Add(controlador);
+        }
+        else
+        {
+            Debug.LogError("El prefab de pregunta no tiene el componente PreguntaController");
+        }
     }
+
     public void GuardarEncuesta()
     {
-        string usuarioActual = PlayerPrefs.GetString("userId", ""); // Obtener usuario actual
-        if (string.IsNullOrEmpty(usuarioActual))
+        if (string.IsNullOrEmpty(userId))
         {
-            Debug.LogError("⚠ No hay un usuario autenticado.");
+            Debug.LogError("No hay un usuario autenticado.");
+            return;
+        }
+
+        if (string.IsNullOrEmpty(inputTituloEncuesta.text))
+        {
+            Debug.LogError("El título de la encuesta no puede estar vacío.");
+            return;
+        }
+
+        if (listaPreguntas.Count == 0)
+        {
+            Debug.LogError("Debes agregar al menos una pregunta.");
             return;
         }
 
         string encuestaID = System.Guid.NewGuid().ToString();
         string titulo = inputTituloEncuesta.text;
-        string codigoAcceso = CodeGenerator.GenerateCode();
+        string codigoAcceso = GenerarCodigoAcceso();
+        List<Dictionary<string, object>> preguntasData = PrepararDatosPreguntas();
+
+        if (HayInternet())
+        {
+            GuardarEnFirebase(encuestaID, titulo, codigoAcceso, preguntasData);
+        }
+        else
+        {
+            GuardarLocalmente(encuestaID, titulo, codigoAcceso, preguntasData);
+        }
+
+        LimpiarCampos();
+    }
+
+    private List<Dictionary<string, object>> PrepararDatosPreguntas()
+    {
         List<Dictionary<string, object>> preguntasData = new List<Dictionary<string, object>>();
 
         foreach (PreguntaController preguntaController in listaPreguntas)
         {
+            if (preguntaController == null) continue;
+
             List<Dictionary<string, object>> opcionesData = new List<Dictionary<string, object>>();
-            foreach (var opcionTexto in preguntaController.ObtenerOpciones())
+            var opciones = preguntaController.ObtenerOpciones();
+
+            foreach (var opcionTexto in opciones)
             {
-                bool esCorrecta = false;
-                foreach (var opcion in preguntaController.ObtenerPregunta().opciones)
-                {
-                    if (opcion.textoOpcion == opcionTexto)
-                    {
-                        esCorrecta = opcion.esCorrecta;
-                        break;
-                    }
-                }
+                bool esCorrecta = preguntaController.ObtenerPregunta().opciones
+                    .FirstOrDefault(o => o.textoOpcion == opcionTexto)?.esCorrecta ?? false;
+
                 opcionesData.Add(new Dictionary<string, object>()
-            {
-                { "texto", opcionTexto },
-                { "esCorrecta", esCorrecta }
-            });
+                {
+                    { "texto", opcionTexto },
+                    { "esCorrecta", esCorrecta }
+                });
             }
+
             preguntasData.Add(new Dictionary<string, object>()
-        {
-            { "textoPregunta", preguntaController.inputPregunta.text },
-            { "opciones", opcionesData }
-        });
+            {
+                { "textoPregunta", preguntaController.inputPregunta.text },
+                { "opciones", opcionesData }
+            });
         }
 
-        Dictionary<string, object> encuesta = new Dictionary<string, object>()
+        return preguntasData;
+    }
+
+    private void GuardarEnFirebase(string encuestaID, string titulo, string codigoAcceso, List<Dictionary<string, object>> preguntasData)
     {
-        { "id", encuestaID },
-        { "titulo", titulo },
-        { "codigoAcceso", codigoAcceso },
-        { "preguntas", preguntasData },
-        { "activo", false }
-    };
+        Dictionary<string, object> encuesta = new Dictionary<string, object>()
+        {
+            { "id", encuestaID },
+            { "titulo", titulo },
+            { "codigoAcceso", codigoAcceso },
+            { "preguntas", preguntasData },
+            { "activo", false },
+            { "userId", userId },
+            { "fechaCreacion", FieldValue.ServerTimestamp }
+        };
 
-        // Convertir a JSON
-        string jsonEncuesta = JsonUtility.ToJson(new EncuestaData(encuestaID, titulo, codigoAcceso, preguntasData, false));
+        db.Collection("encuestas").Document(encuestaID).SetAsync(encuesta)
+            .ContinueWithOnMainThread(task =>
+            {
+                if (task.IsFaulted)
+                {
+                    Debug.LogError("Error al guardar en Firebase, guardando localmente...");
+                    GuardarLocalmente(encuestaID, titulo, codigoAcceso, preguntasData);
+                }
+                else
+                {
+                    Debug.Log("Encuesta guardada en Firebase correctamente");
+                }
+            });
+    }
 
-        // Guardar en PlayerPrefs con una clave única basada en el usuario
-        string claveUsuario = $"Encuestas_{usuarioActual}";
-        List<string> encuestasUsuario = ObtenerListaDeEncuestas(usuarioActual);
+    private void GuardarLocalmente(string encuestaID, string titulo, string codigoAcceso, List<Dictionary<string, object>> preguntasData)
+    {
+        string claveUsuario = $"Encuestas_{userId}";
+        List<string> encuestasUsuario = ObtenerListaDeEncuestas(userId);
+
+        EncuestaData encuestaData = new EncuestaData(encuestaID, titulo, codigoAcceso, preguntasData, false);
+        string jsonEncuesta = JsonUtility.ToJson(encuestaData);
         encuestasUsuario.Add(jsonEncuesta);
 
-        // Guardar la nueva lista de encuestas en PlayerPrefs
         PlayerPrefs.SetString(claveUsuario, JsonUtility.ToJson(new ListaEncuestas(encuestasUsuario)));
         PlayerPrefs.Save();
-
-        Debug.Log($"📂 Encuesta guardada para el usuario {usuarioActual}: {titulo}");
-
-        LimpiarCampos();
-        CargarEncuestasOffline(); // Mostrar las encuestas almacenadas localmente
+        Debug.Log("Encuesta guardada localmente");
     }
-    private List<string> ObtenerListaDeEncuestas(string usuario)
+
+    private string GenerarCodigoAcceso()
     {
-        string claveUsuario = $"Encuestas_{usuario}";
-        string json = PlayerPrefs.GetString(claveUsuario, "");
+        const string caracteres = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+        System.Text.StringBuilder codigo = new System.Text.StringBuilder();
+        System.Random random = new System.Random();
 
-        if (string.IsNullOrEmpty(json))
-            return new List<string>();
+        for (int i = 0; i < 6; i++)
+        {
+            codigo.Append(caracteres[random.Next(caracteres.Length)]);
+        }
 
-        return JsonUtility.FromJson<ListaEncuestas>(json).encuestas;
+        return codigo.ToString();
     }
 
+    public void CargarEncuestas()
+    {
+        if (contenedorEncuestas == null)
+        {
+            Debug.LogError("Contenedor de encuestas no asignado");
+            return;
+        }
+
+        // Limpiar contenedor
+        foreach (Transform child in contenedorEncuestas)
+        {
+            Destroy(child.gameObject);
+        }
+
+        if (HayInternet())
+        {
+            CargarEncuestasDesdeFirebase();
+        }
+        else
+        {
+            CargarEncuestasOffline();
+        }
+    }
+
+    private void CargarEncuestasDesdeFirebase()
+    {
+        db.Collection("encuestas").WhereEqualTo("userId", userId).GetSnapshotAsync()
+            .ContinueWithOnMainThread(task =>
+            {
+                if (task.IsFaulted)
+                {
+                    Debug.LogError("Error al cargar encuestas: " + task.Exception);
+                    CargarEncuestasOffline();
+                    return;
+                }
+
+                QuerySnapshot snapshot = task.Result;
+                foreach (DocumentSnapshot doc in snapshot.Documents)
+                {
+                    if (doc.Exists)
+                    {
+                        string titulo = doc.GetValue<string>("titulo");
+                        string codigoAcceso = doc.GetValue<string>("codigoAcceso");
+                        bool activo = doc.GetValue<bool>("activo");
+                        string encuestaID = doc.Id;
+
+                        List<Dictionary<string, object>> preguntas = new List<Dictionary<string, object>>();
+                        if (doc.ContainsField("preguntas"))
+                        {
+                            var preguntasData = doc.GetValue<List<object>>("preguntas");
+                            foreach (var pregunta in preguntasData)
+                            {
+                                preguntas.Add((Dictionary<string, object>)pregunta);
+                            }
+                        }
+
+                        CrearTarjetaEncuesta(titulo, codigoAcceso, preguntas.Count, 0, encuestaID, activo);
+                    }
+                }
+            });
+    }
 
     public void CargarEncuestasOffline()
     {
-        string usuarioActual = userId;
-        if (string.IsNullOrEmpty(usuarioActual))
-        {
-            Debug.LogError("⚠ No hay un usuario autenticado.");
-            return;
-        }
+        if (string.IsNullOrEmpty(userId)) return;
 
-        string claveUsuario = $"Encuestas_{usuarioActual}";
+        string claveUsuario = $"Encuestas_{userId}";
         string json = PlayerPrefs.GetString(claveUsuario, "");
 
-        if (string.IsNullOrEmpty(json))
-        {
-            Debug.Log("📭 No hay encuestas para este usuario.");
-            return;
-        }
+        if (string.IsNullOrEmpty(json)) return;
 
         ListaEncuestas listaEncuestas = JsonUtility.FromJson<ListaEncuestas>(json);
-        int index = 0;
         foreach (string jsonEncuesta in listaEncuestas.encuestas)
         {
-            EncuestaData encuesta = JsonUtility.FromJson<EncuestaData>(jsonEncuesta);
-            MostrarEncuestaEnInterfaz(encuesta); // Método que dibuja la encuesta en la UI
-            index++;
+            try
+            {
+                EncuestaData encuesta = JsonUtility.FromJson<EncuestaData>(jsonEncuesta);
+                MostrarEncuestaEnInterfaz(encuesta);
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"Error al cargar encuesta: {e.Message}");
+            }
         }
     }
 
     private void MostrarEncuestaEnInterfaz(EncuestaData encuesta)
     {
-        int numeroPreguntas = encuesta.preguntas.Count;
-        CrearTarjetaEncuesta(encuesta.titulo, encuesta.codigoAcceso, numeroPreguntas, 0, encuesta.id, encuesta.activo);
+        CrearTarjetaEncuesta(encuesta.titulo, encuesta.codigoAcceso, encuesta.preguntas.Count, 0, encuesta.id, encuesta.activo);
     }
 
-    // Método para obtener todas las claves de PlayerPrefs (IDs de encuestas guardadas)
-    private List<string> PlayerPrefsKeys()
+    void CrearTarjetaEncuesta(string titulo, string codigoAcceso, int numeroPreguntas, int index, string encuestaID, bool activo)
     {
-        List<string> keys = new List<string>();
-        foreach (string key in PlayerPrefs.GetString("EncuestasGuardadas", "").Split(','))
+        if (tarjetaEncuestaPrefab == null || contenedorEncuestas == null)
         {
-            if (!string.IsNullOrEmpty(key))
+            Debug.LogError("Prefab o contenedor no asignado");
+            return;
+        }
+
+        GameObject nuevaTarjeta = Instantiate(tarjetaEncuestaPrefab, contenedorEncuestas);
+        TMP_Text[] textosTMP = nuevaTarjeta.GetComponentsInChildren<TMP_Text>();
+
+        if (textosTMP.Length >= 4)
+        {
+            textosTMP[0].text = titulo;
+            textosTMP[1].text = titulo;
+            textosTMP[2].text = numeroPreguntas.ToString();
+            textosTMP[3].text = codigoAcceso;
+        }
+
+        Image fondoTarjeta = nuevaTarjeta.GetComponent<Image>();
+        if (fondoTarjeta != null)
+        {
+            fondoTarjeta.color = activo ?
+               new Color(210f / 255f, 240f / 255f, 255f / 255f, 1f) : // Azul pastel claro
+               new Color(255f / 255f, 230f / 255f, 240f / 255f, 1f);  // Rosa claro cálido
+        }
+
+        Button botonVerEncuesta = nuevaTarjeta.GetComponentInChildren<Button>();
+        if (botonVerEncuesta != null)
+        {
+            botonVerEncuesta.onClick.AddListener(() => MostrarDetallesEncuesta(titulo, codigoAcceso, encuestaID, activo));
+        }
+    }
+
+    public void MostrarDetallesEncuesta(string titulo, string codigo, string encuestaID, bool activo)
+    {
+        encuestaActualID = encuestaID;
+        txtTituloEncuesta.text = "Título: " + titulo;
+        txtCodigoEncuesta.text = "Código: " + codigo;
+
+        btnActivarEncuesta.onClick.RemoveAllListeners();
+        btnDesactivarEncuesta.onClick.RemoveAllListeners();
+
+        btnActivarEncuesta.interactable = !activo;
+        btnActivarEncuesta.onClick.AddListener(() => CambiarEstadoEncuesta(encuestaID, true));
+
+        btnDesactivarEncuesta.interactable = activo;
+        btnDesactivarEncuesta.onClick.AddListener(() => CambiarEstadoEncuesta(encuestaID, false));
+
+        panelDetallesEncuesta.SetActive(true);
+    }
+
+    private void CambiarEstadoEncuesta(string encuestaID, bool activo)
+    {
+        Dictionary<string, object> updateData = new Dictionary<string, object>
+        {
+            { "activo", activo }
+        };
+
+        if (HayInternet())
+        {
+            db.Collection("encuestas").Document(encuestaID).UpdateAsync(updateData)
+                .ContinueWithOnMainThread(task =>
+                {
+                    if (task.IsCompleted)
+                    {
+                        Debug.Log($"Encuesta {(activo ? "activada" : "desactivada")} correctamente");
+                        ActualizarEstadoTarjeta(encuestaID, activo);
+                        panelDetallesEncuesta.SetActive(false);
+                    }
+                    else
+                    {
+                        Debug.LogError($"Error al {(activo ? "activar" : "desactivar")} encuesta: {task.Exception}");
+                    }
+                });
+        }
+        else
+        {
+            Debug.Log("No hay conexión a internet. El cambio se aplicará cuando se restablezca la conexión.");
+            // Aquí podrías guardar el cambio localmente para sincronizar luego
+            ActualizarEstadoTarjeta(encuestaID, activo);
+            panelDetallesEncuesta.SetActive(false);
+        }
+    }
+
+    private void ActualizarEstadoTarjeta(string encuestaID, bool activo)
+    {
+        foreach (Transform child in contenedorEncuestas)
+        {
+            Button btn = child.GetComponentInChildren<Button>();
+            if (btn != null)
             {
-                keys.Add(key);
+                // Asumimos que el listener del botón tiene la encuestaID como closure
+                var listeners = btn.onClick.GetPersistentEventCount();
+                for (int i = 0; i < listeners; i++)
+                {
+                    if (btn.onClick.GetPersistentMethodName(i) == "MostrarDetallesEncuesta")
+                    {
+                        Image img = child.GetComponent<Image>();
+                        if (img != null)
+                        {
+                            img.color = activo ?
+                                new Color(210f / 255f, 240f / 255f, 255f / 255f, 1f) : // Azul pastel claro     
+                                new Color(255f / 255f, 230f / 255f, 240f / 255f, 1f);  // Rosa claro cálido
+                        }
+                        break;
+                    }
+                }
             }
         }
-        return keys;
     }
 
     public bool HayInternet()
@@ -219,226 +444,51 @@ public class EncuestaManager : MonoBehaviour
         }
     }
 
-
     public void SincronizarEncuestasConFirebase()
     {
-        if (!HayInternet())
+        if (!HayInternet() || string.IsNullOrEmpty(userId)) return;
+
+        string claveUsuario = $"Encuestas_{userId}";
+        string json = PlayerPrefs.GetString(claveUsuario, "");
+
+        if (string.IsNullOrEmpty(json)) return;
+
+        ListaEncuestas listaEncuestas = JsonUtility.FromJson<ListaEncuestas>(json);
+        var encuestasParaEliminar = new List<string>();
+
+        foreach (string jsonEncuesta in listaEncuestas.encuestas)
         {
-            Debug.Log("🚫 No hay conexión a Internet. No se puede sincronizar.");
-            return;
+            try
+            {
+                EncuestaData encuesta = JsonUtility.FromJson<EncuestaData>(jsonEncuesta);
+                GuardarEnFirebase(encuesta.id, encuesta.titulo, encuesta.codigoAcceso, encuesta.preguntas);
+                encuestasParaEliminar.Add(encuesta.id);
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"Error al sincronizar encuesta: {e.Message}");
+            }
         }
 
-        foreach (var key in PlayerPrefsKeys())
+        // Eliminar las encuestas ya sincronizadas
+        if (encuestasParaEliminar.Count > 0)
         {
-            string json = PlayerPrefs.GetString(key);
-            EncuestaData encuesta = JsonUtility.FromJson<EncuestaData>(json);
-
-            if (encuesta != null)
-            {
-                Dictionary<string, object> encuestaData = new Dictionary<string, object>
-            {
-                { "titulo", encuesta.titulo },
-                { "codigoAcceso", encuesta.codigoAcceso },
-                { "preguntas", encuesta.preguntas },
-                { "activo", encuesta.activo }
-            };
-
-                db.Collection("encuestas").Document(encuesta.id).SetAsync(encuestaData).ContinueWithOnMainThread(task =>
-                {
-                    if (task.IsCompleted)
-                    {
-                        Debug.Log($"✅ Encuesta {encuesta.id} subida a Firebase.");
-                        PlayerPrefs.DeleteKey(encuesta.id);
-                        PlayerPrefs.Save();
-                    }
-                    else
-                    {
-                        Debug.LogError("❌ Error al subir la encuesta: " + task.Exception);
-                    }
-                });
-            }
+            listaEncuestas.encuestas.RemoveAll(e => encuestasParaEliminar.Contains(JsonUtility.FromJson<EncuestaData>(e).id));
+            PlayerPrefs.SetString(claveUsuario, JsonUtility.ToJson(listaEncuestas));
+            PlayerPrefs.Save();
         }
     }
 
-
-
-    public void CargarEncuestas()
+    private List<string> ObtenerListaDeEncuestas(string usuario)
     {
-        foreach (Transform child in contenedorEncuestas)
-        {
-            Destroy(child.gameObject);
-        }
-        db.Collection("encuestas").GetSnapshotAsync().ContinueWithOnMainThread(task =>
-        {
-            if (task.IsCompleted)
-            {
-                QuerySnapshot encuestas = task.Result;
-                Debug.Log($"🔍 Se encontraron {encuestas.Count} encuestas en la BD."); // Verifica la cantidad de encuestas
-                int index = 0;
-                foreach (DocumentSnapshot doc in encuestas.Documents)
-                {
-                    if (doc.Exists)
-                    {
-                        string titulo = doc.GetValue<string>("titulo");
-                        string codigoAcceso = doc.ContainsField("codigoAcceso") ? doc.GetValue<string>("codigoAcceso") : "";
-                        int numeroPreguntas = 0;
-                        if (doc.ContainsField("preguntas"))
-                        {
-                            object objPreguntas = doc.GetValue<object>("preguntas");
-                            if (objPreguntas is List<object> lista)
-                            {
-                                numeroPreguntas = lista.Count;
-                            }
-                        }
-                        bool activo = doc.ContainsField("activo") ? doc.GetValue<bool>("activo") : false;
-                        Debug.Log($"📌 Llamando a CrearTarjetaEncuesta: {titulo} - Activo: {activo}");
-                        CrearTarjetaEncuesta(titulo, codigoAcceso, numeroPreguntas, index, doc.Id, activo);
-                        index++;
-                    }
-                    else
-                    {
-                        Debug.LogWarning("⚠️ Documento sin datos válidos.");
-                    }
-                }
-            }
-            else
-            {
-                Debug.LogError("❌ Error al cargar encuestas: " + task.Exception);
-            }
-        });
+        string claveUsuario = $"Encuestas_{usuario}";
+        string json = PlayerPrefs.GetString(claveUsuario, "");
+
+        if (string.IsNullOrEmpty(json))
+            return new List<string>();
+
+        return JsonUtility.FromJson<ListaEncuestas>(json).encuestas;
     }
-    void CrearTarjetaEncuesta(string titulo, string codigoAcceso, int numeroPreguntas, int index, string encuestaID, bool activo)
-    {
-        Debug.Log($"🛠️ Intentando instanciar tarjeta: {titulo}"); // Verifica que se ejecuta esta línea
-        // Instanciar la tarjeta y asignarla al contenedor
-        GameObject nuevaTarjeta = Instantiate(tarjetaEncuestaPrefab, contenedorEncuestas);
-        if (nuevaTarjeta == null)
-        {
-            Debug.LogError("❌ Error: No se pudo instanciar tarjetaEncuestaPrefab.");
-            return;
-        }
-        TMP_Text[] textosTMP = nuevaTarjeta.GetComponentsInChildren<TMP_Text>();
-
-
-        if (textosTMP.Length >= 3)
-        {
-            textosTMP[0].text = titulo;
-            textosTMP[1].text = titulo;
-            textosTMP[2].text = "" + numeroPreguntas;
-            textosTMP[3].text = codigoAcceso;
-        }
-        else
-        {
-            Debug.LogError($"❌ Error: No se encontraron suficientes TMP_Text en {titulo}");
-        }
-
-        // Agregar Componente Image si no existe
-        Image fondoTarjeta = nuevaTarjeta.GetComponent<Image>();
-        if (fondoTarjeta == null)
-        {
-            fondoTarjeta = nuevaTarjeta.AddComponent<Image>(); // Añadir Image al GameObject
-        }
-
-        // Asignar color inicial según el estado "activo"
-        fondoTarjeta.color = activo ? new Color(233f / 255f, 246f / 255f, 239f / 255f, 1f) : new Color(254f / 255f, 245f / 255f, 228f / 255f, 1f);
-
-
-
-        // Buscar el botón dentro de la tarjeta y agregar el evento
-        Button botonVerEncuesta = nuevaTarjeta.GetComponentInChildren<Button>();
-        botonVerEncuesta.onClick.AddListener(() => MostrarDetallesEncuesta(titulo, codigoAcceso, encuestaID, activo));
-        Debug.Log($"✅ Tarjeta creada: {titulo} - Activo: {activo}");
-    }
-    public void MostrarDetallesEncuesta(string titulo, string codigo, string encuestaID, bool activo)
-    {
-        encuestaActualID = encuestaID;
-        txtTituloEncuesta.text = "Título: " + titulo;
-        txtCodigoEncuesta.text = "Código: " + codigo;
-        btnActivarEncuesta.interactable = !activo; // Desactivar si ya está activa
-        btnActivarEncuesta.onClick.RemoveAllListeners();
-        btnActivarEncuesta.onClick.AddListener(() => ActivarEncuesta(encuestaActualID));
-        btnDesactivarEncuesta.onClick.AddListener(() => DesactivarEncuesta(encuestaActualID));
-        EventTrigger trigger = panelDetallesEncuesta.AddComponent<EventTrigger>();
-        EventTrigger.Entry entry = new EventTrigger.Entry();
-        entry.eventID = EventTriggerType.PointerClick;
-        entry.callback.AddListener((data) => { vistaController.Inicio(); });
-        trigger.triggers.Add(entry);
-        panelDetallesEncuesta.SetActive(true);
-    }
-    void ActivarEncuesta(string encuestaID)
-    {
-        Dictionary<string, object> updateData = new Dictionary<string, object>
-    {
-        { "activo", true }
-    };
-        db.Collection("encuestas").Document(encuestaID).UpdateAsync(updateData).ContinueWithOnMainThread(task =>
-        {
-            if (task.IsCompleted)
-            {
-                Debug.Log("✅ Encuesta activada correctamente.");
-                string tempocupacion = PlayerPrefs.GetString("TempOcupacion", "");
-
-                // Buscar la tarjeta en la UI y actualizar su color
-                foreach (Transform child in contenedorEncuestas)
-                {
-                    TMP_Text[] textosTMP = child.GetComponentsInChildren<TMP_Text>();
-                    if (textosTMP.Length >= 3 && textosTMP[2].text == txtCodigoEncuesta.text.Replace("Código: ", ""))
-                    {
-                        Image fondoTarjeta = child.GetComponent<Image>();
-                        if (fondoTarjeta != null)
-                        {
-                            fondoTarjeta.color = new Color(0.7f, 1f, 0.7f, 1f); // Color de activa
-                        }
-                        break;
-                    }
-                }
-
-                panelDetallesEncuesta.SetActive(false);
-            }
-            else
-            {
-                Debug.LogError("❌ Error al activar la encuesta: " + task.Exception);
-            }
-        });
-    }
-
-    void DesactivarEncuesta(string encuestaID)
-    {
-        Dictionary<string, object> updateData = new Dictionary<string, object>
-    {
-        { "activo", false }
-    };
-        db.Collection("encuestasProfesor").Document(encuestaID).UpdateAsync(updateData).ContinueWithOnMainThread(task =>
-        {
-            if (task.IsCompleted)
-            {
-                Debug.Log("✅ Encuesta desactivada correctamente.");
-
-                // Buscar la tarjeta en la UI y actualizar su color
-                foreach (Transform child in contenedorEncuestas)
-                {
-                    TMP_Text[] textosTMP = child.GetComponentsInChildren<TMP_Text>();
-                    if (textosTMP.Length >= 3 && textosTMP[2].text == txtCodigoEncuesta.text.Replace("Código: ", ""))
-                    {
-                        Image fondoTarjeta = child.GetComponent<Image>();
-                        if (fondoTarjeta != null)
-                        {
-                            fondoTarjeta.color = new Color(1f, 0.7f, 0.7f, 1f); // Color de inactiva
-                        }
-                        break;
-                    }
-                }
-
-                panelDetallesEncuesta.SetActive(false);
-            }
-            else
-            {
-                Debug.LogError("❌ Error al desactivar la encuesta: " + task.Exception);
-            }
-        });
-    }
-
-
 
     public void LimpiarCampos()
     {
