@@ -12,11 +12,16 @@ using System;
 
 public class SearchUsers : MonoBehaviour
 {
+    [Header("Texts")]
+    public TMP_Text messageText; // Texto para mostrar mensajes
     public TMP_InputField searchInput;
+
+    [Header("Buttons")]
     public Button searchButton;
+
+    [Header("Prefab")]
     public Transform resultsContainer;
     public GameObject userResultPrefab; // Prefab con nombre y botón de agregar
-    public TMP_Text messageText; // Texto para mostrar mensajes
 
     [Header("Live Search Settings")]
     public float searchDelay = 0.3f; // Retraso en segundos antes de ejecutar la búsqueda
