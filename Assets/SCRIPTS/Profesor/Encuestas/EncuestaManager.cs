@@ -32,7 +32,10 @@ public class EncuestaManager : MonoBehaviour
     public Button btnCancelar;
     public GameObject PanelGris;
     public vistaController vistaController;
-     
+
+    [Header("Referencias para Mensajes")]
+    public TMP_Text messageText; // Asigna esto en el inspector
+    public float messageDuration = 3f; // Duración en segundos que se muestra el mensaje
 
     private bool isDragging = false;
     private Vector2 pointerStartPosition;
@@ -106,24 +109,51 @@ public class EncuestaManager : MonoBehaviour
     {
         if (string.IsNullOrEmpty(userId))
         {
+            ShowMessage("Error: No hay un usuario autenticado.", Color.red);
             Debug.LogError("No hay un usuario autenticado.");
             return;
         }
 
         if (string.IsNullOrEmpty(inputTituloEncuesta.text))
         {
+            ShowMessage("El título de la encuesta no puede estar vacío", Color.red);
             Debug.LogError("El título de la encuesta no puede estar vacío.");
             return;
         }
+
         if (string.IsNullOrEmpty(inputDescripcion.text))
         {
+            ShowMessage("La descripción no puede estar vacía", Color.red);
             Debug.LogError("la Descripción no puede estar vacía");
+            return;
         }
 
         if (listaPreguntas.Count == 0)
         {
+            ShowMessage("Debes agregar al menos una pregunta", Color.red);
             Debug.LogError("Debes agregar al menos una pregunta.");
             return;
+        }
+
+        // Validar cada pregunta individualmente
+        for (int i = 0; i < listaPreguntas.Count; i++)
+        {
+            PreguntaController pregunta = listaPreguntas[i];
+
+            // Validar que la pregunta tenga texto
+            if (string.IsNullOrEmpty(pregunta.inputPregunta.text))
+            {
+                ShowMessage($"La pregunta {i + 1} no tiene texto", Color.red);
+                return;
+            }
+
+            // Validar que tenga al menos una opción correcta
+            bool tieneOpcionCorrecta = pregunta.ObtenerPregunta().opciones.Any(o => o.esCorrecta);
+            if (!tieneOpcionCorrecta)
+            {
+                ShowMessage($"La pregunta '{pregunta.inputPregunta.text}' no tiene opciones correctas", Color.red);
+                return;
+            }
         }
 
         string encuestaID = System.Guid.NewGuid().ToString();
@@ -196,11 +226,13 @@ public class EncuestaManager : MonoBehaviour
             {
                 if (task.IsFaulted)
                 {
+                    ShowMessage("Error al guardar en Firebase, guardando localmente...", Color.red);
                     Debug.LogError("Error al guardar en Firebase, guardando localmente...");
                     GuardarLocalmente(encuestaID, titulo, descripcion, codigoAcceso, preguntasData);
                 }
                 else
                 {
+                    ShowMessage("Encuesta guardada correctamente", Color.green);
                     Debug.Log("Encuesta guardada en Firebase correctamente");
                 }
             });
@@ -403,7 +435,9 @@ public class EncuestaManager : MonoBehaviour
         }
         else
         {
-            Debug.Log("No hay conexión a internet. El cambio se aplicará cuando se restablezca la conexión.");
+            string msg = "No hay conexión a internet. El cambio se aplicará cuando se restablezca la conexión.";
+            ShowMessage(msg, new Color(1f, 0.5f, 0f)); // Naranja
+            Debug.Log(msg);
             // Aquí podrías guardar el cambio localmente para sincronizar luego
             ActualizarEstadoTarjeta(encuestaID, activo);
             panelDetallesEncuesta.SetActive(false);
@@ -508,5 +542,25 @@ public class EncuestaManager : MonoBehaviour
             Destroy(child.gameObject);
         }
         listaPreguntas.Clear();
+    }
+    private void ShowMessage(string message, Color color)
+    {
+        if (messageText == null) return;
+
+        messageText.text = message;
+        messageText.color = color;
+        messageText.gameObject.SetActive(true);
+
+        // Opcional: Desactivar después de un tiempo
+        CancelInvoke(nameof(HideMessage));
+        Invoke(nameof(HideMessage), messageDuration);
+    }
+
+    private void HideMessage()
+    {
+        if (messageText != null)
+        {
+            messageText.gameObject.SetActive(false);
+        }
     }
 }
