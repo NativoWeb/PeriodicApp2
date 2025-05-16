@@ -89,6 +89,7 @@ public class EncuestaManager : MonoBehaviour
 
         GameObject nuevaPregunta = Instantiate(preguntaPrefab, contenedorPreguntas);
         PreguntaController controlador = nuevaPregunta.GetComponent<PreguntaController>();
+
         if (controlador != null)
         {
             listaPreguntas.Add(controlador);
