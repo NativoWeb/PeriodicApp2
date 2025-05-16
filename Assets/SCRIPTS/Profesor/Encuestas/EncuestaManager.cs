@@ -14,6 +14,7 @@ public class EncuestaManager : MonoBehaviour
 {
     [Header("Referencias para Crear Encuestas")]
     public TMP_InputField inputTituloEncuesta;
+    public TMP_InputField inputDescripcion;
     public Transform contenedorPreguntas;
     public GameObject preguntaPrefab;
     private List<PreguntaController> listaPreguntas = new List<PreguntaController>();
@@ -31,6 +32,7 @@ public class EncuestaManager : MonoBehaviour
     public Button btnCancelar;
     public GameObject PanelGris;
     public vistaController vistaController;
+     
 
     private bool isDragging = false;
     private Vector2 pointerStartPosition;
@@ -113,6 +115,10 @@ public class EncuestaManager : MonoBehaviour
             Debug.LogError("El título de la encuesta no puede estar vacío.");
             return;
         }
+        if (string.IsNullOrEmpty(inputDescripcion.text))
+        {
+            Debug.LogError("la Descripción no puede estar vacía");
+        }
 
         if (listaPreguntas.Count == 0)
         {
@@ -122,16 +128,17 @@ public class EncuestaManager : MonoBehaviour
 
         string encuestaID = System.Guid.NewGuid().ToString();
         string titulo = inputTituloEncuesta.text;
+        string descripcion = inputDescripcion.text;
         string codigoAcceso = GenerarCodigoAcceso();
         List<Dictionary<string, object>> preguntasData = PrepararDatosPreguntas();
 
         if (HayInternet())
         {
-            GuardarEnFirebase(encuestaID, titulo, codigoAcceso, preguntasData);
+            GuardarEnFirebase(encuestaID, descripcion, titulo, codigoAcceso, preguntasData);
         }
         else
         {
-            GuardarLocalmente(encuestaID, titulo, codigoAcceso, preguntasData);
+            GuardarLocalmente(encuestaID, descripcion, titulo, codigoAcceso, preguntasData);
         }
 
         LimpiarCampos();
@@ -170,12 +177,13 @@ public class EncuestaManager : MonoBehaviour
         return preguntasData;
     }
 
-    private void GuardarEnFirebase(string encuestaID, string titulo, string codigoAcceso, List<Dictionary<string, object>> preguntasData)
+    private void GuardarEnFirebase(string encuestaID,string descripcion,string titulo, string codigoAcceso, List<Dictionary<string, object>> preguntasData)
     {
         Dictionary<string, object> encuesta = new Dictionary<string, object>()
         {
             { "id", encuestaID },
             { "titulo", titulo },
+            { "descripcion", descripcion },
             { "codigoAcceso", codigoAcceso },
             { "preguntas", preguntasData },
             { "activo", false },
@@ -189,7 +197,7 @@ public class EncuestaManager : MonoBehaviour
                 if (task.IsFaulted)
                 {
                     Debug.LogError("Error al guardar en Firebase, guardando localmente...");
-                    GuardarLocalmente(encuestaID, titulo, codigoAcceso, preguntasData);
+                    GuardarLocalmente(encuestaID, titulo, descripcion, codigoAcceso, preguntasData);
                 }
                 else
                 {
@@ -198,12 +206,12 @@ public class EncuestaManager : MonoBehaviour
             });
     }
 
-    private void GuardarLocalmente(string encuestaID, string titulo, string codigoAcceso, List<Dictionary<string, object>> preguntasData)
+    private void GuardarLocalmente(string encuestaID,string descripcion, string titulo, string codigoAcceso, List<Dictionary<string, object>> preguntasData)
     {
         string claveUsuario = $"Encuestas_{userId}";
         List<string> encuestasUsuario = ObtenerListaDeEncuestas(userId);
 
-        EncuestaData encuestaData = new EncuestaData(encuestaID, titulo, codigoAcceso, preguntasData, false);
+        EncuestaData encuestaData = new EncuestaData(encuestaID, titulo, descripcion, codigoAcceso, preguntasData, false);
         string jsonEncuesta = JsonUtility.ToJson(encuestaData);
         encuestasUsuario.Add(jsonEncuesta);
 
@@ -462,7 +470,7 @@ public class EncuestaManager : MonoBehaviour
             try
             {
                 EncuestaData encuesta = JsonUtility.FromJson<EncuestaData>(jsonEncuesta);
-                GuardarEnFirebase(encuesta.id, encuesta.titulo, encuesta.codigoAcceso, encuesta.preguntas);
+                GuardarEnFirebase(encuesta.id, encuesta.titulo,encuesta.descripcion, encuesta.codigoAcceso, encuesta.preguntas);
                 encuestasParaEliminar.Add(encuesta.id);
             }
             catch (System.Exception e)
@@ -494,6 +502,7 @@ public class EncuestaManager : MonoBehaviour
     public void LimpiarCampos()
     {
         inputTituloEncuesta.text = "";
+        inputDescripcion.text = "";
         foreach (Transform child in contenedorPreguntas)
         {
             Destroy(child.gameObject);

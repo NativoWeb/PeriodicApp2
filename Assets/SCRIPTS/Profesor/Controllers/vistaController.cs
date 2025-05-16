@@ -40,7 +40,7 @@ public class vistaController : MonoBehaviour
             Debug.LogError("❌ No se encontró el EncuestaManager en la escena.");
         }
     }
-
+    
     public void IniciarEncuesta()
     {
         IniciarEncuestaPanel.SetActive(true);
@@ -63,6 +63,5 @@ public class vistaController : MonoBehaviour
         InicioPanel.SetActive(false);
         CrearEncuestaPanel.SetActive(false);
         IniciarEncuestaPanel.SetActive(false);
-
     }
 }
