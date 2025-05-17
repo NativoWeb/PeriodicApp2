@@ -34,18 +34,17 @@ public class EncuestaManager : MonoBehaviour
     public vistaController vistaController;
 
     [Header("Referencias para Mensajes")]
-    public TMP_Text messageText; // Asigna esto en el inspector
-    public float messageDuration = 3f; // Duración en segundos que se muestra el mensaje
+    public TMP_Text messageText;
+    public float messageDuration = 3f;
 
-    private bool isDragging = false;
-    private Vector2 pointerStartPosition;
     private string encuestaActualID;
-
     private FirebaseFirestore db;
     private FirebaseAuth auth;
     private FirebaseUser currentUser;
     private string userId;
 
+    private HashSet<string> encuestasCargadas = new HashSet<string>();
+    private ListenerRegistration encuestasListener;
     void Start()
     {
         InitializeFirebase();
@@ -63,15 +62,32 @@ public class EncuestaManager : MonoBehaviour
         if (string.IsNullOrEmpty(userId))
         {
             Debug.LogError("Usuario no autenticado");
+            return;
+        }
+        // Eliminar listener anterior si existe
+        if (encuestasListener != null)
+        {
+            encuestasListener.Stop();
         }
 
-        // Escuchar cambios en la colección "encuestas"
-        db.Collection("encuestas").WhereEqualTo("userId", userId).Listen(snapshot =>
-        {
-            UnityMainThreadDispatcher.Instance().Enqueue(() => CargarEncuestas());
-        });
-    }
+        // Crear nuevo listener
+        encuestasListener = db.Collection("users").Document(userId).Collection("encuestas")
+            .Listen(snapshot =>
+            {
+                UnityMainThreadDispatcher.Instance().Enqueue(() => CargarEncuestas());
+            });
+    
 
+}
+
+    void OnDestroy()
+    {
+        // Limpiar el listener cuando el objeto se destruya
+        if (encuestasListener != null)
+        {
+            encuestasListener.Stop();
+        }
+    }
     private IEnumerator VerificarConexionPeriodicamente()
     {
         while (true)
@@ -86,12 +102,10 @@ public class EncuestaManager : MonoBehaviour
 
     public void PreguntaEliminada(PreguntaController preguntaEliminada)
     {
-        // Elimina la pregunta de la lista
         listaPreguntas.Remove(preguntaEliminada);
-
-        // Opcional: Guardar cambios inmediatos
         Debug.Log($"Pregunta eliminada. Total restantes: {listaPreguntas.Count}");
     }
+
     public void AgregarPregunta()
     {
         if (preguntaPrefab == null || contenedorPreguntas == null)
@@ -148,14 +162,12 @@ public class EncuestaManager : MonoBehaviour
         {
             PreguntaController pregunta = listaPreguntas[i];
 
-            // Validar que la pregunta tenga texto
             if (string.IsNullOrEmpty(pregunta.inputPregunta.text))
             {
                 ShowMessage($"La pregunta {i + 1} no tiene texto", Color.red);
                 return;
             }
 
-            // Validar que tenga al menos una opción correcta
             bool tieneOpcionCorrecta = pregunta.ObtenerPregunta().opciones.Any(o => o.esCorrecta);
             if (!tieneOpcionCorrecta)
             {
@@ -172,11 +184,11 @@ public class EncuestaManager : MonoBehaviour
 
         if (HayInternet())
         {
-            GuardarEnFirebase(encuestaID, descripcion, titulo, codigoAcceso, preguntasData);
+            GuardarEnFirebase(encuestaID, titulo, descripcion, codigoAcceso, preguntasData);
         }
         else
         {
-            GuardarLocalmente(encuestaID, descripcion, titulo, codigoAcceso, preguntasData);
+            GuardarLocalmente(encuestaID, titulo, descripcion, codigoAcceso, preguntasData);
         }
 
         LimpiarCampos();
@@ -215,7 +227,8 @@ public class EncuestaManager : MonoBehaviour
         return preguntasData;
     }
 
-    private void GuardarEnFirebase(string encuestaID,string descripcion,string titulo, string codigoAcceso, List<Dictionary<string, object>> preguntasData)
+    private void GuardarEnFirebase(string encuestaID, string titulo, string descripcion,
+                                 string codigoAcceso, List<Dictionary<string, object>> preguntasData)
     {
         Dictionary<string, object> encuesta = new Dictionary<string, object>()
         {
@@ -225,11 +238,11 @@ public class EncuestaManager : MonoBehaviour
             { "codigoAcceso", codigoAcceso },
             { "preguntas", preguntasData },
             { "activo", false },
-            { "userId", userId },
             { "fechaCreacion", FieldValue.ServerTimestamp }
         };
 
-        db.Collection("encuestas").Document(encuestaID).SetAsync(encuesta)
+        // Guardar en la subcolección del usuario
+        db.Collection("users").Document(userId).Collection("encuestas").Document(encuestaID).SetAsync(encuesta)
             .ContinueWithOnMainThread(task =>
             {
                 if (task.IsFaulted)
@@ -246,7 +259,8 @@ public class EncuestaManager : MonoBehaviour
             });
     }
 
-    private void GuardarLocalmente(string encuestaID,string descripcion, string titulo, string codigoAcceso, List<Dictionary<string, object>> preguntasData)
+    private void GuardarLocalmente(string encuestaID, string titulo, string descripcion,
+                                 string codigoAcceso, List<Dictionary<string, object>> preguntasData)
     {
         string claveUsuario = $"Encuestas_{userId}";
         List<string> encuestasUsuario = ObtenerListaDeEncuestas(userId);
@@ -300,7 +314,9 @@ public class EncuestaManager : MonoBehaviour
 
     private void CargarEncuestasDesdeFirebase()
     {
-        db.Collection("encuestas").WhereEqualTo("userId", userId).GetSnapshotAsync()
+        if (string.IsNullOrEmpty(userId)) return;
+
+        db.Collection("users").Document(userId).Collection("encuestas").GetSnapshotAsync()
             .ContinueWithOnMainThread(task =>
             {
                 if (task.IsFaulted)
@@ -426,7 +442,7 @@ public class EncuestaManager : MonoBehaviour
 
         if (HayInternet())
         {
-            db.Collection("encuestas").Document(encuestaID).UpdateAsync(updateData)
+            db.Collection("users").Document(userId).Collection("encuestas").Document(encuestaID).UpdateAsync(updateData)
                 .ContinueWithOnMainThread(task =>
                 {
                     if (task.IsCompleted)
@@ -444,9 +460,8 @@ public class EncuestaManager : MonoBehaviour
         else
         {
             string msg = "No hay conexión a internet. El cambio se aplicará cuando se restablezca la conexión.";
-            ShowMessage(msg, new Color(1f, 0.5f, 0f)); // Naranja
+            ShowMessage(msg, new Color(1f, 0.5f, 0f));
             Debug.Log(msg);
-            // Aquí podrías guardar el cambio localmente para sincronizar luego
             ActualizarEstadoTarjeta(encuestaID, activo);
             panelDetallesEncuesta.SetActive(false);
         }
@@ -459,7 +474,6 @@ public class EncuestaManager : MonoBehaviour
             Button btn = child.GetComponentInChildren<Button>();
             if (btn != null)
             {
-                // Asumimos que el listener del botón tiene la encuestaID como closure
                 var listeners = btn.onClick.GetPersistentEventCount();
                 for (int i = 0; i < listeners; i++)
                 {
@@ -512,7 +526,7 @@ public class EncuestaManager : MonoBehaviour
             try
             {
                 EncuestaData encuesta = JsonUtility.FromJson<EncuestaData>(jsonEncuesta);
-                GuardarEnFirebase(encuesta.id, encuesta.titulo,encuesta.descripcion, encuesta.codigoAcceso, encuesta.preguntas);
+                GuardarEnFirebase(encuesta.id, encuesta.titulo, encuesta.descripcion, encuesta.codigoAcceso, encuesta.preguntas);
                 encuestasParaEliminar.Add(encuesta.id);
             }
             catch (System.Exception e)
@@ -521,7 +535,6 @@ public class EncuestaManager : MonoBehaviour
             }
         }
 
-        // Eliminar las encuestas ya sincronizadas
         if (encuestasParaEliminar.Count > 0)
         {
             listaEncuestas.encuestas.RemoveAll(e => encuestasParaEliminar.Contains(JsonUtility.FromJson<EncuestaData>(e).id));
@@ -551,6 +564,7 @@ public class EncuestaManager : MonoBehaviour
         }
         listaPreguntas.Clear();
     }
+
     private void ShowMessage(string message, Color color)
     {
         if (messageText == null) return;
@@ -559,7 +573,6 @@ public class EncuestaManager : MonoBehaviour
         messageText.color = color;
         messageText.gameObject.SetActive(true);
 
-        // Opcional: Desactivar después de un tiempo
         CancelInvoke(nameof(HideMessage));
         Invoke(nameof(HideMessage), messageDuration);
     }
