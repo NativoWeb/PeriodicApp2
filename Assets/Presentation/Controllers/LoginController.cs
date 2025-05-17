@@ -28,6 +28,7 @@ public class LoginController : MonoBehaviour
     private LoginUsuario loginUseCase;
     private ResetearPassword resetPasswordUseCase;
     private GestionarIntentosFallidos intentosFallidosUseCase;
+    private VerificarEstadoUsuario verificarEstadoUsuarioUseCase;
 
     private async void Start()
     {
@@ -40,11 +41,14 @@ public class LoginController : MonoBehaviour
         }
 
         var authService = new FirebaseAuthService(FirebaseServiceLocator.Auth);
+        var firestoreService = new FirestoreService(FirebaseServiceLocator.Firestore);
         var localStorage = new LocalStorageService();
+
 
         loginUseCase = new LoginUsuario(authService, localStorage);
         resetPasswordUseCase = new ResetearPassword(authService);
         intentosFallidosUseCase = new GestionarIntentosFallidos(localStorage);
+        verificarEstadoUsuarioUseCase = new VerificarEstadoUsuario(firestoreService);
 
         loginButton.onClick.AddListener(OnLoginButtonClick);
         btnSendReset.onClick.AddListener(OnSendResetPasswordClick);
@@ -77,11 +81,14 @@ public class LoginController : MonoBehaviour
 
         if (resultado.Exito)
         {
-            Debug.Log($"✅ Usuario logueado: {resultado.UsuarioId}");
+            Debug.Log($"Usuario logueado: {resultado.UsuarioId}");
 
-            // Opcional: Aquí puedes cargar escena o seguir flujo
+            PlayerPrefs.SetInt("rememberMe", 1);
+            PlayerPrefs.SetString("userEmail", email);
+            PlayerPrefs.SetString("userPassword", password);
             SceneManager.LoadScene("Inicio"); // O ajusta según tu lógica
             intentosFallidosUseCase.ResetearIntentos(); // Éxito: resetea intentos
+            OnLoginSuccess();
         }
         else
         {
@@ -110,6 +117,19 @@ public class LoginController : MonoBehaviour
         else
         {
             MostrarResetError("Error al enviar el correo. Verifica tu email.", Color.red);
+        }
+    }
+
+    private async void OnLoginSuccess()
+    {
+        string userId = FirebaseServiceLocator.Auth.CurrentUser?.UserId;
+        if (!string.IsNullOrEmpty(userId))
+        {
+            await verificarEstadoUsuarioUseCase.Ejecutar(userId);
+        }
+        else
+        {
+            Debug.LogError("Usuario no autenticado.");
         }
     }
 

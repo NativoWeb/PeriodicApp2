@@ -10,6 +10,8 @@ public class FirebaseAuthService : IServicioAutenticacion
         this.auth = auth;
     }
 
+    public FirebaseUser CurrentUser => auth.CurrentUser;
+
     public async Task<Usuario> LoginAsync(string email, string password)
     {
         var result = await auth.SignInWithEmailAndPasswordAsync(email, password);

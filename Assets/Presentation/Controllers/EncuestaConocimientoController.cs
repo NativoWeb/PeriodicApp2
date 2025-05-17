@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 public class EncuestaConocimientoController : MonoBehaviour
@@ -29,11 +30,19 @@ public class EncuestaConocimientoController : MonoBehaviour
     private float tiempoRestante = 10f;
     private bool preguntaRespondida = false;
     private int racha = 0;
+    private FinalizarEncuestaConocimientoUseCase finalizarEncuestaUseCase;
+
 
     private async void Start()
     {
         panelFeedback.SetActive(false);
         var useCase = new ObtenerPreguntasEncuestaUseCase(new EncuestaConocimientoFirebase());
+
+        finalizarEncuestaUseCase = new FinalizarEncuestaConocimientoUseCase(
+        new FirestoreService(FirebaseServiceLocator.Firestore),
+        new FirebaseAuthService(FirebaseServiceLocator.Auth)
+        );
+
         preguntas = await useCase.EjecutarAsync();
         MostrarPregunta();
     }
@@ -56,7 +65,7 @@ public class EncuestaConocimientoController : MonoBehaviour
     {
         if (indiceActual < preguntas.Count)
         {
-           
+
             barraProgreso.value = (float)indiceActual / preguntas.Count;
         }
         else
@@ -64,7 +73,7 @@ public class EncuestaConocimientoController : MonoBehaviour
             FinalizarEncuesta();
             return;
         }
-        
+
 
         var pregunta = preguntas[indiceActual];
         textoPregunta.text = pregunta.Texto;
@@ -121,7 +130,7 @@ public class EncuestaConocimientoController : MonoBehaviour
 
     private void MostrarResultado(bool correcta)
     {
-        
+
 
         if (correcta)
         {
@@ -190,9 +199,19 @@ public class EncuestaConocimientoController : MonoBehaviour
     }
 
 
-    private void FinalizarEncuesta()
+    private async void FinalizarEncuesta()
     {
-        Debug.Log("Encuesta finalizada");
-        // Guardar estado y navegar
+        Debug.Log("Encuesta de conocimiento finalizada");
+
+        await finalizarEncuestaUseCase.Ejecutar();
+
+        bool estadoAprendizaje = PlayerPrefs.GetInt("EstadoEncuestaAprendizaje", 0) == 1;
+        bool estadoConocimiento = PlayerPrefs.GetInt("EstadoEncuestaConocimiento", 0) == 1;
+
+        if (estadoAprendizaje && estadoConocimiento)
+            SceneManager.LoadScene("Categorías");
+        else
+            SceneManager.LoadScene("SeleccionarEncuesta");
     }
+
 }

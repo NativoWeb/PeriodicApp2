@@ -17,19 +17,26 @@ public class StartAppManager : MonoBehaviour
     private FirebaseAuth auth;
     private FirebaseFirestore db;
 
-    void Start()
+    private async void Start()
     {
-        auth = FirebaseAuth.DefaultInstance;
-        db = FirebaseFirestore.DefaultInstance;
+        Debug.Log("StartAppManager START ejecutado");
 
-        if ( db != null)
+        bool listo = await FirebaseServiceLocator.InicializarFirebase();
+        Debug.Log("Firebase inicializado: " + listo);
+        if (!listo)
         {
+            Debug.LogError("Firebase no se inicializó correctamente.");
+            // Aquí podrías mostrar UI de error o reintentar
+            return;
         }
-        
-        StartCoroutine(CheckInternetConnection());
 
-        StartCoroutine(DeleteAccount()); // Eliminar la cuenta
+        auth = FirebaseServiceLocator.Auth;
+        db = FirebaseServiceLocator.Firestore;
+
+        StartCoroutine(CheckInternetConnection());
+        StartCoroutine(DeleteAccount());
     }
+
 
     // 🔹 Corrutina para verificar conexión
     IEnumerator CheckInternetConnection()
@@ -57,6 +64,8 @@ public class StartAppManager : MonoBehaviour
         yaVerificado = true; // 🔹 Marcar como ejecutado
 
         string estadoUsuario = PlayerPrefs.GetString("Estadouser", "");
+        
+
 
         // ---------------------------------------------- VALIDACIONES --------------------------------------------------------------------------
 
@@ -82,6 +91,7 @@ public class StartAppManager : MonoBehaviour
             {
                 if (estadoencuestaaprendizaje == true && estadoencuestaconocimiento == true)
                 {
+                    Debug.Log("Cargando escena: Inicio");
                     SceneManager.LoadScene("Inicio");
                 }
                 else
@@ -116,6 +126,7 @@ public class StartAppManager : MonoBehaviour
         yaVerificado = true;
 
         string EstadoUsuario = PlayerPrefs.GetString("Estadouser","");
+        Debug.Log("📍 EstadoUsuario = " + EstadoUsuario);
 
         // ---------------------------------------------- VALIDACIONES --------------------------------------------------------------------------
         if (EstadoUsuario == "local") 
@@ -127,7 +138,7 @@ public class StartAppManager : MonoBehaviour
         }
         else if (EstadoUsuario == "nube")
         {
-            
+            Debug.Log("Modo nube: AutoLogin");
             AutoLogin();
 
         }
@@ -180,30 +191,42 @@ public class StartAppManager : MonoBehaviour
 
     void AutoLogin()
     {
-        if (PlayerPrefs.GetInt("rememberMe") == 1)
+        Debug.Log("🚀 Entrando a AutoLogin()");
+
+        if (PlayerPrefs.GetInt("rememberMe", 0) == 1)
         {
-            string savedEmail = PlayerPrefs.GetString("userEmail");
-            string savedPassword = PlayerPrefs.GetString("userPassword");
+            string savedEmail = PlayerPrefs.GetString("userEmail", "");
+            string savedPassword = PlayerPrefs.GetString("userPassword", "");
+
+            Debug.Log($"📧 Email: {savedEmail}, ✅ rememberMe: 1");
 
             auth.SignInWithEmailAndPasswordAsync(savedEmail, savedPassword).ContinueWithOnMainThread(task =>
             {
-                if (task.IsCompleted && !task.IsFaulted)
+                if (task.IsCompleted && !task.IsFaulted && task.Result != null)
                 {
                     FirebaseUser user = task.Result.User;
+                    Debug.Log($"✅ Login exitoso. UID: {user.UserId}");
+
                     PlayerPrefs.SetString("userId", user.UserId);
                     PlayerPrefs.SetString("Estadouser", "nube");
                     PlayerPrefs.Save();
 
-                    CheckAndDownloadMisiones(user.UserId);
+                    CheckAndDownloadMisiones(user.UserId);  // debería cargar la escena
                 }
                 else
                 {
-                    Debug.LogError("❌ Error en login automático online.");
+                    Debug.LogError("❌ Falló el login automático.");
+                    Debug.LogError(task.Exception?.Message);
                     TryOfflineLogin(savedEmail, savedPassword);
                 }
             });
         }
+        else
+        {
+            Debug.LogWarning("⚠️ rememberMe no está activo, no se hace AutoLogin.");
+        }
     }
+
 
 
     void AutoLoginOnlyRegister() // funcion para cuando se registra con wifi y no se loguea, no le vuelva a crear otro usuario temporal -----------------------------
@@ -220,12 +243,15 @@ public class StartAppManager : MonoBehaviour
     /* ------------------------ 🔥 NUEVA FUNCIÓN PARA DESCARGAR MISIONES 🔥 ------------------------ */
     private void CheckAndDownloadMisiones(string userId)
     {
+        Debug.Log("Verificando misiones...");
+
         DocumentReference userDoc = db.Collection("users").Document(userId);
 
         userDoc.GetSnapshotAsync().ContinueWithOnMainThread(task =>
         {
             if (task.IsFaulted || task.IsCanceled)
             {
+                Debug.LogError("❌ Fallo al obtener snapshot de misiones.");
                 return;
             }
 
@@ -233,11 +259,13 @@ public class StartAppManager : MonoBehaviour
 
             if (!snapshot.Exists || !snapshot.ContainsField("misiones"))
             {
+                Debug.Log("No hay campo 'misiones', saltando a CheckUserStatus");
                 CheckUserStatus(userId);
                 return;
             }
 
             string misionesJson = snapshot.GetValue<string>("misiones");
+            Debug.Log("Misiones obtenidas");
 
             if (!string.IsNullOrEmpty(misionesJson))
             {
@@ -248,6 +276,7 @@ public class StartAppManager : MonoBehaviour
             CheckUserStatus(userId);
         });
     }
+
 
     private void CheckUserStatus(string userId)
     {

@@ -105,4 +105,23 @@ public class FirestoreService :IServicioFirestore
         if (xp >= 3000) return "Arquitecto molecular";
         return "Novato de laboratorio";
     }
+
+    public async Task<Dictionary<string, object>> ObtenerUsuarioAsync(string userId)
+    {
+        DocumentSnapshot snapshot = await FirebaseFirestore.DefaultInstance.Collection("users").Document(userId).GetSnapshotAsync();
+
+        if (snapshot.Exists)
+            return snapshot.ToDictionary();
+
+        return new Dictionary<string, object>();
+    }
+
+    public async Task GuardarEstadoEncuestaConocimientoAsync(string userId, bool estado)
+    {
+        var firestore = FirebaseFirestore.DefaultInstance;
+        var userRef = firestore.Collection("users").Document(userId);
+        await userRef.UpdateAsync("EstadoEncuestaConocimiento", estado);
+    }
+
+
 }
