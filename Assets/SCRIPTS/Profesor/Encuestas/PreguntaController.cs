@@ -13,6 +13,15 @@ public class PreguntaController : MonoBehaviour
     private int maxOpciones = 4;
     private List<Opcion> opciones = new List<Opcion>();
 
+    private void Start()
+    {
+        // Desactivar el botón inicialmente
+        btnAgregarOpcion.interactable = false;
+
+        // Agregar la primera opción al crear la pregunta
+        AgregarOpcion();
+    }
+
     public void AgregarOpcion()
     {
         if (contenedorOpciones.childCount >= maxOpciones)
@@ -37,7 +46,12 @@ public class PreguntaController : MonoBehaviour
         opciones.Add(nuevaOpcionData);
 
         // Asociar eventos
-        opcionUI.inputOpcion.onEndEdit.AddListener(valor => nuevaOpcionData.textoOpcion = valor);
+        opcionUI.inputOpcion.onEndEdit.AddListener(valor =>
+        {
+            nuevaOpcionData.textoOpcion = valor;
+            ValidarBotonAgregarOpcion(); // Validar cada vez que se edita el texto
+        });
+
         opcionUI.toggleCorrecta.onValueChanged.AddListener(valor =>
         {
             if (valor)
@@ -51,9 +65,34 @@ public class PreguntaController : MonoBehaviour
         {
             btnAgregarOpcion.interactable = false;
         }
+        else
+        {
+            // Desactivar el botón hasta que la última opción tenga texto
+            btnAgregarOpcion.interactable = false;
+        }
     }
 
-    // Asegurar que solo una opción sea correcta dentro de la misma pregunta
+    // ✅ Validar si la última opción tiene texto para habilitar el botón
+    private void ValidarBotonAgregarOpcion()
+    {
+        if (contenedorOpciones.childCount == 0)
+        {
+            btnAgregarOpcion.interactable = false;
+            return;
+        }
+
+        // Obtener la última opción
+        Transform ultimaOpcion = contenedorOpciones.GetChild(contenedorOpciones.childCount - 1);
+        TMP_InputField inputOpcion = ultimaOpcion.GetComponentInChildren<TMP_InputField>();
+
+        // Habilitar el botón solo si la última opción tiene texto y no se alcanzó el máximo
+        bool puedeAgregarMas = (contenedorOpciones.childCount < maxOpciones);
+        bool ultimaOpcionTieneTexto = !string.IsNullOrWhiteSpace(inputOpcion.text);
+
+        btnAgregarOpcion.interactable = (puedeAgregarMas && ultimaOpcionTieneTexto);
+    }
+
+    // 🔄 Asegurar que solo una opción sea correcta
     public void MarcarOpcionCorrecta(Opcion opcionSeleccionada)
     {
         foreach (Opcion opcion in opciones)
@@ -62,13 +101,6 @@ public class PreguntaController : MonoBehaviour
         }
 
         opcionSeleccionada.esCorrecta = true;
-
-        // 🔍 Verificar si realmente se está actualizando la lista de opciones
-        Debug.Log("📋 Estado actual de las opciones:");
-        foreach (Opcion opcion in opciones)
-        {
-            Debug.Log($"🔹 Opción: {opcion.textoOpcion} | Correcta: {opcion.esCorrecta}");
-        }
 
         // Actualizar la UI
         foreach (Transform opcionTransform in contenedorOpciones)
@@ -81,25 +113,13 @@ public class PreguntaController : MonoBehaviour
         }
     }
 
-
-
     public Pregunta ObtenerPregunta()
     {
-        Pregunta pregunta = new Pregunta(inputPregunta.text, new List<Opcion>(opciones));
-
-        // 🛠 Debug para ver si se está marcando la opción correcta
-        foreach (Opcion opcion in pregunta.opciones)
-        {
-            Debug.Log($"📌 Opción: {opcion.textoOpcion}, Correcta: {opcion.esCorrecta}");
-        }
-
-        return pregunta;
+        return new Pregunta(inputPregunta.text, new List<Opcion>(opciones));
     }
 
     public List<string> ObtenerOpciones()
     {
-
-
         List<string> opcionesTexto = new List<string>();
         foreach (Transform opcion in contenedorOpciones)
         {
@@ -109,9 +129,6 @@ public class PreguntaController : MonoBehaviour
                 opcionesTexto.Add(inputOpcion.text);
             }
         }
-
         return opcionesTexto;
     }
-
-
 }
