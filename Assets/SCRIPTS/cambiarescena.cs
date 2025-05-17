@@ -32,7 +32,7 @@ public class cambiarescena : MonoBehaviour
         }
         else
         {
-            SceneManager.LoadScene("InicioProfesor");
+            SceneManager.LoadScene("InicioProfesor1");
         }
     }
 }
