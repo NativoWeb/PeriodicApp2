@@ -84,6 +84,14 @@ public class EncuestaManager : MonoBehaviour
         }
     }
 
+    public void PreguntaEliminada(PreguntaController preguntaEliminada)
+    {
+        // Elimina la pregunta de la lista
+        listaPreguntas.Remove(preguntaEliminada);
+
+        // Opcional: Guardar cambios inmediatos
+        Debug.Log($"Pregunta eliminada. Total restantes: {listaPreguntas.Count}");
+    }
     public void AgregarPregunta()
     {
         if (preguntaPrefab == null || contenedorPreguntas == null)
