@@ -49,7 +49,7 @@ public class EncuestaManager : MonoBehaviour
     {
         InitializeFirebase();
         StartCoroutine(VerificarConexionPeriodicamente());
-        CargarEncuestas();
+        
     }
 
     private void InitializeFirebase()
@@ -64,21 +64,22 @@ public class EncuestaManager : MonoBehaviour
             Debug.LogError("Usuario no autenticado");
             return;
         }
-        // Eliminar listener anterior si existe
+
         if (encuestasListener != null)
         {
             encuestasListener.Stop();
         }
 
-        // Crear nuevo listener
+        // 🟢 Solo el listener se encargará de llamar a CargarEncuestas()
         encuestasListener = db.Collection("users").Document(userId).Collection("encuestas")
             .Listen(snapshot =>
             {
-                UnityMainThreadDispatcher.Instance().Enqueue(() => CargarEncuestas());
+                UnityMainThreadDispatcher.Instance().Enqueue(() =>
+                {
+                    CargarEncuestas();
+                });
             });
-    
-
-}
+    }
 
     void OnDestroy()
     {
@@ -296,11 +297,12 @@ public class EncuestaManager : MonoBehaviour
             return;
         }
 
-        // Limpiar contenedor
+        // ✅ Limpiar contenedor y lista de IDs
         foreach (Transform child in contenedorEncuestas)
         {
             Destroy(child.gameObject);
         }
+        encuestasCargadas.Clear(); // Limpiar HashSet antes de volver a cargar
 
         if (HayInternet())
         {
@@ -311,6 +313,7 @@ public class EncuestaManager : MonoBehaviour
             CargarEncuestasOffline();
         }
     }
+
 
     private void CargarEncuestasDesdeFirebase()
     {
@@ -327,27 +330,32 @@ public class EncuestaManager : MonoBehaviour
                 }
 
                 QuerySnapshot snapshot = task.Result;
+
                 foreach (DocumentSnapshot doc in snapshot.Documents)
                 {
-                    if (doc.Exists)
+                    if (!doc.Exists) continue;
+
+                    string encuestaID = doc.Id;
+
+                    // 🚫 Evitar duplicados
+                    if (encuestasCargadas.Contains(encuestaID)) continue;
+                    encuestasCargadas.Add(encuestaID);
+
+                    string titulo = doc.GetValue<string>("titulo");
+                    string codigoAcceso = doc.GetValue<string>("codigoAcceso");
+                    bool activo = doc.GetValue<bool>("activo");
+
+                    List<Dictionary<string, object>> preguntas = new List<Dictionary<string, object>>();
+                    if (doc.ContainsField("preguntas"))
                     {
-                        string titulo = doc.GetValue<string>("titulo");
-                        string codigoAcceso = doc.GetValue<string>("codigoAcceso");
-                        bool activo = doc.GetValue<bool>("activo");
-                        string encuestaID = doc.Id;
-
-                        List<Dictionary<string, object>> preguntas = new List<Dictionary<string, object>>();
-                        if (doc.ContainsField("preguntas"))
+                        var preguntasData = doc.GetValue<List<object>>("preguntas");
+                        foreach (var pregunta in preguntasData)
                         {
-                            var preguntasData = doc.GetValue<List<object>>("preguntas");
-                            foreach (var pregunta in preguntasData)
-                            {
-                                preguntas.Add((Dictionary<string, object>)pregunta);
-                            }
+                            preguntas.Add((Dictionary<string, object>)pregunta);
                         }
-
-                        CrearTarjetaEncuesta(titulo, codigoAcceso, preguntas.Count, 0, encuestaID, activo);
                     }
+
+                    CrearTarjetaEncuesta(titulo, codigoAcceso, preguntas.Count, 0, encuestaID, activo);
                 }
             });
     }
