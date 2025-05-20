@@ -400,20 +400,28 @@ public class EncuestaManager : MonoBehaviour
         GameObject nuevaTarjeta = Instantiate(tarjetaEncuestaPrefab, contenedorEncuestas);
         TMP_Text[] textosTMP = nuevaTarjeta.GetComponentsInChildren<TMP_Text>();
 
-        if (textosTMP.Length >= 4)
+        if (textosTMP.Length >= 3)
         {
             textosTMP[0].text = titulo;
-            textosTMP[1].text = titulo;
+            textosTMP[1].text = codigoAcceso;
             textosTMP[2].text = numeroPreguntas.ToString();
-            textosTMP[3].text = codigoAcceso;
+            
         }
 
         Image fondoTarjeta = nuevaTarjeta.GetComponent<Image>();
         if (fondoTarjeta != null)
         {
-            fondoTarjeta.color = activo ?
-               new Color(210f / 255f, 240f / 255f, 255f / 255f, 1f) : // Azul pastel claro
-               new Color(255f / 255f, 230f / 255f, 240f / 255f, 1f);  // Rosa claro cálido
+            // Solo aplica color si está activa, de lo contrario deja el color normal
+            if (activo)
+            {
+                ColorUtility.TryParseHtmlString("#A5EFE5", out Color colorActivo);
+                fondoTarjeta.color = colorActivo;
+            }
+            else
+            {
+                // Esto restablecerá el color al original del prefab
+                fondoTarjeta.color = Color.white; // o el color que tenga por defecto
+            }
         }
 
         Button botonVerEncuesta = nuevaTarjeta.GetComponentInChildren<Button>();
@@ -490,9 +498,15 @@ public class EncuestaManager : MonoBehaviour
                         Image img = child.GetComponent<Image>();
                         if (img != null)
                         {
-                            img.color = activo ?
-                                new Color(210f / 255f, 240f / 255f, 255f / 255f, 1f) : // Azul pastel claro     
-                                new Color(255f / 255f, 230f / 255f, 240f / 255f, 1f);  // Rosa claro cálido
+                            if (activo)
+                            {
+                                ColorUtility.TryParseHtmlString("#A5EFE5", out Color colorActivo);
+                                img.color = colorActivo;
+                            }
+                            else
+                            {
+                                img.color = Color.white; // o el color que tenga por defecto
+                            }
                         }
                         break;
                     }
