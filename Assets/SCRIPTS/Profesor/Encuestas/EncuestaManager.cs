@@ -27,6 +27,7 @@ public class EncuestaManager : MonoBehaviour
     public GameObject panelDetallesEncuesta;
     public TMP_Text txtTituloEncuesta;
     public TMP_Text txtCodigoEncuesta;
+    public TMP_Text txtNumeroPreguntas;
     public Button btnActivarEncuesta;
     public Button btnDesactivarEncuesta;
     public Button btnCancelar;
@@ -356,6 +357,7 @@ public class EncuestaManager : MonoBehaviour
                     }
 
                     CrearTarjetaEncuesta(titulo, codigoAcceso, preguntas.Count, 0, encuestaID, activo);
+
                 }
             });
     }
@@ -427,15 +429,16 @@ public class EncuestaManager : MonoBehaviour
         Button botonVerEncuesta = nuevaTarjeta.GetComponentInChildren<Button>();
         if (botonVerEncuesta != null)
         {
-            botonVerEncuesta.onClick.AddListener(() => MostrarDetallesEncuesta(titulo, codigoAcceso, encuestaID, activo));
+            botonVerEncuesta.onClick.AddListener(() => MostrarDetallesEncuesta(titulo,numeroPreguntas, codigoAcceso, encuestaID, activo));
         }
     }
 
-    public void MostrarDetallesEncuesta(string titulo, string codigo, string encuestaID, bool activo)
+    public void MostrarDetallesEncuesta(string titulo, int numeropreguntas, string codigo, string encuestaID, bool activo)
     {
         encuestaActualID = encuestaID;
-        txtTituloEncuesta.text = "Título: " + titulo;
-        txtCodigoEncuesta.text = "Código: " + codigo;
+        txtTituloEncuesta.text = titulo;
+        txtCodigoEncuesta.text =  codigo;
+        txtNumeroPreguntas.text = numeropreguntas.ToString();
 
         btnActivarEncuesta.onClick.RemoveAllListeners();
         btnDesactivarEncuesta.onClick.RemoveAllListeners();
@@ -448,6 +451,7 @@ public class EncuestaManager : MonoBehaviour
 
         panelDetallesEncuesta.SetActive(true);
     }
+  
 
     private void CambiarEstadoEncuesta(string encuestaID, bool activo)
     {
