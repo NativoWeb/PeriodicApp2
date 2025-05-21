@@ -16,7 +16,7 @@ public class PreguntaController : MonoBehaviour
 
     [Header("Referencias panel eliminar pregunta")]
     public Button btnEliminar;
-    public GameObject panelConfirmacionPrefab; 
+    public GameObject panelConfirmacionPrefab;
 
     private void Start()
     {
@@ -119,9 +119,58 @@ public class PreguntaController : MonoBehaviour
             // Desactivar el botón hasta que la última opción tenga texto
             btnAgregarOpcion.interactable = false;
         }
+
+
+
+
+    }
+    // Añade este método a tu clase PreguntaController
+    public void AgregarOpcionUI(string textoOpcion, bool esCorrecta)
+    {
+        if (contenedorOpciones.childCount >= maxOpciones)
+        {
+            Debug.LogWarning("No se pueden agregar más opciones, se alcanzó el límite");
+            return;
+        }
+
+        // Instanciar nueva opción
+        GameObject nuevaOpcion = Instantiate(opcionPrefab, contenedorOpciones);
+        OpcionUI opcionUI = nuevaOpcion.GetComponent<OpcionUI>();
+
+        if (opcionUI == null)
+        {
+            Debug.LogError("No se encontró el componente OpcionUI");
+            return;
+        }
+
+        // Configurar la opción
+        opcionUI.inputOpcion.text = textoOpcion;
+        opcionUI.toggleCorrecta.isOn = esCorrecta;
+
+        // Crear y agregar la nueva opción a la lista
+        Opcion nuevaOpcionData = new Opcion(textoOpcion, esCorrecta);
+        opciones.Add(nuevaOpcionData);
+
+        // Configurar eventos
+        opcionUI.inputOpcion.onEndEdit.AddListener(valor =>
+        {
+            nuevaOpcionData.textoOpcion = valor;
+            ValidarBotonAgregarOpcion();
+        });
+
+        opcionUI.toggleCorrecta.onValueChanged.AddListener(valor =>
+        {
+            if (valor)
+            {
+                MarcarOpcionCorrecta(nuevaOpcionData);
+            }
+        });
+
+        // Actualizar estado del botón de agregar
+        ValidarBotonAgregarOpcion();
     }
     // Corrutina para asegurar que la nueva opción sea visible
- 
+
 
     // ✅ Validar si la última opción tiene texto para habilitar el botón
     private void ValidarBotonAgregarOpcion()

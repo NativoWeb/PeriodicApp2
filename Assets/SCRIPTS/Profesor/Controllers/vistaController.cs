@@ -23,6 +23,7 @@ public class vistaController : MonoBehaviour
         CrearEncuestaPanel.SetActive(false);
         IniciarEncuestaPanel.SetActive(false);
         RankingPanel.SetActive(false);
+        encuestaManager.cerrarmodoedicion();
     }
 
     // Mostrar el panel de creación de encuestas y limpiar los campos
@@ -40,7 +41,15 @@ public class vistaController : MonoBehaviour
             Debug.LogError("❌ No se encontró el EncuestaManager en la escena.");
         }
     }
-    
+
+    // Nuevo método específico para edición
+    public void CambiarAVistaEdicion()
+    {
+        CrearEncuestaPanel.SetActive(true);
+        InicioPanel.SetActive(false);
+        
+    }
+
     public void IniciarEncuesta()
     {
         IniciarEncuestaPanel.SetActive(true);

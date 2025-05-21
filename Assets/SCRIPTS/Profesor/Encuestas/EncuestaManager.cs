@@ -17,6 +17,7 @@ public class EncuestaManager : MonoBehaviour
     public TMP_InputField inputDescripcion;
     public Transform contenedorPreguntas;
     public GameObject preguntaPrefab;
+    public Button btnGuardarEncuesta;
     private List<PreguntaController> listaPreguntas = new List<PreguntaController>();
 
     [Header("Referencias para Mostrar Encuestas")]
@@ -38,6 +39,20 @@ public class EncuestaManager : MonoBehaviour
     public TMP_Text messageText;
     public float messageDuration = 3f;
 
+    [Header("Referencias para Edición")]
+    public Button btnEditarEncuesta; // Añade este botón en tu panel de detalles
+    private bool modoEdicion = false;
+    private string encuestaEditandoID = null;
+
+    [Header("Referencia btn actualizar encuesta")]
+    public Button btnActualizarEncuesta;
+
+    [Header("Referencias para Eliminar Encuesta")]
+    public Button btnEliminarEncuesta; // Botón en el panel de detalles
+    public GameObject panelConfirmacionEliminar; // Panel de confirmación
+    public Button btnConfirmarEliminar; // Botón de confirmación en el panel
+    public Button btnCancelarEliminar; // Botón para cancelar eliminación
+
     private string encuestaActualID;
     private FirebaseFirestore db;
     private FirebaseAuth auth;
@@ -50,9 +65,23 @@ public class EncuestaManager : MonoBehaviour
     {
         InitializeFirebase();
         StartCoroutine(VerificarConexionPeriodicamente());
-        
-    }
 
+        // Configurar listeners de botones existentes
+        btnGuardarEncuesta.onClick.AddListener(GuardarEncuesta);
+        btnActualizarEncuesta.onClick.AddListener(ActualizarEncuesta);
+
+        // Configurar nuevos botones de eliminación
+        btnEliminarEncuesta.onClick.AddListener(MostrarPanelConfirmacionEliminar);
+        btnConfirmarEliminar.onClick.AddListener(EliminarEncuestaConfirmada);
+        btnCancelarEliminar.onClick.AddListener(OcultarPanelConfirmacionEliminar);
+
+        // Estado inicial
+        btnGuardarEncuesta.gameObject.SetActive(true);
+        btnActualizarEncuesta.gameObject.SetActive(false);
+        panelConfirmacionEliminar.SetActive(false);
+        modoEdicion = false;
+        encuestaEditandoID = null;
+    }
     private void InitializeFirebase()
     {
         db = FirebaseFirestore.DefaultInstance;
@@ -148,7 +177,7 @@ public class EncuestaManager : MonoBehaviour
         if (string.IsNullOrEmpty(inputDescripcion.text))
         {
             ShowMessage("La descripción no puede estar vacía", Color.red);
-            Debug.LogError("la Descripción no puede estar vacía");
+            Debug.LogError("La descripción no puede estar vacía.");
             return;
         }
 
@@ -167,6 +196,7 @@ public class EncuestaManager : MonoBehaviour
             if (string.IsNullOrEmpty(pregunta.inputPregunta.text))
             {
                 ShowMessage($"La pregunta {i + 1} no tiene texto", Color.red);
+                Debug.LogError($"La pregunta {i + 1} no tiene texto.");
                 return;
             }
 
@@ -174,27 +204,70 @@ public class EncuestaManager : MonoBehaviour
             if (!tieneOpcionCorrecta)
             {
                 ShowMessage($"La pregunta '{pregunta.inputPregunta.text}' no tiene opciones correctas", Color.red);
+                Debug.LogError($"La pregunta '{pregunta.inputPregunta.text}' no tiene opciones correctas.");
                 return;
             }
         }
 
-        string encuestaID = System.Guid.NewGuid().ToString();
         string titulo = inputTituloEncuesta.text;
         string descripcion = inputDescripcion.text;
-        string codigoAcceso = GenerarCodigoAcceso();
+        List<Dictionary<string, object>> preguntasData = PrepararDatosPreguntas();
+
+            string encuestaID = System.Guid.NewGuid().ToString();
+            string codigoAcceso = GenerarCodigoAcceso();
+
+            if (HayInternet())
+            {
+                GuardarEnFirebase(encuestaID, titulo, descripcion, codigoAcceso, preguntasData);
+            }
+            else
+            {
+                GuardarLocalmente(encuestaID, titulo, descripcion, codigoAcceso, preguntasData);
+            }
+
+            LimpiarCampos();
+        
+    }
+    public void ActualizarEncuesta()
+    {
+        if (!modoEdicion || string.IsNullOrEmpty(encuestaEditandoID))
+        {
+            Debug.LogWarning("Intento de actualización fuera del modo edición");
+            GuardarEncuesta(); // Fallback a guardar como nueva
+            return;
+        }
+
+        // Validaciones (las mismas que en GuardarEncuesta)
+        if (string.IsNullOrEmpty(inputTituloEncuesta.text))
+        {
+            ShowMessage("El título de la encuesta no puede estar vacío", Color.red);
+            return;
+        }
+
+        if (listaPreguntas.Count == 0)
+        {
+            ShowMessage("Debes agregar al menos una pregunta", Color.red);
+            return;
+        }
+
+        // Preparar datos
+        string titulo = inputTituloEncuesta.text;
+        string descripcion = inputDescripcion.text;
+        string codigoAcceso = txtCodigoEncuesta.text; // Mantener el código original
         List<Dictionary<string, object>> preguntasData = PrepararDatosPreguntas();
 
         if (HayInternet())
         {
-            GuardarEnFirebase(encuestaID, titulo, descripcion, codigoAcceso, preguntasData);
+            ActualizarEncuestaEnFirebase(encuestaEditandoID, titulo, descripcion, codigoAcceso, preguntasData);
         }
         else
         {
-            GuardarLocalmente(encuestaID, titulo, descripcion, codigoAcceso, preguntasData);
+            ActualizarEncuestaLocalmente(encuestaEditandoID, titulo, descripcion, codigoAcceso, preguntasData);
         }
 
-        LimpiarCampos();
+        FinalizarEdicion();
     }
+
 
     private List<Dictionary<string, object>> PrepararDatosPreguntas()
     {
@@ -257,6 +330,7 @@ public class EncuestaManager : MonoBehaviour
                 {
                     ShowMessage("Encuesta guardada correctamente", Color.green);
                     Debug.Log("Encuesta guardada en Firebase correctamente");
+                    Invoke("volverinicioVistaController", 2f);
                 }
             });
     }
@@ -437,22 +511,255 @@ public class EncuestaManager : MonoBehaviour
     {
         encuestaActualID = encuestaID;
         txtTituloEncuesta.text = titulo;
-        txtCodigoEncuesta.text =  codigo;
+        txtCodigoEncuesta.text = codigo;
         txtNumeroPreguntas.text = numeropreguntas.ToString();
 
+        // Limpiar listeners anteriores
         btnActivarEncuesta.onClick.RemoveAllListeners();
         btnDesactivarEncuesta.onClick.RemoveAllListeners();
+        btnEditarEncuesta.onClick.RemoveAllListeners();
+        btnEliminarEncuesta.onClick.RemoveAllListeners();
 
+        // Configurar listeners
         btnActivarEncuesta.interactable = !activo;
         btnActivarEncuesta.onClick.AddListener(() => CambiarEstadoEncuesta(encuestaID, true));
 
         btnDesactivarEncuesta.interactable = activo;
         btnDesactivarEncuesta.onClick.AddListener(() => CambiarEstadoEncuesta(encuestaID, false));
 
+        btnEditarEncuesta.onClick.AddListener(() => IniciarEdicionEncuesta(encuestaID));
+        btnEliminarEncuesta.onClick.AddListener(() => MostrarPanelConfirmacionEliminar());
+
         panelDetallesEncuesta.SetActive(true);
     }
-  
 
+    // Metodos para edicion de encuesta _______________________________________________________________
+    private void IniciarEdicionEncuesta(string encuestaID)
+    {
+        Debug.Log($"Iniciando edición de encuesta ID: {encuestaID}");
+
+        // Establecer estado de edición
+        modoEdicion = true;
+        encuestaEditandoID = encuestaID;
+        encuestaActualID = encuestaID;
+
+        // Ocultar panel de detalles
+        panelDetallesEncuesta.SetActive(false);
+
+        // Cambiar visibilidad de botones - SIN UnityMainThreadDispatcher
+        btnGuardarEncuesta.gameObject.SetActive(false);
+        btnActualizarEncuesta.gameObject.SetActive(true);
+
+        Debug.Log($"Botones actualizados - Guardar: {btnGuardarEncuesta.gameObject.activeSelf}, Actualizar: {btnActualizarEncuesta.gameObject.activeSelf}");
+
+        // Limpiar y cargar datos para edición
+        LimpiarCampos();
+        CargarEncuestaParaEditar(encuestaID);
+
+        // Cambiar a vista de edición
+        vistaController.CambiarAVistaEdicion();
+    }
+    private void CargarEncuestaParaEditar(string encuestaID)
+    {
+        Debug.Log($"Cargando encuesta para editar ID: {encuestaID}");
+
+        if (HayInternet())
+        {
+            Debug.Log("Cargando desde Firebase...");
+            db.Collection("users").Document(userId).Collection("encuestas").Document(encuestaID).GetSnapshotAsync()
+                .ContinueWithOnMainThread(task =>
+                {
+                    if (task.IsCompleted)
+                    {
+                        Debug.Log("Tarea de Firebase completada");
+                        DocumentSnapshot snapshot = task.Result;
+                        if (snapshot.Exists)
+                        {
+                            Debug.Log("Documento encontrado en Firebase");
+                            Dictionary<string, object> encuesta = snapshot.ToDictionary();
+                            MostrarEncuestaParaEditar(encuesta);
+                        }
+                        else
+                        {
+                            Debug.LogWarning("Documento no existe en Firebase");
+                        }
+                    }
+                    else if (task.IsFaulted)
+                    {
+                        Debug.LogError($"Error al cargar encuesta: {task.Exception}");
+                    }
+                });
+        }
+        else
+        {
+            Debug.Log("Cargando desde datos locales...");
+            string claveUsuario = $"Encuestas_{userId}";
+            string json = PlayerPrefs.GetString(claveUsuario, "");
+
+            if (!string.IsNullOrEmpty(json))
+            {
+                Debug.Log("Datos locales encontrados");
+                ListaEncuestas listaEncuestas = JsonUtility.FromJson<ListaEncuestas>(json);
+                bool encontrada = false;
+
+                foreach (string jsonEncuesta in listaEncuestas.encuestas)
+                {
+                    EncuestaData encuesta = JsonUtility.FromJson<EncuestaData>(jsonEncuesta);
+                    if (encuesta.id == encuestaID)
+                    {
+                        Debug.Log("Encuesta encontrada en datos locales");
+                        encontrada = true;
+                        MostrarEncuestaParaEditar(encuesta.ToDictionary());
+                        break;
+                    }
+                }
+
+                if (!encontrada)
+                {
+                    Debug.LogWarning("Encuesta no encontrada en datos locales");
+                }
+            }
+            else
+            {
+                Debug.LogWarning("No hay datos locales guardados");
+            }
+        }
+    }
+
+    private void MostrarEncuestaParaEditar(Dictionary<string, object> encuesta)
+    {
+        try
+        {
+            Debug.Log("Mostrando encuesta para editar...");
+
+            // Verificar datos de la encuesta
+            Debug.Log($"Título: {encuesta.ContainsKey("titulo")}");
+            Debug.Log($"Descripción: {encuesta.ContainsKey("descripcion")}");
+            Debug.Log($"Preguntas: {encuesta.ContainsKey("preguntas")}");
+
+            // Asignar título y descripción
+            inputTituloEncuesta.text = encuesta["titulo"].ToString();
+            inputDescripcion.text = encuesta["descripcion"].ToString();
+            Debug.Log($"Título asignado: {inputTituloEncuesta.text}");
+            Debug.Log($"Descripción asignada: {inputDescripcion.text}");
+
+            // Cargar preguntas
+            var preguntasData = (List<object>)encuesta["preguntas"];
+            Debug.Log($"Número de preguntas: {preguntasData.Count}");
+
+            foreach (var preguntaObj in preguntasData)
+            {
+                var preguntaData = (Dictionary<string, object>)preguntaObj;
+                Debug.Log($"Texto pregunta: {preguntaData["textoPregunta"]}");
+
+                AgregarPregunta();
+                PreguntaController nuevaPregunta = listaPreguntas.Last();
+                nuevaPregunta.inputPregunta.text = preguntaData["textoPregunta"].ToString();
+                Debug.Log($"Pregunta creada: {nuevaPregunta.inputPregunta.text}");
+
+                var opcionesData = (List<object>)preguntaData["opciones"];
+                Debug.Log($"Número de opciones: {opcionesData.Count}");
+
+                foreach (var opcionObj in opcionesData)
+                {
+                    var opcionData = (Dictionary<string, object>)opcionObj;
+                    nuevaPregunta.AgregarOpcionUI(
+                        opcionData["texto"].ToString(),
+                        (bool)opcionData["esCorrecta"]
+                    );
+                    Debug.Log($"Opción agregada: {opcionData["texto"]} - Correcta: {opcionData["esCorrecta"]}");
+                }
+            }
+
+            vistaController.CambiarAVistaEdicion();
+            Debug.Log("Edición iniciada correctamente");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"Error en MostrarEncuestaParaEditar: {e.Message}\n{e.StackTrace}");
+        }
+    }
+
+    public void FinalizarEdicion()
+    {
+        Debug.Log("Finalizando edición...");
+
+        // Restablecer estado
+        modoEdicion = false;
+        encuestaEditandoID = null;
+        encuestaActualID = null;
+
+        // Cambiar visibilidad de botones
+        btnGuardarEncuesta.gameObject.SetActive(true);
+        btnActualizarEncuesta.gameObject.SetActive(false);
+
+        Debug.Log($"Botones finalizados - Guardar: {btnGuardarEncuesta.gameObject.activeSelf}, Actualizar: {btnActualizarEncuesta.gameObject.activeSelf}");
+
+        // Limpiar campos
+        LimpiarCampos();
+
+        // Volver a la vista principal
+        Invoke("volverinicioVistaController", 2f);
+    }
+
+    void volverinicioVistaController()
+    {
+        vistaController.Inicio();
+    }
+    private void ActualizarEncuestaEnFirebase(string encuestaID, string titulo, string descripcion,
+                                       string codigoAcceso, List<Dictionary<string, object>> preguntasData)
+    {
+        Dictionary<string, object> updates = new Dictionary<string, object>()
+    {
+        { "titulo", titulo },
+        { "descripcion", descripcion },
+        { "preguntas", preguntasData },
+        { "fechaActualizacion", FieldValue.ServerTimestamp }
+    };
+
+        db.Collection("users").Document(userId).Collection("encuestas").Document(encuestaID)
+            .UpdateAsync(updates).ContinueWithOnMainThread(task =>
+            {
+                if (task.IsCompleted)
+                {
+                    ShowMessage("Encuesta actualizada exitosamente!", Color.green);
+                    LimpiarCampos();
+                    CargarEncuestas();
+                }
+                else if (task.IsFaulted)
+                {
+                    ShowMessage("Error al actualizar encuesta, guardando localmente...", Color.red);
+                    ActualizarEncuestaLocalmente(encuestaID, titulo, descripcion, codigoAcceso, preguntasData);
+                }
+            });
+    }
+
+    private void ActualizarEncuestaLocalmente(string encuestaID, string titulo, string descripcion,
+                                            string codigoAcceso, List<Dictionary<string, object>> preguntasData)
+    {
+        string claveUsuario = $"Encuestas_{userId}";
+        List<string> encuestasUsuario = ObtenerListaDeEncuestas(userId);
+
+        // Buscar y actualizar la encuesta existente
+        for (int i = 0; i < encuestasUsuario.Count; i++)
+        {
+            EncuestaData encuesta = JsonUtility.FromJson<EncuestaData>(encuestasUsuario[i]);
+            if (encuesta.id == encuestaID)
+            {
+                encuesta.titulo = titulo;
+                encuesta.descripcion = descripcion;
+                encuesta.preguntas = preguntasData;
+                encuestasUsuario[i] = JsonUtility.ToJson(encuesta);
+                break;
+            }
+        }
+
+        PlayerPrefs.SetString(claveUsuario, JsonUtility.ToJson(new ListaEncuestas(encuestasUsuario)));
+        PlayerPrefs.Save();
+        ShowMessage("Cambios guardados localmente. Se sincronizarán cuando haya conexión.", new Color(1f, 0.5f, 0f));
+        LimpiarCampos();
+        CargarEncuestas();
+    }
     private void CambiarEstadoEncuesta(string encuestaID, bool activo)
     {
         Dictionary<string, object> updateData = new Dictionary<string, object>
@@ -579,18 +886,102 @@ public class EncuestaManager : MonoBehaviour
 
         return JsonUtility.FromJson<ListaEncuestas>(json).encuestas;
     }
+    private void MostrarPanelConfirmacionEliminar()
+    {
+        panelConfirmacionEliminar.SetActive(true);
+        PanelGris.SetActive(true); // Oscurecer fondo
+    }
 
+    private void OcultarPanelConfirmacionEliminar()
+    {
+        panelConfirmacionEliminar.SetActive(false);
+        
+    }
+
+    private void EliminarEncuestaConfirmada()
+    {
+        if (string.IsNullOrEmpty(encuestaActualID))
+        {
+            ShowMessage("Error: No hay encuesta seleccionada", Color.red);
+            return;
+        }
+
+        if (HayInternet())
+        {
+            EliminarEncuestaDeFirebase(encuestaActualID);
+        }
+        else
+        {
+            EliminarEncuestaLocalmente(encuestaActualID);
+        }
+
+        OcultarPanelConfirmacionEliminar();
+        panelDetallesEncuesta.SetActive(false);
+    }
+
+    private void EliminarEncuestaDeFirebase(string encuestaID)
+    {
+        db.Collection("users").Document(userId).Collection("encuestas").Document(encuestaID)
+            .DeleteAsync()
+            .ContinueWithOnMainThread(task =>
+            {
+                if (task.IsCompleted)
+                {
+                    ShowMessage("Encuesta eliminada correctamente", Color.green);
+                    CargarEncuestas(); // Refrescar la lista
+                }
+                else
+                {
+                    ShowMessage("Error al eliminar, intentando eliminar localmente...", Color.red);
+                    EliminarEncuestaLocalmente(encuestaID);
+                }
+            });
+    }
+
+    private void EliminarEncuestaLocalmente(string encuestaID)
+    {
+        string claveUsuario = $"Encuestas_{userId}";
+        string json = PlayerPrefs.GetString(claveUsuario, "");
+
+        if (!string.IsNullOrEmpty(json))
+        {
+            ListaEncuestas listaEncuestas = JsonUtility.FromJson<ListaEncuestas>(json);
+            listaEncuestas.encuestas = listaEncuestas.encuestas
+                .Where(e => JsonUtility.FromJson<EncuestaData>(e).id != encuestaID)
+                .ToList();
+
+            PlayerPrefs.SetString(claveUsuario, JsonUtility.ToJson(listaEncuestas));
+            PlayerPrefs.Save();
+            ShowMessage("Encuesta eliminada localmente", new Color(1f, 0.5f, 0f));
+            CargarEncuestas(); // Refrescar la lista
+        }
+    }
     public void LimpiarCampos()
     {
         inputTituloEncuesta.text = "";
         inputDescripcion.text = "";
+
+        // Limpiar preguntas
         foreach (Transform child in contenedorPreguntas)
         {
             Destroy(child.gameObject);
         }
         listaPreguntas.Clear();
+
+        // Solo restablecer botones si NO estamos en modo edición
+        if (!modoEdicion)
+        {
+            btnGuardarEncuesta.gameObject.SetActive(true);
+            btnActualizarEncuesta.gameObject.SetActive(false);
+        }
+
+        Debug.Log($"Campos limpiados - ModoEdicion: {modoEdicion}, BtnGuardar: {btnGuardarEncuesta.gameObject.activeSelf}, BtnActualizar: {btnActualizarEncuesta.gameObject.activeSelf}");
     }
 
+    public void cerrarmodoedicion()
+    {
+        modoEdicion = false;
+    }
     private void ShowMessage(string message, Color color)
     {
         if (messageText == null) return;
