@@ -86,7 +86,7 @@ public class LoginController : MonoBehaviour
             PlayerPrefs.SetInt("rememberMe", 1);
             PlayerPrefs.SetString("userEmail", email);
             PlayerPrefs.SetString("userPassword", password);
-            SceneManager.LoadScene("Inicio"); // O ajusta según tu lógica
+            
             intentosFallidosUseCase.ResetearIntentos(); // Éxito: resetea intentos
             OnLoginSuccess();
         }
