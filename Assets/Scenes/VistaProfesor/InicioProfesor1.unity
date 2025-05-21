@@ -3735,7 +3735,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: New Text
+  m_text: 
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -8643,7 +8643,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -246.86606, y: -145}
+  m_AnchoredPosition: {x: -232, y: -143}
   m_SizeDelta: {x: 471.1161, y: 173.5628}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1441960410
@@ -10463,7 +10463,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: New Text
+  m_text: 
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -11348,7 +11348,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 242.04791, y: -145}
+  m_AnchoredPosition: {x: 256.91397, y: -143}
   m_SizeDelta: {x: 471.1161, y: 173.56}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1964165575
@@ -12100,7 +12100,7 @@ GameObject:
   - component: {fileID: 2050358440}
   - component: {fileID: 2050358439}
   m_Layer: 5
-  m_Name: Button
+  m_Name: BtnIrPerfilProfesor
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -12169,7 +12169,19 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 2050358440}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 1861273943}
+        m_TargetAssemblyTypeName: cambiarescena, Assembly-CSharp
+        m_MethodName: siguienteEscena
+        m_Mode: 5
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: Perfil_Profesor
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!114 &2050358440
 MonoBehaviour:
   m_ObjectHideFlags: 0
