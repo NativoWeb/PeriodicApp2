@@ -200,6 +200,26 @@ public class EncuestaManager : MonoBehaviour
                 return;
             }
 
+            // Validar opciones de la pregunta
+            var opciones = pregunta.ObtenerOpciones();
+            if (opciones.Count == 0)
+            {
+                ShowMessage($"La pregunta '{pregunta.inputPregunta.text}' no tiene opciones", Color.red);
+                Debug.LogError($"La pregunta '{pregunta.inputPregunta.text}' no tiene opciones.");
+                return;
+            }
+
+            // Validar que todas las opciones tengan texto
+            for (int j = 0; j < opciones.Count; j++)
+            {
+                if (string.IsNullOrWhiteSpace(opciones[j]))
+                {
+                    ShowMessage($"La opción {j + 1} de la pregunta '{pregunta.inputPregunta.text}' está vacía", Color.red);
+                    Debug.LogError($"La opción {j + 1} de la pregunta '{pregunta.inputPregunta.text}' está vacía.");
+                    return;
+                }
+            }
+
             bool tieneOpcionCorrecta = pregunta.ObtenerPregunta().opciones.Any(o => o.esCorrecta);
             if (!tieneOpcionCorrecta)
             {
@@ -207,47 +227,111 @@ public class EncuestaManager : MonoBehaviour
                 Debug.LogError($"La pregunta '{pregunta.inputPregunta.text}' no tiene opciones correctas.");
                 return;
             }
+            tieneOpcionCorrecta = false;
         }
 
         string titulo = inputTituloEncuesta.text;
         string descripcion = inputDescripcion.text;
         List<Dictionary<string, object>> preguntasData = PrepararDatosPreguntas();
 
-            string encuestaID = System.Guid.NewGuid().ToString();
-            string codigoAcceso = GenerarCodigoAcceso();
+        string encuestaID = modoEdicion ? encuestaEditandoID : System.Guid.NewGuid().ToString();
+        string codigoAcceso = modoEdicion ? txtCodigoEncuesta.text : GenerarCodigoAcceso();
 
-            if (HayInternet())
+        if (HayInternet())
+        {
+            if (modoEdicion)
+            {
+                ActualizarEncuestaEnFirebase(encuestaID, titulo, descripcion, codigoAcceso, preguntasData);
+            }
+            else
             {
                 GuardarEnFirebase(encuestaID, titulo, descripcion, codigoAcceso, preguntasData);
+            }
+        }
+        else
+        {
+            if (modoEdicion)
+            {
+                ActualizarEncuestaLocalmente(encuestaID, titulo, descripcion, codigoAcceso, preguntasData);
             }
             else
             {
                 GuardarLocalmente(encuestaID, titulo, descripcion, codigoAcceso, preguntasData);
             }
+        }
 
-            LimpiarCampos();
-        
+        LimpiarCampos();
     }
     public void ActualizarEncuesta()
     {
-        if (!modoEdicion || string.IsNullOrEmpty(encuestaEditandoID))
+        if (string.IsNullOrEmpty(userId))
         {
-            Debug.LogWarning("Intento de actualización fuera del modo edición");
-            GuardarEncuesta(); // Fallback a guardar como nueva
+            ShowMessage("Error: No hay un usuario autenticado.", Color.red);
+            Debug.LogError("No hay un usuario autenticado.");
             return;
         }
 
-        // Validaciones (las mismas que en GuardarEncuesta)
         if (string.IsNullOrEmpty(inputTituloEncuesta.text))
         {
             ShowMessage("El título de la encuesta no puede estar vacío", Color.red);
+            Debug.LogError("El título de la encuesta no puede estar vacío.");
+            return;
+        }
+
+        if (string.IsNullOrEmpty(inputDescripcion.text))
+        {
+            ShowMessage("La descripción no puede estar vacía", Color.red);
+            Debug.LogError("La descripción no puede estar vacía.");
             return;
         }
 
         if (listaPreguntas.Count == 0)
         {
             ShowMessage("Debes agregar al menos una pregunta", Color.red);
+            Debug.LogError("Debes agregar al menos una pregunta.");
             return;
+        }
+
+        // Validar cada pregunta individualmente
+        for (int i = 0; i < listaPreguntas.Count; i++)
+        {
+            PreguntaController pregunta = listaPreguntas[i];
+
+            if (string.IsNullOrEmpty(pregunta.inputPregunta.text))
+            {
+                ShowMessage($"La pregunta {i + 1} no tiene texto", Color.red);
+                Debug.LogError($"La pregunta {i + 1} no tiene texto.");
+                return;
+            }
+
+            // Validar opciones de la pregunta
+            var opciones = pregunta.ObtenerOpciones();
+            if (opciones.Count == 0)
+            {
+                ShowMessage($"La pregunta '{pregunta.inputPregunta.text}' no tiene opciones", Color.red);
+                Debug.LogError($"La pregunta '{pregunta.inputPregunta.text}' no tiene opciones.");
+                return;
+            }
+
+            // Validar que todas las opciones tengan texto
+            for (int j = 0; j < opciones.Count; j++)
+            {
+                if (string.IsNullOrWhiteSpace(opciones[j]))
+                {
+                    ShowMessage($"La opción {j + 1} de la pregunta '{pregunta.inputPregunta.text}' está vacía", Color.red);
+                    Debug.LogError($"La opción {j + 1} de la pregunta '{pregunta.inputPregunta.text}' está vacía.");
+                    return;
+                }
+            }
+
+            bool tieneOpcionCorrecta = pregunta.ObtenerPregunta().opciones.Any(o => o.esCorrecta);
+            if (!tieneOpcionCorrecta)
+            {
+                ShowMessage($"La pregunta '{pregunta.inputPregunta.text}' no tiene opciones correctas", Color.red);
+                Debug.LogError($"La pregunta '{pregunta.inputPregunta.text}' no tiene opciones correctas.");
+                return;
+            }
+            tieneOpcionCorrecta = false;
         }
 
         // Preparar datos
@@ -264,7 +348,7 @@ public class EncuestaManager : MonoBehaviour
         {
             ActualizarEncuestaLocalmente(encuestaEditandoID, titulo, descripcion, codigoAcceso, preguntasData);
         }
-
+        
         FinalizarEdicion();
     }
 
@@ -282,21 +366,24 @@ public class EncuestaManager : MonoBehaviour
 
             foreach (var opcionTexto in opciones)
             {
+                // Filtrar opciones vacías
+                if (string.IsNullOrWhiteSpace(opcionTexto)) continue;
+
                 bool esCorrecta = preguntaController.ObtenerPregunta().opciones
                     .FirstOrDefault(o => o.textoOpcion == opcionTexto)?.esCorrecta ?? false;
 
                 opcionesData.Add(new Dictionary<string, object>()
-                {
-                    { "texto", opcionTexto },
-                    { "esCorrecta", esCorrecta }
-                });
+            {
+                { "texto", opcionTexto },
+                { "esCorrecta", esCorrecta }
+            });
             }
 
             preguntasData.Add(new Dictionary<string, object>()
-            {
-                { "textoPregunta", preguntaController.inputPregunta.text },
-                { "opciones", opcionesData }
-            });
+        {
+            { "textoPregunta", preguntaController.inputPregunta.text },
+            { "opciones", opcionesData }
+        });
         }
 
         return preguntasData;
@@ -632,50 +719,63 @@ public class EncuestaManager : MonoBehaviour
         {
             Debug.Log("Mostrando encuesta para editar...");
 
-            // Verificar datos de la encuesta
-            Debug.Log($"Título: {encuesta.ContainsKey("titulo")}");
-            Debug.Log($"Descripción: {encuesta.ContainsKey("descripcion")}");
-            Debug.Log($"Preguntas: {encuesta.ContainsKey("preguntas")}");
+            // Verificar datos básicos
+            if (!encuesta.ContainsKey("titulo") || !encuesta.ContainsKey("descripcion") || !encuesta.ContainsKey("preguntas"))
+            {
+                ShowMessage("Error: Datos de encuesta incompletos", Color.red);
+                Debug.LogError("Datos de encuesta incompletos");
+                return;
+            }
 
             // Asignar título y descripción
             inputTituloEncuesta.text = encuesta["titulo"].ToString();
             inputDescripcion.text = encuesta["descripcion"].ToString();
-            Debug.Log($"Título asignado: {inputTituloEncuesta.text}");
-            Debug.Log($"Descripción asignada: {inputDescripcion.text}");
 
             // Cargar preguntas
             var preguntasData = (List<object>)encuesta["preguntas"];
-            Debug.Log($"Número de preguntas: {preguntasData.Count}");
-
             foreach (var preguntaObj in preguntasData)
             {
                 var preguntaData = (Dictionary<string, object>)preguntaObj;
-                Debug.Log($"Texto pregunta: {preguntaData["textoPregunta"]}");
+
+                // Validar estructura de pregunta
+                if (!preguntaData.ContainsKey("textoPregunta") || !preguntaData.ContainsKey("opciones"))
+                {
+                    Debug.LogWarning("Estructura de pregunta inválida, omitiendo...");
+                    continue;
+                }
 
                 AgregarPregunta();
                 PreguntaController nuevaPregunta = listaPreguntas.Last();
                 nuevaPregunta.inputPregunta.text = preguntaData["textoPregunta"].ToString();
-                Debug.Log($"Pregunta creada: {nuevaPregunta.inputPregunta.text}");
 
                 var opcionesData = (List<object>)preguntaData["opciones"];
-                Debug.Log($"Número de opciones: {opcionesData.Count}");
-
                 foreach (var opcionObj in opcionesData)
                 {
                     var opcionData = (Dictionary<string, object>)opcionObj;
-                    nuevaPregunta.AgregarOpcionUI(
-                        opcionData["texto"].ToString(),
-                        (bool)opcionData["esCorrecta"]
-                    );
-                    Debug.Log($"Opción agregada: {opcionData["texto"]} - Correcta: {opcionData["esCorrecta"]}");
+
+                    // Validar estructura de opción
+                    if (!opcionData.ContainsKey("texto") || !opcionData.ContainsKey("esCorrecta"))
+                    {
+                        Debug.LogWarning("Estructura de opción inválida, omitiendo...");
+                        continue;
+                    }
+
+                    string textoOpcion = opcionData["texto"].ToString();
+                    bool esCorrecta = (bool)opcionData["esCorrecta"];
+
+                    // Solo agregar si tiene texto
+                    if (!string.IsNullOrWhiteSpace(textoOpcion))
+                    {
+                        nuevaPregunta.AgregarOpcionUI(textoOpcion, esCorrecta);
+                    }
                 }
             }
 
             vistaController.CambiarAVistaEdicion();
-            Debug.Log("Edición iniciada correctamente");
         }
         catch (System.Exception e)
         {
+            ShowMessage("Error al cargar encuesta para editar", Color.red);
             Debug.LogError($"Error en MostrarEncuestaParaEditar: {e.Message}\n{e.StackTrace}");
         }
     }
