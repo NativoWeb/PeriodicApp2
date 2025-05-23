@@ -119,10 +119,6 @@ public class PreguntaController : MonoBehaviour
             // Desactivar el botón hasta que la última opción tenga texto
             btnAgregarOpcion.interactable = false;
         }
-
-
-
-
     }
     // Añade este método a tu clase PreguntaController
     public void AgregarOpcionUI(string textoOpcion, bool esCorrecta)
@@ -213,9 +209,9 @@ public class PreguntaController : MonoBehaviour
         }
     }
 
-    public Pregunta ObtenerPregunta()
+    public Preguntas ObtenerPregunta()
     {
-        return new Pregunta(inputPregunta.text, new List<Opcion>(opciones));
+        return new Preguntas(inputPregunta.text, new List<Opcion>(opciones));
     }
 
     public List<string> ObtenerOpciones()

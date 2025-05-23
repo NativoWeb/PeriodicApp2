@@ -11,8 +11,6 @@ public class Preguntas
         this.opciones = opciones;
     }
 }
-
-
 public class Opcion
 {
     public string textoOpcion;
