@@ -22,4 +22,17 @@ public class cambiarescena : MonoBehaviour
         PlayerPrefs.SetString("CargarVuforia", "Profesor");
         SceneManager.LoadScene("VuforiaNuevo");
     }
+
+    public void DevolverComunidades()
+    {
+        string Ocupacion = PlayerPrefs.GetString("TempOcupacion", "");
+        if(Ocupacion == "Estudiante")
+        {
+            SceneManager.LoadScene("Perfil_Usuario");
+        }
+        else
+        {
+            SceneManager.LoadScene("InicioProfesor1");
+        }
+    }
 }

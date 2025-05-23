@@ -14,7 +14,7 @@ public class FirebaseManager : MonoBehaviour
         Debug.Log("✅ Firestore Inicializado Correctamente");
     }
 
-    //public void GuardarEncuesta(string encuestaID, string titulo, List<Pregunta> preguntas)
+    //public void GuardarEncuesta(string encuestaID, string titulo, List<Pregunta> preguntas) 
     //{
     //    if (db == null)
     //    {

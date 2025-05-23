@@ -17,7 +17,7 @@ public class SolicitudesManager : MonoBehaviour
 
     [Header("Live Search Settings")]
     public float searchDelay = 0.3f; // Retraso en segundos antes de ejecutar la búsqueda
-    public int minSearchChars = 1; // Mínimo de caracteres para iniciar búsqueda
+    public int minSearchChars = 2; // Mínimo de caracteres para iniciar búsqueda
 
     private FirebaseFirestore db;
     private FirebaseAuth auth;
