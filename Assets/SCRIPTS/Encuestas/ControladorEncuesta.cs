@@ -118,7 +118,6 @@ public class ControladorEncuesta : MonoBehaviour
         firestore = FirebaseFirestore.DefaultInstance;
         
     }
-
     // M�todo para manejar el temporizador
     void Update()
     {
@@ -140,7 +139,6 @@ public class ControladorEncuesta : MonoBehaviour
         }
 
     }
-
     void ActualizarTextoTiempo()
     {
         TextTimer.text = tiempoRestante.ToString("00") + " Segundos";

@@ -11,11 +11,17 @@ using System;
 using Firebase.Database;
 using System.Collections;
 using UnityEngine.SceneManagement;
+using Google.Protobuf.WellKnownTypes;
+using UnityEngine.Networking;
 
 public class SeleccionJuegoPanelController : MonoBehaviour
 {
     FirebaseFirestore db;
     private DatabaseReference realtime;
+
+
+    private DatabaseReference presenciaJugadorRef;
+
     private FirebaseAuth auth;
 
     [Header("Paneles")]
@@ -26,9 +32,7 @@ public class SeleccionJuegoPanelController : MonoBehaviour
     public GameObject amigoPrefab;
     public Transform contentPanel;
 
-    public Button CombateQuimico;
-    public Button Quimicados;
-    private string JuegoSeleccionado;
+    public Button btnAmigos;
 
     GameObject nuevoAmigo;
     private string juegoActual;
@@ -39,8 +43,32 @@ public class SeleccionJuegoPanelController : MonoBehaviour
         db = FirebaseFirestore.DefaultInstance;
         auth = FirebaseAuth.DefaultInstance;
         realtime = FirebaseDatabase.DefaultInstance.RootReference;
+        StartCoroutine(VerificarConexionPeriodicamente());
     }
 
+    private IEnumerator VerificarConexionPeriodicamente()
+    {
+        while (true)
+        {
+            yield return VerificarConexionReal();
+            yield return new WaitForSeconds(2f);
+        }
+    }
+    private IEnumerator VerificarConexionReal()
+    {
+        UnityWebRequest request = new UnityWebRequest("https://www.google.com");
+        request.timeout = 3;
+        yield return request.SendWebRequest();
+
+        if (request.result != UnityWebRequest.Result.Success)
+        {
+            btnAmigos.interactable = false;
+        }
+        else
+        {
+            btnAmigos.interactable = true;
+        }
+    }
     public void cerrarPanel()
     {
         panelSeleccionModo.SetActive(false);
@@ -50,15 +78,6 @@ public class SeleccionJuegoPanelController : MonoBehaviour
     public void SeleccionarJuego()
     {
         // Mostrar panel de selección de modo
-        CombateQuimico.onClick.AddListener(() =>
-        {
-            JuegoSeleccionado = "Combate Quimico";
-        }); 
-        Quimicados.onClick.AddListener(() =>
-        {
-            JuegoSeleccionado = "Quimicados";
-        });
-
         panelSeleccionModo.SetActive(true);
     }
 
@@ -141,17 +160,13 @@ public class SeleccionJuegoPanelController : MonoBehaviour
         return string.IsNullOrEmpty(filtroNombre) ||
                nombreAmigo.ToLower().Contains(filtroNombre.ToLower());
     }
-
-
-
     void CreateFriendCard(string amigoId, string nombreAmigo)
     {
-        // Cargar rango
-        LoadFriendRank(amigoId, nuevoAmigo);
-
         nuevoAmigo = Instantiate(amigoPrefab, contentPanel);
         nuevoAmigo.transform.Find("TxtNombre").GetComponent<TMP_Text>().text = nombreAmigo;
-        nuevoAmigo.transform.Find("BtnInvitar").GetComponent<Button>().onClick.AddListener(() => InvitarAmigo(amigoId, JuegoSeleccionado));
+        nuevoAmigo.transform.Find("BtnInvitar").GetComponent<Button>().onClick.AddListener(() => InvitarAmigo(amigoId, "Combate Quimico"));
+        // Cargar rango
+        LoadFriendRank(amigoId, nuevoAmigo);
     }
     void LoadFriendRank(string amigoId, GameObject amigoUI)
     {
@@ -177,26 +192,11 @@ public class SeleccionJuegoPanelController : MonoBehaviour
         PanelAmigos.SetActive(false);
         string miUID = FirebaseAuth.DefaultInstance.CurrentUser.UserId;
         string partidaId = realtime.Child("partidas").Push().Key;
-
-        string invitacionId;
-        string invitacionRealTime;
-
         PlayerPrefs.SetString("PartidaId", partidaId);
         PlayerPrefs.Save();
+        string invitacionId = realtime.Child("invitaciones").Child(amigoUID).Push().Key; // ID único
 
-        if (JuegoSeleccionado == "Combate Quimico")
-        {
-            invitacionId = realtime.Child("invitaciones").Child(amigoUID).Push().Key; // ID único
-            invitacionRealTime = "invitaciones";
-        }
-        else
-        {
-            invitacionId = realtime.Child("QuimicadosInvitaciones").Child(amigoUID).Push().Key; // ID único
-            invitacionRealTime = "QuimicadosInvitaciones";
-        }
-
-
-            Dictionary<string, object> datosPartida = new Dictionary<string, object>
+        Dictionary<string, object> datosPartida = new Dictionary<string, object>
     {
         { "jugadorA", miUID },
         { "jugadorB", amigoUID },
@@ -223,31 +223,78 @@ public class SeleccionJuegoPanelController : MonoBehaviour
             [$"partidas/{partidaId}"] = datosPartida
         };
 
+        DatabaseReference estadoRef = realtime
+        .Child("invitaciones")
+        .Child(amigoUID)
+        .Child(invitacionId)
+        .Child("estado");
+
+        bool aceptado = false;
+
+        // ESCUCHA EN TIEMPO REAL
+        estadoRef.ValueChanged += (sender, args) =>
+        {
+            if (args.Snapshot.Exists && args.Snapshot.Value.ToString() == "aceptado")
+            {
+                aceptado = true;
+                Debug.Log("✅ Invitación aceptada, entrando a la partida...");
+                SceneManager.LoadScene("CombateQuimico");
+            }
+        };
+
+        // ACTUALIZAMOS LOS DATOS Y ESPERAMOS 5 SEGUNDOS COMO BACKUP
         realtime.UpdateChildrenAsync(updates).ContinueWith(async task =>
         {
             if (task.IsCompleted)
             {
-                await Task.Delay(5000); // Espera de 5 segundos
+                RegistrarPresencia();
 
-                // Consultamos si sigue pendiente
-                var invitacionSnap = await realtime.Child(invitacionRealTime).Child(amigoUID).Child(invitacionId).GetValueAsync();
+                await Task.Delay(5000);
 
-                if ((invitacionSnap.Exists && invitacionSnap.Child("estado").Value.ToString() == "pendiente")
-                || (invitacionSnap.Exists && invitacionSnap.Child("estado").Value.ToString() == "rechazada"))
+                // Si luego de 5 seg NO fue aceptado, revisamos su estado actual y decidimos
+                if (!aceptado)
                 {
-                    var deleteUpdates = new Dictionary<string, object>
+                    var invitacionSnap = await realtime
+                        .Child("invitaciones")
+                        .Child(amigoUID)
+                        .Child(invitacionId)
+                        .GetValueAsync();
+
+                    if ((invitacionSnap.Exists && invitacionSnap.Child("estado").Value.ToString() == "pendiente")
+                    || (invitacionSnap.Exists && invitacionSnap.Child("estado").Value.ToString() == "rechazada"))
                     {
-                        [$"invitaciones/{amigoUID}/{invitacionId}"] = null,
-                        [$"partidas/{partidaId}"] = null
-                    };
+                        var deleteUpdates = new Dictionary<string, object>
+                        {
+                            [$"invitaciones/{amigoUID}/{invitacionId}"] = null,
+                            [$"partidas/{partidaId}"] = null
+                        };
 
-                    await realtime.UpdateChildrenAsync(deleteUpdates);
-                }
-                else
-                {
-                    SceneManager.LoadScene("CombateQuimico");
+                        await realtime.UpdateChildrenAsync(deleteUpdates);
+                    }
                 }
             }
         });
+
     }
+
+    void RegistrarPresencia()
+    {
+        string partidaId = PlayerPrefs.GetString("PartidaId");
+
+        presenciaJugadorRef = FirebaseDatabase.DefaultInstance
+            .GetReference("partidas")
+            .Child(partidaId)
+            .Child("presencia")
+            .Child(auth.CurrentUser.UserId);
+
+        Dictionary<string, object> datosPresencia = new Dictionary<string, object>
+        {
+            { "conectado", true },
+            { "timestamp", ServerValue.Timestamp }
+        };
+
+        presenciaJugadorRef.SetValueAsync(datosPresencia);
+        presenciaJugadorRef.OnDisconnect().RemoveValue();
+    }
+
 }

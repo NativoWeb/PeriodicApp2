@@ -4,156 +4,276 @@ using TMPro;
 using Firebase.Firestore;
 using Firebase.Auth;
 using System.Collections;
-using System.Linq;
-using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
+using System.Linq;
+using Firebase.Extensions;
 
-public class ScrollToUser : MonoBehaviour
+public class ScrollToUser : MonoBehaviour, IRankingObserver
 {
-    public ScrollRect scrollRect; // Asigna el ScrollRect del ranking
-    public Transform content; // Asigna el Content del ScrollView
-
+    [Header("UI References")]
+    public ScrollRect scrollRect;
+    public RectTransform content;
     public TMP_Text nombreUsuarioText;
     public TMP_Text xpUsuarioText;
     public TMP_Text posicionUsuarioText;
 
-    private FirebaseFirestore db;
-    private FirebaseAuth auth;
-    private ListenerRegistration listener;
+    [Header("Content References")]
+    public RectTransform rankingContentGeneral;
+    public RectTransform rankingContentAmigos;
+    public RectTransform rankingContentComunidades;
 
-    void Start()
+    [Header("Button References")]
+    public Button btnRankingGeneral;
+    public Button btnRankingAmigos;
+    public Button btnRankingComunidades;
+
+    [Header("Animation Settings")]
+    [SerializeField] private float scrollDuration = 0.5f;
+    [SerializeField] private Color highlightColor = new Color(0.9f, 1f, 0.9f, 1f);
+    [SerializeField] private float highlightFlashDuration = 0.3f;
+    [SerializeField] private int highlightFlashCount = 3;
+
+    private string currentUserId;
+    private string currentUserName;
+    private int currentUserXP;
+    private int posicionGeneral;
+    private int posicionAmigos;
+    private int posicionComunidades;
+    private RankingMode currentMode = RankingMode.General; // Cambiado a RankingMode
+
+    private bool isInitialLoad = true;
+
+    private void Start()
     {
-        db = FirebaseFirestore.DefaultInstance;
-        auth = FirebaseAuth.DefaultInstance;
-        ObtenerInformacionUsuario();
-
+        InitializeUserData();
+        SetupButtonListeners();
+        RankingStateManager.Instance.RegisterObserver(this);
     }
 
-    private void ObtenerInformacionUsuario()
+    public void SetContentReady(RankingMode mode)
     {
-        StartCoroutine(ObtenerInformacionUsuarioCoroutine());
+        if (this.currentMode == mode)
+        {
+            StartCoroutine(ScrollAfterLayoutUpdate(0.1f));
+        }
     }
 
-    private IEnumerator ObtenerInformacionUsuarioCoroutine()
+    private void OnDestroy()
     {
-        if (auth.CurrentUser == null)
+        RankingStateManager.Instance?.UnregisterObserver(this);
+    }
+
+    private void InitializeUserData()
+    {
+        var auth = FirebaseAuth.DefaultInstance;
+        if (auth.CurrentUser != null)
         {
-            Debug.LogError("Usuario no autenticado.");
-            yield break;
-        }
-
-        string usuarioActual = auth.CurrentUser.DisplayName;
-        Debug.Log("Usuario actual: " + usuarioActual);
-
-        Task<QuerySnapshot> queryTask = db.Collection("users")
-            .OrderByDescending("xp")
-            .GetSnapshotAsync();
-
-        yield return new WaitUntil(() => queryTask.IsCompleted);
-
-        if (queryTask.Exception != null)
-        {
-            Debug.LogError("Error al obtener la información del usuario: " + queryTask.Exception.Message);
-            yield break;
-        }
-
-        QuerySnapshot snapshot = queryTask.Result;
-
-        if (!snapshot.Documents.Any())
-        {
-            Debug.LogWarning("No hay usuarios en la base de datos.");
-            yield break;
-        }
-
-        List<DocumentSnapshot> documentos = snapshot.Documents.ToList();
-        DocumentSnapshot usuarioDoc = documentos.FirstOrDefault(doc => doc.GetValue<string>("DisplayName") == usuarioActual);
-
-        if (usuarioDoc != null)
-        {
-            int xp = usuarioDoc.GetValue<int>("xp");
-            int posicion = documentos.IndexOf(usuarioDoc) + 1;
-
-            Debug.Log($"Usuario encontrado: {usuarioActual}, XP: {xp}, Posición: {posicion}");
-
-            StartCoroutine(UpdateUI(usuarioActual, xp, posicion));
-        }
-        else
-        {
-            Debug.LogWarning("Usuario no encontrado en la base de datos.");
+            currentUserId = auth.CurrentUser.UserId;
+            currentUserName = auth.CurrentUser.DisplayName;
+            GetUserXP();
         }
     }
-    IEnumerator UpdateUI(string usuario, int xp, int posicion)
+
+    private void GetUserXP()
     {
-        nombreUsuarioText.text = usuario;
-        xpUsuarioText.text = "XP: " + xp.ToString();
-        posicionUsuarioText.text = "#" + posicion.ToString();
-        yield return null;
+        FirebaseFirestore.DefaultInstance.Collection("users").Document(currentUserId)
+            .GetSnapshotAsync().ContinueWithOnMainThread(task =>
+            {
+                if (task.IsCompleted && task.Result.Exists)
+                {
+                    currentUserXP = task.Result.GetValue<int>("xp");
+                    UpdateUserUI();
+                }
+            });
+    }
+
+    private void SetupButtonListeners()
+    {
+        if (btnRankingGeneral != null)
+            btnRankingGeneral.onClick.AddListener(() => RankingStateManager.Instance.SwitchToGeneral());
+
+        if (btnRankingAmigos != null)
+            btnRankingAmigos.onClick.AddListener(() => RankingStateManager.Instance.SwitchToAmigos());
+
+        if (btnRankingComunidades != null)
+            btnRankingComunidades.onClick.AddListener(() => RankingStateManager.Instance.SwitchToComunidades());
+    }
+
+    // Implementación correcta de la interfaz IRankingObserver
+    public void OnRankingStateChanged(RankingMode newMode, string comunidadId)
+    {
+        currentMode = newMode;
+
+        switch (newMode)
+        {
+            case RankingMode.General:
+                SetActiveContent(rankingContentGeneral);
+                break;
+            case RankingMode.Amigos:
+                SetActiveContent(rankingContentAmigos);
+                break;
+            case RankingMode.Comunidades:
+                SetActiveContent(rankingContentComunidades);
+                break;
+        }
+
+        UpdateUserUI();
+
+        if (isInitialLoad)
+        {
+            isInitialLoad = false;
+            StartCoroutine(ScrollAfterLayoutUpdate(0.7f));
+        }
+    }
+
+    public void SetActiveContent(RectTransform activeContent)
+    {
+        if (rankingContentGeneral != null)
+            rankingContentGeneral.gameObject.SetActive(activeContent == rankingContentGeneral);
+        if (rankingContentAmigos != null)
+            rankingContentAmigos.gameObject.SetActive(activeContent == rankingContentAmigos);
+        if (rankingContentComunidades != null)
+            rankingContentComunidades.gameObject.SetActive(activeContent == rankingContentComunidades);
+
+        content = activeContent;
+        scrollRect.content = activeContent;
+    }
+
+    public void UpdateUserPosition(int position)
+    {
+        switch (currentMode)
+        {
+            case RankingMode.General:
+                posicionGeneral = position;
+                break;
+            case RankingMode.Amigos:
+                posicionAmigos = position;
+                break;
+            case RankingMode.Comunidades:
+                posicionComunidades = position;
+                break;
+        }
+
+        UpdateUserUI();
+    }
+
+    private void UpdateUserUI()
+    {
+        int currentPosition = 0;
+
+        switch (currentMode)
+        {
+            case RankingMode.General:
+                currentPosition = posicionGeneral;
+                break;
+            case RankingMode.Amigos:
+                currentPosition = posicionAmigos;
+                break;
+            case RankingMode.Comunidades:
+                currentPosition = posicionComunidades;
+                break;
+        }
+
+        if (nombreUsuarioText != null)
+            nombreUsuarioText.text = currentUserName ?? "Usuario";
+
+        if (xpUsuarioText != null)
+            xpUsuarioText.text = $"XP: {currentUserXP}";
+
+        if (posicionUsuarioText != null)
+            posicionUsuarioText.text = $"#{currentPosition}";
     }
 
     public void ScrollToUserPosition()
     {
-        string usuarioActual = PlayerPrefs.GetString("DisplayName", "").Trim().ToLower();
-        Debug.Log("Usuario actual: " + usuarioActual);
-        Debug.Log("Número de elementos en content: " + content.childCount);
-
-        foreach (Transform child in content)
+        if (gameObject.activeInHierarchy)
         {
-            TMP_Text nombre = child.GetComponentInChildren<TMP_Text>(true);
-            string nombreTexto = nombre != null ? nombre.text.Trim().ToLower() : "N/A";
-
-
-            if (nombre != null && nombreTexto == usuarioActual)
-            {
-                Debug.Log("Usuario encontrado en: " + child.name);
-
-                Canvas.ForceUpdateCanvases();
-                LayoutRebuilder.ForceRebuildLayoutImmediate((RectTransform)content);
-
-                RectTransform targetRect = child.GetComponent<RectTransform>();
-                RectTransform contentRect = (RectTransform)content;
-
-                float contentHeight = contentRect.rect.height;
-                float targetY = Mathf.Abs(targetRect.anchoredPosition.y);
-                float normalizedPosition = 1 - (targetY / contentHeight);
-
-                StartCoroutine(SmoothScrollToPosition(normalizedPosition));
-                StartCoroutine(AnimateUserBox(child));
-                break;
-            }
+            StartCoroutine(ScrollAfterLayoutUpdate(0.1f));
         }
     }
 
-    IEnumerator SmoothScrollToPosition(float targetPosition)
+    private IEnumerator ScrollAfterLayoutUpdate(float delay)
     {
-        float startPos = scrollRect.verticalNormalizedPosition;
-        float time = 0f;
-        float duration = 0.3f;
+        yield return new WaitForSeconds(delay);
+        yield return new WaitForEndOfFrame();
+        Canvas.ForceUpdateCanvases();
+        yield return new WaitForEndOfFrame();
 
-        while (time < duration)
+        var userElement = FindUserElementInContent();
+        if (userElement == null) yield break;
+
+        float normalizedPosition = CalculateCenteredScrollPosition(userElement);
+        yield return StartCoroutine(SmoothScroll(normalizedPosition));
+        yield return StartCoroutine(HighlightElement(userElement));
+    }
+
+    private float CalculateCenteredScrollPosition(RectTransform target)
+    {
+        if (content == null || target == null) return 1f;
+
+        float contentHeight = content.rect.height;
+        float viewportHeight = scrollRect.viewport.rect.height;
+        float targetY = Mathf.Abs(target.anchoredPosition.y);
+        float targetHeight = target.rect.height;
+
+        float centeredPosition = 1 - ((targetY - (viewportHeight / 2) + (targetHeight / 2)) / (contentHeight - viewportHeight));
+        return Mathf.Clamp01(centeredPosition);
+    }
+
+    private RectTransform FindUserElementInContent()
+    {
+        if (content == null) return null;
+
+        foreach (RectTransform child in content)
         {
-            time += Time.deltaTime;
-            scrollRect.verticalNormalizedPosition = Mathf.Lerp(startPos, Mathf.Clamp01(targetPosition), time / duration);
+            Image img = child.GetComponent<Image>();
+            if (img != null && img.color == highlightColor)
+            {
+                return child;
+            }
+        }
+
+        foreach (RectTransform child in content)
+        {
+            TMP_Text nameText = child.GetComponentInChildren<TMP_Text>();
+            if (nameText != null && nameText.text.Equals(currentUserName, System.StringComparison.OrdinalIgnoreCase))
+            {
+                return child;
+            }
+        }
+
+        return null;
+    }
+
+    private IEnumerator SmoothScroll(float targetPosition)
+    {
+        float startPosition = scrollRect.verticalNormalizedPosition;
+        float elapsedTime = 0f;
+
+        while (elapsedTime < scrollDuration)
+        {
+            elapsedTime += Time.deltaTime;
+            float t = Mathf.Clamp01(elapsedTime / scrollDuration);
+            scrollRect.verticalNormalizedPosition = Mathf.Lerp(startPosition, targetPosition, t);
             yield return null;
         }
+
+        scrollRect.verticalNormalizedPosition = targetPosition;
     }
 
-    IEnumerator AnimateUserBox(Transform userBox)
+    private IEnumerator HighlightElement(RectTransform element)
     {
-        Image boxImage = userBox.GetComponent<Image>();
+        Image img = element.GetComponent<Image>();
+        if (img == null) yield break;
 
-        if (boxImage != null)
+        Color originalColor = img.color;
+
+        for (int i = 0; i < highlightFlashCount; i++)
         {
-            Color originalColor = boxImage.color;
-            Color highlightColor = new Color(1f, 1f, 1f, 0.5f);
-
-            for (int i = 0; i < 3; i++)
-            {
-                boxImage.color = highlightColor;
-                yield return new WaitForSeconds(0.3f);
-                boxImage.color = originalColor;
-                yield return new WaitForSeconds(0.3f);
-            }
+            img.color = highlightColor;
+            yield return new WaitForSeconds(highlightFlashDuration);
+            img.color = originalColor;
+            yield return new WaitForSeconds(highlightFlashDuration);
         }
     }
 }

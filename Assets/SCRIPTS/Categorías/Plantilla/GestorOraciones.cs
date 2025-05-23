@@ -9,6 +9,7 @@ using UnityEngine.SceneManagement;
 using Firebase.Extensions;
 using System.IO;
 using Newtonsoft.Json;
+using SimpleJSON;
 
 public class GestorOraciones : MonoBehaviour
 {
@@ -230,6 +231,13 @@ public class GestorOraciones : MonoBehaviour
         StartCoroutine(EsperarYSiguientePregunta());
     }
 
+    bool EsMisionAprobada()
+    {
+        float porcentaje = (float)respuestasCorrectas / preguntas.Count;
+        return porcentaje >= 0.7f; 
+    }
+
+
     IEnumerator Temporizador()
     {
         tiempoRestante = tiempoPorPregunta;
@@ -264,6 +272,84 @@ public class GestorOraciones : MonoBehaviour
         int experiencia = (respuestasCorrectas * 100) / preguntas.Count;
         txtResultado.text = $"Bonificación de racha: {racha * 10}";
 
+        panelFinal.SetActive(true);
+        int porcentaje = (respuestasCorrectas * 100) / preguntas.Count;
+        txtResultado.text = $"Tuviste {respuestasCorrectas} de {preguntas.Count} respuestas correctas. Bonificación de racha: {racha * 10}";
+
+        if (EsMisionAprobada())
+        {
+            Debug.Log("✅ Misión completada con éxito.");
+            if (GameObject.Find("IAController") != null)
+            {
+                GameObject.Find("IAController").GetComponent<AiTutor>().gestorMisiones.MarcarMisionComoCompletada();
+            }
+        }
+        else
+        {
+            Debug.Log("❌ Misión fallida, activando retroalimentación.");
+            string categoria = PlayerPrefs.GetString("CategoriaSeleccionada", "");
+            string elemento = PlayerPrefs.GetString("ElementoSeleccionado", "");
+            int idMision = PlayerPrefs.GetInt("MisionActual", -1);
+
+            
+            DarRecomendacion(categoria, elemento, idMision);
+            Debug.Log("❌ Misión fallida, activando retroalimentación.");
+        }
+
+    }
+
+    public void DarRecomendacion(string categoria, string elemento, int idMision)
+    {
+        string jsonString = PlayerPrefs.GetString("misionesCategoriasJSON", "");
+        var json = JSON.Parse(jsonString);
+        var categorias = json["Misiones_Categorias"]["Categorias"].AsObject;
+        var elementoJson = categorias[categoria]["Elementos"][elemento];
+        var misiones = elementoJson["misiones"].AsArray;
+
+        JSONNode misionFallida = null;
+        foreach (var m in misiones)
+        {
+            if (m.Value["id"].AsInt == idMision)
+            {
+                misionFallida = m.Value;
+                break;
+            }
+        }
+
+
+        if (misionFallida == null)
+        {
+            txtResultado.text ="😕 No encontré información suficiente para ayudarte.";
+            return;
+        }
+
+        string tipo = misionFallida["tipo"];
+        string descripcionElemento = elementoJson["descripcion"];
+        string mensaje = "";
+
+        switch (tipo)
+        {
+            case "QR":
+                mensaje = $"📲 ¡Intenta escanear el código QR del elemento {elemento} nuevamente! Asegúrate de tener buena luz y enfocar correctamente. ¿Sabías esto?: {descripcionElemento}";
+                break;
+            case "AR":
+                mensaje = $"🔍 ¿Ya exploraste el modelo 3D de {elemento}? Acércate y rota el objeto en realidad aumentada para ver detalles clave. Esto te ayudará a entender mejor la misión. 🧪\nDato: {descripcionElemento}";
+                break;
+            case "Juego":
+                mensaje = $"🎮 ¡Reintenta el mini juego del elemento {elemento}! Concéntrate en las pistas y recuerda que puedes repetirlo las veces que necesites. ¿Sabías que: {descripcionElemento}";
+                break;
+            case "Quiz":
+                mensaje = $"🧠 Si fallaste el quiz sobre {elemento}, revisa sus propiedades como número atómico, masa y electronegatividad. Aquí un dato útil: {descripcionElemento}";
+                break;
+            case "Evaluacion":
+                mensaje = $"📋 La evaluación final requiere que recuerdes todo sobre {elemento}. Repasa las otras misiones y lee bien las preguntas. Aquí va un dato importante: {descripcionElemento}";
+                break;
+            default:
+                mensaje = $"💡 ¿Sabías esto sobre {elemento}?: {descripcionElemento}";
+                break;
+        }
+
+        txtResultado.text= mensaje;
     }
 
     [System.Serializable]

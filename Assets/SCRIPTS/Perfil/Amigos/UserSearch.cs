@@ -12,16 +12,30 @@ using System;
 
 public class SearchUsers : MonoBehaviour
 {
+    [Header("Texts")]
+    public TMP_Text messageText; // Texto para mostrar mensajes
     public TMP_InputField searchInput;
+
+    [Header("Buttons")]
     public Button searchButton;
+
+    [Header("Prefab")]
     public Transform resultsContainer;
     public GameObject userResultPrefab; // Prefab con nombre y botón de agregar
-    public TMP_Text messageText; // Texto para mostrar mensajes
+
+    [Header("Live Search Settings")]
+    public float searchDelay = 0.3f; // Retraso en segundos antes de ejecutar la búsqueda
+    public int minSearchChars = 2; // Mínimo de caracteres para iniciar búsqueda
 
     FirebaseFirestore db;
     private FirebaseUser currentUser;
     private FirebaseAuth auth;
     string currentUserId;
+
+    // Variables para live search
+    private string lastSearchText = "";
+    private float lastSearchTime;
+    private bool searchScheduled = false;
 
     void Start()
     {
@@ -34,10 +48,48 @@ public class SearchUsers : MonoBehaviour
             currentUser = auth.CurrentUser;
         }
 
+        // Configurar listener para el input field
+        searchInput.onValueChanged.AddListener(OnSearchInputChanged);
+
+        // Mantener el botón de búsqueda tradicional también
         searchButton.onClick.AddListener(() => SearchUser(searchInput.text));
 
         // Mostrar usuarios aleatorios al inicio
         ShowRandomUsers();
+    }
+
+    void Update()
+    {
+        // Manejar la búsqueda programada
+        if (searchScheduled && Time.time >= lastSearchTime + searchDelay)
+        {
+            searchScheduled = false;
+            SearchUser(lastSearchText);
+        }
+    }
+
+    void OnSearchInputChanged(string text)
+    {
+        lastSearchText = text;
+
+        // Si está vacío, mostrar usuarios aleatorios
+        if (string.IsNullOrEmpty(text))
+        {
+            ShowRandomUsers();
+            return;
+        }
+
+        // Si no tiene suficientes caracteres, no buscar aún
+        if (text.Length < minSearchChars)
+        {
+            messageText.text = $"Escribe al menos {minSearchChars} caracteres para buscar";
+            return;
+        }
+
+        // Programar búsqueda después del retraso
+        lastSearchTime = Time.time;
+        searchScheduled = true;
+        messageText.text = "Escribiendo...";
     }
 
     void ShowRandomUsers()
@@ -122,6 +174,13 @@ public class SearchUsers : MonoBehaviour
             return;
         }
 
+        // Si no tiene suficientes caracteres, mostrar mensaje
+        if (username.Length < minSearchChars)
+        {
+            messageText.text = $"Escribe al menos {minSearchChars} caracteres para buscar";
+            return;
+        }
+
         // Limpiar resultados anteriores
         foreach (Transform child in resultsContainer)
         {
@@ -136,6 +195,13 @@ public class SearchUsers : MonoBehaviour
             .GetSnapshotAsync()
             .ContinueWithOnMainThread(task =>
             {
+                // Verificar si esta respuesta corresponde con la última búsqueda
+                if (username != lastSearchText)
+                {
+                    // Los resultados ya no son relevantes para lo que está escrito ahora
+                    return;
+                }
+
                 if (task.IsFaulted || task.IsCanceled)
                 {
                     Debug.LogError("Error buscando usuarios: " + task.Exception);
@@ -247,24 +313,7 @@ public class SearchUsers : MonoBehaviour
                 }
             });
     }
-    //void AcceptRequest(string documentId)
-    //{
-    //    Debug.Log("Aceptando solicitud con ID: " + documentId);
-    //    db.Collection("SolicitudesAmistad").Document(documentId)
-    //      .UpdateAsync("estado", "aceptada")
-    //      .ContinueWithOnMainThread(updateTask =>
-    //      {
-    //          if (updateTask.IsCompleted)
-    //          {
-    //              Debug.Log("Solicitud aceptada.");
-                 
-    //          }
-    //          else
-    //          {
-    //              Debug.LogError("Error al aceptar solicitud: " + updateTask.Exception);
-    //          }
-    //      });
-    //}
+
     void AddFriend(string friendId, string friendName, Button button)
     {
         string solicitudId = currentUserId + "_" + friendId;
@@ -291,37 +340,6 @@ public class SearchUsers : MonoBehaviour
                 }
             });
     }
-
-    //void AcceptFriendRequest(string friendId, Button button)
-    //{
-    //    string solicitudId1 = currentUserId + "_" + friendId;
-    //    string solicitudId2 = friendId + "_" + currentUserId;
-
-    //    // Actualizar ambas posibles solicitudes (por si acaso)
-    //    var batch = db.StartBatch();
-
-    //    // Actualizar solicitud donde currentUser es el remitente
-    //    var docRef1 = db.Collection("SolicitudesAmistad").Document(solicitudId1);
-    //    batch.Update(docRef1, new Dictionary<string, object> { { "estado", "aceptada" } });
-
-    //    // Actualizar solicitud donde friend es el remitente
-    //    var docRef2 = db.Collection("SolicitudesAmistad").Document(solicitudId2);
-    //    batch.Update(docRef2, new Dictionary<string, object> { { "estado", "aceptada" } });
-
-    //    batch.CommitAsync().ContinueWithOnMainThread(task =>
-    //    {
-    //        if (task.IsCompleted)
-    //        {
-    //            SetButtonState(button, Color.green, "Amigos", false);
-    //            Debug.Log("Solicitud de amistad aceptada");
-    //        }
-    //        else
-    //        {
-    //            Debug.LogError("Error al aceptar solicitud: " + task.Exception);
-    //        }
-    //    });
-    //}
-
 
     void SetButtonState(Button button, Color color, string text, bool interactable)
     {

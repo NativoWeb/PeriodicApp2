@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using System.Collections;
 using System.Collections.Generic;
 
 public class NavigationController : MonoBehaviour
@@ -8,6 +9,7 @@ public class NavigationController : MonoBehaviour
     private Stack<NavigationItem> navigationHistory = new Stack<NavigationItem>();
     private float edgeThreshold;
     private Vector2 touchStartPos;
+    private float touchStartTime;
 
     // Para manejar paneles dentro de la escena actual
     private GameObject currentPanel;
@@ -16,7 +18,7 @@ public class NavigationController : MonoBehaviour
     private class NavigationItem
     {
         public string sceneName;
-        public GameObject panel; // Panel activo cuando se guardó este item
+        public GameObject panel;
 
         public NavigationItem(string scene, GameObject panel = null)
         {
@@ -38,37 +40,64 @@ public class NavigationController : MonoBehaviour
             return;
         }
 
-        edgeThreshold = Screen.width * 0.015f;
+        edgeThreshold = Screen.width * 0.05f; // 5% del ancho de pantalla
         SceneManager.sceneLoaded += OnSceneLoaded;
     }
 
     void Update()
     {
+        // Si estamos en la escena "CombateQuimico", ignoramos toda la funcionalidad
+        if (SceneManager.GetActiveScene().name == "CombateQuimico" || SceneManager.GetActiveScene().name == "Quimicados" || SceneManager.GetActiveScene().name == "QuimicadosGame" || SceneManager.GetActiveScene().name == "Cuestionario")
+        {
+            return;
+        }
+
         // Botón "Atrás" en Android
         if (Input.GetKeyDown(KeyCode.Escape))
         {
             GoBack();
+            return;
         }
 
-        // Gestos táctiles en los bordes
-        if (Input.touchCount > 0)
+        // Gestos táctiles en los bordes (solo para móviles)
+        if (Application.isMobilePlatform && Input.touchCount > 0)
         {
             Touch touch = Input.GetTouch(0);
 
-            if (touch.phase == TouchPhase.Began)
+            switch (touch.phase)
             {
-                touchStartPos = touch.position;
-            }
+                case TouchPhase.Began:
+                    // Verificar si el toque comenzó en el borde izquierdo o derecho
+                    if (touch.position.x < edgeThreshold || touch.position.x > Screen.width - edgeThreshold)
+                    {
+                        touchStartPos = touch.position;
+                        touchStartTime = Time.time;
+                    }
+                    break;
 
-            if (touch.phase == TouchPhase.Ended)
-            {
-                float swipeDistance = Mathf.Abs(touch.position.x - touchStartPos.x);
-                bool isSwipe = swipeDistance > Screen.width * 0.1f;
+                case TouchPhase.Ended:
+                    // Solo procesar si comenzó en el borde
+                    if (touchStartPos != Vector2.zero)
+                    {
+                        float swipeDistance = touch.position.x - touchStartPos.x;
+                        float swipeDuration = Time.time - touchStartTime;
 
-                if (isSwipe && (touchStartPos.x < edgeThreshold || touchStartPos.x > Screen.width - edgeThreshold))
-                {
-                    GoBack();
-                }
+                        // Validar que sea un gesto rápido y con suficiente distancia
+                        if (Mathf.Abs(swipeDistance) > Screen.width * 0.1f && swipeDuration < 0.5f)
+                        {
+                            // Determinar dirección (izquierda o derecha)
+                            bool isBackSwipe = (touchStartPos.x < edgeThreshold && swipeDistance > 0) ||
+                                              (touchStartPos.x > Screen.width - edgeThreshold && swipeDistance < 0);
+
+                            if (isBackSwipe)
+                            {
+                                GoBack();
+                            }
+                        }
+
+                        touchStartPos = Vector2.zero; // Resetear
+                    }
+                    break;
             }
         }
     }
@@ -89,7 +118,11 @@ public class NavigationController : MonoBehaviour
     // Método para cambiar de panel dentro de la misma escena
     public void ShowPanel(GameObject panel)
     {
-        if (panel == null) return;
+        // Si estamos en la escena "CombateQuimico", no hacer nada
+        if (SceneManager.GetActiveScene().name == "CombateQuimico" || SceneManager.GetActiveScene().name == "Quimicados" || SceneManager.GetActiveScene().name == "QuimicadosGame" || SceneManager.GetActiveScene().name == "Cuestionario" || panel == null)
+        {
+            return;
+        }
 
         // Desactivar el panel actual si existe
         if (currentPanel != null)
@@ -111,6 +144,12 @@ public class NavigationController : MonoBehaviour
 
     public void GoBack()
     {
+        // Si estamos en la escena "CombateQuimico", no hacer nada
+        if (SceneManager.GetActiveScene().name == "CombateQuimico" || SceneManager.GetActiveScene().name == "Quimicados" || SceneManager.GetActiveScene().name == "QuimicadosGame" || SceneManager.GetActiveScene().name == "Cuestionario")
+        {
+            return;
+        }
+
         // Primero intentamos manejar paneles dentro de la misma escena
         if (panelHistory.Count > 0)
         {
@@ -144,19 +183,17 @@ public class NavigationController : MonoBehaviour
             // Reactivar el panel que estaba activo en esa escena (si había uno)
             if (previous.panel != null)
             {
-                // Necesitamos esperar a que la escena cargue completamente
-                // Podrías usar una corrutina para esto
                 StartCoroutine(ActivatePanelAfterSceneLoad(previous.panel));
             }
         }
         else
         {
-            // Si no hay más historial, salir de la aplicación (o lo que prefieras)
+            // Si no hay más historial, salir de la aplicación
             Application.Quit();
         }
     }
 
-    private System.Collections.IEnumerator ActivatePanelAfterSceneLoad(GameObject panel)
+    private IEnumerator ActivatePanelAfterSceneLoad(GameObject panel)
     {
         // Esperar hasta que la escena esté completamente cargada
         while (!SceneManager.GetActiveScene().isLoaded)

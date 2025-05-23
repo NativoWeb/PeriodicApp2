@@ -331,7 +331,7 @@ public class GeneradorElementosUI : MonoBehaviour
         PlayerPrefs.SetString("PanelRanking", "PanelRanking");
         PlayerPrefs.Save();
 
-        SceneManager.LoadScene("ranking");
+        SceneManager.LoadScene("Ranking1");
     }
 
     public async void ActualizarRangoSegunXP(int xp)

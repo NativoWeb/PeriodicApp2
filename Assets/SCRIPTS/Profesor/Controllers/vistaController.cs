@@ -13,7 +13,7 @@ public class vistaController : MonoBehaviour
 
     void Start()
     {
-        encuestaManager = FindObjectOfType<EncuestaManager>(); // Buscar automáticamente el script en la escena
+        encuestaManager = FindFirstObjectByType<EncuestaManager>(); // Buscar automáticamente el script en la escena
     }
 
     // Mostrar el panel de inicio
@@ -23,6 +23,7 @@ public class vistaController : MonoBehaviour
         CrearEncuestaPanel.SetActive(false);
         IniciarEncuestaPanel.SetActive(false);
         RankingPanel.SetActive(false);
+        encuestaManager.cerrarmodoedicion();
     }
 
     // Mostrar el panel de creación de encuestas y limpiar los campos
@@ -39,6 +40,14 @@ public class vistaController : MonoBehaviour
         {
             Debug.LogError("❌ No se encontró el EncuestaManager en la escena.");
         }
+    }
+
+    // Nuevo método específico para edición
+    public void CambiarAVistaEdicion()
+    {
+        CrearEncuestaPanel.SetActive(true);
+        InicioPanel.SetActive(false);
+        
     }
 
     public void IniciarEncuesta()
@@ -63,6 +72,5 @@ public class vistaController : MonoBehaviour
         InicioPanel.SetActive(false);
         CrearEncuestaPanel.SetActive(false);
         IniciarEncuestaPanel.SetActive(false);
-
     }
 }

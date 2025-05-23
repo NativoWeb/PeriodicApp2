@@ -36,7 +36,7 @@ public class PanelInvitacionController : MonoBehaviour
     public void Mostrar(string from, string juego, string _partidaId)
     {
         partidaId = _partidaId;
-        txtInfo.text = $"Has sido invitado por {from} a jugar: {juego}";
+        txtInfo.text = $"Has sido invitado por <b>{from}</b> a jugar: <b>{juego}</b>";
         gameObject.SetActive(true);
 
         Invoke("OcultarPanel", 5f);

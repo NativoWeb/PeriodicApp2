@@ -5,23 +5,26 @@ using Firebase.Firestore;
 using Firebase.Auth;
 using UnityEngine.SceneManagement;
 using System.Collections.Generic;
+using System.Collections;
 
 public class InvitacionManager : MonoBehaviour
 {
     public static InvitacionManager instancia;
 
-    public GameObject panelInvitacionGO; // Asignar prefab desde el Inspector
+    public GameObject panelInvitacionGO; // Asigna desde el Inspector
     private PanelInvitacionController panelInvitacion;
 
-    private FirebaseFirestore db;
+    FirebaseFirestore db;
     private DatabaseReference realtime;
-    private string miUID;
-    private string invitacionIdSeleccionada;
-    private string juegoSeleccionado;
-    private string rutaSeleccionada;
 
+    private DatabaseReference presenciaJugadorRef;
+
+    private string miUID;
+    string invitacionIdSeleccionada;
+    string remitente; 
     private HashSet<string> invitacionesProcesadas = new HashSet<string>();
 
+    private bool debeCambiarEscena = false;
     void Awake()
     {
         if (instancia == null)
@@ -42,115 +45,165 @@ public class InvitacionManager : MonoBehaviour
         realtime = FirebaseDatabase.DefaultInstance.RootReference;
         miUID = FirebaseAuth.DefaultInstance.CurrentUser?.UserId;
 
-        EscucharInvitacionesCombate();
-        EscucharInvitacionesQuimicados();
+        EscucharInvitaciones();
     }
-
-    void EscucharInvitacionesCombate()
+    void EscucharInvitaciones()
     {
         FirebaseDatabase.DefaultInstance
             .GetReference("invitaciones")
             .Child(miUID)
-            .ChildAdded += OnInvitacionCombateRecibida;
+            .ValueChanged += OnInvitacionRecibida;
     }
 
-    void EscucharInvitacionesQuimicados()
+    void OnInvitacionRecibida(object sender, ValueChangedEventArgs args)
     {
-        FirebaseDatabase.DefaultInstance
-            .GetReference("QuimicadosInvitaciones")
-            .Child(miUID)
-            .ChildAdded += OnInvitacionQuimicadosRecibida;
-    }
-
-    void OnInvitacionCombateRecibida(object sender, ChildChangedEventArgs args)
-    {
-        ProcesarInvitacion(args, "CombateQuimico", "invitaciones");
-    }
-
-    void OnInvitacionQuimicadosRecibida(object sender, ChildChangedEventArgs args)
-    {
-        ProcesarInvitacion(args, "Quimicados", "QuimicadosInvitaciones");
-    }
-
-    void ProcesarInvitacion(ChildChangedEventArgs args, string escenaDestino, string ruta)
-    {
-        if (args.DatabaseError != null || !args.Snapshot.Exists) return;
-
-        string invitacionId = args.Snapshot.Key;
-        string estado = args.Snapshot.Child("estado").Value?.ToString();
-        string from = args.Snapshot.Child("from").Value?.ToString();
-        string juego = args.Snapshot.Child("juego").Value?.ToString();
-        string partidaId = args.Snapshot.Child("partidaId").Value?.ToString();
-
-        if (string.IsNullOrEmpty(from) || estado != "pendiente") return;
-        if (invitacionesProcesadas.Contains(invitacionId)) return;
-
-        db.Collection("users").Document(from).GetSnapshotAsync().ContinueWithOnMainThread(task =>
+        if (args.DatabaseError != null)
         {
-            if (task.IsCompleted && task.Result.Exists)
+            Debug.LogError("Error al escuchar invitaciones: " + args.DatabaseError.Message);
+            return;
+        }
+
+        if (!args.Snapshot.Exists) return;
+
+        // args.Snapshot = nodo de todas las invitaciones de miUID
+        foreach (var invitacion in args.Snapshot.Children)
+        {
+            string invitacionId = invitacion.Key;
+
+            string estado = invitacion.Child("estado").Value.ToString();
+            string from = invitacion.Child("from").Value.ToString();
+            string juego = invitacion.Child("juego").Value.ToString();
+            string partidaId = invitacion.Child("partidaId").Value.ToString();
+
+            db.Collection("users").Document(from).GetSnapshotAsync().ContinueWith(task => {
+                if (task.IsCompleted && task.Result.Exists)
+                {
+                    string nombre1 = task.Result.GetValue<string>("DisplayName");
+                    remitente = nombre1;
+                }
+                else
+                {
+                    Debug.LogWarning("⚠️ No se encontró el usuario en Firestore.");
+                }
+            });
+
+            string receptor = args.Snapshot.Key; // debería seguir siendo miUID
+
+            if (receptor != miUID)
             {
-                string remitente = task.Result.GetValue<string>("DisplayName");
-                invitacionesProcesadas.Add(invitacionId);
-                MostrarPanelInvitacion(remitente, juego, partidaId, invitacionId, escenaDestino, ruta);
+                Debug.LogWarning("🔒 Invitación no destinada a este usuario.");
+                return;
             }
-        });
+
+            if (estado == "pendiente")
+            {
+                if (remitente != null)
+                {
+                    MostrarPanelInvitacion(remitente, juego, partidaId, invitacionId);
+                }
+                else
+                {
+                    return;
+                }
+                break; // Para que solo se procese una vez
+            }
+        }
     }
 
-    void MostrarPanelInvitacion(string remitente, string juego, string partidaId, string invitacionId, string escenaDestino, string ruta)
+    public void MostrarPanelInvitacion(string from, string juego, string partidaId, string invitacionId)
     {
         invitacionIdSeleccionada = invitacionId;
-        juegoSeleccionado = juego;
-        rutaSeleccionada = ruta;
 
         if (panelInvitacionGO != null)
         {
             GameObject canvas = GameObject.Find("Canvas");
-            var instanciaGO = Instantiate(panelInvitacionGO, canvas.transform);
-            panelInvitacion = instanciaGO.GetComponent<PanelInvitacionController>();
-            panelInvitacion.Mostrar(remitente, juego, partidaId);
+            panelInvitacionGO = Instantiate(panelInvitacionGO, canvas.transform);
+            panelInvitacion = panelInvitacionGO.GetComponent<PanelInvitacionController>();
         }
+        
+        panelInvitacion.Mostrar(from, juego, partidaId);
     }
-
     public void AceptarInvitacion()
     {
-        if (string.IsNullOrEmpty(invitacionIdSeleccionada)) return;
+        if (string.IsNullOrEmpty(invitacionIdSeleccionada))
+        {
+            return;
+        }
 
-        string ruta = rutaSeleccionada;
-        string escena = (ruta == "invitaciones") ? "CombateQuimico" : "Quimicados";
-
-        realtime.Child(ruta).Child(miUID).Child(invitacionIdSeleccionada)
+        realtime.Child("invitaciones").Child(miUID).Child(invitacionIdSeleccionada)
             .GetValueAsync().ContinueWithOnMainThread(task =>
             {
-                if (task.IsFaulted || !task.Result.Exists) return;
+                if (task.IsFaulted)
+                {
+                    return;
+                }
 
-                string partidaId = task.Result.Child("partidaId").Value?.ToString();
-                if (string.IsNullOrEmpty(partidaId)) return;
+                if (task.IsCompleted && task.Result.Exists)
+                {
+                    var snap = task.Result;
 
-                PlayerPrefs.SetString("PartidaId", partidaId);
-                PlayerPrefs.SetString("modoJuego", "online");
-                PlayerPrefs.Save();
+                    if (!snap.HasChild("partidaId"))
+                    {
+                        return;
+                    }
 
-                realtime.Child(ruta).Child(miUID).Child(invitacionIdSeleccionada).Child("estado")
+                    string partidaId = snap.Child("partidaId").Value.ToString();
+
+                    // Guardar partidaId y cambiar escena
+                    PlayerPrefs.SetString("PartidaId", partidaId);
+                    PlayerPrefs.SetString("modoJuego", "online");
+                    PlayerPrefs.Save();
+
+                    RegistrarPresencia();
+
+                    // Cambiar el estado de la invitación
+                    realtime.Child("invitaciones").Child(miUID).Child(invitacionIdSeleccionada).Child("estado")
                     .SetValueAsync("aceptado").ContinueWithOnMainThread(updateTask =>
                     {
                         if (updateTask.IsCompleted)
                         {
-                            Debug.Log("✅ Estado actualizado. Cargando escena...");
-                            SceneManager.LoadScene(escena);
+                            Debug.Log("✅ Estado de invitación actualizado. Cargando escena...");
+                            SceneManager.LoadScene("CombateQuimico");
                         }
                         else
                         {
-                            Debug.LogError("❌ Error al actualizar el estado.");
+                            Debug.LogError("❌ No se pudo actualizar el estado de la invitación.");
                         }
                     });
+                }
+                else
+                {
+                    Debug.LogError("❌ No se encontró la invitación.");
+                }
             });
+    }
+
+
+    void RegistrarPresencia()
+    {
+        string partidaId = PlayerPrefs.GetString("PartidaId");
+
+        presenciaJugadorRef = FirebaseDatabase.DefaultInstance
+            .GetReference("partidas")
+            .Child(partidaId)
+            .Child("presencia")
+            .Child(miUID);
+
+        Dictionary<string, object> datosPresencia = new Dictionary<string, object>
+    {
+        { "conectado", true },
+        { "timestamp", ServerValue.Timestamp }
+    };
+
+        presenciaJugadorRef.SetValueAsync(datosPresencia);
+        presenciaJugadorRef.OnDisconnect().RemoveValue();
     }
 
     public void RechazarInvitacion()
     {
-        if (string.IsNullOrEmpty(invitacionIdSeleccionada)) return;
-
-        realtime.Child(rutaSeleccionada).Child(miUID).Child(invitacionIdSeleccionada).Child("estado")
+        // Cambiar estado de la invitación en Firebase
+        realtime.Child("invitaciones").Child(miUID).Child(invitacionIdSeleccionada).Child("estado")
             .SetValueAsync("rechazada");
     }
+
 }
