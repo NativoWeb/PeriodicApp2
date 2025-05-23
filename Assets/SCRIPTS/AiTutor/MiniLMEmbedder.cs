@@ -41,31 +41,60 @@ public class MiniLMEmbedder : MonoBehaviour
 
     public float[] ObtenerEmbedding(string texto)
     {
-        long[] tokens = Tokenizar(texto);
-        var inputTensor = new DenseTensor<long>(new[] { 1, tokens.Length });
+        Debug.Log("🔧 Generando embedding para: " + texto);
 
+        if (vocab == null)
+        {
+            Debug.LogError("❌ Vocabulario no cargado.");
+            return new float[384]; // evitar crash
+        }
+
+        long[] tokens = Tokenizar(texto);
+
+        if (tokens.Length == 0)
+        {
+            Debug.LogError("❌ Tokenización fallida, no se generaron tokens.");
+            return new float[384];
+        }
+
+        var inputTensor = new DenseTensor<long>(new[] { 1, tokens.Length });
+        var tokenTypeTensor = new DenseTensor<long>(new[] { 1, tokens.Length });
+        var attentionMask = new DenseTensor<long>(new[] { 1, tokens.Length });
         for (int i = 0; i < tokens.Length; i++)
-            inputTensor[0, i] = tokens[i];
+        {
+            tokenTypeTensor[0, i] = 0; // todos del mismo segmento
+            attentionMask[0, i] = tokens[i] != 0 ? 1 : 0; // 1 para tokens válidos, 0 para padding
+        }
 
         var inputs = new List<NamedOnnxValue>
         {
-            NamedOnnxValue.CreateFromTensor("input_ids", inputTensor)
+            NamedOnnxValue.CreateFromTensor("input_ids", inputTensor),
+            NamedOnnxValue.CreateFromTensor("token_type_ids", tokenTypeTensor),
+            NamedOnnxValue.CreateFromTensor("attention_mask", attentionMask)
         };
+
+
+
+        Debug.Log("📤 Enviando input al modelo...");
 
         using var resultados = session.Run(inputs);
         var salida = resultados.First().AsTensor<float>();
 
-        // Promedio de los embeddings de salida (CLS + cada token)
-        var vector = new float[salida.Dimensions[2]];
-        for (int i = 0; i < salida.Dimensions[1]; i++)  // tokens
-            for (int j = 0; j < salida.Dimensions[2]; j++)  // embedding
+        Debug.Log($"📥 Modelo respondió. Shape: [{salida.Dimensions[0]}, {salida.Dimensions[1]}, {salida.Dimensions[2]}]");
+
+        float[] vector = new float[salida.Dimensions[2]];
+        for (int i = 0; i < salida.Dimensions[1]; i++)
+            for (int j = 0; j < salida.Dimensions[2]; j++)
                 vector[j] += salida[0, i, j];
 
         for (int j = 0; j < vector.Length; j++)
             vector[j] /= salida.Dimensions[1];
 
+        Debug.Log("✅ Embedding generado correctamente.");
         return vector;
     }
+
+
 
     private long[] Tokenizar(string texto)
     {

@@ -1,11 +1,11 @@
 using System.Collections.Generic;
 
-public class Pregunta
+public class Preguntas
 {
     public string textoPregunta;
     public List<Opcion> opciones;
 
-    public Pregunta(string texto, List<Opcion> opciones)
+    public Preguntas(string texto, List<Opcion> opciones)
     {
         this.textoPregunta = texto;
         this.opciones = opciones;
