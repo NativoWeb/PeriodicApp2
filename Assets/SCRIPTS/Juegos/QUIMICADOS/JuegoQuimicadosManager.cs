@@ -28,6 +28,8 @@ public class JuegoPreguntadosManager : MonoBehaviour
     [Header("Text")]
     public TMP_Text TxtResultado;
     public TMP_Text TxtExp;
+    public TMP_Text txtCoronasA;
+    public TMP_Text txtCoronasB;
 
     [Header("Paneles")]
     public GameObject PanelResultado;
@@ -56,7 +58,7 @@ public class JuegoPreguntadosManager : MonoBehaviour
 
     [Header("Progreso UI")]
     public Image progressImage;     // Image Type = Filled
-    public int requiredCorrect = 4; // cuántas correctas para llenarla
+    public int requiredCorrect = 3; // cuántas correctas para llenarla
     public Image ImgLogro;
 
     [Header("PREFABS")]
@@ -64,6 +66,9 @@ public class JuegoPreguntadosManager : MonoBehaviour
     public GameObject PrefabCategoriaCompletada;
 
     private int correctCount = 0;
+
+    int coronasA = 0;
+    int coronasB = 0;
 
     private FirebaseAuth auth;
     private FirebaseFirestore db;
@@ -82,7 +87,8 @@ public class JuegoPreguntadosManager : MonoBehaviour
         uidActual = auth.CurrentUser.UserId;
 
         partidaId = PlayerPrefs.GetString("partidaIdQuimicados");
-        
+        BtnActivarCategoria.interactable = false;
+
         StartCoroutine(VerificarConexionPeriodicamente());
 
         if (string.IsNullOrEmpty(partidaId))
@@ -142,7 +148,7 @@ public class JuegoPreguntadosManager : MonoBehaviour
         {
         "MetalesAlcalinos", "MetalesAlcalinoterreos", "MetalesTransicion",
         "MetalesPotransicionales", "Metaloides", "NoMetalesReactivos", "GasesNobles",
-        "Lantánidos", "Actínoides", "PropiedadesDesconocidas"
+        "Lantanidos", "Actinoides", "PropiedadesDesconocidas"
         };
 
         db.Collection("partidasQuimicados").Document(partidaId).GetSnapshotAsync().ContinueWithOnMainThread(task =>
@@ -170,8 +176,8 @@ public class JuegoPreguntadosManager : MonoBehaviour
                     EscucharCambiosPartida(partidaId);
 
                     LoadCoronaProgress();
-                    int coronasA = 0;
-                    int coronasB = 0;
+                    coronasA = 0;
+                    coronasB = 0;
 
                     // Cargar para jugador A
                     if (datos.ContainsKey("CategoriasJugadorA"))
@@ -249,6 +255,7 @@ public class JuegoPreguntadosManager : MonoBehaviour
     }
     void MostrarVictoria(bool gane)
     {
+        PanelResultado.SetActive(true);
         if (gane)
         {
             Debug.Log("🎉 ¡Ganaste la partida!");
@@ -379,7 +386,6 @@ public class JuegoPreguntadosManager : MonoBehaviour
 
         // Obtener referencias dentro del prefab
         Image img = instancia.transform.Find("ImgCategoria").GetComponent<Image>();
-        GameObject panel = instancia.transform.Find("PanelPunto").gameObject;
 
         // Cargar imagen desde Resources si tienes imágenes nombradas como las categorías
         Sprite sprite = Resources.Load<Sprite>($"images/CategoriasQuimicados/{nombreCategoria}");
@@ -393,12 +399,12 @@ public class JuegoPreguntadosManager : MonoBehaviour
         if (completada)
         {
             img.color = Color.green;
-            panel.GetComponent<Image>().color = Color.green;
+            txtCoronasA.text = coronasA.ToString();
+            txtCoronasB.text = coronasB.ToString();
         }
         else
         {
             img.color = Color.gray;
-            panel.GetComponent<Image>().color = Color.gray;
         }
     }
     string ObtenerRutaAvatar(string rango)
@@ -513,19 +519,28 @@ public class JuegoPreguntadosManager : MonoBehaviour
                 // Lee el valor (entero)
                 int coronaCount = snap.GetValue<int>(campoCorona);
 
-                // Calcula el fill (0–1)
-                float t = Mathf.Clamp01((float)coronaCount / requiredCorrect);
-                progressImage.fillAmount = t;
-
-                // Si ya completó el logro, marca ImgLogro
-                if (coronaCount >= requiredCorrect)
+                if (coronaCount == 1)
                 {
-                    ImgLogro.color = Color.green;
+                    string nombreArchivo = "ImgProgresoo1";
+                    progressImage.sprite = Resources.Load<Sprite>($"images/CategoriasQuimicados/{nombreArchivo}");
+                }else if (coronaCount == 2)
+                {
+                    string nombreArchivo = "ImgProgresoo2";
+                    progressImage.sprite = Resources.Load<Sprite>($"images/CategoriasQuimicados/{nombreArchivo}");
+                }else if (coronaCount == 3)
+                {
+                    string nombreArchivo = "progresofull";
+                    progressImage.sprite = Resources.Load<Sprite>($"images/CategoriasQuimicados/{nombreArchivo}");
                     BtnGirar.interactable = false;
                     BtnActivarCategoria.interactable = true;
                     PanelInfoLogro.SetActive(true);
                     await Task.Delay(3000);
                     PanelInfoLogro.SetActive(false);
+                }
+                else if (coronaCount == 0)
+                {
+                    string nombreArchivo = "ImgProgresoo";
+                    progressImage.sprite = Resources.Load<Sprite>($"images/CategoriasQuimicados/{nombreArchivo}");
                 }
             });
     }
@@ -544,7 +559,7 @@ public class JuegoPreguntadosManager : MonoBehaviour
         {
         "MetalesAlcalinos", "MetalesAlcalinoterreos", "MetalesTransicion",
         "MetalesPotransicionales", "Metaloides", "NoMetalesReactivos", "GasesNobles",
-        "Lantánidos", "Actínoides", "PropiedadesDesconocidas"
+        "Lantanidos", "Actinoides", "PropiedadesDesconocidas"
         };
 
         // Limpia contenido previo del scroll

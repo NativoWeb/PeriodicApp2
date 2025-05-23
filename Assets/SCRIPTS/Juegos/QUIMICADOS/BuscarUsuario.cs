@@ -36,6 +36,8 @@ public class BuscarUsuario : MonoBehaviour
     public int minSearchChars = 2;
 
     public CrearPartidaManager crearPartidaManager; // Se lo asignaremos luego
+    public ContadorNotificacion notificacionController; // Asignalo desde el inspector
+
     private string uidSeleccionado = null;
     private FirebaseFirestore db;
     private FirebaseAuth auth;
@@ -76,6 +78,7 @@ public class BuscarUsuario : MonoBehaviour
             BtnPartidaActiva.GetComponent<Image>().color = new Color32(151, 177, 224, 255);
             BtnContinuar.gameObject.SetActive(true);
             btnJugar.gameObject.SetActive(false);
+            notificacionController.OcultarNotificacionYReiniciarContador();
             ShowActiveGames();
         });
     }

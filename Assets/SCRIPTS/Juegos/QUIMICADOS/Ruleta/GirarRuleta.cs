@@ -2,6 +2,7 @@
 using Firebase.Database;
 using Firebase.Firestore;
 using System.Collections;
+using System.Collections.Generic;
 using System.Data;
 using TMPro;
 using UnityEngine;
@@ -9,24 +10,40 @@ using UnityEngine.UI;
 
 public class GirarRuleta : MonoBehaviour
 {
-    public Button botonGirar; // Asignar desde el Inspector
-    public RectTransform ruleta;
+    public RectTransform ruletaTransform; // La imagen de la ruleta
+    public Button botonGirar; // Botón invisible o evento
+
+    private bool girando = false;
+    private int totalCategorias = 10;
+    private float anguloPorCategoria;
+
+    public AudioSource audioSelector;     // Este es el componente que reproduce
+    public AudioClip ticClip;             // Este es el sonido "tic" (tu .mp3)
+
     public TMP_Text textoCategoria;
     public RectTransform flecha; // ← Asigna esto en el Inspector
     public GameObject PopUpJugar;
+    public Image imgCat;
 
     private FirebaseFirestore db;
     private string uidActual;
     private string partidaId;
 
     private string PartidaIdQuimicados;
-    private bool girando = false;
-    private string[] Categorias = new string[]
+    string[] categorias = new string[]
     {
-        "Metales Alcalinos", "Metales Alcalinotérreos", "Metales de Transición",
-        "Metales Postransicionales", "Metaloides", "No Metales Reactivos", "Gases Nobles",
-        "Lantánidos", "Actínoides", "Propiedades Desconocidas"
+        "No Metales Reactivos",
+        "Actínoides",             // 0° (arriba)
+        "Metales Alcalinotérreos",     // 36°
+        "Metales de Transición",                   // 72°
+        "Gases Nobles",    // 108°
+        "Lantánidos",                   // 144°
+        "Metales Potransicionales",                 // 180°
+        "Metaloides",        // 216°
+        "Propiedades Desconocidas",      // 252°
+        "Metales Alcalinos",                   // 288°
     };
+
     void Start()
     {
         partidaId = PlayerPrefs.GetString("partidaIdQuimicados");
@@ -52,63 +69,100 @@ public class GirarRuleta : MonoBehaviour
             }
         });
     }
+
     public void Girar()
     {
-        if (!girando && botonGirar.interactable)
-            StartCoroutine(GirarAnimacion());
+        if (!girando)
+            StartCoroutine(GirarRuletaCoroutine());
     }
 
-    IEnumerator GirarAnimacion()
+    private IEnumerator GirarRuletaCoroutine()
     {
         girando = true;
 
-        int vueltas = UnityEngine.Random.Range(3, 6);
-        int sectorFinal = UnityEngine.Random.Range(0, Categorias.Length); // índice exacto
-        float anguloSector = 360f / Categorias.Length;
-        float anguloFinal = vueltas * 360f + (sectorFinal * anguloSector);
+        int totalCategorias = categorias.Length;
+        float anguloPorCategoria = 360f / totalCategorias;
 
-        float velocidadGradosPorSegundo = 180f; // 2 vueltas por segundo
-        float anguloRecorrido = 0f;
+        // Elegir una categoría aleatoria
+        int indiceCategoria = Random.Range(0, totalCategorias);
+        float anguloFinal = indiceCategoria * anguloPorCategoria;
 
-        float anguloInicial = ruleta.eulerAngles.z;
-        float anguloDestino = anguloInicial + anguloFinal;
+        // Rotación total con varias vueltas antes de frenar
+        float rotacionTotal = (360f * Random.Range(5, 8)) + anguloFinal;
 
-        float ultimoAnguloTrigger = anguloInicial;
+        float duracion = 4f;
+        float tiempo = 0f;
 
-        while (anguloRecorrido < anguloFinal)
+        float anguloInicial = ruletaTransform.eulerAngles.z;
+        float anguloObjetivo = anguloInicial + rotacionTotal;
+
+        float prevAngle = anguloInicial;
+
+        while (tiempo < duracion)
         {
-            float delta = velocidadGradosPorSegundo * Time.deltaTime;
-            anguloRecorrido += delta;
-            float anguloActual = anguloInicial + anguloRecorrido;
+            tiempo += Time.deltaTime;
+            float t = tiempo / duracion;
+            float angle = Mathf.Lerp(anguloInicial, anguloObjetivo, EaseOutCubic(t));
+            ruletaTransform.rotation = Quaternion.Euler(0, 0, angle);
 
-            ruleta.eulerAngles = new Vector3(0, 0, anguloActual);
-
-            // Detecta paso por secciones de 36°
-            float anguloActualZ = 360f - (anguloActual % 360f); // sentido horario
-            if (Mathf.FloorToInt(anguloActualZ / anguloSector) != Mathf.FloorToInt(ultimoAnguloTrigger / anguloSector))
+            // Puedes agregar aquí animación de "click" si pasa una categoría
+            float delta = Mathf.Abs(angle - prevAngle);
+            if (delta >= anguloPorCategoria)
             {
                 StartCoroutine(AnimarFlecha());
-                ultimoAnguloTrigger = anguloActualZ;
+
+                if (audioSelector != null && ticClip != null)
+                    audioSelector.PlayOneShot(ticClip);
+
+                prevAngle = angle;
             }
 
             yield return null;
         }
 
-        // Asegura ángulo exacto final
-        ruleta.eulerAngles = new Vector3(0, 0, anguloDestino);
+        // Ajustar al ángulo final exacto
+        ruletaTransform.rotation = Quaternion.Euler(0, 0, anguloObjetivo);
 
-        // Selecciona categoría final
-        float anguloFinalZ = ruleta.eulerAngles.z % 360f;
-        int indice = Mathf.FloorToInt((360f - anguloFinalZ + (anguloSector / 2)) % 360f / anguloSector);
-        string categoriaSeleccionada = Categorias[indice];
-        textoCategoria.text = categoriaSeleccionada;
+        // Calcular el índice real de la categoría
+        float anguloZ = ruletaTransform.eulerAngles.z % 360f;
+        int indiceFinal = Mathf.RoundToInt(anguloZ / anguloPorCategoria) % totalCategorias;
 
-        PlayerPrefs.SetString("CategoriaRuleta", categoriaSeleccionada);
-        girando = false;
+        string categoriaElegida = categorias[indiceFinal];
+        PlayerPrefs.SetString("CategoriaRuleta", categoriaElegida);
+        textoCategoria.text = categoriaElegida;
+
+        if (categoriaElegida == "Metales de Transición")
+        {
+            categoriaElegida = "MetalesTransicion";
+        }
+
+        string nombreArchivo = FormatearNombreArchivo(categoriaElegida);
+
+        Sprite sprite = Resources.Load<Sprite>($"images/CategoriasQuimicados/{nombreArchivo}");
+        imgCat.sprite = sprite;
 
         PopUpJugar.SetActive(true);
+        girando = false;
+    }
+    string FormatearNombreArchivo(string original)
+    {
+        string sinTildes = original
+            .Replace("á", "a")
+            .Replace("é", "e")
+            .Replace("í", "i")
+            .Replace("ó", "o")
+            .Replace("ú", "u")
+            .Replace("ñ", "n");
+
+        string sinEspacios = sinTildes.Replace(" ", ""); // Quitar espacios internos
+
+        return sinEspacios.Trim(); // Por seguridad
     }
 
+    private float EaseOutCubic(float t)
+    {
+        return 1f - Mathf.Pow(1f - t, 3);
+    }
     IEnumerator AnimarFlecha()
     {
         Vector3 rotacionOriginal = new Vector3(0,0,0);
@@ -119,7 +173,4 @@ public class GirarRuleta : MonoBehaviour
 
         flecha.localEulerAngles = rotacionOriginal; // vuelve exactamente a la rotación original
     }
-
-
-
 }

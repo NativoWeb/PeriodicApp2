@@ -16,6 +16,9 @@ public class InvitacionManager : MonoBehaviour
 
     FirebaseFirestore db;
     private DatabaseReference realtime;
+
+    private DatabaseReference presenciaJugadorRef;
+
     private string miUID;
     string invitacionIdSeleccionada;
     string remitente; 
@@ -151,6 +154,8 @@ public class InvitacionManager : MonoBehaviour
                     PlayerPrefs.SetString("modoJuego", "online");
                     PlayerPrefs.Save();
 
+                    RegistrarPresencia();
+
                     // Cambiar el estado de la invitación
                     realtime.Child("invitaciones").Child(miUID).Child(invitacionIdSeleccionada).Child("estado")
                     .SetValueAsync("aceptado").ContinueWithOnMainThread(updateTask =>
@@ -171,6 +176,27 @@ public class InvitacionManager : MonoBehaviour
                     Debug.LogError("❌ No se encontró la invitación.");
                 }
             });
+    }
+
+
+    void RegistrarPresencia()
+    {
+        string partidaId = PlayerPrefs.GetString("PartidaId");
+
+        presenciaJugadorRef = FirebaseDatabase.DefaultInstance
+            .GetReference("partidas")
+            .Child(partidaId)
+            .Child("presencia")
+            .Child(miUID);
+
+        Dictionary<string, object> datosPresencia = new Dictionary<string, object>
+    {
+        { "conectado", true },
+        { "timestamp", ServerValue.Timestamp }
+    };
+
+        presenciaJugadorRef.SetValueAsync(datosPresencia);
+        presenciaJugadorRef.OnDisconnect().RemoveValue();
     }
 
     public void RechazarInvitacion()

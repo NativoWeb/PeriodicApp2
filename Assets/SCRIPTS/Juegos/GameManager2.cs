@@ -206,8 +206,6 @@ public class GameManager2 : MonoBehaviour
             partidaId = PlayerPrefs.GetString("PartidaId");
             partidaRef = FirebaseDatabase.DefaultInstance.GetReference("partidas").Child(partidaId);
 
-            RegistrarPresencia();
-
             StartCoroutine(VerificarConexionPeriodicamente());
 
             EscucharCambiosVida();
@@ -232,8 +230,6 @@ public class GameManager2 : MonoBehaviour
                 });
 
             StartCoroutine(CargarDatosPartida());
-
-            EscucharDesconexionDelOponente();
         }
     }
     public void AbrirPausa()
@@ -276,7 +272,7 @@ public class GameManager2 : MonoBehaviour
         {
             PanelConfirmacion.SetActive(true);
             TxtInfo.text = "No se puede reiniciar una partida multijugador.";
-            Si.text = "Voler";
+            Si.text = "Volver";
             No.text = "Volver";
             BtnSi.onClick.AddListener(() =>
             {
@@ -290,16 +286,35 @@ public class GameManager2 : MonoBehaviour
         }
 
     }
+
     public void salir()
     {
         PanelConfirmacion.SetActive(true);
-        TxtInfo.text = "Seguro que quieres salir de la partida?";
-        Si.text = "Si, Salir";
+        TxtInfo.text = "¿Seguro que quieres salir de la partida?";
+        Si.text = "Sí, Salir";
         No.text = "No, Jugar";
+
+        // Eliminar listeners anteriores para evitar acumulación
+        BtnSi.onClick.RemoveAllListeners();
+        BtnNo.onClick.RemoveAllListeners();
+
         BtnSi.onClick.AddListener(() =>
         {
-            Time.timeScale = 1f;
-            SceneManager.LoadScene("Inicio");
+            // 🔥 Eliminar presencia propia manualmente
+            string partidaId = PlayerPrefs.GetString("PartidaId");
+            string miUID = FirebaseAuth.DefaultInstance.CurrentUser.UserId;
+
+            DatabaseReference presenciaRef = FirebaseDatabase.DefaultInstance
+                .GetReference("partidas")
+                .Child(partidaId)
+                .Child("presencia")
+                .Child(miUID);
+
+            presenciaRef.RemoveValueAsync().ContinueWithOnMainThread(_ =>
+            {
+                Debug.Log("🚪 Presencia eliminada. Saliendo de la partida...");
+                SceneManager.LoadScene("Inicio");
+            });
         });
 
         BtnNo.onClick.AddListener(() =>
@@ -307,6 +322,8 @@ public class GameManager2 : MonoBehaviour
             PanelConfirmacion.SetActive(false);
         });
     }
+
+
     void EmpezarEscuchaCategoriaDesdeFirebasee()
     {
         textoCategoria.text = "Esperando selección de categoría...";
@@ -565,6 +582,9 @@ public class GameManager2 : MonoBehaviour
                     int rondaActual = int.Parse(snapshot.Child("ronda").Value.ToString());
                     TxtNRonda.text = $"Ronda {rondaActual}";
                 }
+
+                EscucharDesconexionDelOponente();
+                StartCoroutine(ActualizarTimestampPeriodicamente());
 
                 yield break;
             }
@@ -922,24 +942,6 @@ public class GameManager2 : MonoBehaviour
             });
     }
 
-    void RegistrarPresencia()
-    {
-        presenciaJugadorRef = FirebaseDatabase.DefaultInstance
-            .GetReference("partidas")
-            .Child(partidaId)
-            .Child("presencia")
-            .Child(miUID);
-
-        Dictionary<string, object> datosPresencia = new Dictionary<string, object>
-    {
-        { "conectado", true },
-        { "timestamp", ServerValue.Timestamp }
-    };
-
-        presenciaJugadorRef.SetValueAsync(datosPresencia);
-        presenciaJugadorRef.OnDisconnect().RemoveValue();
-    }
-
     private IEnumerator VerificarConexionPeriodicamente()
     {
         while (true)
@@ -977,57 +979,66 @@ public class GameManager2 : MonoBehaviour
             presenciaJugadorRef.UpdateChildrenAsync(datosPresencia);
         }
     }
+    private IEnumerator ActualizarTimestampPeriodicamente()
+    {
+        presenciaJugadorRef = FirebaseDatabase.DefaultInstance
+            .GetReference("partidas")
+            .Child(partidaId)
+            .Child("presencia")
+            .Child(miUID);
 
-        //void RegistrarPresencia()
-        //{
-        //    string partidaId = PlayerPrefs.GetString("PartidaId");
+        while (true)
+        {
+            if (presenciaJugadorRef != null)
+            {
+                Dictionary<string, object> update = new Dictionary<string, object>
+            {
+                { "timestamp", ServerValue.Timestamp }
+            };
 
-        //    // Ruta al nodo del jugador (no hasta "conectado", sino hasta su UID)
-        //    DatabaseReference presenciaJugadorRef = FirebaseDatabase.DefaultInstance
-        //        .GetReference("partidas")
-        //        .Child(partidaId)
-        //        .Child("presencia")
-        //        .Child(miUID);
+                presenciaJugadorRef.UpdateChildrenAsync(update);
+            }
 
-        //    // Crear diccionario de datos de presencia
-        //    Dictionary<string, object> datosPresencia = new Dictionary<string, object>
-        //    {
-        //        { "conectado", true },
-        //        { "timestamp", ServerValue.Timestamp }
-        //    };
-
-        //    // Subir presencia
-        //    presenciaJugadorRef.SetValueAsync(datosPresencia);
-
-        //    // Eliminar TODO el nodo del jugador si se desconecta
-        //    presenciaJugadorRef.OnDisconnect().RemoveValue();
-        //}
-    void EscucharDesconexionDelOponente()
+            yield return new WaitForSeconds(5f); // actualiza cada 5 segundos
+        }
+    }
+    private async void EscucharDesconexionDelOponente()
     {
         string partidaId = PlayerPrefs.GetString("PartidaId");
         string idOponente = esJugadorA ? IdB : IdA;
 
-        DatabaseReference presenciaOponenteRef = FirebaseDatabase.DefaultInstance
-            .GetReference("partidas")
-            .Child(partidaId)
-            .Child("presencia")
-            .Child(idOponente);
+        await Task.Delay(5000); // espera inicial
 
-        presenciaOponenteRef.ValueChanged += (object sender, ValueChangedEventArgs args) =>
+        while (true)
         {
-            if (args.DatabaseError != null)
+            var timestampRef = FirebaseDatabase.DefaultInstance
+                .GetReference("partidas")
+                .Child(partidaId)
+                .Child("presencia")
+                .Child(idOponente)
+                .Child("timestamp");
+
+            var task = await timestampRef.GetValueAsync();
+
+            if (task.Exists && long.TryParse(task.Value.ToString(), out long timestamp))
             {
-                Debug.LogError("❌ Error al escuchar presencia: " + args.DatabaseError.Message);
-                return;
+                long ahora = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                if (ahora - timestamp > 10000)
+                {
+                    Debug.LogWarning("🕒 El oponente está inactivo o desconectado.");
+                    TerminarPartidaPorDesconexion();
+                    break;
+                }
+            }
+            else
+            {
+                Debug.LogWarning("⚠️ Timestamp inválido o aún no disponible.");
             }
 
-            if (!args.Snapshot.Exists || !(bool)args.Snapshot.Value)
-            {
-                Debug.LogWarning("🔌 El oponente se ha desconectado.");
-                TerminarPartidaPorDesconexion();
-            }
-        };
+            await Task.Delay(5000); // espera entre revisiones
+        }
     }
+
     void TerminarPartidaPorDesconexion()
     {
         TxtRonda.text = "El oponente se ha desconectado. ¡Ganaste!";
