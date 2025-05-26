@@ -178,10 +178,10 @@ public class ScrollToUser : MonoBehaviour, IRankingObserver
             nombreUsuarioText.text = currentUserName ?? "Usuario";
 
         if (xpUsuarioText != null)
-            xpUsuarioText.text = $"XP: {currentUserXP}";
+            xpUsuarioText.text = $"XP {currentUserXP}";
 
         if (posicionUsuarioText != null)
-            posicionUsuarioText.text = $"#{currentPosition}";
+            posicionUsuarioText.text = currentPosition.ToString();
     }
 
     public void ScrollToUserPosition()

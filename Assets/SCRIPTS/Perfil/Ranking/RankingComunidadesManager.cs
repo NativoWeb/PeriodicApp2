@@ -7,13 +7,13 @@ using System.Collections.Generic;
 using Firebase.Extensions;
 using System.Linq;
 
+
 public class RankingComunidadesManager : BaseRankingManager
 {
     [Header("Communities Configuration")]
     [SerializeField] private TMP_Dropdown comunidadesDropdown;
     [SerializeField] private Image dropdownBackground;
-    [SerializeField] private Color colorNormal = Color.white;
-    [SerializeField] private Color colorSeleccionado = new Color(0f, 0.4f, 0f);
+    
 
     private Dictionary<string, string> comunidadesDict = new Dictionary<string, string>();
     private ScrollToUser scrollToUser;
@@ -25,11 +25,22 @@ public class RankingComunidadesManager : BaseRankingManager
     [SerializeField] private Color textColorSelected = new Color(0f, 0.4f, 0f);
     [SerializeField] private TMP_Text dropdownLabel;
 
+    [Header("Mover Panel Seleccionar")]
+    public RectTransform PanelSeleccionar;
+    public float nuevaPosY = -329f;
+    public float anteriorPosY = -429f;
+    public float duracion = 1f;
 
     protected override void Start()
     {
         base.Start();
         scrollToUser = FindFirstObjectByType<ScrollToUser>();
+
+        // Desactivar el dropdown al inicio
+        if (comunidadesDropdown != null)
+        {
+            comunidadesDropdown.gameObject.SetActive(false);
+        }
 
         if (associatedButton != null)
         {
@@ -38,15 +49,55 @@ public class RankingComunidadesManager : BaseRankingManager
                 if (!panel.activeSelf)
                 {
                     RankingStateManager.Instance.SwitchToComunidades();
+                    // Activar el dropdown cuando se hace clic en el botón
+                    if (comunidadesDropdown != null)
+                    {
+                        comunidadesDropdown.gameObject.SetActive(true);
+                        StartCoroutine(MoverSuavemente());
+
+                    }
                 }
             });
         }
 
         comunidadesDropdown.onValueChanged.AddListener(OnComunidadSeleccionada);
+        
         ConfigurarDropdown();
     }
+    // para mover el panelSeleccionar y darle paso al buscador 
 
-    
+    IEnumerator MoverSuavemente()
+    {
+        Vector2 posInicial = PanelSeleccionar.anchoredPosition;
+        Vector2 posFinal = new Vector2(posInicial.x, nuevaPosY);
+        float tiempo = 0;
+
+        while (tiempo < duracion)
+        {
+            PanelSeleccionar.anchoredPosition = Vector2.Lerp(posInicial, posFinal, tiempo / duracion);
+            tiempo += Time.deltaTime;
+            yield return null;
+        }
+
+        PanelSeleccionar.anchoredPosition = posFinal; // Asegura que termine exactamente en el punto final
+    }
+    IEnumerator DeVoverSuavemente()
+    {
+        Vector2 posInicial = PanelSeleccionar.anchoredPosition;
+        Vector2 posFinal = new Vector2(posInicial.x, anteriorPosY);
+        float tiempo = 0;
+
+        while (tiempo < duracion)
+        {
+            PanelSeleccionar.anchoredPosition = Vector2.Lerp(posInicial, posFinal, tiempo / duracion);
+            tiempo += Time.deltaTime;
+            yield return null;
+        }
+
+        PanelSeleccionar.anchoredPosition = posFinal; // Asegura que termine exactamente en el punto final
+    }
+
+
     public override void OnRankingStateChanged(RankingMode newMode, string comunidadId)
     {
         if (newMode == RankingMode.Comunidades)
@@ -71,6 +122,12 @@ public class RankingComunidadesManager : BaseRankingManager
 
             // Resetear dropdown cuando se cambia a General/Amigos
             ResetDropdownToDefault();
+            // Desactivar el dropdown al cambiar de modo
+            if (comunidadesDropdown != null)
+            {
+                comunidadesDropdown.gameObject.SetActive(false);
+                StartCoroutine(DeVoverSuavemente());
+            }
         }
     }
 
@@ -84,16 +141,11 @@ public class RankingComunidadesManager : BaseRankingManager
             ResetDropdownAppearance();
         }
     }
+
     private void MarkButtonAsSelected(bool selected)
     {
         if (associatedButton != null)
         {
-            Image buttonImage = associatedButton.GetComponent<Image>();
-            if (buttonImage != null)
-            {
-                buttonImage.color = selected ? colorSeleccionado : colorNormal;
-            }
-
             TextMeshProUGUI buttonText = associatedButton.GetComponentInChildren<TextMeshProUGUI>();
             if (buttonText != null)
             {
@@ -101,6 +153,7 @@ public class RankingComunidadesManager : BaseRankingManager
             }
         }
     }
+
     private void OnComunidadSeleccionada(int index)
     {
         if (isUpdatingRanking) return;
@@ -300,10 +353,6 @@ public class RankingComunidadesManager : BaseRankingManager
 
     private void HighlightDropdown()
     {
-        if (dropdownBackground != null)
-        {
-            dropdownBackground.color = colorSeleccionado;
-        }
         if (dropdownLabel != null)
         {
             dropdownLabel.color = textColorSelected;
@@ -312,10 +361,6 @@ public class RankingComunidadesManager : BaseRankingManager
 
     private void ResetDropdownAppearance()
     {
-        if (dropdownBackground != null)
-        {
-            dropdownBackground.color = colorNormal;
-        }
         if (dropdownLabel != null)
         {
             dropdownLabel.color = textColorNormal;

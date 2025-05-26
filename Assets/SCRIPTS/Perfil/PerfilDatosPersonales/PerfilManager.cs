@@ -152,7 +152,7 @@ public class PerfilManager : MonoBehaviour
     }
 
     // Función para obtener la posición del usuario en el ranking
-    async void ObtenerPosicionUsuario()
+   public async void ObtenerPosicionUsuario()
     {
         // Realiza una consulta para obtener los usuarios ordenados por XP en orden descendente (de mayor a menor)
         Query rankingQuery = db.Collection("users").OrderByDescending("xp");
