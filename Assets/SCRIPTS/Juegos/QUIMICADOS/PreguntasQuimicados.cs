@@ -133,7 +133,7 @@ namespace QuizGame
             }
 
             // Obtener categoría seleccionada
-            categoriaSel = PlayerPrefs.GetString("CategoriaRuleta", "Metales Alcalinos");
+            categoriaSel = PlayerPrefs.GetString("CategoriaRuleta");
             CategoriaData categoria = root.categorias
                 .FirstOrDefault(c => c.nombre.Equals(categoriaSel, StringComparison.OrdinalIgnoreCase));
 

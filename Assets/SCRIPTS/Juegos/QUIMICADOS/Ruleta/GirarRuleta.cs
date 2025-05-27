@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Data;
 using TMPro;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 public class GirarRuleta : MonoBehaviour
@@ -23,6 +24,7 @@ public class GirarRuleta : MonoBehaviour
     public TMP_Text textoCategoria;
     public RectTransform flecha; // ← Asigna esto en el Inspector
     public GameObject PopUpJugar;
+    public Image PanelColor;
     public Image imgCat;
 
     private FirebaseFirestore db;
@@ -38,7 +40,7 @@ public class GirarRuleta : MonoBehaviour
         "Metales de Transición",                   // 72°
         "Gases Nobles",    // 108°
         "Lantánidos",                   // 144°
-        "Metales Potransicionales",                 // 180°
+        "Metales Postransicionales",                 // 180°
         "Metaloides",        // 216°
         "Propiedades Desconocidas",      // 252°
         "Metales Alcalinos",                   // 288°
@@ -131,6 +133,28 @@ public class GirarRuleta : MonoBehaviour
         PlayerPrefs.SetString("CategoriaRuleta", categoriaElegida);
         textoCategoria.text = categoriaElegida;
 
+        Dictionary<string, Color32> coloresCategoria = new Dictionary<string, Color32>
+        {
+            { "Gases Nobles", new Color32(0x00, 0xA2, 0x93, 255) },              // #00A293
+            { "Actínoides", new Color32(0x33, 0x37, 0x8E, 255) },                // #33378E
+            { "Metales Alcalinos", new Color32(0x41, 0xB9, 0xDE, 255) },         // #41B9DE
+            { "Metales Postransicionales", new Color32(0x72, 0x65, 0xAA, 255) }, // #7265AA
+            { "Metaloides", new Color32(0xB4, 0xBC, 0xBE, 255) },                // #B4BCBE
+            { "Lantánidos", new Color32(0xC0, 0x20, 0x3C, 255) },                // #C0203C
+            { "Metales de Transición", new Color32(0xED, 0x6D, 0x9D, 255) },     // #ED6D9D
+            { "Metales Alcalinotérreos", new Color32(0xF0, 0x81, 0x2F, 255) },   // #F0812F
+            { "No Metales Reactivos", new Color32(0xFF, 0xD4, 0x4B, 255) },      // #FFD44B
+            { "Propiedades Desconocidas", new Color32(0x7A, 0xB9, 0x50, 255) }   // #7AB950
+        };
+
+        if (coloresCategoria.TryGetValue(categoriaElegida, out Color32 colorFinal))
+        {
+            PanelColor.color = colorFinal;
+        }
+        else
+        {
+            Debug.LogWarning("⚠️ No se encontró color para la categoría: " + categoriaElegida);
+        }
         if (categoriaElegida == "Metales de Transición")
         {
             categoriaElegida = "MetalesTransicion";
@@ -142,8 +166,12 @@ public class GirarRuleta : MonoBehaviour
         imgCat.sprite = sprite;
 
         PopUpJugar.SetActive(true);
+        yield return new WaitForSeconds(1.5f);
+        SceneManager.LoadScene("Cuestionario");
+
         girando = false;
     }
+
     string FormatearNombreArchivo(string original)
     {
         string sinTildes = original
@@ -158,7 +186,6 @@ public class GirarRuleta : MonoBehaviour
 
         return sinEspacios.Trim(); // Por seguridad
     }
-
     private float EaseOutCubic(float t)
     {
         return 1f - Mathf.Pow(1f - t, 3);

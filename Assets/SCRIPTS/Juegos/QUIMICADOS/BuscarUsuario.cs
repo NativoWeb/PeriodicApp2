@@ -19,16 +19,25 @@ public class BuscarUsuario : MonoBehaviour
     public GameObject PanelSinInternet;
 
     [Header("UI References")]
+    public GameObject panelAbajo;
     public TMP_Text messageText;
     public TMP_InputField searchInput;
     public Button searchButton;
-    public Button btnJugar;
-    public Transform resultsContainer;
+
+    public Transform ContentPartidaNueva;
     public GameObject userResultPrefab;
+    public GameObject userPartidaNueva;
+    public GameObject scrollActivos;
+    public GameObject scrollNuevos;
+
+
+
     public Texture2D ImgSeleccionada;
     public Button BtnNuevaPartida;
     public Button BtnPartidaActiva;
-    public Button BtnContinuar;
+    [SerializeField] private Transform contentMiTurno;
+    [SerializeField] private Transform contentTurnoOponente;
+
 
 
     [Header("Search Settings")]
@@ -36,7 +45,6 @@ public class BuscarUsuario : MonoBehaviour
     public int minSearchChars = 2;
 
     public CrearPartidaManager crearPartidaManager; // Se lo asignaremos luego
-    public ContadorNotificacion notificacionController; // Asignalo desde el inspector
 
     private string uidSeleccionado = null;
     private FirebaseFirestore db;
@@ -62,24 +70,38 @@ public class BuscarUsuario : MonoBehaviour
         searchInput.onValueChanged.AddListener(OnSearchInputChanged);
         searchButton.onClick.AddListener(() => SearchUser(searchInput.text));
 
-        ShowRandomUsers();
+        ShowPartidasMiTurno();
+        scrollNuevos.SetActive(false);
+        ShowPartidasTurnoOponente();
         BtnNuevaPartida.onClick.AddListener(() =>
         {
-            BtnNuevaPartida.GetComponent<Image>().color = new Color32(151, 177, 224, 255);
-            BtnPartidaActiva.GetComponent<Image>().color = new Color32(255, 255, 255, 255);
-            btnJugar.gameObject.SetActive(true);
-            BtnContinuar.gameObject.SetActive(false);
+            BtnNuevaPartida.GetComponent<Image>().color = new Color32(81, 178, 124, 255);
+            BtnPartidaActiva.GetComponent<Image>().color = new Color32(255, 251, 239, 255);
+
+            BtnNuevaPartida.GetComponentInChildren<TMP_Text>().color = new Color32(255, 255, 255, 255);
+            BtnPartidaActiva.GetComponentInChildren<TMP_Text>().color = new Color32(59, 53, 139, 255);
+
+            panelAbajo.SetActive(false);
+            searchInput.gameObject.SetActive(true);
+            scrollNuevos.SetActive(true);
+            scrollActivos.SetActive(false);
             ShowRandomUsers();
         });
 
         BtnPartidaActiva.onClick.AddListener(() =>
         {
-            BtnNuevaPartida.GetComponent<Image>().color = new Color32(255, 255, 255, 255);
-            BtnPartidaActiva.GetComponent<Image>().color = new Color32(151, 177, 224, 255);
-            BtnContinuar.gameObject.SetActive(true);
-            btnJugar.gameObject.SetActive(false);
-            notificacionController.OcultarNotificacionYReiniciarContador();
-            ShowActiveGames();
+            BtnNuevaPartida.GetComponent<Image>().color = new Color32(255, 251, 239, 255);
+            BtnPartidaActiva.GetComponent<Image>().color = new Color32(81, 178, 124, 255);
+
+            BtnNuevaPartida.GetComponentInChildren<TMP_Text>().color = new Color32(59, 53, 139, 255);
+            BtnPartidaActiva.GetComponentInChildren<TMP_Text>().color = new Color32(255, 255, 255, 255);
+
+            panelAbajo.SetActive(true);
+            searchInput.gameObject.SetActive(false);
+            scrollNuevos.SetActive(false);
+            scrollActivos.SetActive(true);
+            ShowPartidasMiTurno();
+            ShowPartidasTurnoOponente();
         });
     }
     private IEnumerator VerificarConexionPeriodicamente()
@@ -137,7 +159,7 @@ public class BuscarUsuario : MonoBehaviour
 
     void ShowRandomUsers()
     {
-        LimpiarResultados();
+        LimpiarResultadosNuevos();
         ShowMessage("Cargando usuarios...");
 
         db.Collection("users").GetSnapshotAsync().ContinueWithOnMainThread(task =>
@@ -176,7 +198,7 @@ public class BuscarUsuario : MonoBehaviour
             return;
         }
 
-        LimpiarResultados();
+        LimpiarResultadosNuevos();
         ShowMessage("Buscando...");
 
         db.Collection("users")
@@ -206,27 +228,17 @@ public class BuscarUsuario : MonoBehaviour
                 if (!found) ShowMessage("No se encontraron usuarios.");
             });
     }
-    void ShowActiveGames()
+    void ShowPartidasMiTurno()
     {
-        LimpiarResultados();
-        ShowMessage("Cargando partidas activas...");
+        LimpiarResultadosActivos();
+        ShowMessage("Cargando partidas en tu turno...");
 
         string miUid = auth.CurrentUser.UserId;
         var partidasRef = db.Collection("partidasQuimicados");
 
-        // Consulta A
-        var qA = partidasRef
-            .WhereEqualTo("estado", "jugando")
-            .WhereEqualTo("jugadorA", miUid)
-            .GetSnapshotAsync();
+        var qA = partidasRef.WhereEqualTo("estado", "jugando").WhereEqualTo("jugadorA", miUid).GetSnapshotAsync();
+        var qB = partidasRef.WhereEqualTo("estado", "jugando").WhereEqualTo("jugadorB", miUid).GetSnapshotAsync();
 
-        // Consulta B
-        var qB = partidasRef
-            .WhereEqualTo("estado", "jugando")
-            .WhereEqualTo("jugadorB", miUid)
-            .GetSnapshotAsync();
-
-        // Esperar a ambas
         Task.WhenAll(qA, qB).ContinueWithOnMainThread(tasks =>
         {
             if (tasks.IsFaulted)
@@ -236,31 +248,67 @@ public class BuscarUsuario : MonoBehaviour
                 return;
             }
 
-            // resultados de cada query
-            var snapA = qA.Result;
-            var snapB = qB.Result;
-
-            // combinar documentos (evitamos duplicados por ID)
-            var docs = snapA.Documents
-                .Concat(snapB.Documents)
+            var docs = qA.Result.Documents
+                .Concat(qB.Result.Documents)
                 .GroupBy(d => d.Id)
                 .Select(g => g.First())
+                .Where(d => d.GetValue<string>("turnoActual") == miUid) // 👈 Solo si es mi turno
                 .ToList();
 
             if (docs.Count == 0)
             {
-                ShowMessage("No tienes partidas activas.");
+                ShowMessage("No tienes partidas donde sea tu turno.");
                 return;
             }
 
-            // por cada partida encontrada, instanciar UI
             foreach (var partidaDoc in docs)
-                InstanciarPartidaEnLista(partidaDoc);
+            {
+                InstanciarPartidaEnLista(partidaDoc, contentMiTurno);
+            }
         });
     }
-    void InstanciarPartidaEnLista(DocumentSnapshot partidaDoc)
+    void ShowPartidasTurnoOponente()
     {
-        // Leer campos de la partida
+        LimpiarResultadosActivos();
+        ShowMessage("Cargando partidas en turno del oponente...");
+
+        string miUid = auth.CurrentUser.UserId;
+        var partidasRef = db.Collection("partidasQuimicados");
+
+        var qA = partidasRef.WhereEqualTo("estado", "jugando").WhereEqualTo("jugadorA", miUid).GetSnapshotAsync();
+        var qB = partidasRef.WhereEqualTo("estado", "jugando").WhereEqualTo("jugadorB", miUid).GetSnapshotAsync();
+
+        Task.WhenAll(qA, qB).ContinueWithOnMainThread(tasks =>
+        {
+            if (tasks.IsFaulted)
+            {
+                Debug.LogError("Error cargando partidas: " + tasks.Exception);
+                ShowMessage("Error al cargar partidas.");
+                return;
+            }
+
+            var docs = qA.Result.Documents
+                .Concat(qB.Result.Documents)
+                .GroupBy(d => d.Id)
+                .Select(g => g.First())
+                .Where(d => d.GetValue<string>("turnoActual") != miUid) // 👈 Solo si NO es mi turno
+                .ToList();
+
+            if (docs.Count == 0)
+            {
+                ShowMessage("No hay partidas esperando al oponente.");
+                return;
+            }
+
+            foreach (var partidaDoc in docs)
+            {
+                InstanciarPartidaEnLista(partidaDoc, contentTurnoOponente);
+            }
+        });
+    }
+
+    void InstanciarPartidaEnLista(DocumentSnapshot partidaDoc, Transform contenedor)
+    {
         string partidaId = partidaDoc.Id;
         string jugadorA = partidaDoc.GetValue<string>("jugadorA");
         string jugadorB = partidaDoc.GetValue<string>("jugadorB");
@@ -268,77 +316,64 @@ public class BuscarUsuario : MonoBehaviour
         int rondaActual = partidaDoc.GetValue<int>("rondaActual");
 
         string miUid = auth.CurrentUser.UserId;
-        // Determinar UID del oponente
-        string oponenteUid = miUid == jugadorA ? jugadorB
-                            : miUid == jugadorB ? jugadorA
-                            : null;
+        string oponenteUid = miUid == jugadorA ? jugadorB : jugadorA;
+        string keyCoronasMi = miUid == jugadorA ? "CategoriasJugadorA" : "CategoriasJugadorB";
+        string keyCoronasOponente = miUid == jugadorA ? "CategoriasJugadorB" : "CategoriasJugadorA";
 
-        if (oponenteUid == null)
+        // Leer diccionarios de coronas
+        Dictionary<string, object> coronasMi = partidaDoc.ContainsField(keyCoronasMi) ? partidaDoc.GetValue<Dictionary<string, object>>(keyCoronasMi) : new();
+        Dictionary<string, object> coronasOp = partidaDoc.ContainsField(keyCoronasOponente) ? partidaDoc.GetValue<Dictionary<string, object>>(keyCoronasOponente) : new();
+
+        int contadorMi = coronasMi.Count(kv => kv.Value is bool b && b);
+        int contadorOp = coronasOp.Count(kv => kv.Value is bool b && b);
+
+        db.Collection("users").Document(oponenteUid).GetSnapshotAsync().ContinueWithOnMainThread(task =>
         {
-            Debug.LogWarning("Este usuario no participa en la partida " + partidaId);
-            return;
-        }
+            if (task.IsFaulted || !task.Result.Exists)
+            {
+                Debug.LogError("Error cargando datos del oponente");
+                return;
+            }
 
-        // Traer datos del oponente
-        db.Collection("users")
-          .Document(oponenteUid)
-          .GetSnapshotAsync()
-          .ContinueWithOnMainThread(task =>
-          {
-              if (task.IsFaulted)
-              {
-                  Debug.LogError("Error al cargar user oponente: " + task.Exception);
-                  return;
-              }
+            var userDoc = task.Result;
+            string nombreOponente = userDoc.GetValue<string>("DisplayName");
+            string rangoOponente = userDoc.GetValue<string>("Rango");
 
-              var userDoc = task.Result;
-              if (!userDoc.Exists)
-              {
-                  Debug.LogError("No existe el documento de user " + oponenteUid);
-                  return;
-              }
+            GameObject userEntry = Instantiate(userResultPrefab, contenedor);
 
-              string nombreOponente = userDoc.GetValue<string>("DisplayName");
-              string rangoOponente = userDoc.GetValue<string>("Rango");
+            var avatarImg = userEntry.transform.Find("ImgAvatar").GetComponent<Image>();
+            var nameText = userEntry.transform.Find("TxtNombre").GetComponent<TMP_Text>();
+            var marcadorText = userEntry.GetComponentsInChildren<TMP_Text>()
+            .FirstOrDefault(t => t.name == "TxtMarcador");
+            var selectButton = userEntry.transform.Find("BtnSeleccionInvisible").GetComponent<Button>();
 
-              // Instanciar UI
-              GameObject userEntry = Instantiate(userResultPrefab, resultsContainer);
+            nameText.text = nombreOponente;
+            marcadorText.text = $"{contadorMi} - {contadorOp}";
 
-              var avatarImg = userEntry.transform.Find("ImgAvatar").GetComponent<Image>();
-              var nameText = userEntry.transform.Find("TxtNombre").GetComponent<TMP_Text>();
-              var feedbackImg = userEntry.transform.Find("ImgFeedBack").GetComponent<RawImage>();
-              var selectButton = userEntry.transform.Find("BtnSeleccionInvisible").GetComponent<Button>();
+            Sprite avatar = Resources.Load<Sprite>(ObtenerRutaAvatar(rangoOponente));
+            if (avatar != null) avatarImg.sprite = avatar;
 
-              nameText.text = nombreOponente;
-              Sprite avatar = Resources.Load<Sprite>(ObtenerRutaAvatar(rangoOponente));
-              if (avatar != null) avatarImg.sprite = avatar;
+            selectButton.onClick.AddListener(() =>
+            {
+                if (ultimoFeedbackActivo != null)
+                    ultimoFeedbackActivo.gameObject.SetActive(false);
 
-              selectButton.onClick.AddListener(() =>
-              {
-                  if (ultimoFeedbackActivo != null)
-                      ultimoFeedbackActivo.gameObject.SetActive(false);
-
-                  feedbackImg.texture = ImgSeleccionada;
-                  feedbackImg.gameObject.SetActive(true);
-                  ultimoFeedbackActivo = feedbackImg;
-
-                  uidSeleccionado = oponenteUid;
-                  PlayerPrefs.SetString("partidaIdQuimicados", partidaId);
-                  BtnContinuar.onClick.AddListener(() =>
-                  {
-                      SceneManager.LoadScene("QuimicadosGame");
-                  });
-              });
-              
-          });
+                uidSeleccionado = oponenteUid;
+                PlayerPrefs.SetString("partidaIdQuimicados", partidaId);
+                SceneManager.LoadScene("QuimicadosGame");
+            });
+        });
     }
+
+
+
     void InstanciarUsuarioEnLista(DocumentSnapshot doc)
     {
         string userId = doc.Id;
         string name = doc.GetValue<string>("DisplayName");
         string rank = doc.GetValue<string>("Rango");
 
-        GameObject userEntry = Instantiate(userResultPrefab, resultsContainer);
+        GameObject userEntry = Instantiate(userPartidaNueva, ContentPartidaNueva);
 
         var avatarImg = userEntry.transform.Find("ImgAvatar").GetComponent<Image>();
         var nameText = userEntry.transform.Find("TxtNombre").GetComponent<TMP_Text>();
@@ -351,8 +386,6 @@ public class BuscarUsuario : MonoBehaviour
 
         selectButton.onClick.AddListener(() =>
         {
-            btnJugar.gameObject.SetActive(true);
-            BtnContinuar.gameObject.SetActive(false);
             if (ultimoFeedbackActivo != null)
                 ultimoFeedbackActivo.gameObject.SetActive(false);
 
@@ -364,56 +397,27 @@ public class BuscarUsuario : MonoBehaviour
 
             string miUid = FirebaseAuth.DefaultInstance.CurrentUser.UserId;
 
-            // Verificar si ya existe una partida con ese jugador
-            db.Collection("partidasQuimicados")
-              .WhereIn("jugadorA", new List<string> { miUid, userId })
-              .WhereIn("jugadorB", new List<string> { miUid, userId })
-              .GetSnapshotAsync()
-              .ContinueWithOnMainThread(task =>
-              {
-                  if (task.IsFaulted)
-                  {
-                      Debug.LogError("❌ Error buscando partidas existentes: " + task.Exception);
-                      return;
-                  }
+            PlayerPrefs.SetString("partidaIdQuimicados", doc.Id);
 
-                  var docs = task.Result.Documents;
-
-                  foreach (var doc in docs)
-                  {
-                      string a = doc.GetValue<string>("jugadorA");
-                      string b = doc.GetValue<string>("jugadorB");
-                      string estado = doc.GetValue<string>("estado");
-
-                      bool jugadoresCoinciden = (a == miUid && b == userId) || (a == userId && b == miUid);
-
-                      if (jugadoresCoinciden && (estado == "jugando" || estado == "pendiente"))
-                      {
-                          Debug.Log("⚠️ Ya existe una partida activa con este usuario.");
-
-                          PlayerPrefs.SetString("partidaIdQuimicados", doc.Id);
-                          btnJugar.gameObject.SetActive(false);
-                          BtnContinuar.gameObject.SetActive(true);
-                          BtnContinuar.onClick.AddListener(() =>
-                          {
-                              // Cargar directamente la escena de partida
-                              SceneManager.LoadScene("QuimicadosGame");
-                          });
-                          return;
-                      }
-                  }
-
-                  // Si no se encontró ninguna partida existente, proceder a crear una nueva
-                  if (crearPartidaManager != null)
-                      crearPartidaManager.jugadorSeleccionadoUID = uidSeleccionado;
-              });
+            if (crearPartidaManager != null)
+            {
+                crearPartidaManager.jugadorSeleccionadoUID = uidSeleccionado;
+                crearPartidaManager.CrearPartida();
+            }
         });
 
     }
 
-    void LimpiarResultados()
+    void LimpiarResultadosNuevos()
     {
-        foreach (Transform child in resultsContainer)
+        foreach (Transform child in ContentPartidaNueva)
+            Destroy(child.gameObject);
+    }
+    void LimpiarResultadosActivos()
+    {
+        foreach (Transform child in contentMiTurno)
+            Destroy(child.gameObject);
+        foreach (Transform child in contentTurnoOponente)
             Destroy(child.gameObject);
     }
 
