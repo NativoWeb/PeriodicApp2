@@ -65,7 +65,6 @@ public class RankingComunidadesManager : BaseRankingManager
         ConfigurarDropdown();
     }
     // para mover el panelSeleccionar y darle paso al buscador 
-
     IEnumerator MoverSuavemente()
     {
         Vector2 posInicial = PanelSeleccionar.anchoredPosition;

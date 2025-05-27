@@ -29,7 +29,7 @@ public class ScrollToUser : MonoBehaviour, IRankingObserver
 
     [Header("Animation Settings")]
     [SerializeField] private float scrollDuration = 0.5f;
-    [SerializeField] private Color highlightColor = new Color(0.9f, 1f, 0.9f, 1f);
+    [SerializeField] private Color highlightColor = new Color(1f, 1f, 1f, 0f);
     [SerializeField] private float highlightFlashDuration = 0.3f;
     [SerializeField] private int highlightFlashCount = 3;
 
