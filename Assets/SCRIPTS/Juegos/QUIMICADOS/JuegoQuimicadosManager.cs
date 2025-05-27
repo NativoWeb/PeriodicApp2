@@ -34,6 +34,7 @@ public class JuegoPreguntadosManager : MonoBehaviour
     [Header("Paneles")]
     public GameObject PanelResultado;
     public GameObject PanelInfoLogro;
+    public GameObject PanelVs;
     public Transform ContentCategoriasCompletadasA;
     public Transform ContentCategoriasCompletadasB;
 
@@ -43,23 +44,26 @@ public class JuegoPreguntadosManager : MonoBehaviour
     [Header("Texts")]
     public TMP_Text txtNombreJugadorA;
     public TMP_Text txtNombreJugadorB;
+    public TMP_Text txtNombreJugadorAVs;
+    public TMP_Text txtNombreJugadorBVs;
     public TMP_Text txtTurno;
     public TMP_Text TxtRonda;
 
     [Header("Buttons")]
     public Button BtnVolver;
-    public Button BtnGirar;
-    public Button BtnComenzar;
+    public Button BtnGirar; 
     public Button BtnActivarCategoria;
 
     [Header("Imagenes")]
     public Image ImgAvatarUserA;
     public Image ImgAvatarUserB;
+    public Image AvatarVsA;
+    public Image AvatarVsB;
+
 
     [Header("Progreso UI")]
     public Image progressImage;     // Image Type = Filled
     public int requiredCorrect = 3; // cuántas correctas para llenarla
-    public Image ImgLogro;
 
     [Header("PREFABS")]
     public GameObject PrefabSeleccionarCategoria;
@@ -90,23 +94,24 @@ public class JuegoPreguntadosManager : MonoBehaviour
         BtnActivarCategoria.interactable = false;
 
         StartCoroutine(VerificarConexionPeriodicamente());
+        StartCoroutine(QuitarPanelVs());
 
         if (string.IsNullOrEmpty(partidaId))
         {
             Debug.LogError("No se encontró el ID de la partida");
             return;
         }
-        BtnComenzar.onClick.AddListener(() =>
-        {
-            SceneManager.LoadScene("Cuestionario");
-        });
         BtnVolver.onClick.AddListener(() =>
         {
             SceneManager.LoadScene("Quimicados");
         });
 
         CargarPartida();
-
+    }
+    private IEnumerator QuitarPanelVs()
+    {
+        yield return new WaitForSeconds(2f);
+        PanelVs.SetActive(false);
     }
     private IEnumerator VerificarConexionPeriodicamente()
     {
@@ -147,10 +152,9 @@ public class JuegoPreguntadosManager : MonoBehaviour
         string[] CategoriasImg = new string[]
         {
         "MetalesAlcalinos", "MetalesAlcalinoterreos", "MetalesTransicion",
-        "MetalesPotransicionales", "Metaloides", "NoMetalesReactivos", "GasesNobles",
+        "MetalesPostransicionales", "Metaloides", "NoMetalesReactivos", "GasesNobles",
         "Lantanidos", "Actinoides", "PropiedadesDesconocidas"
         };
-
         db.Collection("partidasQuimicados").Document(partidaId).GetSnapshotAsync().ContinueWithOnMainThread(task =>
         {
             if (task.IsCompletedSuccessfully)
@@ -185,10 +189,16 @@ public class JuegoPreguntadosManager : MonoBehaviour
                         int i = 0;
                         Dictionary<string, object> categoriasA = datos["CategoriasJugadorA"] as Dictionary<string, object>;
 
+                        foreach (Transform child in ContentCategoriasCompletadasA)
+                        {
+                            Destroy(child.gameObject);
+                        }
+
                         foreach (string categoria in Categorias)
                         {
                             bool completada = categoriasA.ContainsKey(categoria) && Convert.ToBoolean(categoriasA[categoria]);
                             if (completada) coronasA++;
+
                             InstanciarCategoria(CategoriasImg[i], completada, ContentCategoriasCompletadasA);
                             i++;
                         }
@@ -199,6 +209,11 @@ public class JuegoPreguntadosManager : MonoBehaviour
                     {
                         int i = 0;
                         Dictionary<string, object> categoriasB = datos["CategoriasJugadorB"] as Dictionary<string, object>;
+
+                        foreach (Transform child in ContentCategoriasCompletadasB)
+                        {
+                            Destroy(child.gameObject);
+                        }
 
                         foreach (string categoria in Categorias)
                         {
@@ -342,6 +357,8 @@ public class JuegoPreguntadosManager : MonoBehaviour
             {
                 txtNombreJugadorA.text = task.Result.ContainsField("DisplayName") ?
                     task.Result.GetValue<string>("DisplayName") : "Jugador A";
+                txtNombreJugadorAVs.text = task.Result.ContainsField("DisplayName") ?
+                    task.Result.GetValue<string>("DisplayName") : "Jugador A";
 
                 ImgAvatarUserA.gameObject.SetActive(true);
 
@@ -351,6 +368,7 @@ public class JuegoPreguntadosManager : MonoBehaviour
                 // Cargar el sprite desde la carpeta Resources (asegúrate de que la imagen esté en Assets/Resources/Avatares/)
                 Sprite avatarSprite = Resources.Load<Sprite>(ObtenerRutaAvatar(rango));
 
+                AvatarVsA.sprite = avatarSprite;
                 if (avatarSprite != null)
                     ImgAvatarUserA.sprite = avatarSprite;
                 else
@@ -364,6 +382,8 @@ public class JuegoPreguntadosManager : MonoBehaviour
             {
                 txtNombreJugadorB.text = task.Result.ContainsField("DisplayName") ?
                     task.Result.GetValue<string>("DisplayName") : "Jugador B";
+                txtNombreJugadorBVs.text = task.Result.ContainsField("DisplayName") ?
+                    task.Result.GetValue<string>("DisplayName") : "Jugador B";
 
                 ImgAvatarUserB.gameObject.SetActive(true);
 
@@ -373,6 +393,7 @@ public class JuegoPreguntadosManager : MonoBehaviour
                 // Cargar el sprite desde la carpeta Resources (asegúrate de que la imagen esté en Assets/Resources/Avatares/)
                 Sprite avatarSprite = Resources.Load<Sprite>(ObtenerRutaAvatar(rango));
 
+                AvatarVsB.sprite = avatarSprite;
                 if (avatarSprite != null)
                     ImgAvatarUserB.sprite = avatarSprite;
                 else
@@ -558,8 +579,21 @@ public class JuegoPreguntadosManager : MonoBehaviour
         string[] CategoriasImg = new string[]
         {
         "MetalesAlcalinos", "MetalesAlcalinoterreos", "MetalesTransicion",
-        "MetalesPotransicionales", "Metaloides", "NoMetalesReactivos", "GasesNobles",
+        "MetalesPostransicionales", "Metaloides", "NoMetalesReactivos", "GasesNobles",
         "Lantanidos", "Actinoides", "PropiedadesDesconocidas"
+        };
+        Dictionary<string, Color32> coloresCategoria = new Dictionary<string, Color32>
+        {
+            { "Gases Nobles", new Color32(0x00, 0xA2, 0x93, 255) },              // #00A293
+            { "Actínoides", new Color32(0x33, 0x37, 0x8E, 255) },                // #33378E
+            { "Metales Alcalinos", new Color32(0x41, 0xB9, 0xDE, 255) },         // #41B9DE
+            { "Metales Postransicionales", new Color32(0x72, 0x65, 0xAA, 255) }, // #7265AA
+            { "Metaloides", new Color32(0xB4, 0xBC, 0xBE, 255) },                // #B4BCBE
+            { "Lantánidos", new Color32(0xC0, 0x20, 0x3C, 255) },                // #C0203C
+            { "Metales de Transición", new Color32(0xED, 0x6D, 0x9D, 255) },     // #ED6D9D
+            { "Metales Alcalinotérreos", new Color32(0xF0, 0x81, 0x2F, 255) },   // #F0812F
+            { "No Metales Reactivos", new Color32(0xFF, 0xD4, 0x4B, 255) },      // #FFD44B
+            { "Propiedades Desconocidas", new Color32(0x7A, 0xB9, 0x50, 255) }   // #7AB950
         };
 
         // Limpia contenido previo del scroll
@@ -576,12 +610,22 @@ public class JuegoPreguntadosManager : MonoBehaviour
             GameObject categoriaGO = Instantiate(PrefabSeleccionarCategoria, ContentCategorias);
             categoriasInstanciadas.Add(categoriaGO); // Guardar referencia
 
+            var PanelRedondo = categoriaGO.transform.Find("PanelImg").GetComponent<Image>();
             var ImgCategoria = categoriaGO.transform.Find("ImgCategoria").GetComponent<Image>();
             var NombreCategoria = categoriaGO.transform.Find("TxtNombreCategoria").GetComponent<TMP_Text>();
             var selectButton = categoriaGO.transform.Find("BtnSeleccionCategioria").GetComponent<Button>();
 
             // Establecer nombre
             NombreCategoria.text = categoria;
+
+            if (coloresCategoria.TryGetValue(categoria, out Color32 color))
+            {
+                PanelRedondo.color = color;
+            }
+            else
+            {
+                PanelRedondo.color = Color.white; // Color por defecto si no está en el diccionario
+            }
 
             // Cargar imagen desde Resources/images/CategoriasQuimicados/NOMBRE.png
             Sprite sprite = Resources.Load<Sprite>($"images/CategoriasQuimicados/{CategoriasImg[i]}");
@@ -604,25 +648,10 @@ public class JuegoPreguntadosManager : MonoBehaviour
                 Debug.Log($"Seleccionaste la categoría: {categoriaSeleccionada}");
                 PlayerPrefs.SetString("CategoriaRuleta", categoriaSeleccionada);
 
-                // Resetear visual de todos
-                foreach (GameObject go in categoriasInstanciadas)
-                {
-                    go.transform.localScale = Vector3.one;
-                    go.GetComponent<Image>().color = Color.white;
-                }
-
-                // Aplicar efecto visual al seleccionado
-                categoriaGOSeleccionada.transform.localScale = new Vector3(1.05f, 1.05f, 1f);
-                categoriaGOSeleccionada.GetComponent<Image>().color = new Color(0.85f, 0.85f, 0.85f); // gris claro
-
-                BtnConquistar.onClick.RemoveAllListeners();
-                BtnConquistar.onClick.AddListener(() =>
-                {
-                    PlayerPrefs.SetInt("CompletarLogro", 1);
-                    PlayerPrefs.SetInt("wasIncorrect", 1);
-                    PlayerPrefs.SetInt("wasCorrect", 0);
-                    SceneManager.LoadScene("Cuestionario");
-                });
+                PlayerPrefs.SetInt("CompletarLogro", 1);
+                PlayerPrefs.SetInt("wasIncorrect", 1);
+                PlayerPrefs.SetInt("wasCorrect", 0);
+                SceneManager.LoadScene("Cuestionario");
             });
 
             i++;
