@@ -9,10 +9,6 @@ using Firebase.Extensions;
 
 public class RankingAmigosManager : BaseRankingManager
 {
-    [Header("Friends Configuration")]
-    [SerializeField] private Color colorBotonSeleccionado = new Color(0.0f, 0.4f, 0.0f);
-    [SerializeField] private Color colorBotonNormal = Color.white;
-
     private ScrollToUser scrollToUser;
     private int usuarioActualXP;
 
@@ -179,12 +175,6 @@ public class RankingAmigosManager : BaseRankingManager
     {
         if (associatedButton != null)
         {
-            Image buttonImage = associatedButton.GetComponent<Image>();
-            if (buttonImage != null)
-            {
-                buttonImage.color = selected ? colorBotonSeleccionado : colorBotonNormal;
-            }
-
             TextMeshProUGUI buttonText = associatedButton.GetComponentInChildren<TextMeshProUGUI>();
             if (buttonText != null)
             {
