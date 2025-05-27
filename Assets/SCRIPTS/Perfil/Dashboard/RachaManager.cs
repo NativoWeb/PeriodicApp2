@@ -183,7 +183,5 @@ public class RachaManager : MonoBehaviour
     {
         if (RachaTexto != null)
             RachaTexto.text = rachaActualLocal.ToString();
-
-
     }
 }

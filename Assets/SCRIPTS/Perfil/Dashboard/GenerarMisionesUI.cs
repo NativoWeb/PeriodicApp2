@@ -12,17 +12,22 @@ using UnityEngine.SceneManagement;
 
 public class GeneradorElementosUI : MonoBehaviour
 {
-    public GameObject prefabElemento; // Prefab con Image y TMP
-    public Transform contenedor; // Donde colocar los elementos
-    public Color colorCompletado = Color.green;
-    public Color colorIncompleto = Color.gray;
-    public Button BtnRanking;
+    [Header("Paneles y botones")]
+    public GameObject PanelDatos;
+    public Button BtnDatos;
+    public GameObject PanelLogros;
+    public Button BtnLogros;
+    public GameObject PanelIA;
+    public Button BtnIA;
+    public GameObject PanelNotificaciones;
+    public Button BtnNotificaciones;
 
+    [Header("Datos Basicos")]
     public TMP_Text TotalMisionesCompletadas;
     public TMP_Text TotalLogrosDesbloqueados;
     public TMP_Text TotalXP;
+    public TMP_Text PosicioRanking;
     public Image avatarImage;
-
     public TMP_Text DisplayName;
     public TMP_Text Rango;
 
@@ -60,18 +65,25 @@ public class GeneradorElementosUI : MonoBehaviour
 
     private void Awake()
     {
+        // 1) Inicializa Firebase y userId
+        db = FirebaseFirestore.DefaultInstance;
+        auth = FirebaseAuth.DefaultInstance;
+        userId = PlayerPrefs.GetString("userId", "").Trim();
+
+        // 2) Ahora puedes llamar sin nullrefs
         CargarJSON();
         ActualizarTotales();
-        BtnRanking.onClick.AddListener(MostrarRanking);
+        ObtenerPosicionUsuario();
+
+        // 3) Listener de botones
+        BtnDatos.onClick.AddListener(AbrirPanelDatos);
+        BtnLogros.onClick.AddListener(AbrirPanelLogros);
+        BtnIA.onClick.AddListener(AbrirPanelIA);
+        BtnNotificaciones.onClick.AddListener(AbrirPanelNotificaciones);
     }
 
     void Start()
     {
-        db = FirebaseFirestore.DefaultInstance;
-        auth = FirebaseAuth.DefaultInstance;
-
-        userId = PlayerPrefs.GetString("userId", "").Trim();
-
         if (jsonData == null || !jsonData.HasKey("Misiones_Categorias") || !jsonData["Misiones_Categorias"].HasKey("Categorias"))
         {
             Debug.LogError("❌ Error: Estructura del JSON no válida.");
@@ -117,7 +129,6 @@ public class GeneradorElementosUI : MonoBehaviour
                         nuevoElemento.misiones.Add(nuevaMision);
                     }
                 }
-                GenerarElementoUI(nuevoElemento);
             }
         }
     }
@@ -143,33 +154,6 @@ public class GeneradorElementosUI : MonoBehaviour
         }
 
         jsonData = JSON.Parse(jsonString);
-    }
-
-    void GenerarElementoUI(Elemento elemento)
-    {
-        GameObject nuevo = Instantiate(prefabElemento, contenedor);
-
-        // Color
-        Image imagen = nuevo.GetComponent<Image>();
-        if (imagen != null)
-        {
-            imagen.color = elemento.EstaCompletado() ? colorCompletado : colorIncompleto;
-        }
-        else
-        {
-            Debug.LogWarning("⚠ Prefab no tiene componente Image.");
-        }
-
-        // Texto TMP
-        TextMeshProUGUI tmp = nuevo.GetComponentInChildren<TextMeshProUGUI>();
-        if (tmp != null)
-        {
-            tmp.text = elemento.simbolo;
-        }
-        else
-        {
-            Debug.LogWarning("⚠ Prefab no tiene un TMP como hijo.");
-        }
     }
 
     void ActualizarTotales()
@@ -326,14 +310,6 @@ public class GeneradorElementosUI : MonoBehaviour
         });
     }
 
-    private void MostrarRanking()
-    {
-        PlayerPrefs.SetString("PanelRanking", "PanelRanking");
-        PlayerPrefs.Save();
-
-        SceneManager.LoadScene("Ranking1");
-    }
-
     public async void ActualizarRangoSegunXP(int xp)
     {
         string nuevoRango = ObtenerRangoSegunXP(xp);
@@ -368,6 +344,80 @@ public class GeneradorElementosUI : MonoBehaviour
             case "Sabio de la tabla": return "Avatares/Rango7";
             case "Leyenda química": return "Avatares/Rango8";
             default: return "Avatares/Rango1";
+        }
+    }
+
+    private void AbrirPanelDatos()
+    {
+        PanelDatos.SetActive(true);
+        PanelLogros.SetActive(false);
+        PanelIA.SetActive(false);
+        PanelNotificaciones.SetActive(false);
+    }
+
+    private void AbrirPanelLogros()
+    {
+        PanelLogros.SetActive(true);
+        PanelDatos.SetActive(false);
+        PanelIA.SetActive(false);
+        PanelNotificaciones.SetActive(false);
+    }
+
+    private void AbrirPanelIA()
+    {
+        PanelIA.SetActive(true);
+        PanelDatos.SetActive(false);
+        PanelLogros.SetActive(false);
+        PanelNotificaciones.SetActive(false);
+    }
+
+    private void AbrirPanelNotificaciones()
+    {
+        PanelNotificaciones.SetActive(true);
+        PanelDatos.SetActive(false);
+        PanelLogros.SetActive(false);
+        PanelIA.SetActive(false);
+    }
+
+    // Función para obtener la posición del usuario en el ranking
+    async void ObtenerPosicionUsuario()
+    {
+        // Realiza una consulta para obtener los usuarios ordenados por XP en orden descendente (de mayor a menor)
+        Query rankingQuery = db.Collection("users").OrderByDescending("xp");
+        // Ejecuta la consulta y obtiene los datos
+        QuerySnapshot snapshot = await rankingQuery.GetSnapshotAsync();
+
+        // Si no hay usuarios en la base de datos
+        if (snapshot.Count == 0)
+        {
+            Debug.LogWarning("No hay usuarios registrados en la base de datos.");
+            PosicioRanking.text = "Posición: No disponible"; // Muestra mensaje indicando que no hay usuarios
+            return; // Sale de la función si no hay usuarios
+        }
+
+        int posicion = 1; // Comienza desde la posición 1 en el ranking
+        bool encontrado = false; // Variable para indicar si se encuentra al usuario
+
+        // Recorre todos los usuarios del ranking
+        foreach (DocumentSnapshot doc in snapshot.Documents)
+        {
+            // Si el ID del documento coincide con el ID del usuario actual
+            if (doc.Id == userId)
+            {
+                encontrado = true; // Marca que se encontró al usuario-
+                PosicioRanking.text = "" + posicion; // Muestra la posición en el ranking
+                PlayerPrefs.SetInt("posicion", posicion); // guardo posición para mostrarla offline --------------------------------
+                Debug.Log($"El usuario {userId} está en la posición {posicion} del ranking.");
+                break; // Sale del ciclo ya que se encontró al usuario
+            }
+            posicion++; // Incrementa la posición para el siguiente usuario
+        }
+
+        // Si no se encontró al usuario
+        if (!encontrado)
+        {
+            Debug.LogError("No se encontró al usuario en el ranking.");
+            PosicioRanking.text = "Posición: No encontrada"; // Muestra un mensaje de error
         }
     }
 }

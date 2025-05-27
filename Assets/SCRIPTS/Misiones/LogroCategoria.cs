@@ -2,17 +2,31 @@
 using TMPro;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEngine.UI;
 
 public class LogroCategoria : MonoBehaviour
 {
     public TMP_Text tituloMisionFinal; // TMP para el título
-    public GameObject imagenCompletada; // Imagen que se activa al completar
+    public Image imagenCompletada;     // Imagen que mostrará el sprite correcto
 
     // Función para actualizar el estado del logro
-    public void ActualizarLogro(string titulo, bool completado)
+    public void ActualizarDesdeCategoria(string titulo, bool completado)
     {
+        // Establecer el título
         tituloMisionFinal.text = titulo;
-        imagenCompletada.SetActive(completado); // Activar la imagen si está completado
+
+        // Ruta completa dentro de Resources
+        string nombreSprite = completado ? "Logros/LogroCatCom" : "Logros/LogroCatInc";
+        Sprite sprite = Resources.Load<Sprite>(nombreSprite);
+
+        if (sprite != null)
+        {
+            imagenCompletada.sprite = sprite;
+        }
+        else
+        {
+            Debug.LogWarning("No se encontró el sprite en Resources: " + nombreSprite);
+        }
     }
 }
 

@@ -3,13 +3,20 @@ using System.Linq;
 using UnityEngine;
 using TMPro;
 using SimpleJSON;
+using UnityEngine.UI;
 
 public class LogrosManager : MonoBehaviour
 {
+    [Header("Prefabs y contenedores")]
     public GameObject categoriaPrefab;
     public GameObject elementoPrefab;
     public Transform categoriaPanel;
     public Transform elementoPanel;
+
+    [Header("Paneles y Botones")]
+    public GameObject PanelLogros;
+    public GameObject PanelDatos;
+    public Button BtnDatos;
 
     private Dictionary<string, UI.Categoria> categorias;
     private Dictionary<string, Elemento> elementos;
@@ -18,6 +25,7 @@ public class LogrosManager : MonoBehaviour
     private void Awake()
     {
         CargarJSON();
+        BtnDatos.onClick.AddListener(AbrirPanelDatos);
     }
 
     private void Start()
@@ -52,7 +60,7 @@ public class LogrosManager : MonoBehaviour
 
                     ElementoData elementoInfo = new ElementoData
                     {
-                        nombre = elementoData.HasKey("nombre") ? elementoData["nombre"].Value : "Sin nombre",
+                        simbolo = elementoData.HasKey("simbolo") ? elementoData["simbolo"].Value : "N/A",
                         logro = elementoData.HasKey("logro") ? elementoData["logro"].Value : "Sin logro",
                         misiones = new List<MisionData>()
                     };
@@ -90,13 +98,15 @@ public class LogrosManager : MonoBehaviour
             UI.Categoria categoria = new UI.Categoria(categoriaKey, categoriaInfo, misionFinalDesbloqueada);
             categorias.Add(categoriaKey, categoria);
 
+            // Dentro del foreach de categorías en Start():
             CreateCategoriaLogro(categoria);
 
             foreach (var elementoData in categoria.ElementosData.Values)
             {
                 Elemento nuevoElemento = new Elemento(elementoData);
-                elementos.Add(nuevoElemento.Nombre, nuevoElemento);
-                CreateElementoLogro(nuevoElemento);
+                elementos.Add(nuevoElemento.Simbolo, nuevoElemento);
+                // Cambia la llamada para incluir 'categoria':
+                CreateElementoLogro(categoria, nuevoElemento);
             }
         }
     }
@@ -140,10 +150,11 @@ public class LogrosManager : MonoBehaviour
             return;
         }
 
-        logroCategoria.ActualizarLogro(categoria.TituloMisionFinal, categoria.EstaCompletada());
+        logroCategoria.ActualizarDesdeCategoria(categoria.TituloMisionFinal, categoria.EstaCompletada());
     }
 
-    private void CreateElementoLogro(Elemento elemento)
+    // En LogrosManager.cs
+    private void CreateElementoLogro(UI.Categoria categoria, Elemento elemento)
     {
         if (elementoPrefab == null || elementoPanel == null)
         {
@@ -160,7 +171,19 @@ public class LogrosManager : MonoBehaviour
             return;
         }
 
-        logroElemento.ActualizarLogro(elemento.Nombre, elemento.Logro, elemento.EstaCompletado());
+        // ¡Aquí pasamos la categoría!
+        logroElemento.ActualizarLogro(
+            elemento.Simbolo,
+            elemento.Logro,
+            elemento.EstaCompletado(),
+            categoria.Nombre
+        );
+    }
+
+    private void AbrirPanelDatos()
+    {
+        PanelDatos.SetActive(true);
+        PanelLogros.SetActive(false);
     }
 }
 
@@ -175,7 +198,7 @@ public class CategoriaData
 [System.Serializable]
 public class ElementoData
 {
-    public string nombre;
+    public string simbolo;
     public string logro;
     public List<MisionData> misiones;
 }
@@ -215,13 +238,13 @@ namespace UI
 }
 public class Elemento
 {
-    public string Nombre { get; private set; }
+    public string Simbolo { get; private set; }
     public string Logro { get; private set; }
     public List<UI.Mision> Misiones { get; private set; }
 
     public Elemento(ElementoData data)
     {
-        Nombre = data.nombre;
+        Simbolo = data.simbolo;
         Logro = data.logro;
         Misiones = data.misiones != null ? data.misiones.Select(m => new UI.Mision(m)).ToList() : new List<UI.Mision>();
     }

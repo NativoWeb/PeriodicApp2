@@ -191,8 +191,6 @@ public class PerfilManager : MonoBehaviour
             Debug.LogError("No se encontró al usuario en el ranking.");
             posicionText.text = "Posición: No encontrada"; // Muestra un mensaje de error
         }
-
-
     }
     public async void Logout()
     {
@@ -286,6 +284,4 @@ public class PerfilManager : MonoBehaviour
             
         }
     }
-
-    
 }
