@@ -11,6 +11,7 @@ using System;
 public class GestorElementos : MonoBehaviour
 {
     [Header("Panel Principal del Elemento")]
+    public GameObject PanelDatosElemento;
     public TextMeshProUGUI txtSimbolo;
     public TextMeshProUGUI txtNombre;
     public TextMeshProUGUI txtNumeroAtomico;
@@ -23,8 +24,8 @@ public class GestorElementos : MonoBehaviour
     [Header("Botones de Cambio")]
     public Button btnMisiones;
     public Button btnInformacion;
-    private Color colorSeleccionado = new Color(0.39f, 0.75f, 0.72f);
-    private Color colorNoSeleccionado = new Color(0.83f, 0.82f, 0.82f);
+    private Color colorSeleccionado = new Color(110f / 255f, 106f / 255f, 169f / 255f);
+    private Color colorNoSeleccionado = new Color(255, 255, 255);
 
     [Header("UI Misiones")]
     public GameObject prefabMision;
@@ -43,17 +44,76 @@ public class GestorElementos : MonoBehaviour
     public TextMeshProUGUI txtElectronegatividad;
     public TextMeshProUGUI txtEstado;
     public TextMeshProUGUI txtDescripcion;
+
+    [Header("Descripción de la Categoría")]
+    public TextMeshProUGUI txtDescripcionCategoria;
     public TextMeshProUGUI txtTitulo;
 
     [Header("Botón de Regreso")]
     public Button btnRegresar;
-    public GameObject panelBotones;
     public GameObject panelMisionesInfo;
+
+    [Header("Botón de Regreso a categorias")]
+    public Button BtnCategorias;
+    public GameObject PanelCategorias;
+    public GameObject PanelElemento;
 
     private JSONNode jsonData;
 
-    void Start()
+    // Mapea cada categoría a un Color32 único
+    private static readonly Dictionary<string, Color32> ColoresPorCategoria = new Dictionary<string, Color32>
+{
+    { "Metales Alcalinos",        new Color32(0x41, 0xB9, 0xDE, 0xFF) },
+    { "Metales Alcalinotérreos",  new Color32(0xF0, 0x81, 0x2F, 0xFF) },
+    { "Metales de Transición",     new Color32(0xED, 0x6D, 0x9D, 0xFF) },
+    { "Metales Postransicionales", new Color32(0x72, 0x65, 0xAA, 0xFF) },
+    { "Metaloides",                new Color32(0xCD, 0xCB, 0xCC, 0xFF) },
+    { "No Metales Reactivos",      new Color32(0x79, 0xBB, 0x51, 0xFF) },
+    { "Gases Nobles",              new Color32(0x00, 0xA2, 0x93, 0xFF) },
+    { "Lantánidos",                new Color32(0xC0, 0x20, 0x3C, 0xFF) },
+    { "Actínoides",                new Color32(0x33, 0x37, 0x8E, 0xFF) },
+    { "Propiedades Desconocidas",  new Color32(0xC2, 0x89, 0x58, 0xFF) },
+};
+
+    List<Categoria> ObtenerCategoriasPorDefecto()
     {
+        return new List<Categoria>
+    {
+        new Categoria("Metales Alcalinos",       "Extremadamente reactivos al agua y al aire: desde el sodio en jabones hasta el potasio en fertilizantes."),
+        new Categoria("Metales Alcalinotérreos", "Menos reactivos, clave en aleaciones aeronáuticas y huesos: magnesio y calcio."),
+        new Categoria("Metales de Transición",   "Múltiples estados de oxidación y colores vivos: hierro en construcción, cobre en circuitos."),
+        new Categoria("Metales Postransicionales","Suaves y maleables: aluminio en aviones, estaño en soldaduras, plomo en baterías."),
+        new Categoria("Metaloides",               "Intermedios metal/no metal: silicio en semiconductores, boro en vidrios resistentes."),
+        new Categoria("No Metales Reactivos",     "Oxígeno en respiración, nitrógeno en fertilizantes, fósforo en detergentes."),
+        new Categoria("Gases Nobles",             "Inertes pero útiles: helio en RMN, argón en soldadura, neón en iluminación."),
+        new Categoria("Lantánidos",               "Tierras raras en tecnología: neodimio en imanes, cerio en catalizadores."),
+        new Categoria("Actínoides",               "Radioactivos potentes: uranio en centrales, americio en detectores de humo."),
+        new Categoria("Propiedades Desconocidas", "Elementos inestables o poco estudiados: la frontera de la química.")
+    };
+    }
+
+    void OnEnable()
+    {
+        InicializarPanelElemento();
+        string PlayerFref = PlayerPrefs.GetString("CategoriaSeleccionada");
+        Debug.Log(PlayerFref);
+    }
+
+    void InicializarPanelElemento()
+    {
+        Debug.Log("Iniciando GestorElementos...");
+        // 1) Título de categoría
+        string cat = PlayerPrefs.GetString("CategoriaSeleccionada", "");
+        txtTitulo.text = cat;
+
+        // 2) Descripción según la lista por defecto
+        var lista = ObtenerCategoriasPorDefecto();
+        var match = lista.Find(c => c.Titulo == cat);
+        txtDescripcionCategoria.text = match != null
+            ? match.Descripcion
+            : "Descripción no disponible.";
+
+
         Debug.Log("Iniciando GestorElementos...");
         txtTitulo.text = PlayerPrefs.GetString("CategoriaSeleccionada", "");
         CargarJSON();
@@ -63,9 +123,10 @@ public class GestorElementos : MonoBehaviour
         btnInformacion.onClick.AddListener(MostrarInformacion);
         btnRegresar.onClick.AddListener(RegresarAlPanelElementos);
         botonMisionFinal.onClick.AddListener(IrAMisionFinal);
+        BtnCategorias.onClick.AddListener(RegresaraCategorias);
         MostrarMisiones();
     }
-
+    
     void CargarJSON()
     {
         string jsonString = PlayerPrefs.GetString("misionesCategoriasJSON");
@@ -129,62 +190,63 @@ public class GestorElementos : MonoBehaviour
         LimpiarElementos();
         var elementos = jsonData["Misiones_Categorias"]["Categorias"][categoriaSeleccionada]["Elementos"];
 
-        // Obtener la paleta de colores correspondiente a la categoría
-        Color32[] paleta = TablaPeriodicaColores.Paletas.ContainsKey(categoriaSeleccionada)
-            ? TablaPeriodicaColores.Paletas[categoriaSeleccionada]
-            : new Color32[] { new Color32(255, 255, 255, 255) }; // Blanco por defecto
+        // Obtén de una vez el color de la categoría (o blanco si no existe)
+        Color32 colorCategoria = ColoresPorCategoria.TryGetValue(categoriaSeleccionada, out var c)
+            ? c
+            : new Color32(255, 255, 255, 255);
 
-        int indiceColor = 0;
-
-        foreach (KeyValuePair<string, JSONNode> elemento in elementos)
+        foreach (var elemento in elementos)
         {
-            // Extraer información del elemento
-            string nombreElemento = elemento.Value["nombre"];
-            string simbolo = elemento.Value["simbolo"];
-            int numeroAtomico = elemento.Value["numero_atomico"].AsInt;
-            float masaAtomica = elemento.Value["masa_atomica"].AsFloat;
-            string descripcion = elemento.Value["descripcion"];
-
-            Debug.Log($"Cargando elemento: {nombreElemento} ({simbolo})");
-            CrearBotonElemento(elemento.Key, elemento.Value, categoriaSeleccionada, paleta[indiceColor % paleta.Length]);
-            indiceColor++; // Para usar colores diferentes dentro de la misma categoría
+            // Extraes datos…
+            CrearBotonElemento(elemento.Key, elemento.Value, colorCategoria );
         }
     }
-
-    void CrearBotonElemento(string nombreElemento, JSONNode datosElemento, string categoria, Color32 colorBoton)
+    void CrearBotonElemento(string nombreElemento, JSONNode datosElemento, Color32 colorBoton)
     {
-        GameObject nuevoBoton = Instantiate(prefabElemento, contenedorElementos);
-
-        TextMeshProUGUI[] textos = nuevoBoton.GetComponentsInChildren<TextMeshProUGUI>();
-        if (textos.Length >= 3)
+        if (prefabElemento == null)
         {
-            textos[0].text = datosElemento["nombre"];
-            textos[1].text = "#" + datosElemento["numero_atomico"].AsInt;
-            textos[2].text = datosElemento["simbolo"];
+            Debug.LogError("prefabElemento no está asignado.");
+            return;
         }
 
+        if (contenedorElementos == null)
+        {
+            Debug.LogError("contenedorElementos no está asignado.");
+            return;
+        }
+
+        if (datosElemento == null)
+        {
+            Debug.LogError($"datosElemento es null para {nombreElemento}");
+            return;
+        }
+
+        GameObject nuevoBoton = Instantiate(prefabElemento, contenedorElementos, false);
+
+        // Obtener textos
+        TextMeshProUGUI[] textos = nuevoBoton.GetComponentsInChildren<TextMeshProUGUI>();
+        if (textos.Length == 0)
+        {
+            Debug.LogError("No se encontraron componentes TextMeshProUGUI en el prefab.");
+            return;
+        }
+
+        textos[0].text = datosElemento["simbolo"];
+
+        // Listener
         Button boton = nuevoBoton.GetComponent<Button>();
+        if (boton == null)
+        {
+            Debug.LogError("El prefab no tiene un componente Button.");
+            return;
+        }
+
         boton.onClick.AddListener(() => SeleccionarElemento(nombreElemento));
 
-        // Asignar el color correspondiente de la paleta
-        nuevoBoton.GetComponent<Image>().color = colorBoton;
-    }
-
-    public static class TablaPeriodicaColores
-    {
-        public static Dictionary<string, Color32[]> Paletas = new Dictionary<string, Color32[]>
-    {
-        { "Metales Alcalinos", new Color32[] { new Color32(255, 204, 204, 255), new Color32(255, 178, 178, 255), new Color32(255, 153, 153, 255) } }, // Rojo pastel
-        { "Metales Alcalinotérreos", new Color32[] { new Color32(255, 229, 204, 255), new Color32(255, 204, 153, 255), new Color32(255, 179, 128, 255) } }, // Naranja pastel
-        { "Metales de Transición", new Color32[] { new Color32(204, 229, 255, 255), new Color32(179, 217, 255, 255), new Color32(153, 204, 255, 255) } }, // Azul pastel
-        { "Metales Postransicionales", new Color32[] { new Color32(221, 160, 221, 255), new Color32(200, 140, 200, 255), new Color32(180, 120, 180, 255) } }, // Lavanda
-        { "Metaloides", new Color32[] { new Color32(255, 239, 184, 255), new Color32(250, 222, 140, 255), new Color32(240, 200, 100, 255) } }, // Amarillo dorado pastel
-        { "No Metales Reactivos", new Color32[] { new Color32(204, 255, 204, 255), new Color32(178, 255, 178, 255), new Color32(153, 255, 153, 255) } }, // Verde claro pastel
-        { "Gases Nobles", new Color32[] { new Color32(238, 204, 255, 255), new Color32(221, 178, 255, 255), new Color32(200, 153, 255, 255) } }, // Violeta pastel
-        { "Lantánidos", new Color32[] { new Color32(216, 191, 216, 255), new Color32(200, 170, 200, 255), new Color32(180, 150, 180, 255) } }, // Malva pastel
-        { "Actínoides", new Color32[] { new Color32(255, 218, 233, 255), new Color32(255, 191, 219, 255), new Color32(255, 165, 204, 255) } }, // Rosa claro pastel
-        { "Propiedades Desconocidas", new Color32[] { new Color32(211, 211, 211, 255), new Color32(190, 190, 190, 255), new Color32(170, 170, 170, 255) } } // Gris claro neutro
-    };
+        // Color
+        Image img = nuevoBoton.GetComponent<Image>();
+        if (img != null)
+            img.color = colorBoton;
     }
 
     void LimpiarElementos()
@@ -201,7 +263,8 @@ public class GestorElementos : MonoBehaviour
         PlayerPrefs.SetString("ElementoSeleccionado", nombreElemento);
         PlayerPrefs.Save();
 
-        panelBotones.SetActive(false);
+        PanelElemento.SetActive(false);
+        PanelCategorias.SetActive(false);
         panelMisionesInfo.SetActive(true);
 
         CargarDatosElementoSeleccionado();
@@ -209,7 +272,20 @@ public class GestorElementos : MonoBehaviour
 
     void CargarDatosElementoSeleccionado()
     {
+
         string categoriaSeleccionada = PlayerPrefs.GetString("CategoriaSeleccionada");
+
+        // Color del panel de datos según categoría
+        if (PanelDatosElemento != null)
+        {
+            var imgPanel = PanelDatosElemento.GetComponent<Image>();
+            if (imgPanel != null)
+            {
+                Color32 colorCat = ColoresPorCategoria.TryGetValue(categoriaSeleccionada, out var c) ? c : new Color32(255, 255, 255, 255);
+                imgPanel.color = colorCat;
+            }
+        }
+
         string jsonString = PlayerPrefs.GetString("misionesCategoriasJSON");
         string elementoSeleccionado = PlayerPrefs.GetString("ElementoSeleccionado");
 
@@ -253,7 +329,7 @@ public class GestorElementos : MonoBehaviour
 
         txtSimbolo.text = elementoJson["simbolo"].Value;
         txtNombre.text = elementoJson["nombre"].Value;
-        txtNumeroAtomico.text = "Número Atómico: " + elementoJson["numero_atomico"].AsInt;
+        txtNumeroAtomico.text = elementoJson["numero_atomico"].Value;
         txtMasaAtomica.text = elementoJson["masa_atomica"].Value;
         txtPuntoFusion.text = elementoJson["punto_fusion"].Value + "°C";
         txtPuntoEbullicion.text = elementoJson["punto_ebullicion"].Value + "°C";
@@ -282,38 +358,31 @@ public class GestorElementos : MonoBehaviour
             {
                 case "AR":
                     mision.xp = 10;
-                    mision.colorBoton = "#FFD700"; // Dorado
                     mision.logoMision = "logosMision/ar";
                     break;
                 case "QR":
                     mision.xp =10;
-                    mision.colorBoton = "#00CED1"; // Turquesa
                     mision.logoMision = "logosMision/qr";
                     break;
                 case "Juego":
                     mision.xp = 12;
-                    mision.colorBoton = "#32CD32"; // Verde lima
                     mision.logoMision = "logosMision/juego";
                     break;
                 case "Quiz":
                     mision.xp = 12;
-                    mision.colorBoton = "#4169E1"; // Azul real
                     mision.logoMision = "logosMision/quiz";
                     break;
                 case "Evaluacion":
                     mision.xp = 12;
-                    mision.colorBoton = "#8B0000"; // Rojo oscuro
                     mision.logoMision = "logosMision/evaluacion";
                     break;
                 default:
                     mision.xp = 0;
-                    mision.colorBoton = "#808080"; // Gris
                     mision.logoMision = "logosMision/default";
                     break;
             }
 
             PlayerPrefs.SetInt("xp_mision", mision.xp); // Guardar XP en PlayerPrefs
-
 
             CrearPrefabMision(mision);
         }
@@ -357,22 +426,39 @@ public class GestorElementos : MonoBehaviour
     {
         scrollMisiones.SetActive(false);
         scrollInformacion.SetActive(true);
+
+        // Fondo
         btnInformacion.GetComponent<Image>().color = colorSeleccionado;
         btnMisiones.GetComponent<Image>().color = colorNoSeleccionado;
+
+        // Texto
+        var txtInfo = btnInformacion.GetComponentInChildren<TextMeshProUGUI>();
+        var txtMis = btnMisiones.GetComponentInChildren<TextMeshProUGUI>();
+        if (txtInfo != null) txtInfo.color = Color.white;
+        if (txtMis != null) txtMis.color = Color.black;
     }
 
     public void MostrarMisiones()
     {
         scrollMisiones.SetActive(true);
         scrollInformacion.SetActive(false);
+
+        // Fondo
         btnMisiones.GetComponent<Image>().color = colorSeleccionado;
         btnInformacion.GetComponent<Image>().color = colorNoSeleccionado;
+
+        // Texto
+        var txtMis = btnMisiones.GetComponentInChildren<TextMeshProUGUI>();
+        var txtInfo = btnInformacion.GetComponentInChildren<TextMeshProUGUI>();
+        if (txtMis != null) txtMis.color = Color.white;
+        if (txtInfo != null) txtInfo.color = Color.black;
     }
 
     public void RegresarAlPanelElementos()
     {
-        panelBotones.SetActive(true);
+        PanelElemento.SetActive(true);
         panelMisionesInfo.SetActive(false);
+        PanelCategorias.SetActive(false);
         LimpiarElementos();
         CargarElementosDesdeJSON();
     }
@@ -564,5 +650,13 @@ public class GestorElementos : MonoBehaviour
 
         Debug.LogWarning("No se encontró la ruta de la Misión Final.");
         return null;
+    }
+
+    private void RegresaraCategorias()
+    {
+        PlayerPrefs.DeleteKey("CategoriaSeleccionada");
+        PlayerPrefs.Save();
+        PanelElemento.SetActive(false);
+        PanelCategorias.SetActive(true);
     }
 }

@@ -698,14 +698,14 @@ MonoBehaviour:
   onValueChanged:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 0}
-        m_TargetAssemblyTypeName: ControladorEncuesta, Assembly-CSharp
-        m_MethodName: VerificarRespuesta
+      - m_Target: {fileID: 645997937}
+        m_TargetAssemblyTypeName: EncuestaConocimientoController, Assembly-CSharp
+        m_MethodName: OnRespuestaSeleccionada
         m_Mode: 3
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
           m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
+          m_IntArgument: 1
           m_FloatArgument: 0
           m_StringArgument: 
           m_BoolArgument: 0
@@ -871,14 +871,14 @@ MonoBehaviour:
   onValueChanged:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 0}
-        m_TargetAssemblyTypeName: ControladorEncuesta, Assembly-CSharp
-        m_MethodName: VerificarRespuesta
+      - m_Target: {fileID: 645997937}
+        m_TargetAssemblyTypeName: EncuestaConocimientoController, Assembly-CSharp
+        m_MethodName: OnRespuestaSeleccionada
         m_Mode: 3
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
           m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
+          m_IntArgument: 2
           m_FloatArgument: 0
           m_StringArgument: 
           m_BoolArgument: 0
@@ -973,7 +973,7 @@ GameObject:
   - component: {fileID: 547117893}
   - component: {fileID: 547117892}
   m_Layer: 5
-  m_Name: Text (TMP)
+  m_Name: TextFeedback
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1097,6 +1097,107 @@ RectTransform:
   m_AnchoredPosition: {x: 50, y: 0}
   m_SizeDelta: {x: 514.0637, y: 119.7923}
   m_Pivot: {x: 0.5, y: 0.5}
+--- !u!1 &645997936
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 645997938}
+  - component: {fileID: 645997937}
+  - component: {fileID: 645997939}
+  m_Layer: 0
+  m_Name: EncuestaContoller
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &645997937
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 645997936}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f360bc977006b7e49adae644e7696506, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  textoPregunta: {fileID: 1092559858}
+  grupoOpcionesUI: {fileID: 51940106}
+  opcionesToggleUI:
+  - {fileID: 1515981829}
+  - {fileID: 360647523}
+  - {fileID: 468185963}
+  - {fileID: 1646503063}
+  barraProgreso: {fileID: 1177429781}
+  txtRacha: {fileID: 1388431172}
+  txtTimer: {fileID: 1522995609}
+  panelFeedback: {fileID: 1835859933}
+  textoFeedback: {fileID: 547117892}
+  colorFondoCorrecto: {r: 0.66, g: 0.81, b: 0.3, a: 1}
+  colorFondoIncorrecto: {r: 0.89, g: 0.31, b: 0.31, a: 1}
+  colorCorrecto: {r: 0, g: 1, b: 0, a: 1}
+  colorIncorrecto: {r: 1, g: 0, b: 0, a: 1}
+  colorNormal: {r: 1, g: 1, b: 1, a: 1}
+--- !u!4 &645997938
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 645997936}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 714.37506, y: 2218.0637, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &645997939
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 645997936}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d41cc9a192e4fe1489e8b165f4613497, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  modelAsset: {fileID: 5022602860645237092, guid: 2631f455902513a4baf4253c83196e2d, type: 3}
+  mean:
+  - 8.8975
+  - 8.6225
+  - 49.175
+  - 22.2025
+  - 21.4925
+  - 9.845
+  - 11.7725
+  - 14.5725
+  - 8.715
+  - 13.02
+  - 4.4775
+  - 3.7622142
+  std:
+  - 5.667627
+  - 5.4735723
+  - 30.456352
+  - 12.6592455
+  - 12.735381
+  - 6.4401846
+  - 7.2853103
+  - 8.837688
+  - 5.304128
+  - 7.944155
+  - 2.837163
+  - 0.7552097
 --- !u!1 &667329810
 GameObject:
   m_ObjectHideFlags: 0
@@ -2248,7 +2349,7 @@ GameObject:
   - component: {fileID: 1388431173}
   - component: {fileID: 1388431172}
   m_Layer: 5
-  m_Name: Text
+  m_Name: TextRacha
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2400,9 +2501,9 @@ MonoBehaviour:
   onValueChanged:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 0}
-        m_TargetAssemblyTypeName: ControladorEncuesta, Assembly-CSharp
-        m_MethodName: VerificarRespuesta
+      - m_Target: {fileID: 645997937}
+        m_TargetAssemblyTypeName: EncuestaConocimientoController, Assembly-CSharp
+        m_MethodName: OnRespuestaSeleccionada
         m_Mode: 3
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -2425,7 +2526,7 @@ GameObject:
   - component: {fileID: 1522995608}
   - component: {fileID: 1522995609}
   m_Layer: 5
-  m_Name: Text
+  m_Name: TextTimer
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2746,14 +2847,14 @@ MonoBehaviour:
   onValueChanged:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 0}
-        m_TargetAssemblyTypeName: ControladorEncuesta, Assembly-CSharp
-        m_MethodName: VerificarRespuesta
+      - m_Target: {fileID: 645997937}
+        m_TargetAssemblyTypeName: EncuestaConocimientoController, Assembly-CSharp
+        m_MethodName: OnRespuestaSeleccionada
         m_Mode: 3
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
           m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
+          m_IntArgument: 3
           m_FloatArgument: 0
           m_StringArgument: 
           m_BoolArgument: 0
@@ -3434,7 +3535,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 0.392}
+  m_Color: {r: 1, g: 1, b: 1, a: 0.39215687}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -3606,101 +3707,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1967899937}
   m_CullTransparentMesh: 1
---- !u!1 &2015933157
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 2015933159}
-  - component: {fileID: 2015933158}
-  - component: {fileID: 2015933160}
-  m_Layer: 0
-  m_Name: GameObject
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &2015933158
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2015933157}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 28b2cc84d14663340b30a77665fb37bf, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  grupoOpciones: {fileID: 51940106}
-  barraProgreso: {fileID: 1362165835}
-  TextTimer: {fileID: 1522995609}
-  txtRacha: {fileID: 1388431172}
-  tiempoRestante: 10
-  textoPreguntaUI: {fileID: 1092559858}
-  grupoOpcionesUI: {fileID: 51940106}
-  opcionesToggleUI:
-  - {fileID: 1515981829}
-  - {fileID: 360647523}
-  - {fileID: 468185963}
-  - {fileID: 1646503063}
-  panelFeedback: {fileID: 1835859933}
-  textoFeedback: {fileID: 547117892}
-  colorFondoCorrecto: {r: 0.66, g: 0.81, b: 0.3, a: 1}
-  colorFondoIncorrecto: {r: 0.89, g: 0.31, b: 0.31, a: 1}
-  colorCorrecto: {r: 0.65882355, g: 0.8117647, b: 0.29803923, a: 1}
-  colorIncorrecto: {r: 1, g: 0, b: 0, a: 1}
-  colorNormal: {r: 1, g: 1, b: 1, a: 1}
---- !u!4 &2015933159
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2015933157}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 576.2595, y: 1197.6455, z: -1.499443}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &2015933160
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2015933157}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d41cc9a192e4fe1489e8b165f4613497, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  modelAsset: {fileID: 5022602860645237092, guid: 2631f455902513a4baf4253c83196e2d, type: 3}
-  mean:
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  std:
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
 --- !u!1 &2104878980
 GameObject:
   m_ObjectHideFlags: 0
@@ -3811,7 +3817,7 @@ SceneRoots:
   - {fileID: 1384306789}
   - {fileID: 2104878984}
   - {fileID: 189755855}
+  - {fileID: 645997938}
   - {fileID: 1362165836}
   - {fileID: 1668375980}
   - {fileID: 1177293638}
-  - {fileID: 2015933159}

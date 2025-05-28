@@ -67,7 +67,6 @@ public class ControllerPerfil : MonoBehaviour
 
         
     }
-
   
     private void MostrarDatosOffline()
     {

@@ -608,7 +608,7 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1233962846}
+      - m_Target: {fileID: 1827974804}
         m_TargetAssemblyTypeName: ControladorEncuestaApre, Assembly-CSharp
         m_MethodName: Responder
         m_Mode: 6
@@ -842,59 +842,6 @@ MonoBehaviour:
   m_OnValueChanged:
     m_PersistentCalls:
       m_Calls: []
---- !u!1 &1233962844
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1233962845}
-  - component: {fileID: 1233962846}
-  m_Layer: 0
-  m_Name: GameObject
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &1233962845
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1233962844}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 624.9928, y: 1890.6854, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1233962846
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1233962844}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0854ecc1341969c449b65cf83708da9b, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  textoPregunta: {fileID: 279430080}
-  barraProgreso: {fileID: 1208862509}
-  contenedor:
-    preguntasEstiloBinario:
-      Gamificacion: []
-      Metodologia_Tradicional: []
-      Aprendizaje_Basado_en_Proyectos: []
-      Aprendizaje_Basado_en_Problemas: []
-      Aprendizaje_Cooperativo: []
 --- !u!1 &1333999658
 GameObject:
   m_ObjectHideFlags: 0
@@ -1522,7 +1469,7 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1233962846}
+      - m_Target: {fileID: 1827974804}
         m_TargetAssemblyTypeName: ControladorEncuestaApre, Assembly-CSharp
         m_MethodName: Responder
         m_Mode: 6
@@ -1728,6 +1675,59 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1751370008}
   m_CullTransparentMesh: 1
+--- !u!1 &1827974803
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1827974805}
+  - component: {fileID: 1827974804}
+  m_Layer: 0
+  m_Name: EncuestaApreController
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1827974804
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1827974803}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0854ecc1341969c449b65cf83708da9b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  textoPregunta: {fileID: 279430080}
+  barraProgreso: {fileID: 1208862509}
+  contenedor:
+    preguntasEstiloBinario:
+      Gamificacion: []
+      Metodologia_Tradicional: []
+      Aprendizaje_Basado_en_Proyectos: []
+      Aprendizaje_Basado_en_Problemas: []
+      Aprendizaje_Cooperativo: []
+--- !u!4 &1827974805
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1827974803}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 714.37506, y: 2218.0637, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1951565371
 GameObject:
   m_ObjectHideFlags: 0
@@ -1942,4 +1942,4 @@ SceneRoots:
   - {fileID: 590514937}
   - {fileID: 1607272546}
   - {fileID: 1951565374}
-  - {fileID: 1233962845}
+  - {fileID: 1827974805}

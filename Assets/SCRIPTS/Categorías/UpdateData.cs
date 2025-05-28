@@ -98,7 +98,6 @@ public class UpdateData : MonoBehaviour
     {
         DocumentReference userRef = db.Collection("users").Document(userId);
         await userRef.UpdateAsync(encuesta, estadoencuesta);
-        Debug.Log($"✅ Estado de la encuesta {encuesta}... {userId}: {estadoencuesta} desde UpdateData");
     }
 
 
@@ -125,23 +124,19 @@ public class UpdateData : MonoBehaviour
             };
 
                 await userRef.UpdateAsync(updates);
-                Debug.Log($"✅ XP actualizado en Firebase para {userId}: {nuevoXP}");
             }
             else
             {
-                Debug.LogWarning("⚠️ No se encontró el usuario en Firebase.");
             }
         }
         catch (Exception e)
         {
-            Debug.LogError($"❌ Error al actualizar XP en Firebase: {e.Message}");
         }
     }
     public async Task SubirDatosJSON()
     {
         if (string.IsNullOrEmpty(userId))
         {
-            Debug.LogError("❌ No hay usuario autenticado.");
             return;
         }
 
@@ -178,14 +173,12 @@ public class UpdateData : MonoBehaviour
 
         if (tareasSubida.Count == 0)
         {
-            Debug.LogWarning("⚠️ No hay datos de misiones ni categorías para subir.");
             return;
         }
 
         // Esperar a que todas las tareas finalicen
         await Task.WhenAll(tareasSubida);
 
-        Debug.Log("✅ Datos de misiones y categorías subidos en documentos separados.");
     }
 
     private async void GetuserData()
@@ -218,8 +211,6 @@ public class UpdateData : MonoBehaviour
                     PlayerPrefs.SetString("TempOcupacion", ocupacion);
                     string rango = snapshot.GetValue<string>("Rango");
                     PlayerPrefs.SetString("Rango", rango);
-                    string avatar = snapshot.GetValue<string>("avatar");
-                    PlayerPrefs.SetString("TempAvatar", avatar);
 
                     // Verificamos si los campos existen ----------------------------- para guardarlos en playerprefs
 
@@ -239,18 +230,15 @@ public class UpdateData : MonoBehaviour
 
                         
                     }
-                    Debug.Log("Get-user-Data desde Update Data puso bien los player prefs");
                 }
 
             }
             catch (Exception e)
             {
-                Debug.LogError($"❌ no se pudo actualizar la informacion basica del usuario: {e.Message}");
             }
         }
         else
         {
-            Debug.Log("Sin conexion a internet, por el momento no se puede actualizar los datos basicos del usuario");
         }
     }
 }

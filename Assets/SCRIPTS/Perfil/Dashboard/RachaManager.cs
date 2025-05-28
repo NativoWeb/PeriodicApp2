@@ -21,6 +21,9 @@ public class RachaManager : MonoBehaviour
 
     private void Start()
     {
+        // Forzar orientación vertical
+        Screen.orientation = ScreenOrientation.Portrait;
+
         auth = FirebaseAuth.DefaultInstance;
         db = FirebaseFirestore.DefaultInstance;
         user = auth.CurrentUser;
@@ -144,7 +147,7 @@ public class RachaManager : MonoBehaviour
             DocumentSnapshot snapshot = task.Result;
 
             DateTime? fechaFirestore = null;
-            int rachaFirestore = 0;
+            int rachaFirestore = 1;
 
             if (snapshot.TryGetValue("ultimaFecha", out Timestamp ts))
                 fechaFirestore = ts.ToDateTime().Date;
@@ -180,7 +183,5 @@ public class RachaManager : MonoBehaviour
     {
         if (RachaTexto != null)
             RachaTexto.text = rachaActualLocal.ToString();
-
-
     }
 }
