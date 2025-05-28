@@ -94,7 +94,15 @@ public class JuegoPreguntadosManager : MonoBehaviour
         BtnActivarCategoria.interactable = false;
 
         StartCoroutine(VerificarConexionPeriodicamente());
-        StartCoroutine(QuitarPanelVs());
+        if (PlayerPrefs.GetInt("AbrirConPanel", 0) == 1)
+        {
+            StartCoroutine(QuitarPanelVs());
+            PlayerPrefs.SetInt("AbrirConPanel", 0); // resetear para evitar mostrarlo siempre
+        }
+        else
+        {
+            PanelVs.SetActive(false);
+        }
 
         if (string.IsNullOrEmpty(partidaId))
         {

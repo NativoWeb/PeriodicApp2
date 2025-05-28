@@ -25,7 +25,6 @@ public class AiTutor : MonoBehaviour
 {
     [Header("Referencias UI")]
     public TMP_InputField inputPregunta;
-    public GameObject panelChatTutor;
     public GameObject bubbleUserPrefab;
     public GameObject bubbleAiPrefab;
     public Transform contentChat;
@@ -59,7 +58,7 @@ public class AiTutor : MonoBehaviour
 
     void Start()
     {
-        panelChatTutor.SetActive(false);
+        CrearBurbujaIA("👋 ¡Hola! Soy tu tutor virtual de química. Pregúntame sobre cualquier elemento de la tabla periódica.");
         CargarElementosDesdeJSONL();
         loader.CargarEmbeddings();
         if (embedder == null)
@@ -314,31 +313,27 @@ public class AiTutor : MonoBehaviour
         }
     }
 
-
-
-
     void CrearBurbujaUsuario(string texto)
     {
         GameObject burbuja = Instantiate(bubbleUserPrefab, contentChat);
         burbuja.GetComponentInChildren<TextMeshProUGUI>().text = texto;
+
+        RectTransform rt = burbuja.GetComponent<RectTransform>();
+        rt.anchorMin = new Vector2(1, rt.anchorMin.y);
+        rt.anchorMax = new Vector2(1, rt.anchorMax.y);
+        rt.pivot = new Vector2(1, 0.5f);
+        rt.anchoredPosition = new Vector2(-10, rt.anchoredPosition.y); // separarlo un poco del borde
     }
 
     void CrearBurbujaIA(string texto)
     {
         GameObject burbuja = Instantiate(bubbleAiPrefab, contentChat);
         burbuja.GetComponentInChildren<TextMeshProUGUI>().text = texto;
+
+        RectTransform rt = burbuja.GetComponent<RectTransform>();
+        rt.anchorMin = new Vector2(0, rt.anchorMin.y);
+        rt.anchorMax = new Vector2(0, rt.anchorMax.y);
+        rt.pivot = new Vector2(0, 0.5f);
+        rt.anchoredPosition = new Vector2(10, rt.anchoredPosition.y);
     }
-
-    public void ToggleChatPanel()
-    {
-        bool estadoActual = panelChatTutor.activeSelf;
-        panelChatTutor.SetActive(!panelChatTutor.activeSelf);
-
-        if (!estadoActual)
-        {
-            CrearBurbujaIA("👋 ¡Hola! Soy tu tutor virtual de química. Pregúntame sobre cualquier elemento de la tabla periódica.");
-        }
-    }
-
-
 }
