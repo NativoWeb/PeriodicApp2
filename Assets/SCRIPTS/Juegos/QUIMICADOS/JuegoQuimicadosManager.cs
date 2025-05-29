@@ -20,9 +20,6 @@ public class JuegoPreguntadosManager : MonoBehaviour
     public GameObject PopUpSeleccionarCategoria;
     public Transform ContentCategorias;
 
-    [Header("Buttons")]
-    public Button BtnConquistar;
-
     [Header("Quimicados Principal")]
 
     [Header("Text")]
@@ -466,6 +463,7 @@ public class JuegoPreguntadosManager : MonoBehaviour
     }
     public void CalcularLogro()
     {
+        int reiniciarCorona = PlayerPrefs.GetInt("reiniciarCorona", 0);
         int wasCorrect = PlayerPrefs.GetInt("wasCorrect", 0);
         int wasIncorrect = PlayerPrefs.GetInt("wasIncorrect", 0);
         string miUid = auth.CurrentUser.UserId;
@@ -478,16 +476,35 @@ public class JuegoPreguntadosManager : MonoBehaviour
         var partidaRef = db.Collection("partidasQuimicados")
                             .Document(partidaId);
 
+        if (reiniciarCorona == 1)
+        {
+            PlayerPrefs.SetInt("reiniciarCorona", 0);
+            Dictionary<string, object> updates = new Dictionary<string, object>
+            {
+                { campoCorona, 0 }
+            };
+
+            partidaRef.UpdateAsync(updates)
+                .ContinueWithOnMainThread(task =>
+                {
+                    if (task.IsFaulted)
+                        Debug.LogError($"Error al actualizar fallos y coronas: {task.Exception}");
+                    else
+                        Debug.Log($"✅ reinició corona para {uidJugador}");
+                });
+            PlayerPrefs.SetInt("wasCorrect", 0);
+            LoadCoronaProgress();
+            return;
+        }
+
         if (wasIncorrect == 1)
         {
-            progressImage.fillAmount = 0;
             PlayerPrefs.SetInt("wasIncorrect", 0);
 
             // ⚠️ Actualizamos fallos[uidJugador] = true y reiniciamos la corona
             Dictionary<string, object> updates = new Dictionary<string, object>
             {
-                { $"fallos.{uidJugador}", true },
-                { campoCorona, 0 }
+                { $"fallos.{uidJugador}", true }
             };
 
             partidaRef.UpdateAsync(updates)
@@ -657,7 +674,8 @@ public class JuegoPreguntadosManager : MonoBehaviour
                 PlayerPrefs.SetString("CategoriaRuleta", categoriaSeleccionada);
 
                 PlayerPrefs.SetInt("CompletarLogro", 1);
-                PlayerPrefs.SetInt("wasIncorrect", 1);
+                //PlayerPrefs.SetInt("wasIncorrect", 1);
+                PlayerPrefs.SetInt("reiniciarCorona", 1);
                 PlayerPrefs.SetInt("wasCorrect", 0);
                 SceneManager.LoadScene("Cuestionario");
             });

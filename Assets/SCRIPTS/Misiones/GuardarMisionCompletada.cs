@@ -90,7 +90,6 @@ public class GuardarMisionCompletada : MonoBehaviour
         imagenMision.SetActive(true);
         imagenMision.transform.localScale = Vector3.zero;
         audioSource.Play(); // 🔊 Reproduce el sonido
-        Handheld.Vibrate();
 
         // 🟢 Activar y reproducir el efecto de partículas
         if (particulasMision != null)
