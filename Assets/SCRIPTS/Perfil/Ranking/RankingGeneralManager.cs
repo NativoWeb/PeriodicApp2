@@ -9,8 +9,6 @@ using UnityEngine.SceneManagement;
 public class RankingGeneralManager : BaseRankingManager
 {
     [Header("General Configuration")]
-    [SerializeField] private Color colorBotonSeleccionado = new Color(0.0f, 0.4f, 0.0f);
-    [SerializeField] private Color colorBotonNormal = Color.white;
     [SerializeField] private RectTransform rankingContentGeneral;
 
     private ScrollToUser scrollToUser;
@@ -27,9 +25,13 @@ public class RankingGeneralManager : BaseRankingManager
     private bool layoutUpdated = false;
     private const float LAYOUT_UPDATE_DELAY = 0.5f;
 
-    
+    [Header("Paneles botones Estudiante-Profesor")]
+    [SerializeField] public GameObject panelbotonesEstudiante;
+    [SerializeField] public GameObject panelbotonesProfesor;
+
     protected override void Start()
     {
+        SeleccionarPanelBtnCorrespondiente();
         base.Start();
         currentMode = RankingMode.General; // Inicializar el modo
 
@@ -61,8 +63,6 @@ public class RankingGeneralManager : BaseRankingManager
             });
         }
     }
-
-  
 
     private IEnumerator DelayedInitialLoad(float delay)
     {
@@ -123,20 +123,23 @@ public class RankingGeneralManager : BaseRankingManager
         Debug.Log("Layout actualizado correctamente");
     }
 
-    public void DesactivarRanking()
+    public void SeleccionarPanelBtnCorrespondiente()
     {
         string ocupacion = PlayerPrefs.GetString("TempOcupacion", "");
-
+        Debug.Log($"la ocupacion del usuario es: {ocupacion}");
         if (RankingPanel != null)
         {
             if (ocupacion == "Profesor")
             {
-                SceneManager.LoadScene("InicioProfesor1");
-                
+                panelbotonesProfesor.SetActive(true);
+                if (panelbotonesEstudiante != null)
+                    panelbotonesEstudiante.SetActive(false);
             }
             else
             {
-                SceneManager.LoadScene("Perfil_Usuario");
+                panelbotonesEstudiante.SetActive(true);
+                if (panelbotonesProfesor != null)
+                    panelbotonesProfesor.SetActive(false);
             }
         }
         if (estaActualizando)
@@ -263,14 +266,9 @@ public class RankingGeneralManager : BaseRankingManager
     {
         if (associatedButton != null)
         {
-            Image buttonImage = associatedButton.GetComponent<Image>();
-            if (buttonImage != null)
-            {
-                buttonImage.color = selected ? colorBotonSeleccionado : colorBotonNormal;
-            }
-
             TextMeshProUGUI buttonText = associatedButton.GetComponentInChildren<TextMeshProUGUI>();
             if (buttonText != null)
+
             {
                 buttonText.fontStyle = selected ? FontStyles.Bold : FontStyles.Normal;
             }

@@ -10,15 +10,31 @@ public class FirestoreBotones : MonoBehaviour
     public Transform contenedorBotones;
     public Slider SliderProgreso;
     public GameObject prefabBoton;
-    public TextMeshProUGUI NombreUsuarioTMP;
-    public TextMeshProUGUI tituloTMP;
     public TextMeshProUGUI nombreTMP;
     public TextMeshProUGUI descripcionTMP;
 
-    private Button botonSeleccionado;
-    private Color colorNormal = new Color(180f / 255f, 180f / 255f, 180f / 255f) ;
-    private Color colorSeleccionado = new Color(0f / 255f, 162f / 255f, 148f / 255f)
-;
+    public GameObject PanelCategorias;
+    public GameObject PanelElemento;
+
+    public Button botonSeleccionado;
+
+    private Categoria categoriaSeleccionada;
+
+
+    // Dentro de FirestoreBotones, justo después de los demás campos:
+    private static readonly Dictionary<string, string> coloresPorCategoria = new Dictionary<string, string>
+    {
+        { "Metales Alcalinos",       "#41B9DE" },
+        { "Metales Alcalinotérreos", "#F0812F" },
+        { "Metales de Transición",    "#ED6D9D" },
+        { "Metales Postransicionales","#7265AA" },
+        { "Metaloides",               "#CDCBCB" },
+        { "No Metales Reactivos",     "#79BB51" },
+        { "Gases Nobles",             "#00A293" },
+        { "Lantánidos",               "#C0203C" },
+        { "Actínoides",               "#33378E" },
+        { "Propiedades Desconocidas", "#C28958" }
+    };
 
     private List<Categoria> categorias = new List<Categoria>();
 
@@ -27,7 +43,9 @@ public class FirestoreBotones : MonoBehaviour
         Debug.Log("📌 Cargando categorías desde PlayerPrefs...");
         CargarCategorias();
         string username = PlayerPrefs.GetString("DisplayName", "");
-        NombreUsuarioTMP.text = username;
+        botonSeleccionado.onClick.AddListener(OnClickContinuar);
+        string Player = PlayerPrefs.GetString("CategoriaSeleccionada");
+        Debug.Log($"Regresar: gt5gt5 {Player}");
     }
 
     void CargarCategorias()
@@ -68,32 +86,49 @@ public class FirestoreBotones : MonoBehaviour
         if (textoBoton != null)
             textoBoton.text = numero.ToString();
 
+        // — Asigna color de fondo según categoría —
+        Image img = boton.GetComponent<Image>();
+        if (img != null && coloresPorCategoria.TryGetValue(categoria.Titulo, out string hex))
+        {
+            ColorUtility.TryParseHtmlString(hex, out Color c);
+            img.color = c;
+        }
+
+        // Listener para mostrar datos en los TMP
         boton.onClick.AddListener(() => SeleccionarNivel(boton, categoria));
 
         return nuevoBoton;
     }
-
     void SeleccionarNivel(Button boton, Categoria categoria)
     {
-        if (botonSeleccionado != null)
-            botonSeleccionado.GetComponent<Image>().color = colorNormal;
-
-        botonSeleccionado = boton;
-        botonSeleccionado.GetComponent<Image>().color = colorSeleccionado;
-
-        tituloTMP.text = "Categoría " + (categorias.IndexOf(categoria) + 1) + ":";
         nombreTMP.text = categoria.Titulo;
         descripcionTMP.text = categoria.Descripcion;
 
-        // ✅ Actualizar progreso al seleccionar la categoría
+        categoriaSeleccionada = categoria;
+
+        // Mostrar progreso
         float progreso = ObtenerProgresoCategoria(categoria.Titulo);
         if (SliderProgreso != null)
         {
             SliderProgreso.value = progreso;
         }
+    }
 
-        PlayerPrefs.SetString("CategoriaSeleccionada", nombreTMP.text);
+    public void OnClickContinuar()
+    {
+        if (categoriaSeleccionada == null)
+        {
+            Debug.LogWarning("⚠ No hay categoría seleccionada.");
+            return;
+        }
+
+        // Guardar en PlayerPrefs
+        PlayerPrefs.SetString("CategoriaSeleccionada", categoriaSeleccionada.Titulo);
         PlayerPrefs.Save();
+
+        // Cambiar paneles
+        PanelCategorias.SetActive(false);
+        PanelElemento.SetActive(true);
     }
 
     List<Categoria> ObtenerCategoriasDesdePlayerPrefs()
@@ -204,5 +239,3 @@ public class Categoria
         Descripcion = descripcion;
     }
 }
-
-

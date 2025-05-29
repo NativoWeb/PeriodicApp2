@@ -47,7 +47,7 @@ public class NavigationController : MonoBehaviour
     void Update()
     {
         // Si estamos en la escena "CombateQuimico", ignoramos toda la funcionalidad
-        if (SceneManager.GetActiveScene().name == "CombateQuimico" || SceneManager.GetActiveScene().name == "Quimicados" || SceneManager.GetActiveScene().name == "QuimicadosGame" || SceneManager.GetActiveScene().name == "Cuestionario")
+        if (SceneManager.GetActiveScene().name == "CombateQuimico")
         {
             return;
         }
@@ -119,10 +119,8 @@ public class NavigationController : MonoBehaviour
     public void ShowPanel(GameObject panel)
     {
         // Si estamos en la escena "CombateQuimico", no hacer nada
-        if (SceneManager.GetActiveScene().name == "CombateQuimico" || SceneManager.GetActiveScene().name == "Quimicados" || SceneManager.GetActiveScene().name == "QuimicadosGame" || SceneManager.GetActiveScene().name == "Cuestionario" || panel == null)
-        {
+        if (SceneManager.GetActiveScene().name == "CombateQuimico" || panel == null)
             return;
-        }
 
         // Desactivar el panel actual si existe
         if (currentPanel != null)
@@ -145,10 +143,8 @@ public class NavigationController : MonoBehaviour
     public void GoBack()
     {
         // Si estamos en la escena "CombateQuimico", no hacer nada
-        if (SceneManager.GetActiveScene().name == "CombateQuimico" || SceneManager.GetActiveScene().name == "Quimicados" || SceneManager.GetActiveScene().name == "QuimicadosGame" || SceneManager.GetActiveScene().name == "Cuestionario")
-        {
+        if (SceneManager.GetActiveScene().name == "CombateQuimico")
             return;
-        }
 
         // Primero intentamos manejar paneles dentro de la misma escena
         if (panelHistory.Count > 0)

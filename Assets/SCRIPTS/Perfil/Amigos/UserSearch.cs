@@ -27,6 +27,8 @@ public class SearchUsers : MonoBehaviour
     public float searchDelay = 0.3f; // Retraso en segundos antes de ejecutar la búsqueda
     public int minSearchChars = 2; // Mínimo de caracteres para iniciar búsqueda
 
+   
+
     FirebaseFirestore db;
     private FirebaseUser currentUser;
     private FirebaseAuth auth;

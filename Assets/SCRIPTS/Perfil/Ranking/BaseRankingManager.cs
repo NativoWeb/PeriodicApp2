@@ -111,11 +111,11 @@ public abstract class BaseRankingManager : MonoBehaviour, IRankingObserver
 
         Transform xpTransform = playerUI.transform.Find("XP");
         if (xpTransform != null && xpTransform.TryGetComponent<TMP_Text>(out var xpTMP))
-            xpTMP.text = $"EXP\n{xp}";
+            xpTMP.text = $"XP\n{xp}";
 
         Transform posicionTransform = playerUI.transform.Find("Posicion");
         if (posicionTransform != null && posicionTransform.TryGetComponent<TMP_Text>(out var positionTMP))
-            positionTMP.text = $"#{position}";
+            positionTMP.text = position.ToString();
 
         if (highlight && playerUI.TryGetComponent<Image>(out var image))
         {
