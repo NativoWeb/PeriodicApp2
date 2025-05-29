@@ -56,8 +56,6 @@ public class LoginController : MonoBehaviour
 
     }
 
-
-
     private async void OnLoginButtonClick()
     {
         if (Application.internetReachability == NetworkReachability.NotReachable)

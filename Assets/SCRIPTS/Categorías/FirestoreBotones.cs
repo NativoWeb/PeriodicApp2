@@ -44,8 +44,6 @@ public class FirestoreBotones : MonoBehaviour
         CargarCategorias();
         string username = PlayerPrefs.GetString("DisplayName", "");
         botonSeleccionado.onClick.AddListener(OnClickContinuar);
-        string Player = PlayerPrefs.GetString("CategoriaSeleccionada");
-        Debug.Log($"Regresar: gt5gt5 {Player}");
     }
 
     void CargarCategorias()
