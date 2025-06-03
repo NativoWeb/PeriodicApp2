@@ -193,7 +193,7 @@ public class GirarRuleta : MonoBehaviour
     IEnumerator AnimarFlecha()
     {
         Vector3 rotacionOriginal = new Vector3(0,0,0);
-        Vector3 rotacionLeve = rotacionOriginal + new Vector3(0, 0, -10f); // se inclina un poco
+        Vector3 rotacionLeve = rotacionOriginal + new Vector3(0, 0, 10f); // se inclina un poco
 
         flecha.localEulerAngles = rotacionLeve;
         yield return new WaitForSeconds(0.05f); // pequeña pausa

@@ -8,6 +8,8 @@ public class MenuController : MonoBehaviour
 {
     [Header("ReferenciasUI")]
     public Button Volver;
+    public Button btnCamara;
+    public Button btnSeleccion;
 
     [Header("Paneles")]
     public GameObject PanelMainMenu;
@@ -19,11 +21,21 @@ public class MenuController : MonoBehaviour
     [Header("Panel de Error")]
     public GameObject PanelSinInternet;
 
-    public void SeleccionarCamaraAR()
+    private void Start()
+    {
+        PanelMainMenu.SetActive(true);
+        PanelSeleccion.SetActive(false);
+        btnCamara.onClick.RemoveAllListeners();
+        btnSeleccion.onClick.RemoveAllListeners();
+        btnCamara.onClick.AddListener(SeleccionarCamaraAR);
+        btnSeleccion.onClick.AddListener(SeleccionarJuegos);
+    }
+
+    private void SeleccionarCamaraAR()
     {
         StartCoroutine(ActivarRawYIrAEscena(escenaCamara));
     }
-    public void SeleccionarJuegos()
+    private void SeleccionarJuegos()
     {
         StartCoroutine(esperar());
     }
@@ -35,7 +47,6 @@ public class MenuController : MonoBehaviour
         Volver.onClick.AddListener(cerrarPanel);
         PanelSeleccion.SetActive(true);
     }
-
     private IEnumerator ActivarRawYIrAEscena( string escena)
     { 
 

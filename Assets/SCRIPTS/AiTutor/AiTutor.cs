@@ -4,6 +4,8 @@ using System.IO;
 using System.Collections.Generic;
 using System.Linq;
 using SimpleJSON;
+using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 
 
 [System.Serializable]
@@ -25,13 +27,13 @@ public class AiTutor : MonoBehaviour
 {
     [Header("Referencias UI")]
     public TMP_InputField inputPregunta;
-    public GameObject panelChatTutor;
     public GameObject bubbleUserPrefab;
     public GameObject bubbleAiPrefab;
     public Transform contentChat;
     public EmbeddingsLoader loader;
     public MiniLMEmbedder embedder;
     public GuardarMisionCompletada gestorMisiones;
+    public Button btnVolver;
 
     private Dictionary<string, ElementoQuimico> elementos;
 
@@ -59,9 +61,13 @@ public class AiTutor : MonoBehaviour
 
     void Start()
     {
-        panelChatTutor.SetActive(false);
+        CrearBurbujaIA("👋 ¡Hola! Soy tu tutor virtual de química. Pregúntame sobre cualquier elemento de la tabla periódica.");
         CargarElementosDesdeJSONL();
         loader.CargarEmbeddings();
+        btnVolver.onClick.AddListener(() =>
+        {
+            SceneManager.LoadScene("Inicio");
+        });
         if (embedder == null)
         {
             Debug.LogError("❌ El embedder no está asignado en el Start().");
@@ -314,31 +320,28 @@ public class AiTutor : MonoBehaviour
         }
     }
 
-
-
-
     void CrearBurbujaUsuario(string texto)
     {
         GameObject burbuja = Instantiate(bubbleUserPrefab, contentChat);
         burbuja.GetComponentInChildren<TextMeshProUGUI>().text = texto;
+
+        RectTransform rt = burbuja.GetComponent<RectTransform>();
+        rt.anchorMin = new Vector2(1, 1);
+        rt.anchorMax = new Vector2(1, 1);
+        rt.pivot = new Vector2(1, 1);
+        rt.anchoredPosition = new Vector2(-10, rt.anchoredPosition.y);
     }
 
     void CrearBurbujaIA(string texto)
     {
         GameObject burbuja = Instantiate(bubbleAiPrefab, contentChat);
         burbuja.GetComponentInChildren<TextMeshProUGUI>().text = texto;
+
+        RectTransform rt = burbuja.GetComponent<RectTransform>();
+        rt.anchorMin = new Vector2(0, 1);
+        rt.anchorMax = new Vector2(0, 1);
+        rt.pivot = new Vector2(0, 1);
+        rt.anchoredPosition = new Vector2(10, rt.anchoredPosition.y);
     }
-
-    public void ToggleChatPanel()
-    {
-        bool estadoActual = panelChatTutor.activeSelf;
-        panelChatTutor.SetActive(!panelChatTutor.activeSelf);
-
-        if (!estadoActual)
-        {
-            CrearBurbujaIA("👋 ¡Hola! Soy tu tutor virtual de química. Pregúntame sobre cualquier elemento de la tabla periódica.");
-        }
-    }
-
 
 }
