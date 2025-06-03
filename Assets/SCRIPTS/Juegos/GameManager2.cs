@@ -321,7 +321,6 @@ public class GameManager2 : MonoBehaviour
         });
     }
 
-
     void EmpezarEscuchaCategoriaDesdeFirebasee()
     {
         textoCategoria.text = "Esperando selección de categoría...";
