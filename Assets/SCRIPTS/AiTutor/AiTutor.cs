@@ -4,6 +4,8 @@ using System.IO;
 using System.Collections.Generic;
 using System.Linq;
 using SimpleJSON;
+using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 
 
 [System.Serializable]
@@ -31,6 +33,7 @@ public class AiTutor : MonoBehaviour
     public EmbeddingsLoader loader;
     public MiniLMEmbedder embedder;
     public GuardarMisionCompletada gestorMisiones;
+    public Button btnVolver;
 
     private Dictionary<string, ElementoQuimico> elementos;
 
@@ -61,6 +64,10 @@ public class AiTutor : MonoBehaviour
         CrearBurbujaIA("👋 ¡Hola! Soy tu tutor virtual de química. Pregúntame sobre cualquier elemento de la tabla periódica.");
         CargarElementosDesdeJSONL();
         loader.CargarEmbeddings();
+        btnVolver.onClick.AddListener(() =>
+        {
+            SceneManager.LoadScene("Inicio");
+        });
         if (embedder == null)
         {
             Debug.LogError("❌ El embedder no está asignado en el Start().");
@@ -319,10 +326,10 @@ public class AiTutor : MonoBehaviour
         burbuja.GetComponentInChildren<TextMeshProUGUI>().text = texto;
 
         RectTransform rt = burbuja.GetComponent<RectTransform>();
-        rt.anchorMin = new Vector2(1, rt.anchorMin.y);
-        rt.anchorMax = new Vector2(1, rt.anchorMax.y);
-        rt.pivot = new Vector2(1, 0.5f);
-        rt.anchoredPosition = new Vector2(-10, rt.anchoredPosition.y); // separarlo un poco del borde
+        rt.anchorMin = new Vector2(1, 1);
+        rt.anchorMax = new Vector2(1, 1);
+        rt.pivot = new Vector2(1, 1);
+        rt.anchoredPosition = new Vector2(-10, rt.anchoredPosition.y);
     }
 
     void CrearBurbujaIA(string texto)
@@ -331,9 +338,10 @@ public class AiTutor : MonoBehaviour
         burbuja.GetComponentInChildren<TextMeshProUGUI>().text = texto;
 
         RectTransform rt = burbuja.GetComponent<RectTransform>();
-        rt.anchorMin = new Vector2(0, rt.anchorMin.y);
-        rt.anchorMax = new Vector2(0, rt.anchorMax.y);
-        rt.pivot = new Vector2(0, 0.5f);
+        rt.anchorMin = new Vector2(0, 1);
+        rt.anchorMax = new Vector2(0, 1);
+        rt.pivot = new Vector2(0, 1);
         rt.anchoredPosition = new Vector2(10, rt.anchoredPosition.y);
     }
+
 }

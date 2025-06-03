@@ -71,6 +71,8 @@ public class JuegoPreguntadosManager : MonoBehaviour
     int coronasA = 0;
     int coronasB = 0;
 
+    private Dictionary<string, bool> categoriasCompletadasJugador = new Dictionary<string, bool>();
+
     private FirebaseAuth auth;
     private FirebaseFirestore db;
     private ListenerRegistration listenerTurno;
@@ -91,6 +93,7 @@ public class JuegoPreguntadosManager : MonoBehaviour
         BtnActivarCategoria.interactable = false;
 
         StartCoroutine(VerificarConexionPeriodicamente());
+        CargarCategoriasCompletadas();
         if (PlayerPrefs.GetInt("AbrirConPanel", 0) == 1)
         {
             StartCoroutine(QuitarPanelVs());
@@ -281,17 +284,49 @@ public class JuegoPreguntadosManager : MonoBehaviour
             Debug.Log("🎉 ¡Ganaste la partida!");
             TxtResultado.text = "¡GANASTE!";
             TxtExp.text = "Exp Ganada \n 30 EXP";
-            // Mostrar panel de victoria, cambiar de escena, sumar puntos, etc.
+            SumarXPFirebase(30);
         }
         else
         {
             Debug.Log("😢 Perdiste la partida.");
             TxtResultado.text = "¡PERDISTE :(!";
             TxtExp.text = "Exp Ganada \n 5 EXP";
+            SumarXPFirebase(100);
             // Mostrar mensaje de derrota si quieres.
         }
     }
+    public async void SumarXPFirebase(int xp)
+    {
+        var user = auth.CurrentUser;
+        if (user == null)
+        {
+            Debug.LogError("❌ No hay usuario autenticado.");
+            return;
+        }
 
+        DocumentReference userRef = db.Collection("users").Document(user.UserId);
+
+        try
+        {
+            DocumentSnapshot snapshot = await userRef.GetSnapshotAsync();
+            int xpActual = 0;
+
+            if (snapshot.Exists && snapshot.TryGetValue<int>("xp", out int valorXP))
+            {
+                xpActual = valorXP;
+            }
+
+            int xpNuevo = xpActual + xp;
+
+
+            await userRef.UpdateAsync("xp", xpNuevo);
+            Debug.Log($"✅ XP actualizado en Firebase: {xpNuevo}");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"❌ Error al actualizar XP en Firebase: {e.Message}");
+        }
+    }
     void EscucharCambiosPartida(string partidaId)
     {
         listenerCambiosPartida = db.Collection("partidasQuimicados").Document(partidaId)
@@ -504,7 +539,8 @@ public class JuegoPreguntadosManager : MonoBehaviour
             // ⚠️ Actualizamos fallos[uidJugador] = true y reiniciamos la corona
             Dictionary<string, object> updates = new Dictionary<string, object>
             {
-                { $"fallos.{uidJugador}", true }
+                { $"fallos.{uidJugador}", true },
+                { campoCorona, 0 }
             };
 
             partidaRef.UpdateAsync(updates)
@@ -590,7 +626,46 @@ public class JuegoPreguntadosManager : MonoBehaviour
                 }
             });
     }
-    public void seleccionarCategoriaLogro()
+    // ✅ FUNCION QUE ASIGNARÁS AL BOTÓN
+    public void AbrirSeleccionCategoriaLogro()
+    {
+        seleccionarCategoriaLogro(categoriasCompletadasJugador);
+    }
+
+    // ✅ LLAMAR ESTO AL CARGAR LA ESCENA
+    public async void CargarCategoriasCompletadas()
+    {
+        string uid = FirebaseAuth.DefaultInstance.CurrentUser.UserId;
+
+        DocumentReference docRef = FirebaseFirestore.DefaultInstance.Collection("partidasQuimicados").Document(partidaId);
+        DocumentSnapshot snapshot = await docRef.GetSnapshotAsync();
+
+        if (snapshot.Exists)
+        {
+            bool esJugadorA = false;
+            if (snapshot.ContainsField("jugadorA"))
+            {
+                string jugadorA = snapshot.GetValue<string>("jugadorA");
+                esJugadorA = jugadorA == uid;
+            }
+
+            Dictionary<string, object> categoriasData = snapshot.GetValue<Dictionary<string, object>>(
+                esJugadorA ? "CategoriasJugadorA" : "CategoriasJugadorB"
+            );
+
+            categoriasCompletadasJugador.Clear();
+
+            foreach (var kvp in categoriasData)
+            {
+                categoriasCompletadasJugador[kvp.Key] = Convert.ToBoolean(kvp.Value);
+            }
+        }
+        else
+        {
+            Debug.LogWarning("❌ No se encontró el documento de la partida.");
+        }
+    }
+    public void seleccionarCategoriaLogro(Dictionary<string, bool> categoriasCompletadas)
     {
         PopUpSeleccionarCategoria.SetActive(true);
 
@@ -608,79 +683,64 @@ public class JuegoPreguntadosManager : MonoBehaviour
         "Lantanidos", "Actinoides", "PropiedadesDesconocidas"
         };
         Dictionary<string, Color32> coloresCategoria = new Dictionary<string, Color32>
-        {
-            { "Gases Nobles", new Color32(0x00, 0xA2, 0x93, 255) },              // #00A293
-            { "Actínoides", new Color32(0x33, 0x37, 0x8E, 255) },                // #33378E
-            { "Metales Alcalinos", new Color32(0x41, 0xB9, 0xDE, 255) },         // #41B9DE
-            { "Metales Postransicionales", new Color32(0x72, 0x65, 0xAA, 255) }, // #7265AA
-            { "Metaloides", new Color32(0xB4, 0xBC, 0xBE, 255) },                // #B4BCBE
-            { "Lantánidos", new Color32(0xC0, 0x20, 0x3C, 255) },                // #C0203C
-            { "Metales de Transición", new Color32(0xED, 0x6D, 0x9D, 255) },     // #ED6D9D
-            { "Metales Alcalinotérreos", new Color32(0xF0, 0x81, 0x2F, 255) },   // #F0812F
-            { "No Metales Reactivos", new Color32(0xFF, 0xD4, 0x4B, 255) },      // #FFD44B
-            { "Propiedades Desconocidas", new Color32(0x7A, 0xB9, 0x50, 255) }   // #7AB950
-        };
+    {
+        { "Gases Nobles", new Color32(0x00, 0xA2, 0x93, 255) },
+        { "Actínoides", new Color32(0x33, 0x37, 0x8E, 255) },
+        { "Metales Alcalinos", new Color32(0x41, 0xB9, 0xDE, 255) },
+        { "Metales Postransicionales", new Color32(0x72, 0x65, 0xAA, 255) },
+        { "Metaloides", new Color32(0xB4, 0xBC, 0xBE, 255) },
+        { "Lantánidos", new Color32(0xC0, 0x20, 0x3C, 255) },
+        { "Metales de Transición", new Color32(0xED, 0x6D, 0x9D, 255) },
+        { "Metales Alcalinotérreos", new Color32(0xF0, 0x81, 0x2F, 255) },
+        { "No Metales Reactivos", new Color32(0xFF, 0xD4, 0x4B, 255) },
+        { "Propiedades Desconocidas", new Color32(0x7A, 0xB9, 0x50, 255) }
+    };
 
-        // Limpia contenido previo del scroll
         foreach (Transform child in ContentCategorias)
-        {
             Destroy(child.gameObject);
-        }
 
-        // Lista para rastrear todos los prefabs instanciados
-        List<GameObject> categoriasInstanciadas = new List<GameObject>();
-
-        foreach (string categoria in Categorias)
+        for (int j = 0; j < Categorias.Length; j++)
         {
+            string categoria = Categorias[j];
             GameObject categoriaGO = Instantiate(PrefabSeleccionarCategoria, ContentCategorias);
-            categoriasInstanciadas.Add(categoriaGO); // Guardar referencia
 
             var PanelRedondo = categoriaGO.transform.Find("PanelImg").GetComponent<Image>();
             var ImgCategoria = categoriaGO.transform.Find("ImgCategoria").GetComponent<Image>();
             var NombreCategoria = categoriaGO.transform.Find("TxtNombreCategoria").GetComponent<TMP_Text>();
             var selectButton = categoriaGO.transform.Find("BtnSeleccionCategioria").GetComponent<Button>();
 
-            // Establecer nombre
             NombreCategoria.text = categoria;
+            PanelRedondo.color = coloresCategoria.ContainsKey(categoria) ? coloresCategoria[categoria] : Color.white;
 
-            if (coloresCategoria.TryGetValue(categoria, out Color32 color))
-            {
-                PanelRedondo.color = color;
-            }
-            else
-            {
-                PanelRedondo.color = Color.white; // Color por defecto si no está en el diccionario
-            }
-
-            // Cargar imagen desde Resources/images/CategoriasQuimicados/NOMBRE.png
-            Sprite sprite = Resources.Load<Sprite>($"images/CategoriasQuimicados/{CategoriasImg[i]}");
+            Sprite sprite = Resources.Load<Sprite>($"images/CategoriasQuimicados/{CategoriasImg[j]}");
             if (sprite != null)
-            {
                 ImgCategoria.sprite = sprite;
-                ImgCategoria.gameObject.SetActive(true);
+            ImgCategoria.gameObject.SetActive(true);
+
+            // Verificar si esta categoría ya fue completada
+            bool yaCompletada = categoriasCompletadas.ContainsKey(categoria) && categoriasCompletadas[categoria];
+
+            if (yaCompletada)
+            {
+                Destroy(categoriaGO); // ❌ Eliminar el prefab si ya está completado
+                continue;             // 🔁 Pasar a la siguiente categoría
             }
             else
             {
-                Debug.LogWarning($"⚠️ No se encontró imagen para la categoría: {CategoriasImg[i]}");
+                string categoriaSeleccionada = categoria;
+                selectButton.onClick.AddListener(() =>
+                {
+                    Debug.Log($"Seleccionaste la categoría: {categoriaSeleccionada}");
+                    PlayerPrefs.SetString("CategoriaRuleta", categoriaSeleccionada);
+                    PlayerPrefs.SetInt("CompletarLogro", 1);
+                    PlayerPrefs.SetInt("reiniciarCorona", 1);
+                    PlayerPrefs.SetInt("wasCorrect", 0);
+                    SceneManager.LoadScene("Cuestionario");
+                });
             }
-
-            // Evitar problema con variable de captura en lambda
-            string categoriaSeleccionada = categoria;
-            GameObject categoriaGOSeleccionada = categoriaGO;
-
-            selectButton.onClick.AddListener(() =>
-            {
-                Debug.Log($"Seleccionaste la categoría: {categoriaSeleccionada}");
-                PlayerPrefs.SetString("CategoriaRuleta", categoriaSeleccionada);
-
-                PlayerPrefs.SetInt("CompletarLogro", 1);
-                //PlayerPrefs.SetInt("wasIncorrect", 1);
-                PlayerPrefs.SetInt("reiniciarCorona", 1);
-                PlayerPrefs.SetInt("wasCorrect", 0);
-                SceneManager.LoadScene("Cuestionario");
-            });
 
             i++;
         }
     }
+
 }
