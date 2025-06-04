@@ -2,7 +2,7 @@
 - Project name: PeriodicApp2
 - Unity version: Unity 6000.0.38f1
 - Active game object:
-  - Name: Navegacion_Amigos_Solicitudes
+  - Name: PanelFondo
   - Tag: Untagged
-  - Layer: Default
+  - Layer: UI
 <!-- UNITY CODE ASSIST INSTRUCTIONS END -->

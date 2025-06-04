@@ -8,6 +8,9 @@ using TMPro;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using UnityEditor.PackageManager.Requests;
+using UnityEngine.SceneManagement;
+
 
 public class FriendsManager : MonoBehaviour
 {
@@ -20,8 +23,11 @@ public class FriendsManager : MonoBehaviour
     private string userId;
     private string myCity;
 
-    private HashSet<string> excludedUsers = new HashSet<string>(); // Para almacenar amigos y solicitudes pendientes
+    public Button btnVerAmigosSugeridos;
+
+    private HashSet<string> excludedUsers = new HashSet<string>();
     private Dictionary<string, DocumentSnapshot> userCache = new Dictionary<string, DocumentSnapshot>();
+
     void Start()
     {
         auth = FirebaseAuth.DefaultInstance;
@@ -29,7 +35,6 @@ public class FriendsManager : MonoBehaviour
         {
             currentUser = auth.CurrentUser;
             userId = auth.CurrentUser.UserId;
-
             Debug.Log($"Usuario autenticado: {userId}");
         }
         else
@@ -39,28 +44,22 @@ public class FriendsManager : MonoBehaviour
         }
 
         firestore = FirebaseFirestore.DefaultInstance;
-
-        // Obtener la lista de amigos y solicitudes pendientes
+        btnVerAmigosSugeridos.onClick.AddListener(VerTodosUsuariosSugeridos);
         LoadExcludedUsers();
     }
 
-    // nuevos cambios
-    void LoadExcludedUsers()
+    public void LoadExcludedUsers()
     {
         excludedUsers.Clear();
-        List<Task<QuerySnapshot>> tasks = new List<Task<QuerySnapshot>>();
+        excludedUsers.Add(userId);
 
-        // Consultar solicitudes enviadas
-        tasks.Add(firestore.Collection("SolicitudesAmistad")
-            .WhereEqualTo("idRemitente", userId)
-            .GetSnapshotAsync());
+        Query query = firestore.Collection("SolicitudesAmistad")
+            .Where(Filter.Or(
+                Filter.EqualTo("idRemitente", userId),
+                Filter.EqualTo("idDestinatario", userId)
+            ));
 
-        // Consultar solicitudes recibidas
-        tasks.Add(firestore.Collection("SolicitudesAmistad")
-            .WhereEqualTo("idDestinatario", userId)
-            .GetSnapshotAsync());
-
-        Task.WhenAll(tasks.ToArray()).ContinueWithOnMainThread(task =>
+        query.GetSnapshotAsync().ContinueWithOnMainThread(task =>
         {
             if (task.IsFaulted)
             {
@@ -68,37 +67,21 @@ public class FriendsManager : MonoBehaviour
                 return;
             }
 
-            foreach (var querySnapshot in task.Result)
+            foreach (DocumentSnapshot doc in task.Result.Documents)
             {
-                foreach (DocumentSnapshot doc in querySnapshot.Documents)
+                if (doc.Exists)
                 {
-                    if (doc.Exists)
-                    {
-                        string idRemitente = doc.GetValue<string>("idRemitente");
-                        string idDestinatario = doc.GetValue<string>("idDestinatario");
-                        string status = doc.GetValue<string>("estado");
-
-                        if (status == "aceptada" || status == "pendiente")
-                        {
-                            // Excluir ambos usuarios para evitar que aparezcan en sugerencias
-                            excludedUsers.Add(idRemitente);
-                            excludedUsers.Add(idDestinatario);
-
-                            Debug.Log($"Excluyendo usuario {idRemitente} y {idDestinatario} por estado {status}");
-                        }
-                    }
+                    string idRemitente = doc.GetValue<string>("idRemitente");
+                    string idDestinatario = doc.GetValue<string>("idDestinatario");
+                    excludedUsers.Add(idRemitente);
+                    excludedUsers.Add(idDestinatario);
                 }
             }
 
-            // Evitar que el usuario actual aparezca en sugerencias
-            excludedUsers.Add(userId);
-            Debug.Log($"Excluyéndome a mí mismo: {userId}");
-
-            // Ahora que excludedUsers está lleno, cargar la ciudad del usuario
+            Debug.Log($"Total de usuarios excluidos: {excludedUsers.Count}");
             LoadUserCity();
         });
     }
-
 
     void LoadUserCity()
     {
@@ -127,113 +110,126 @@ public class FriendsManager : MonoBehaviour
 
     void LoadSuggestedUsers()
     {
+        Debug.Log($"Buscando usuarios en {myCity}. Excluyendo: {string.Join(", ", excludedUsers)}");
+
+        // Primero cargamos usuarios de la misma ciudad
         firestore.Collection("users")
             .WhereEqualTo("Ciudad", myCity)
-            .Limit(10) // Mantenemos un límite razonable
+            .Limit(10)
             .GetSnapshotAsync()
             .ContinueWithOnMainThread(task =>
             {
-                if (task.IsFaulted)
+                List<DocumentSnapshot> localUsers = new List<DocumentSnapshot>();
+
+                if (!task.IsFaulted && !task.IsCanceled)
                 {
-                    Debug.LogError($"Error obteniendo usuarios sugeridos: {task.Exception}");
-                    return;
+                    localUsers = task.Result.Documents
+                        .Where(doc => doc.Exists && !excludedUsers.Contains(doc.Id))
+                        .ToList();
                 }
 
-                List<DocumentSnapshot> suggestedUsers = task.Result.Documents
-                    .Where(doc => doc.Exists && doc.Id != userId && !excludedUsers.Contains(doc.Id))
-                    .ToList();
+                Debug.Log($"Usuarios locales encontrados en {myCity}: {localUsers.Count}");
 
-                if (suggestedUsers.Count >= 5)
+                // Calculamos cuántos usuarios adicionales necesitamos para llegar a 10
+                int neededUsers = Mathf.Max(0, 10 - localUsers.Count);
+
+                if (neededUsers > 0)
                 {
-                    // Si hay 5 o más usuarios, mostramos todos los que haya (hasta 10)
-                    Debug.Log($"Mostrando {suggestedUsers.Count} usuarios de {myCity}");
-                    CreateUserCards(suggestedUsers);
+                    Debug.Log($"Necesitamos {neededUsers} usuarios más de otras ciudades");
+                    LoadRandomUsers(neededUsers, localUsers);
                 }
                 else
                 {
-                    // Si hay menos de 5, completamos con usuarios aleatorios
-                    Debug.Log($"Solo {suggestedUsers.Count} usuarios en {myCity}, completando con aleatorios...");
-                    int cantidadFaltante = 5 - suggestedUsers.Count;
-                    LoadRandomUsers(cantidadFaltante, suggestedUsers);
+                    // Si ya tenemos 10 o más usuarios locales, mostramos solo 10
+                    CreateUserCards(localUsers.Take(10).ToList());
                 }
             });
     }
 
-    void LoadRandomUsers(int cantidadFaltante, List<DocumentSnapshot> currentUsers)
+
+    void LoadRandomUsers(int cantidad, List<DocumentSnapshot> currentUsers)
     {
+        // Aumentamos el límite para asegurar que encontremos suficientes usuarios únicos
+        int limit = Mathf.Max(cantidad * 3, 20); // Mínimo 20 usuarios para buscar
+
         firestore.Collection("users")
-            .Limit(20) // Obtener más usuarios para aumentar aleatoriedad
+            .Limit(limit)
             .GetSnapshotAsync()
             .ContinueWithOnMainThread(task =>
             {
                 if (task.IsFaulted)
                 {
-                    Debug.LogError($"Error obteniendo usuarios aleatorios: {task.Exception}");
+                    Debug.LogError("Error cargando usuarios aleatorios.");
+                    // Mostramos los usuarios locales que tengamos
+                    CreateUserCards(currentUsers);
                     return;
                 }
-
-                List<DocumentSnapshot> allUsers = task.Result.Documents
-                    .Where(doc => doc.Exists && doc.Id != userId && !excludedUsers.Contains(doc.Id)) // Asegurar exclusión
-                    .ToList();
-
-                if (allUsers.Count > 0)
+                // Verificamos que la tarea se completó correctamente
+                if (task.IsCompleted)
                 {
-                    System.Random rand = new System.Random();
-                    List<DocumentSnapshot> randomUsers = allUsers.OrderBy(x => rand.Next()).Take(cantidadFaltante).ToList();
+                    QuerySnapshot snapshot = task.Result;
+
+                    // Añadimos los logs de depuración
+                    Debug.Log($"Total usuarios en BD: {snapshot.Documents.Count()}");
+                    Debug.Log($"Usuarios excluidos: {excludedUsers.Count}");
+                    Debug.Log($"IDs de usuarios excluidos: {string.Join(", ", excludedUsers)}");
+
+                    var allUsers = snapshot.Documents;
+                    var availableUsers = allUsers
+                        .Where(doc => doc.Exists && !excludedUsers.Contains(doc.Id) && !currentUsers.Any(u => u.Id == doc.Id))
+                        .ToList();
+
+                    Debug.Log($"Usuarios aleatorios disponibles: {availableUsers.Count}");
+
+                    var randomUsers = availableUsers
+                        .OrderBy(x => Random.Range(0, int.MaxValue))
+                        .Take(cantidad)
+                        .ToList();
+
                     currentUsers.AddRange(randomUsers);
-                }
 
-                CreateUserCards(currentUsers);
-            });
-    }
-
-
-
-    void LoadRandomUsers()
-    {
-        firestore.Collection("users")
-            .Limit(20) // Traemos más usuarios para aumentar la aleatoriedad
-            .GetSnapshotAsync()
-            .ContinueWithOnMainThread(task =>
-            {
-                if (task.IsFaulted)
-                {
-                    Debug.LogError($"Error obteniendo usuarios aleatorios: {task.Exception}");
-                    return;
-                }
-
-                List<DocumentSnapshot> allUsers = task.Result.Documents
-                    .Where(doc => doc.Exists && doc.Id != userId && !excludedUsers.Contains(doc.Id))
-                    .ToList();
-
-                if (allUsers.Count > 0)
-                {
-                    System.Random rand = new System.Random();
-                    List<DocumentSnapshot> randomUsers = allUsers.OrderBy(x => rand.Next()).Take(3).ToList();
-                    CreateUserCards(randomUsers);
+                    Debug.Log($"Total de usuarios a mostrar: {currentUsers.Count}");
+                    CreateUserCards(currentUsers.Take(10).ToList());
                 }
                 else
                 {
-                    Debug.Log("No hay suficientes usuarios para mostrar.");
+                    Debug.LogWarning("La tarea no se completó correctamente");
+                    CreateUserCards(currentUsers);
                 }
             });
     }
 
     void CreateUserCards(List<DocumentSnapshot> users)
     {
+        // Limpiar el contenido actual
+        foreach (Transform child in scrollContent)
+        {
+            Destroy(child.gameObject);
+        }
+
+        if (users.Count == 0)
+        {
+            Debug.Log("No hay usuarios para mostrar");
+            return;
+        }
+
         foreach (DocumentSnapshot doc in users)
         {
             string suggestedUserId = doc.Id;
             string nombre = doc.GetValue<string>("DisplayName");
             string rango = doc.ContainsField("Rango") ? doc.GetValue<string>("Rango") : "Novato de laboratorio";
+            string avatar = ObtenerAvatarPorRango(rango);
+            Sprite avatarSprite = Resources.Load<Sprite>(avatar) ?? Resources.Load<Sprite>("Avatares/defecto");
 
             GameObject newCard = Instantiate(cardPrefab, scrollContent);
             TMP_Text nombreText = newCard.transform.Find("NombreText")?.GetComponent<TMP_Text>();
             TMP_Text rangoText = newCard.transform.Find("RangoText")?.GetComponent<TMP_Text>();
+            Image AvatarUsuario = newCard.transform.Find("AvatarImage")?.GetComponent<Image>();
             Button agregarAmigoButton = newCard.transform.Find("BtnAgregarAmigo")?.GetComponent<Button>();
 
             if (nombreText != null) nombreText.text = nombre;
             if (rangoText != null) rangoText.text = rango;
+            if (AvatarUsuario != null) AvatarUsuario.sprite = avatarSprite;
 
             if (agregarAmigoButton != null)
             {
@@ -244,55 +240,61 @@ public class FriendsManager : MonoBehaviour
         }
     }
 
-
     void AddFriend(string friendId, string friendName, Button button)
     {
         string currentUserName = currentUser.DisplayName;
-
-        string solicitudId = userId + "_" + friendId; // ID único basado en ambos usuarios
+        string solicitudId = userId + "_" + friendId;
 
         var solicitudData = new Dictionary<string, object>
-    {
-        { "idRemitente", userId },
-        { "nombreRemitente", currentUserName }, // Nombre del remitente
-        { "idDestinatario", friendId },
-        { "nombreDestinatario", friendName }, // Nombre del destinatario
-        { "estado", "pendiente" }
-    };
-
-        // Verificar si ya existe una solicitud antes de agregarla
-        firestore.Collection("SolicitudesAmistad").Document(solicitudId).GetSnapshotAsync().ContinueWithOnMainThread(task =>
         {
-            if (task.IsCompleted && task.Result.Exists)
+            { "idRemitente", userId },
+            { "nombreRemitente", currentUserName },
+            { "idDestinatario", friendId },
+            { "nombreDestinatario", friendName },
+            { "estado", "pendiente" }
+        };
+
+        firestore.Collection("SolicitudesAmistad").Document(solicitudId).SetAsync(solicitudData)
+            .ContinueWithOnMainThread(setTask =>
             {
-                Debug.Log("Ya existe una solicitud pendiente para este usuario.");
-                SetButtonState(button, Color.gray, "Solicitud ya enviada", false);
-            }
-            else
-            {
-                // Si no existe, la agregamos con el ID único
-                firestore.Collection("SolicitudesAmistad").Document(solicitudId).SetAsync(solicitudData).ContinueWithOnMainThread(setTask =>
+                if (setTask.IsCompleted)
                 {
-                    if (setTask.IsCompleted)
-                    {
-                        Debug.Log("Solicitud de amistad enviada de " + currentUserName + " a " + friendName);
-                        SetButtonState(button, Color.white, "Solicitud enviada", false);
-                    }
-                    else
-                    {
-                        Debug.LogError("Error al enviar solicitud: " + setTask.Exception);
-                    }
-                });
-            }
-        });
+                    Debug.Log("Solicitud de amistad enviada de " + currentUserName + " a " + friendName);
+                    SetButtonState(button, Color.cyan, "Solicitud enviada", false);
+                }
+                else
+                {
+                    Debug.LogError("Error al enviar solicitud: " + setTask.Exception);
+                }
+            });
     }
-
-
 
     void SetButtonState(Button button, Color color, string text, bool interactable)
     {
         button.GetComponent<Image>().color = color;
         button.GetComponentInChildren<TMP_Text>().text = text;
         button.interactable = interactable;
+    }
+
+    private string ObtenerAvatarPorRango(string rangos)
+    {
+        switch (rangos)
+        {
+            case "Novato de laboratorio": return "Avatares/Rango1";
+            case "Aprendiz Atomico": return "Avatares/Rango2";
+            case "Promesa quimica": return "Avatares/Rango3";
+            case "Cientifico en Formacion": return "Avatares/Rango4";
+            case "Experto Molecular": return "Avatares/Rango5";
+            case "Maestro de Laboratorio": return "Avatares/Rango6";
+            case "Sabio de la tabla": return "Avatares/Rango7";
+            case "Leyenda química": return "Avatares/Rango8";
+            default: return "Avatares/Rango1";
+        }
+    }
+
+    void VerTodosUsuariosSugeridos()
+    {
+        PlayerPrefs.SetInt("MostrarSugerencias", 1);
+        SceneManager.LoadScene("Amigos");
     }
 }

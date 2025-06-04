@@ -10,7 +10,7 @@
 //using System.Collections.Generic;
 
 
-//public class DatosPersonalesManager: MonoBehaviour
+//public class DatosPersonalesManager : MonoBehaviour
 //{
 
 //    // instanciamos variables firebase
@@ -107,8 +107,8 @@
 //            DocumentSnapshot snapshot = await userRef.GetSnapshotAsync();
 //            if (snapshot.Exists)
 //            {
-               
-                
+
+
 //                int edad = snapshot.GetValue<int>("Edad");
 //                string departamento = snapshot.GetValue<string>("Departamento");
 //                string Ciudad = snapshot.GetValue<string>("Ciudad");
@@ -118,7 +118,7 @@
 //                edadtxt.text = edad.ToString();
 //                departamentotxt.text = departamento;
 //                Ciudadtxt.text = Ciudad;
-               
+
 
 //            }
 //        }

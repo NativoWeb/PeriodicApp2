@@ -17,6 +17,9 @@ public class ListarAmigosManager : MonoBehaviour
     private TMP_Text nombreAmigo1;
     private TMP_Text rangoAmigo1;
     private Image AvatarAmigo1;
+    public Button BtnAmigossinfuncionalidad;
+    public Button BtnAñadirAmigos;
+    public Button BtnVerTodosAmigos;
 
     [SerializeField] private GameObject panelAmigo2;
     private TMP_Text nombreAmigo2;
@@ -30,15 +33,15 @@ public class ListarAmigosManager : MonoBehaviour
 
     [Header("Configuración sin amigos")]
     [SerializeField] private string mensajeSinAmigos = "Añade amigos para comenzar";
-    [SerializeField] private string rangoDefault = "---";
-    [SerializeField] private Color colorTextoSinAmigos = Color.gray;
+    [SerializeField] private string rangoDefault = "-";
+    [SerializeField] private Color colorTextoSinAmigos = Color.black;
 
     private bool isLoading = false;
     private FirebaseAuth auth;
     private FirebaseFirestore db;
     private string userId;
 
-    void Start()
+    public void Start()
     {
         InitializeUIComponents();
         auth = FirebaseAuth.DefaultInstance;
@@ -54,6 +57,9 @@ public class ListarAmigosManager : MonoBehaviour
             Debug.Log("ListarAmigosManager.Error: no hay usuario autenticado");
             MostrarEstadoSinAmigos();
         }
+
+        BtnVerTodosAmigos.onClick.AddListener(VerTodosAmigos);
+        BtnAñadirAmigos.onClick.AddListener(VerTodosUsuariosSugeridos);
     }
 
     private void InitializeUIComponents()
@@ -74,7 +80,7 @@ public class ListarAmigosManager : MonoBehaviour
         AvatarAmigo3 = panelAmigo3.transform.Find("AvatarAmigo").GetComponent<Image>();
     }
 
-    void CargarAmigos()
+    public void CargarAmigos()
     {
         if (isLoading) return;
 
@@ -147,7 +153,7 @@ public class ListarAmigosManager : MonoBehaviour
           });
     }
 
-    private void LimpiarPaneles()
+    public void LimpiarPaneles()
     {
         // Limpiar panel 1
         nombreAmigo1.text = "";
@@ -232,10 +238,14 @@ public class ListarAmigosManager : MonoBehaviour
         // Configurar el panel 1 con el mensaje
         nombreAmigo1.text = mensajeSinAmigos;
         rangoAmigo1.text = rangoDefault;
+        
+        // desactivar componenetes no necesarios si no tiene amigos
         AvatarAmigo1.GetComponent<Image>().enabled = false;
+        BtnAmigossinfuncionalidad.gameObject.SetActive(false);
+        BtnAñadirAmigos.gameObject.SetActive(true);
+        
 
         // Aplicar estilo especial para el mensaje "sin amigos"
-        nombreAmigo1.fontStyle = FontStyles.Italic;
         nombreAmigo1.color = colorTextoSinAmigos;
         rangoAmigo1.color = colorTextoSinAmigos;
     }
@@ -259,5 +269,15 @@ public class ListarAmigosManager : MonoBehaviour
     public bool HayConexion()
     {
         return Application.internetReachability != NetworkReachability.NotReachable;
+    }
+
+    void VerTodosUsuariosSugeridos()
+    {
+        PlayerPrefs.SetInt("MostrarSugerencias", 1);
+        SceneManager.LoadScene("Amigos");
+    }
+    void VerTodosAmigos()
+    {
+        SceneManager.LoadScene("Amigos");
     }
 }

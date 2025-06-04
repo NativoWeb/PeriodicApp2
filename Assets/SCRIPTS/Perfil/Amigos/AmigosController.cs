@@ -53,6 +53,18 @@ public class AmigosController : MonoBehaviour
             ShowMessage("No hay conexión a internet. Algunas funciones pueden no estar disponibles.", true);
         }
 
+        // verificar si tiene que mostrar alguna scena en particular
+        if (PlayerPrefs.GetInt("MostrarSolicitudes", 0) == 1)
+        {
+            ActivarPanelSolicitudes();
+            PlayerPrefs.SetInt("MostrarSolicitudes", 0); // Limpia después de usar
+        }
+        else if (PlayerPrefs.GetInt("MostrarSugerencias", 0) == 1)
+        {
+            ActivarPanelAgregarAmigos();
+            PlayerPrefs.SetInt("MostrarSugerencias", 0); // Limpia después de usar
+        }
+
         // Inicializar panel de confirmación
         if (panelConfirmacionEliminar != null)
         {
@@ -98,6 +110,7 @@ public class AmigosController : MonoBehaviour
             ShowMessage("No autenticado", true);
             Debug.LogError("No hay usuario autenticado.");
         }
+        
     }
 
     void OnSearchInputChanged(string searchText)

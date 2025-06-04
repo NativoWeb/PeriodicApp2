@@ -240,7 +240,7 @@ public class SolicitudesManager : MonoBehaviour
     {
         ShowMessage("Procesando solicitud...");
         db.Collection("SolicitudesAmistad").Document(documentId)
-          .UpdateAsync("estado", "rechazada")
+          .DeleteAsync()
           .ContinueWithOnMainThread(updateTask =>
           {
               if (updateTask.IsCompleted)
