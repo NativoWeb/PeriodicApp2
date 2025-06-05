@@ -87,6 +87,7 @@ public class DynamicMoleculeLoader : MonoBehaviour
 
     private void OnImageDetected(ObserverBehaviour observer, TargetStatus status)
     {
+        LimpiarModelos();
         if (status.Status == Status.TRACKED)
         {
             string resultado = trackable.TargetName.Split('_')[1];
@@ -103,15 +104,14 @@ public class DynamicMoleculeLoader : MonoBehaviour
                 {
                     SumarXPTemporario(5);
                 }
-            }
-
-            DesbloquearLogro(trackable.TargetName);
+            }else
+                DesbloquearLogro(trackable.TargetName);
         }
     }
 
     void DesbloquearLogro(string elemento)
     {
-        if(ruta == "Misiones")
+        if (ruta == "Misiones")
         {
             ControladorBotones.PanelBotonUI.SetActive(true);
 
@@ -122,22 +122,17 @@ public class DynamicMoleculeLoader : MonoBehaviour
 
     void CargarJSON()
     {
-        string jsonString = PlayerPrefs.GetString("moleculasJSON", "");
+        string jsonString;
 
-        if (string.IsNullOrEmpty(jsonString))
+        TextAsset jsonFile = Resources.Load<TextAsset>("Moleculas");
+        if (jsonFile != null)
         {
-            TextAsset jsonFile = Resources.Load<TextAsset>("Moleculas");
-            if (jsonFile != null)
-            {
-                jsonString = jsonFile.text;
-                PlayerPrefs.SetString("moleculasJSON", jsonString);
-                PlayerPrefs.Save();
-            }
-            else
-            {
-                Debug.LogError("No se encontró el archivo JSON en Resources.");
-                return;
-            }
+            jsonString = jsonFile.text;
+        }
+        else
+        {
+            Debug.LogError("No se encontró el archivo JSON en Resources.");
+            return;
         }
 
         jsonData = JSON.Parse(jsonString);
@@ -171,15 +166,16 @@ public class DynamicMoleculeLoader : MonoBehaviour
 
         //// Llamar a la función LoadMoleculeModel con los datos extraídos
         StartCoroutine(LoadMoleculeModel(electronLevels, showProtons, showNeutrons, electrons, modelName, electronModels));
+        FindAnyObjectByType<ModeloLoader>()?.InicializarCambioVisual(
+            elementoSeleccionado, imageTargetPrefab
+        );
     }
 
     private IEnumerator LoadMoleculeModel(int electronLevels, int protons, int neutrons, int electrons, string modelName, List<string> electronModels)
     {
-        LimpiarModelos();
         // 1. Configuración exacta de distribución de electrones por nivel
         int[] levelCapacity = { 2, 8, 18, 32, 32, 18, 8 }; // Capacidad máxima por nivel
         float[] orbitRadii = { .2f, .25f, .3f, .35f, .4f, .45f, .5f }; // Radios para cada capa
-
 
         // 2. Distribución exacta de electrones
         int[] electronDistribution = new int[electronLevels];
@@ -356,32 +352,6 @@ public class DynamicMoleculeLoader : MonoBehaviour
             yield return new WaitForSeconds(0.02f);
         }
     }
-
-    // Versión corregida de CreateElectron
-    private IEnumerator CreateElectron(string modelName, Transform parent, Vector3 position, Color color, float size)
-    {
-        string path = "Moleculas/NuevoElemento/" + modelName;
-        ResourceRequest request = Resources.LoadAsync<GameObject>(path);
-        yield return request;
-
-        if (request.asset != null)
-        {
-            GameObject electron = Instantiate(request.asset as GameObject, parent);
-            electron.transform.localPosition = position;
-            electron.transform.localScale = Vector3.one * size;
-
-            // Material corregido (versión compatible con todos los shaders)
-            Renderer renderer = electron.GetComponent<Renderer>();
-            if (renderer != null)
-            {
-                renderer.material.color = color;
-                renderer.material.SetFloat("_Glossiness", 0.9f); // Equivalente a glossiness
-                renderer.material.SetFloat("_Metallic", 0.7f); // Equivalente a metallic
-            }
-            electron.AddComponent<ElectronOrbit>();
-        }
-    }
-
     //// Método auxiliar para aplicar color a cualquier partícula
     private void ApplyColorToParticle(GameObject particle, Color color)
     {
@@ -404,8 +374,6 @@ public class DynamicMoleculeLoader : MonoBehaviour
             renderer.SetPropertyBlock(propBlock);
         }
     }
-
-
     private Vector3 FibonacciSphere(int index, int total, float radius)
     {
         // Distribución uniforme en esfera usando algoritmo de Fibonacci
