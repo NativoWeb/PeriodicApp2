@@ -156,19 +156,30 @@ public class ListarAmigosManager : MonoBehaviour
     public void LimpiarPaneles()
     {
         // Limpiar panel 1
-        nombreAmigo1.text = "";
-        rangoAmigo1.text = "";
-        
+        if(nombreAmigo1 && rangoAmigo1 != null)
+        {
+            nombreAmigo1.text = "";
+            rangoAmigo1.text = "";
+        }
+
+
 
         // Limpiar panel 2
-        nombreAmigo2.text = "";
-        rangoAmigo2.text = "";
-        
+        if (nombreAmigo2 && rangoAmigo2 != null)
+        {
+            nombreAmigo2.text = "";
+            rangoAmigo2.text = "";
+        }
+
+
 
         // Limpiar panel 3
-        nombreAmigo3.text = "";
-        rangoAmigo3.text = "";
-        
+        if (nombreAmigo3 && rangoAmigo3 != null)
+        {
+            nombreAmigo3.text = "";
+            rangoAmigo3.text = "";
+        }
+          
     }
 
     private void MostrarAmigoEnPanel(string amigoId, string nombreAmigo, int panelIndex)

@@ -43,8 +43,15 @@ public class AmigosController : MonoBehaviour
     public Button botonCancelarEliminar;
     public TMP_Text textoConfirmacion;
 
+    private Color defaultColor;
+
     void Start()
     {
+        if (messageText != null)
+        {
+            defaultColor = messageText.color; // Guardamos el color desde el Inspector
+        }
+
         auth = FirebaseAuth.DefaultInstance;
         db = FirebaseFirestore.DefaultInstance;
         // Verificar conexión al inicio
@@ -362,7 +369,7 @@ public class AmigosController : MonoBehaviour
         {
             messageText.text = message;
             // Cambiar color según si es error o no
-            messageText.color = isError ? Color.red : Color.white;
+            messageText.color = isError ? Color.red : defaultColor;
 
             // Si el mensaje está vacío, ocultar el texto
             messageText.gameObject.SetActive(!string.IsNullOrEmpty(message));
