@@ -1,11 +1,12 @@
 {
   "dependencies": {
     "com.ptc.vuforia.engine": {
-      "version": "file:com.ptc.vuforia.engine-11.0.4.tgz",
+      "version": "file:com.ptc.vuforia.engine-11.2.4.tgz",
       "depth": 0,
       "source": "local-tarball",
       "dependencies": {
         "com.unity.ugui": "1.0.0",
+        "com.unity.inputsystem": "1.11.2",
         "com.unity.nuget.newtonsoft-json": "3.2.1"
       }
     },
@@ -87,6 +88,15 @@
       "source": "registry",
       "dependencies": {
         "com.unity.test-framework": "1.1.9"
+      },
+      "url": "https://packages.unity.com"
+    },
+    "com.unity.inputsystem": {
+      "version": "1.13.0",
+      "depth": 1,
+      "source": "registry",
+      "dependencies": {
+        "com.unity.modules.uielements": "1.0.0"
       },
       "url": "https://packages.unity.com"
     },

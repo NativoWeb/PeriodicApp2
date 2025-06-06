@@ -115,7 +115,7 @@ public class GuardarMisionCompletada : MonoBehaviour
 
     void CambiarEscena()
     {
-        SceneManager.LoadScene("Escena_Alcalinos"); // Reemplaza con el nombre de la escena destino
+        SceneManager.LoadScene("Categorias"); // Reemplaza con el nombre de la escena destino
     }
 
     private async void ActualizarMisionEnJSON(string elemento, int idMision)

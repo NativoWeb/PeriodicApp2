@@ -393,7 +393,6 @@ public class DynamicMoleculeLoader : MonoBehaviour
         {
             Destroy(child.gameObject);
         }
-        elementoSeleccionado = "";
     }
 
     void SumarXPTemporario(int xp)

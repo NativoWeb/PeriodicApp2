@@ -23,10 +23,10 @@ MonoBehaviour:
     modelTargetRecoWhileExtendedTracked: 1
     shareRecordingsInITunes: 0
     logLevel: 0
-    version: 11.0.4
-    eulaAcceptedVersions: '{"Values":["9.8","10.1","10.2","0.0","10.9","10.5","10.10","10.29","11.0","11.1"]}'
+    version: 11.2.4
+    eulaAcceptedVersions: '{"Values":["9.8","10.1","10.2","0.0","10.9","10.5","10.10","10.29","11.0","11.1","11.2"]}'
   database:
-    disableModelExtraction: 0
+    disableModelExtraction: 1
   plugins:
     pluginDirectory: Vuforia
   shaders:
@@ -36,7 +36,7 @@ MonoBehaviour:
   runtimeResources:
     register: {fileID: 11400000, guid: caeba6ecda451416c803389918ddea4a, type: 2}
   videoBackground:
-    numDivisions: -1
+    numDivisions: 2
     videoBackgroundShader: {fileID: 4800000, guid: 144dfca22ac584ade9e538e24a5ddded, type: 3}
     unlitShader: {fileID: 10752, guid: 0000000000000000f000000000000000, type: 0}
     videoBackgroundEnabled: 1
@@ -48,6 +48,7 @@ MonoBehaviour:
   playmode:
     mRecordingPath: 
     playModeType: 0
+    mSimulatorInputActionAsset: {fileID: -944628639613478452, guid: eae7022f5cfd04e8189b1f372421b225, type: 3}
   webcam:
     renderTextureLayer: 30
   packageInformation:
