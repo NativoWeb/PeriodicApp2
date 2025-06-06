@@ -177,7 +177,7 @@ public class PerfilManager : MonoBehaviour
             if (doc.Id == userId)
             {
                 encontrado = true; // Marca que se encontró al usuario-
-                posicionText.text = "Posición: #" + posicion; // Muestra la posición en el ranking
+                posicionText.text = posicion.ToString(); // Muestra la posición en el ranking
                 PlayerPrefs.SetInt("posicion", posicion); // guardo posición para mostrarla offline --------------------------------
                 Debug.Log($"El usuario {userId} está en la posición {posicion} del ranking.");
                 break; // Sale del ciclo ya que se encontró al usuario

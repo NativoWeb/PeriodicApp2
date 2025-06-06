@@ -14,6 +14,7 @@ public class NavegacionComunidades : MonoBehaviour
     // declaracion de intancias de script para llamar metodos
     private ListaComunidadesManager listaComunidadesManager;
     private MisComunidadesManager misComunidadesManager;
+
     void Start()
     {
         listaComunidadesManager = FindFirstObjectByType<ListaComunidadesManager>();

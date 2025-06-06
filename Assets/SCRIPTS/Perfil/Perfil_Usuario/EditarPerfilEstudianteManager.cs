@@ -8,7 +8,8 @@ using System;
 using Firebase.Extensions;
 using System.Security.Cryptography;
 using System.Net;
-
+using System.Linq;
+using System.Threading.Tasks;
 
 public class EditarPerfilEstudianteManager : MonoBehaviour
 {
@@ -18,15 +19,13 @@ public class EditarPerfilEstudianteManager : MonoBehaviour
     private FirebaseUser currentUser;
     private string userId;
 
-
     [Header("Panel Editar Perfil y componentes")]
-    [SerializeField] public GameObject panelEditar;
+    [SerializeField] private TMP_InputField usernameInput;
     [SerializeField] private TMP_Dropdown edadDropdown;
     [SerializeField] private TMP_Dropdown departamentoDropdown;
     [SerializeField] private TMP_Dropdown ciudadDropdown;
-    [SerializeField] private TMP_Text messageTxt; // Referencia al texto para mensajes
+    [SerializeField] private TMP_Text messageTxt;
     public Button GuardarCambios;
-
 
     private Dictionary<string, List<string>> ciudadesPorDepartamento = new Dictionary<string, List<string>>();
 
@@ -40,9 +39,10 @@ public class EditarPerfilEstudianteManager : MonoBehaviour
 
         if (string.IsNullOrEmpty(userId))
         {
-            Debug.Log(" Sin usuario autenticado, desde editarPerfilEstudiante");
+            Debug.Log("Sin usuario autenticado, desde editarPerfilEstudiante");
             return;
         }
+
         CargarTotalementeDropDowns();
         verificarCampos();
         GuardarCambios.onClick.AddListener(ActualizarDatos);
@@ -52,21 +52,24 @@ public class EditarPerfilEstudianteManager : MonoBehaviour
     {
         if (!HayInternet())
         {
-            messageTxt.text = ("no hay CONEXION A INTERNET");
+            messageTxt.text = "No hay CONEXIÓN A INTERNET";
             messageTxt.color = Color.red;
             return;
         }
+
         DocumentReference userRef = db.Collection("users").Document(userId);
         DocumentSnapshot snapshot = await userRef.GetSnapshotAsync();
+
         if (snapshot.Exists)
         {
             Dictionary<string, object> datos = snapshot.ToDictionary();
 
-            bool tieneedad = datos.ContainsKey("Edad");
-            bool tienedepartamento = datos.ContainsKey("Departamento");
-            bool tieneciudad = datos.ContainsKey("Ciudad");
+            bool tieneUsername = datos.ContainsKey("DisplayName");
+            bool tieneEdad = datos.ContainsKey("Edad");
+            bool tieneDepartamento = datos.ContainsKey("Departamento");
+            bool tieneCiudad = datos.ContainsKey("Ciudad");
 
-            if (tieneedad && tieneciudad && tienedepartamento)
+            if (tieneUsername && tieneEdad && tieneCiudad && tieneDepartamento)
             {
                 GetuserData();
             }
@@ -86,48 +89,61 @@ public class EditarPerfilEstudianteManager : MonoBehaviour
             DocumentSnapshot snapshot = await UserRef.GetSnapshotAsync();
             if (snapshot.Exists)
             {
-                int edad = snapshot.GetValue<int>("Edad");
-                string departamento = snapshot.GetValue<string>("Departamento");
-                string ciudad = snapshot.GetValue<string>("Ciudad");
-
-                // llenamos los dropdowns con la información ya del usuario 
-                for (int i = 0; i < edadDropdown.options.Count; i++)
+                // Cargar nombre de usuario
+                if (snapshot.ContainsField("DisplayName"))
                 {
-                    if (edadDropdown.options[i].text == edad.ToString())
+                    usernameInput.text = snapshot.GetValue<string>("DisplayName");
+                }
+
+                // Cargar edad
+                if (snapshot.ContainsField("Edad"))
+                {
+                    int edad = snapshot.GetValue<int>("Edad");
+                    for (int i = 0; i < edadDropdown.options.Count; i++)
                     {
-                        edadDropdown.value = i;
-                        break;
+                        if (edadDropdown.options[i].text == edad.ToString())
+                        {
+                            edadDropdown.value = i;
+                            break;
+                        }
                     }
                 }
 
-                // Establecer departamento
-                for (int i = 0; i < departamentoDropdown.options.Count; i++)
+                // Cargar departamento
+                if (snapshot.ContainsField("Departamento"))
                 {
-                    if (departamentoDropdown.options[i].text == departamento)
+                    string departamento = snapshot.GetValue<string>("Departamento");
+                    for (int i = 0; i < departamentoDropdown.options.Count; i++)
                     {
-                        departamentoDropdown.value = i;
-                        break;
+                        if (departamentoDropdown.options[i].text == departamento)
+                        {
+                            departamentoDropdown.value = i;
+                            break;
+                        }
                     }
                 }
 
                 // Actualizar ciudades para el departamento seleccionado
                 ActualizarCiudades();
 
-                // Establecer ciudad (después de actualizar las ciudades)
-                for (int i = 0; i < ciudadDropdown.options.Count; i++)
+                // Cargar ciudad
+                if (snapshot.ContainsField("Ciudad"))
                 {
-                    if (ciudadDropdown.options[i].text == ciudad)
+                    string ciudad = snapshot.GetValue<string>("Ciudad");
+                    for (int i = 0; i < ciudadDropdown.options.Count; i++)
                     {
-                        ciudadDropdown.value = i;
-                        break;
+                        if (ciudadDropdown.options[i].text == ciudad)
+                        {
+                            ciudadDropdown.value = i;
+                            break;
+                        }
                     }
                 }
             }
-
         }
         catch (Exception e)
         {
-            Debug.Log($"Error al conseguir los datos del usuario : {e.Message}");
+            Debug.Log($"Error al conseguir los datos del usuario: {e.Message}");
         }
     }
 
@@ -219,17 +235,13 @@ public class EditarPerfilEstudianteManager : MonoBehaviour
         departamentoDropdown.onValueChanged.AddListener(delegate { ActualizarCiudades(); });
     }
 
-    public void activarPanelEditar()
-    {
-        panelEditar.SetActive(true);
-    }
-
     public void desactivarPanelEditar()
     {
         if (HayInternet())
         {
             // Validar que todos los campos estén seleccionados
-            if (edadDropdown.options[edadDropdown.value].text == "Seleccione edad" ||
+            if (string.IsNullOrEmpty(usernameInput.text) ||
+                edadDropdown.options[edadDropdown.value].text == "Seleccione edad" ||
                 departamentoDropdown.options[departamentoDropdown.value].text == "Seleccione departamento" ||
                 ciudadDropdown.options[ciudadDropdown.value].text == "Seleccione ciudad")
             {
@@ -239,25 +251,21 @@ public class EditarPerfilEstudianteManager : MonoBehaviour
             }
         }
         // limpiamos el messageText al salir del panel 
-
-        if (panelEditar != null)
-            panelEditar.SetActive(false);
-
-        messageTxt.text = ("");
-
+        messageTxt.text = "";
     }
 
-    // Método para guardar los cambios en el perfil
-    private void ActualizarDatos()
+    private async void ActualizarDatos()
     {
         if (!HayInternet())
         {
-            messageTxt.text = ("no hay CONEXION A INTERNET");
+            messageTxt.text = "No hay CONEXIÓN A INTERNET";
             messageTxt.color = Color.red;
             return;
         }
-        // Validar que todos los campos estén seleccionados
-        if (edadDropdown.options[edadDropdown.value].text == "Seleccione edad" ||
+
+        // Validar campos obligatorios
+        if (string.IsNullOrEmpty(usernameInput.text) ||
+            edadDropdown.options[edadDropdown.value].text == "Seleccione edad" ||
             departamentoDropdown.options[departamentoDropdown.value].text == "Seleccione departamento" ||
             ciudadDropdown.options[ciudadDropdown.value].text == "Seleccione ciudad")
         {
@@ -266,52 +274,81 @@ public class EditarPerfilEstudianteManager : MonoBehaviour
             return;
         }
 
-        // Todos los campos son válidos, proceder a actualizar
-        int edad = int.Parse(edadDropdown.options[edadDropdown.value].text);
-        string departamento = departamentoDropdown.options[departamentoDropdown.value].text;
-        string ciudad = ciudadDropdown.options[ciudadDropdown.value].text;
-
-
-        // Si todo está bien, proceder con el guardado
-
-        // si todo es válido entramos a actualizar el perfil 
-        DocumentReference userRef = db.Collection("users").Document(userId);
-        Dictionary<string, object> datosUsuario = new Dictionary<string, object>
+        // Validar longitud del nombre de usuario (8-10 caracteres)
+        string username = usernameInput.text.Trim();
+        if (username.Length < 8 || username.Length > 10)
         {
+            messageTxt.text = "El nombre de usuario debe tener entre 8 y 10 caracteres";
+            messageTxt.color = Color.red;
+            return;
+        }
+
+        try
+        {
+            // Verificar si el nombre de usuario ya existe (excepto para el usuario actual)
+            bool usernameDisponible = await VerificarUsernameDisponible(username);
+            if (!usernameDisponible)
+            {
+                messageTxt.text = "El nombre de usuario ya está en uso";
+                messageTxt.color = Color.red;
+                return;
+            }
+
+            // Todos los campos son válidos, proceder a actualizar
+            int edad = int.Parse(edadDropdown.options[edadDropdown.value].text);
+            string departamento = departamentoDropdown.options[departamentoDropdown.value].text;
+            string ciudad = ciudadDropdown.options[ciudadDropdown.value].text;
+
+            DocumentReference userRef = db.Collection("users").Document(userId);
+            Dictionary<string, object> datosUsuario = new Dictionary<string, object>
+        {
+            { "DisplayName", username },
             { "Edad", edad },
             { "Departamento", departamento },
             { "Ciudad", ciudad }
         };
 
-        userRef.SetAsync(datosUsuario, SetOptions.MergeAll).ContinueWithOnMainThread(Task =>
+            // Usando await para esperar la operación de Firestore
+            await userRef.SetAsync(datosUsuario, SetOptions.MergeAll);
+
+            Debug.Log("Datos actualizados correctamente");
+            messageTxt.text = "Perfil actualizado correctamente";
+            messageTxt.color = Color.green;
+        }
+        catch (Exception ex)
         {
-            if (Task.IsCompletedSuccessfully)
-            {
-                Debug.Log("Datos actualizados Correctamente");
-                Invoke("cerrarPanelEditar", 2f);
-            }
-            else
-            {
-                Debug.LogError("Error al guardar los datos: " + Task.Exception);
-                messageTxt.text = "Error al actualizar los datos";
-                messageTxt.color = Color.red;
-            }
-        });
-
-        messageTxt.text = "Perfil actualizado correctamente";
-        messageTxt.color = Color.green;
-
-
-    }
-
-    public void cerrarPanelEditar()
-    {
-        if (panelEditar != null)
-        {
-            panelEditar.SetActive(false);
-            messageTxt.text = ("");
+            Debug.LogError("Error al guardar los datos: " + ex.Message);
+            messageTxt.text = "Error al actualizar los datos";
+            messageTxt.color = Color.red;
         }
     }
+
+    private async Task<bool> VerificarUsernameDisponible(string username)
+    {
+        try
+        {
+            // Obtener todos los usuarios excepto el actual
+            Query query = db.Collection("users")/*.WhereNotEqualTo("userId", userId)*/;
+            QuerySnapshot snapshot = await query.GetSnapshotAsync();
+
+            foreach (DocumentSnapshot document in snapshot.Documents)
+            {
+                if (document.ContainsField("DisplayName") &&
+                    document.GetValue<string>("DisplayName").Equals(username, StringComparison.OrdinalIgnoreCase))
+                {
+                    return false; // Username ya existe
+                }
+            }
+
+            return true; // Username disponible
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"Error al verificar nombre de usuario: {e.Message}");
+            return false;
+        }
+    }
+
     public bool HayInternet()
     {
         try

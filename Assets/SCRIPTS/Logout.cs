@@ -8,7 +8,7 @@ public class Logout : MonoBehaviour
 
     private FirebaseAuth auth;
     public FirebaseFirestore db;// instanciamos db
-    public string userId;
+    private string userId;
 
     private void Start()
     {

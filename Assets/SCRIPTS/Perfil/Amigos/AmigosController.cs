@@ -43,14 +43,33 @@ public class AmigosController : MonoBehaviour
     public Button botonCancelarEliminar;
     public TMP_Text textoConfirmacion;
 
+    private Color defaultColor;
+
     void Start()
     {
+        if (messageText != null)
+        {
+            defaultColor = messageText.color; // Guardamos el color desde el Inspector
+        }
+
         auth = FirebaseAuth.DefaultInstance;
         db = FirebaseFirestore.DefaultInstance;
         // Verificar conexión al inicio
         if (!HayConexion())
         {
             ShowMessage("No hay conexión a internet. Algunas funciones pueden no estar disponibles.", true);
+        }
+
+        // verificar si tiene que mostrar alguna scena en particular
+        if (PlayerPrefs.GetInt("MostrarSolicitudes", 0) == 1)
+        {
+            ActivarPanelSolicitudes();
+            PlayerPrefs.SetInt("MostrarSolicitudes", 0); // Limpia después de usar
+        }
+        else if (PlayerPrefs.GetInt("MostrarSugerencias", 0) == 1)
+        {
+            ActivarPanelAgregarAmigos();
+            PlayerPrefs.SetInt("MostrarSugerencias", 0); // Limpia después de usar
         }
 
         // Inicializar panel de confirmación
@@ -98,6 +117,7 @@ public class AmigosController : MonoBehaviour
             ShowMessage("No autenticado", true);
             Debug.LogError("No hay usuario autenticado.");
         }
+        
     }
 
     void OnSearchInputChanged(string searchText)
@@ -238,10 +258,52 @@ public class AmigosController : MonoBehaviour
             btnEliminar.onClick.AddListener(() => MostrarConfirmacionEliminar(amigoId, nombreAmigo, documentId));
         }
 
-        // Cargar rango
-        LoadFriendRank(amigoId, nuevoAmigo);
+        // Cargar rango y avatar
+        LoadFriendRankAndAvatar(amigoId, nuevoAmigo);
     }
+    void LoadFriendRankAndAvatar(string amigoId, GameObject amigoUI)
+    {
+        db.Collection("users").Document(amigoId).GetSnapshotAsync().ContinueWithOnMainThread(task =>
+        {
+            if (task.IsCompleted && task.Result.Exists)
+            {
+                // Cargar rango
+                string rango = task.Result.GetValue<string>("Rango") ?? "Novato de laboratorio";
+                var rangoText = amigoUI.transform.Find("Rangotxt")?.GetComponent<TMP_Text>();
+                if (rangoText != null) rangoText.text = rango;
 
+                // Cargar avatar
+                string avatarPath = ObtenerAvatarPorRango(rango);
+                Sprite avatarSprite = Resources.Load<Sprite>(avatarPath) ?? Resources.Load<Sprite>("Avatares/defecto");
+
+                // Buscar el componente Image del avatar en el prefab
+                Transform avatarTransform = amigoUI.transform.Find("AvatarImage"); // Asegúrate de que este es el nombre correcto en tu prefab
+                if (avatarTransform != null)
+                {
+                    Image avatarImage = avatarTransform.GetComponent<Image>();
+                    if (avatarImage != null)
+                    {
+                        avatarImage.sprite = avatarSprite;
+                    }
+                }
+            }
+        });
+    }
+    private string ObtenerAvatarPorRango(string rango)
+    {
+        switch (rango)
+        {
+            case "Novato de laboratorio": return "Avatares/Rango1";
+            case "Aprendiz Atomico": return "Avatares/Rango2";
+            case "Promesa quimica": return "Avatares/Rango3";
+            case "Cientifico en Formacion": return "Avatares/Rango4";
+            case "Experto Molecular": return "Avatares/Rango5";
+            case "Maestro de Laboratorio": return "Avatares/Rango6";
+            case "Sabio de la tabla": return "Avatares/Rango7";
+            case "Leyenda química": return "Avatares/Rango8";
+            default: return "Avatares/Rango1";
+        }
+    }
     void MostrarConfirmacionEliminar(string amigoId, string nombreAmigo, string documentId)
     {
         if (panelConfirmacionEliminar == null) return;
@@ -349,7 +411,7 @@ public class AmigosController : MonoBehaviour
         {
             messageText.text = message;
             // Cambiar color según si es error o no
-            messageText.color = isError ? Color.red : Color.white;
+            messageText.color = isError ? Color.red : defaultColor;
 
             // Si el mensaje está vacío, ocultar el texto
             messageText.gameObject.SetActive(!string.IsNullOrEmpty(message));
