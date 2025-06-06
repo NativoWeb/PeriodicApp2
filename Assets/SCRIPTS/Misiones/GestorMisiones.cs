@@ -64,14 +64,11 @@ public class GestorMisiones : MonoBehaviour
     void InicializarPanelElemento()
     {
         Debug.Log("Iniciando GestorMisiones...");
-
-        CargarJSON();
         BtnCategorias.onClick.AddListener(RegresaraCategorias);
-        CargarDatosElementoSeleccionado();
-        CargarInfoElementoSeleccionado();
+        StartCoroutine(CargarJSONYContinuar());
     }
 
-    void CargarJSON()
+    IEnumerator CargarJSONYContinuar()
     {
         // Cargar json_informacion.json
         string pathInformacion = Path.Combine(Application.persistentDataPath, "json_informacion.json");
@@ -79,26 +76,13 @@ public class GestorMisiones : MonoBehaviour
         {
             string jsonStringInformacion = File.ReadAllText(pathInformacion);
             jsonDataInformacion = JSON.Parse(jsonStringInformacion);
-            Debug.Log("json_informacion.json cargado desde persistentDataPath.");
         }
         else
         {
-        StartCoroutine(CargarDesdeResources("json_informacion.json", (json) =>
-        {
-            jsonDataInformacion = JSON.Parse(json);
-            Debug.Log("json_informacion.json cargado desde StreamingAssets (plantilla temporal).");
-        }));
-            string pathStreaming = Path.Combine(Application.streamingAssetsPath, "json_informacion.json");
-            if (File.Exists(pathStreaming))
+            yield return CargarDesdeResources("json_informacion.json", (json) =>
             {
-                string jsonStringInformacion = File.ReadAllText(pathStreaming);
-                jsonDataInformacion = JSON.Parse(jsonStringInformacion);
-                Debug.Log("json_informacion.json cargado desde StreamingAssets (plantilla temporal).");
-            }
-            else
-            {
-                Debug.LogError("No se encontró json_informacion.json en persistentDataPath ni en StreamingAssets.");
-            }
+                jsonDataInformacion = JSON.Parse(json);
+            });
         }
 
         // Cargar json_misiones.json
@@ -107,27 +91,18 @@ public class GestorMisiones : MonoBehaviour
         {
             string jsonStringMisiones = File.ReadAllText(pathMisiones);
             jsonDataMisiones = JSON.Parse(jsonStringMisiones);
-            Debug.Log("json_misiones.json cargado desde persistentDataPath.");
         }
         else
         {
-        StartCoroutine(CargarDesdeResources("json_misiones.json", (json) =>
-        {
-            jsonDataMisiones = JSON.Parse(json);
-            Debug.Log("json_misiones.json cargado desde StreamingAssets (plantilla temporal).");
-        }));
-            string pathStreaming = Path.Combine(Application.streamingAssetsPath, "json_misiones.json");
-            if (File.Exists(pathStreaming))
+            yield return CargarDesdeResources("json_misiones.json", (json) =>
             {
-                string jsonStringMisiones = File.ReadAllText(pathStreaming);
-                jsonDataMisiones = JSON.Parse(jsonStringMisiones);
-                Debug.Log("json_misiones.json cargado desde StreamingAssets (plantilla temporal).");
-            }
-            else
-            {
-                Debug.LogError("No se encontró json_misiones.json en persistentDataPath ni en StreamingAssets.");
-            }
+                jsonDataMisiones = JSON.Parse(json);
+            });
         }
+
+        // AHORA que los JSON ya están cargados
+        CargarInfoElementoSeleccionado();
+        CargarDatosElementoSeleccionado();
     }
 
     private IEnumerator CargarDesdeResources(string nombreArchivo, System.Action<string> callback)
