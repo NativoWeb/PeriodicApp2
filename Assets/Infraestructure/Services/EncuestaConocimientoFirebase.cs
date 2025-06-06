@@ -3,12 +3,43 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using UnityEngine;
-using static ControladorEncuesta;
+
+// Clases auxiliares que coinciden con la estructura de tu JSON:
+[System.Serializable]
+public class GrupoPreguntasWrapper
+{
+    public List<GrupoPreguntas> gruposPreguntas;
+}
+
+[System.Serializable]
+public class GrupoPreguntas
+{
+    public string grupo;
+    public List<ElementoPreguntas> elementos;
+}
+
+[System.Serializable]
+public class ElementoPreguntas
+{
+    public string elemento;
+    public List<PreguntaJson> preguntas;
+}
+
+[System.Serializable]
+public class PreguntaJson
+{
+    public string textoPregunta;
+    public List<string> opcionesRespuesta;
+    public int indiceRespuestaCorrecta;
+    // El JSON original no tiene 'dificultad' ni 'grupo' dentro de cada pregunta,
+    // por lo que aquí no los declaramos.
+}
 
 public class EncuestaConocimientoFirebase : IEncuestaConocimientoRepositorio
 {
     public async Task<List<PreguntaEntity>> ObtenerPreguntasAsync()
     {
+        // Cargar el TextAsset desde Resources (sin la extensión .json)
         TextAsset json = Resources.Load<TextAsset>("preguntas_tabla_periodica_categorias1");
         if (json == null) return new List<PreguntaEntity>();
 
@@ -25,8 +56,9 @@ public class EncuestaConocimientoFirebase : IEncuestaConocimientoRepositorio
 
         foreach (var grupo in wrapper.gruposPreguntas)
         {
-            List<ControladorEncuesta.Pregunta> preguntasGrupo = new List<ControladorEncuesta.Pregunta>();
-
+            // Para cada grupo (por ejemplo "Metales Alcalinos"), juntamos todas las preguntas
+            // de sus elementos, las mezclamos y tomamos hasta 5.
+            List<PreguntaJson> preguntasGrupo = new List<PreguntaJson>();
 
             foreach (var elemento in grupo.elementos)
             {
@@ -35,7 +67,7 @@ public class EncuestaConocimientoFirebase : IEncuestaConocimientoRepositorio
 
             var seleccionadas = preguntasGrupo
                 .OrderBy(x => rnd.Next())
-                .Take(5) // máx. 5 por grupo
+                .Take(5) // máximo 5 preguntas por grupo
                 .ToList();
 
             foreach (var p in seleccionadas)
@@ -45,8 +77,8 @@ public class EncuestaConocimientoFirebase : IEncuestaConocimientoRepositorio
                     Texto = p.textoPregunta,
                     Opciones = p.opcionesRespuesta,
                     IndiceCorrecto = p.indiceRespuestaCorrecta,
-                    Grupo = p.grupoPregunta.grupo,
-                    Dificultad = p.dificultadPregunta
+                    Grupo = grupo.grupo,        // asignamos el nombre del grupo desde el wrapper
+                    Dificultad = 0f             // el JSON no tiene dificultad; ponemos 0 por defecto
                 });
             }
 

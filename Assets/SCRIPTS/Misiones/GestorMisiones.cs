@@ -1,0 +1,344 @@
+﻿using UnityEngine.UI;
+using TMPro;
+using System.Collections.Generic;
+using SimpleJSON;
+using UnityEngine.SceneManagement;
+using UnityEngine;
+using System.IO;
+using System.Collections;
+using UnityEngine.Networking;
+
+public class GestorMisiones : MonoBehaviour
+{
+    [Header("Panel Principal del Elemento")]
+    public GameObject PanelMisiones;
+    public GameObject PanelDatosElemento;
+    public TextMeshProUGUI txtSimbolo;
+    public TextMeshProUGUI txtNombre;
+    public TextMeshProUGUI txtNumeroAtomico;
+
+    [Header("Botones de Cambio")]
+    public Button btnMisiones;
+    public Button btnInformacion;
+
+    [Header("UI Misiones")]
+    public GameObject prefabMision;
+    public Transform contenedorMisiones;
+
+
+    [Header("Botón de Regreso a categorias")]
+    public Button BtnCategorias;
+    public GameObject PanelCategorias;
+    public GameObject PanelElemento;
+    public GameObject PanelInformacion;
+
+    JSONNode jsonDataInformacion;
+    JSONNode jsonDataMisiones;
+
+    // Mapea cada categoría a un Color32 único
+    private static readonly Dictionary<string, Color32> ColoresPorCategoria = new Dictionary<string, Color32>
+{
+    { "Metales Alcalinos",        new Color32(0x41, 0xB9, 0xDE, 0xFF) },
+    { "Metales Alcalinotérreos",  new Color32(0xF0, 0x81, 0x2F, 0xFF) },
+    { "Metales de Transición",     new Color32(0xED, 0x6D, 0x9D, 0xFF) },
+    { "Metales postransicionales", new Color32(0x72, 0x65, 0xAA, 0xFF) },
+    { "Metaloides",                new Color32(0xCD, 0xCB, 0xCC, 0xFF) },
+    { "No Metales",      new Color32(0x79, 0xBB, 0x51, 0xFF) },
+    { "Gases Nobles",              new Color32(0x00, 0xA2, 0x93, 0xFF) },
+    { "Lantánidos",                new Color32(0xC0, 0x20, 0x3C, 0xFF) },
+    { "Actinoides",                new Color32(0x33, 0x37, 0x8E, 0xFF) },
+    { "Propiedades desconocidas",  new Color32(0xC2, 0x89, 0x58, 0xFF) },
+};
+    void Start()
+    {
+        btnInformacion.onClick.AddListener(IrAIformacion);
+    }
+
+    void OnEnable()
+    {
+        InicializarPanelElemento();
+        string PlayerFref = PlayerPrefs.GetString("CategoriaSeleccionada");
+        Debug.Log(PlayerFref);
+    }
+
+    void InicializarPanelElemento()
+    {
+        Debug.Log("Iniciando GestorMisiones...");
+
+        CargarJSON();
+        BtnCategorias.onClick.AddListener(RegresaraCategorias);
+        CargarDatosElementoSeleccionado();
+        CargarInfoElementoSeleccionado();
+    }
+
+    void CargarJSON()
+    {
+        // Cargar json_informacion.json
+        string pathInformacion = Path.Combine(Application.persistentDataPath, "json_informacion.json");
+        if (File.Exists(pathInformacion))
+        {
+            string jsonStringInformacion = File.ReadAllText(pathInformacion);
+            jsonDataInformacion = JSON.Parse(jsonStringInformacion);
+            Debug.Log("json_informacion.json cargado desde persistentDataPath.");
+        }
+        else
+        {
+        StartCoroutine(CargarDesdeResources("json_informacion.json", (json) =>
+        {
+            jsonDataInformacion = JSON.Parse(json);
+            Debug.Log("json_informacion.json cargado desde StreamingAssets (plantilla temporal).");
+        }));
+            string pathStreaming = Path.Combine(Application.streamingAssetsPath, "json_informacion.json");
+            if (File.Exists(pathStreaming))
+            {
+                string jsonStringInformacion = File.ReadAllText(pathStreaming);
+                jsonDataInformacion = JSON.Parse(jsonStringInformacion);
+                Debug.Log("json_informacion.json cargado desde StreamingAssets (plantilla temporal).");
+            }
+            else
+            {
+                Debug.LogError("No se encontró json_informacion.json en persistentDataPath ni en StreamingAssets.");
+            }
+        }
+
+        // Cargar json_misiones.json
+        string pathMisiones = Path.Combine(Application.persistentDataPath, "json_misiones.json");
+        if (File.Exists(pathMisiones))
+        {
+            string jsonStringMisiones = File.ReadAllText(pathMisiones);
+            jsonDataMisiones = JSON.Parse(jsonStringMisiones);
+            Debug.Log("json_misiones.json cargado desde persistentDataPath.");
+        }
+        else
+        {
+        StartCoroutine(CargarDesdeResources("json_misiones.json", (json) =>
+        {
+            jsonDataMisiones = JSON.Parse(json);
+            Debug.Log("json_misiones.json cargado desde StreamingAssets (plantilla temporal).");
+        }));
+            string pathStreaming = Path.Combine(Application.streamingAssetsPath, "json_misiones.json");
+            if (File.Exists(pathStreaming))
+            {
+                string jsonStringMisiones = File.ReadAllText(pathStreaming);
+                jsonDataMisiones = JSON.Parse(jsonStringMisiones);
+                Debug.Log("json_misiones.json cargado desde StreamingAssets (plantilla temporal).");
+            }
+            else
+            {
+                Debug.LogError("No se encontró json_misiones.json en persistentDataPath ni en StreamingAssets.");
+            }
+        }
+    }
+
+    private IEnumerator CargarDesdeResources(string nombreArchivo, System.Action<string> callback)
+    {
+        string ruta = $"Plantillas_Json/{Path.GetFileNameWithoutExtension(nombreArchivo)}";
+
+        TextAsset archivo = Resources.Load<TextAsset>(ruta);
+
+        yield return null; // Necesario para que funcione como Coroutine
+
+        if (archivo != null)
+        {
+            if (string.IsNullOrEmpty(archivo.text))
+            {
+                Debug.LogWarning($"⚠️ El archivo {nombreArchivo} está vacío en Resources.");
+            }
+            callback(archivo.text);
+        }
+        else
+        {
+            Debug.LogError($"❌ No se encontró el archivo {nombreArchivo} en Resources/Plantillas_Json/");
+            callback(null);
+        }
+    }
+
+    void CargarInfoElementoSeleccionado()
+    {
+        string categoriaSeleccionada = PlayerPrefs.GetString("CategoriaSeleccionada");
+        string elementoSeleccionado = PlayerPrefs.GetString("ElementoSeleccionado");
+
+        // Cambiar color del panel según categoría
+        if (PanelDatosElemento != null)
+        {
+            var imgPanel = PanelDatosElemento.GetComponent<Image>();
+            if (imgPanel != null)
+            {
+                Color32 colorCat = ColoresPorCategoria.TryGetValue(categoriaSeleccionada, out var c) ? c : new Color32(255, 255, 255, 255);
+                imgPanel.color = colorCat;
+            }
+        }
+
+        // Cambiar color del boton de misiones
+        if (btnMisiones != null)
+        {
+            var ImgMisiones = btnMisiones.GetComponent<Image>();
+            if (ImgMisiones != null)
+            {
+                Color32 colorCat = ColoresPorCategoria.TryGetValue(categoriaSeleccionada, out var c) ? c : new Color32(255, 255, 255, 255);
+                ImgMisiones.color = colorCat;
+            }
+        }
+
+        // Verificar si el JSON cargado existe
+        if (jsonDataInformacion == null ||
+            !jsonDataInformacion.HasKey("Informacion") ||
+            !jsonDataInformacion["Informacion"].HasKey("Categorias"))
+        {
+            Debug.LogError("El JSON de información cargado desde archivo es inválido.");
+            return;
+        }
+
+        var categorias = jsonDataInformacion["Informacion"]["Categorias"];
+
+        if (!categorias.HasKey(categoriaSeleccionada) ||
+            !categorias[categoriaSeleccionada].HasKey(elementoSeleccionado))
+        {
+            Debug.LogError("No se encontró el elemento seleccionado.");
+            return;
+        }
+
+        var elementoJson = categorias[categoriaSeleccionada][elementoSeleccionado];
+
+        txtSimbolo.text = elementoJson["simbolo"];
+        txtNombre.text = elementoJson["nombre"];
+        txtNumeroAtomico.text = elementoJson["numero_atomico"].Value;
+    }
+
+    void CargarDatosElementoSeleccionado()
+    {
+        string categoriaSeleccionada = PlayerPrefs.GetString("CategoriaSeleccionada");
+        string elementoSeleccionado = PlayerPrefs.GetString("ElementoSeleccionado");
+
+        // Color del panel según categoría
+        if (PanelDatosElemento != null)
+        {
+            var imgPanel = PanelDatosElemento.GetComponent<Image>();
+            if (imgPanel != null && ColoresPorCategoria.TryGetValue(categoriaSeleccionada, out var colorCat))
+            {
+                imgPanel.color = colorCat;
+            }
+        }
+
+        if (jsonDataMisiones == null ||
+            !jsonDataMisiones.HasKey("Misiones") ||
+            !jsonDataMisiones["Misiones"].HasKey("Categorias") ||
+            !jsonDataMisiones["Misiones"]["Categorias"].HasKey(categoriaSeleccionada) ||
+            !jsonDataMisiones["Misiones"]["Categorias"][categoriaSeleccionada].HasKey("Elementos") ||
+            !jsonDataMisiones["Misiones"]["Categorias"][categoriaSeleccionada]["Elementos"].HasKey(elementoSeleccionado))
+        {
+            Debug.LogError("No se encontró la categoría o el elemento en json_misiones.json");
+            return;
+        }
+
+        var misionesArray = jsonDataMisiones["Misiones"]["Categorias"][categoriaSeleccionada]["Elementos"][elementoSeleccionado]["misiones"].AsArray;
+
+        LimpiarMisiones(); // Limpia el contenido previo
+
+        foreach (JSONNode misionJson in misionesArray)
+        {
+            Mision mision = new Mision
+            {
+                id = misionJson["id"].AsInt,
+                titulo = misionJson["titulo"],
+                descripcion = misionJson["descripcion"],
+                tipo = misionJson["tipo"],
+                rutaEscena = misionJson["rutaescena"],
+                completada = misionJson["completada"].AsBool
+            };
+
+            switch (mision.tipo)
+            {
+                case "AR":
+                    mision.xp = 10;
+                    mision.logoMision = "logosMision/ar";
+                    break;
+                case "QR":
+                    mision.xp = 10;
+                    mision.logoMision = "logosMision/qr";
+                    break;
+                case "Juego":
+                    mision.xp = 12;
+                    mision.logoMision = "logosMision/juego";
+                    break;
+                case "Quiz":
+                    mision.xp = 12;
+                    mision.logoMision = "logosMision/quiz";
+                    break;
+                case "Evaluacion":
+                    mision.xp = 12;
+                    mision.logoMision = "logosMision/evaluacion";
+                    break;
+                default:
+                    mision.xp = 0;
+                    mision.logoMision = "logosMision/default";
+                    break;
+            }
+
+            PlayerPrefs.SetInt("xp_mision", mision.xp); // Puedes quitarlo si no es necesario
+
+            CrearPrefabMision(mision);
+        }
+    }
+
+    void CrearPrefabMision(Mision mision)
+    {
+        string elementoseleccionado = PlayerPrefs.GetString("ElementoSeleccionado");
+        GameObject nuevaMision = Instantiate(prefabMision, contenedorMisiones);
+        UI_Mision uiMision = nuevaMision.GetComponent<UI_Mision>();
+        uiMision.ConfigurarMision(mision);
+
+        Button botonMision = nuevaMision.GetComponentInChildren<Button>();
+
+        // Asignar evento para cambiar de escena
+        botonMision.onClick.AddListener(() => CargarEscenaMision(mision.rutaEscena, elementoseleccionado, mision.id));
+    }
+
+    void CargarEscenaMision(string nombreEscena, string elemento, int idMision)
+    {
+        if (string.IsNullOrEmpty(nombreEscena))
+        {
+            Debug.LogError("No se encontró una escena válida para esta misión.");
+            return;
+        }
+
+        // Guardar el estado de la misión antes de cambiar de escena
+        PlayerPrefs.SetString("ElementoSeleccionado", elemento);
+        PlayerPrefs.SetString("SimboloElemento", txtSimbolo.text);
+        PlayerPrefs.SetInt("MisionActual", idMision);
+        if (idMision == 1)
+        {
+            PlayerPrefs.SetString("CargarVuforia", "Misiones");
+        }
+        PlayerPrefs.Save();
+
+        // Cargar la escena de la misión
+        SceneManager.LoadScene(nombreEscena);
+    }
+
+    void LimpiarMisiones()
+    {
+        foreach (Transform child in contenedorMisiones)
+        {
+            Destroy(child.gameObject);
+        }
+    }
+
+    private void RegresaraCategorias()
+    {
+        PlayerPrefs.DeleteKey("CategoriaSeleccionada");
+        PlayerPrefs.Save(); 
+        PanelCategorias.SetActive(true);
+        PanelElemento.SetActive(false);
+        PanelInformacion.SetActive(false);
+        PanelMisiones.SetActive(false);
+    }
+
+    public void IrAIformacion()
+    {
+        PanelInformacion.SetActive(true);
+        PanelMisiones.SetActive(false);
+        PanelElemento.SetActive(false);
+        PanelCategorias.SetActive(false);
+    }
+}

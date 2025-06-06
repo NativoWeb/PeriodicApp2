@@ -13,7 +13,6 @@ using Firebase.Extensions;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 
-
 public class UpdateData : MonoBehaviour
 {
 

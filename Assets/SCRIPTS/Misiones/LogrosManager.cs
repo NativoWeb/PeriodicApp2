@@ -4,6 +4,9 @@ using UnityEngine;
 using TMPro;
 using SimpleJSON;
 using UnityEngine.UI;
+using System.IO;
+using System.Collections;
+using UnityEngine.Networking;
 
 public class LogrosManager : MonoBehaviour
 {
@@ -28,15 +31,77 @@ public class LogrosManager : MonoBehaviour
         BtnDatos.onClick.AddListener(AbrirPanelDatos);
     }
 
-    private void Start()
+    private IEnumerator Start()
     {
-        if (jsonData == null || !jsonData.HasKey("Misiones_Categorias") || !jsonData["Misiones_Categorias"].HasKey("Categorias"))
+        if (jsonData == null)
         {
-            Debug.LogError("❌ Error: Estructura del JSON no válida.");
-            return;
+            yield return CargarJSON(); // esperamos hasta que el JSON esté cargado
         }
 
-        var categoriasJson = jsonData["Misiones_Categorias"]["Categorias"];
+        if (jsonData == null || !jsonData.HasKey("Logros") || !jsonData["Logros"].HasKey("Categorias"))
+        {
+            Debug.LogError("❌ Error: Estructura del JSON no válida.");
+            yield break;
+        }
+
+        InicializarLogros(); // extraemos esta lógica a un nuevo método
+    }
+
+    private IEnumerator CargarJSON()
+    {
+        string filePath = Path.Combine(Application.persistentDataPath, "Json_Logros.json");
+
+        if (File.Exists(filePath))
+        {
+            string jsonString = File.ReadAllText(filePath);
+            jsonData = JSON.Parse(jsonString);
+            Debug.Log("✅ Json_Logros.json cargado desde persistentDataPath.");
+        }
+        else
+        {
+            Debug.LogWarning("⚠️ Json_Logros.json no encontrado en persistentDataPath, buscando en StreamingAssets...");
+
+            bool completado = false;
+
+            yield return StartCoroutine(CargarDesdeResources("Json_Logros.json", (json) =>
+            {
+                jsonData = JSON.Parse(json);
+                Debug.Log("📄 Json_Logros.json cargado temporalmente desde StreamingAssets.");
+                completado = true;
+            }));
+
+            if (!completado)
+            {
+                Debug.LogError("❌ Falló la carga del JSON desde StreamingAssets.");
+            }
+        }
+    }
+    private IEnumerator CargarDesdeResources(string nombreArchivo, System.Action<string> callback)
+    {
+        string ruta = $"Plantillas_Json/{Path.GetFileNameWithoutExtension(nombreArchivo)}";
+
+        TextAsset archivo = Resources.Load<TextAsset>(ruta);
+
+        yield return null; // Necesario para que funcione como Coroutine
+
+        if (archivo != null)
+        {
+            if (string.IsNullOrEmpty(archivo.text))
+            {
+                Debug.LogWarning($"⚠️ El archivo {nombreArchivo} está vacío en Resources.");
+            }
+            callback(archivo.text);
+        }
+        else
+        {
+            Debug.LogError($"❌ No se encontró el archivo {nombreArchivo} en Resources/Plantillas_Json/");
+            callback(null);
+        }
+    }
+
+    private void InicializarLogros()
+    {
+        var categoriasJson = jsonData["Logros"]["Categorias"];
         categorias = new Dictionary<string, UI.Categoria>();
         elementos = new Dictionary<string, Elemento>();
 
@@ -47,90 +112,40 @@ public class LogrosManager : MonoBehaviour
             CategoriaData categoriaInfo = new CategoriaData
             {
                 nombre = categoriaKey,
-                TituloMisionFinal = categoriaData["Mision Final"]["MisionFinal"]["titulo"],
+                TituloMisionFinal = categoriaData["logro_categoria"]["nombre"],
                 Elementos = new Dictionary<string, ElementoData>()
             };
 
-            if (categoriaData.HasKey("Elementos"))
+            bool misionFinalDesbloqueada = categoriaData["logro_categoria"]["desbloqueado"].AsBool;
+            var elementosJson = categoriaData["logros_elementos"];
+
+            foreach (KeyValuePair<string, JSONNode> kvpElemento in elementosJson.AsObject)
             {
-                foreach (KeyValuePair<string, JSONNode> kvpElemento in categoriaData["Elementos"].AsObject)
+                string elementoKey = kvpElemento.Key;
+                JSONNode elementoData = kvpElemento.Value;
+
+                ElementoData elementoInfo = new ElementoData
                 {
-                    string elementoKey = kvpElemento.Key;
-                    JSONNode elementoData = kvpElemento.Value;
+                    simbolo = elementoData["simbolo"],
+                    logro = elementoData["nombre"],
+                    misiones = new List<MisionData>()
+                };
 
-                    ElementoData elementoInfo = new ElementoData
-                    {
-                        simbolo = elementoData.HasKey("simbolo") ? elementoData["simbolo"].Value : "N/A",
-                        logro = elementoData.HasKey("logro") ? elementoData["logro"].Value : "Sin logro",
-                        misiones = new List<MisionData>()
-                    };
-
-                    if (elementoData.HasKey("misiones"))
-                    {
-                        foreach (JSONNode misionNode in elementoData["misiones"].AsArray)
-                        {
-                            MisionData mision = new MisionData
-                            {
-                                id = misionNode["id"].AsInt,
-                                titulo = misionNode["titulo"],
-                                descripcion = misionNode["descripcion"],
-                                tipo = misionNode["tipo"],
-                                completada = misionNode["completada"].AsBool,
-                                rutaescena = misionNode["rutaescena"]
-                            };
-                            elementoInfo.misiones.Add(mision);
-                        }
-                    }
-
-                    categoriaInfo.Elementos[elementoKey] = elementoInfo;
-                }
+                categoriaInfo.Elementos[elementoKey] = elementoInfo;
             }
 
-            // ✅ Revisamos si la misión final está completadabool
-            bool misionFinalDesbloqueada = categoriaData.HasKey("Mision Final") &&
-            categoriaData["Mision Final"].HasKey("MisionFinal") &&
-            categoriaData["Mision Final"]["MisionFinal"].HasKey("completada") &&
-            categoriaData["Mision Final"]["MisionFinal"]["completada"].AsBool;
-
-
-
-            // ✅ Instanciamos la categoría usando ese valor
             UI.Categoria categoria = new UI.Categoria(categoriaKey, categoriaInfo, misionFinalDesbloqueada);
             categorias.Add(categoriaKey, categoria);
 
-            // Dentro del foreach de categorías en Start():
             CreateCategoriaLogro(categoria);
 
             foreach (var elementoData in categoria.ElementosData.Values)
             {
                 Elemento nuevoElemento = new Elemento(elementoData);
                 elementos.Add(nuevoElemento.Simbolo, nuevoElemento);
-                // Cambia la llamada para incluir 'categoria':
                 CreateElementoLogro(categoria, nuevoElemento);
             }
         }
-    }
-
-    private void CargarJSON()
-    {
-        string jsonString = PlayerPrefs.GetString("misionesCategoriasJSON");
-
-        if (string.IsNullOrEmpty(jsonString))
-        {
-            TextAsset jsonFile = Resources.Load<TextAsset>("Misiones_Categorias");
-            if (jsonFile != null)
-            {
-                jsonString = jsonFile.text;
-                PlayerPrefs.SetString("misionesCategoriasJSON", jsonString);
-                PlayerPrefs.Save();
-            }
-            else
-            {
-                Debug.LogError("No se encontró el archivo JSON en Resources.");
-                return;
-            }
-        }
-        jsonData = JSON.Parse(jsonString);
     }
 
     private void CreateCategoriaLogro(UI.Categoria categoria)
@@ -153,7 +168,6 @@ public class LogrosManager : MonoBehaviour
         logroCategoria.ActualizarDesdeCategoria(categoria.TituloMisionFinal, categoria.EstaCompletada());
     }
 
-    // En LogrosManager.cs
     private void CreateElementoLogro(UI.Categoria categoria, Elemento elemento)
     {
         if (elementoPrefab == null || elementoPanel == null)
@@ -171,11 +185,10 @@ public class LogrosManager : MonoBehaviour
             return;
         }
 
-        // ¡Aquí pasamos la categoría!
         logroElemento.ActualizarLogro(
             elemento.Simbolo,
             elemento.Logro,
-            elemento.EstaCompletado(),
+            elemento.EstaCompletado(), // Será false ya que no hay misiones en este JSON
             categoria.Nombre
         );
     }
@@ -214,7 +227,7 @@ public class MisionData
     public string rutaescena;
 }
 
-namespace UI
+namespace UIm
 {
     public class Mision
     {
@@ -235,18 +248,40 @@ namespace UI
             rutaEscena = data.rutaescena;
         }
     }
+
+    public class Categoria
+    {
+        public string Nombre { get; private set; }
+        public string TituloMisionFinal { get; private set; }
+        public Dictionary<string, ElementoData> ElementosData { get; private set; }
+        private bool completada;
+
+        public Categoria(string nombre, CategoriaData data, bool completada)
+        {
+            Nombre = nombre;
+            TituloMisionFinal = data.TituloMisionFinal;
+            ElementosData = data.Elementos;
+            this.completada = completada;
+        }
+
+        public bool EstaCompletada()
+        {
+            return completada;
+        }
+    }
 }
+
 public class Elemento
 {
     public string Simbolo { get; private set; }
     public string Logro { get; private set; }
-    public List<UI.Mision> Misiones { get; private set; }
+    public List<UIm.Mision> Misiones { get; private set; }
 
     public Elemento(ElementoData data)
     {
         Simbolo = data.simbolo;
         Logro = data.logro;
-        Misiones = data.misiones != null ? data.misiones.Select(m => new UI.Mision(m)).ToList() : new List<UI.Mision>();
+        Misiones = data.misiones != null ? data.misiones.Select(m => new UIm.Mision(m)).ToList() : new List<UIm.Mision>();
     }
 
     public bool EstaCompletado()

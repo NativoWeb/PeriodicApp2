@@ -1127,16 +1127,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f360bc977006b7e49adae644e7696506, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  textoPregunta: {fileID: 1092559858}
+  textoPreguntaUI: {fileID: 1092559858}
   grupoOpcionesUI: {fileID: 51940106}
   opcionesToggleUI:
   - {fileID: 1515981829}
   - {fileID: 360647523}
   - {fileID: 468185963}
   - {fileID: 1646503063}
-  barraProgreso: {fileID: 1177429781}
-  txtRacha: {fileID: 1388431172}
-  txtTimer: {fileID: 1522995609}
   panelFeedback: {fileID: 1835859933}
   textoFeedback: {fileID: 547117892}
   colorFondoCorrecto: {r: 0.66, g: 0.81, b: 0.3, a: 1}
@@ -1144,6 +1141,10 @@ MonoBehaviour:
   colorCorrecto: {r: 0, g: 1, b: 0, a: 1}
   colorIncorrecto: {r: 1, g: 0, b: 0, a: 1}
   colorNormal: {r: 1, g: 1, b: 1, a: 1}
+  txtTimer: {fileID: 1522995609}
+  txtRacha: {fileID: 1388431172}
+  tiempoInicial: 10
+  sliderProgreso: {fileID: 1177429781}
 --- !u!4 &645997938
 Transform:
   m_ObjectHideFlags: 0
@@ -2045,52 +2046,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1341707066}
   m_CullTransparentMesh: 1
---- !u!1 &1362165834
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1362165836}
-  - component: {fileID: 1362165835}
-  m_Layer: 0
-  m_Name: BarraProgreso
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &1362165835
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1362165834}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 537c68273e96ab54ba32c1ce4440bf5a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  slider: {fileID: 1177429781}
-  progresoTexto: {fileID: 1092559858}
---- !u!4 &1362165836
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1362165834}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 572.2589, y: 2145.7554, z: -3157.3577}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1368591450
 GameObject:
   m_ObjectHideFlags: 0
@@ -3818,6 +3773,5 @@ SceneRoots:
   - {fileID: 2104878984}
   - {fileID: 189755855}
   - {fileID: 645997938}
-  - {fileID: 1362165836}
   - {fileID: 1668375980}
   - {fileID: 1177293638}

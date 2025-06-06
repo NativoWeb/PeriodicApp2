@@ -7,6 +7,9 @@ using Firebase.Firestore;
 using Firebase.Auth;
 using System.Threading.Tasks;
 using System;
+using System.Collections;
+using UnityEngine.AddressableAssets;
+using UnityEngine.ResourceManagement.AsyncOperations;
 
 [System.Serializable]
 public class PreguntaJuego
@@ -97,18 +100,8 @@ public class Game2 : MonoBehaviour
         PreguntaJuego preguntaActual = preguntas[indiceActual];
         txtPregunta.text = preguntaActual.pregunta;
 
-        // Cargar imagen desde Resources
-        Sprite imagenSprite = Resources.Load<Sprite>(preguntaActual.imagen);
-        if (imagenSprite != null)
-        {
-            imgElemento.sprite = imagenSprite;
-        }
-        else
-        {
-            // Cargar imagen por defecto si no se encuentra la especificada
-            imgElemento.sprite = Resources.Load<Sprite>("imagenes/default");
-            Debug.LogWarning($"⚠ Imagen no encontrada: {preguntaActual.imagen}. Se usó imagen por defecto.");
-        }
+        // Cargar imagen desde Addressable
+        StartCoroutine(CargarImagenAddressable(preguntaActual.imagen));
 
         List<string> opciones = preguntaActual.opciones.OrderBy(x => UnityEngine.Random.value).ToList();
         for (int i = 0; i < botonesRespuestas.Length; i++)
@@ -131,7 +124,27 @@ public class Game2 : MonoBehaviour
         tiempoActivo = true;
     }
 
-    public void ComprobarRespuesta(string respuestaUsuario)
+    IEnumerator CargarImagenAddressable(string ruta)
+    {
+        string rutaAddressable = $"Assets/PruebaAddressables/{ruta}.png";
+        AsyncOperationHandle<Sprite> handle = Addressables.LoadAssetAsync<Sprite>(rutaAddressable);
+        yield return handle;
+
+        if (handle.Status == AsyncOperationStatus.Succeeded)
+        {
+            imgElemento.sprite = handle.Result;
+        }
+        else
+        {
+            Debug.LogWarning($"❌ No se pudo cargar la imagen Addressable: {rutaAddressable}");
+            imgElemento.sprite = Resources.Load<Sprite>("imagenes/default");
+        }
+
+        // Liberar si lo deseas (aunque opcional para sprites pequeños en juegos cortos)
+        Addressables.Release(handle);
+    }
+
+public void ComprobarRespuesta(string respuestaUsuario)
     {
         if (!tiempoActivo) return;
 

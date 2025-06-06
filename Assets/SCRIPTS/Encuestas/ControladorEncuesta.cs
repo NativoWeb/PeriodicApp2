@@ -3,15 +3,12 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using System.IO;
 using UnityEngine.Networking; // �A�ADIDO: Necesario para UnityWebRequest!
 using System.Linq;
-using System;
-using Newtonsoft.Json;
 using Firebase.Firestore;
 using Firebase.Extensions;
-using Firebase;
 using Firebase.Auth;
-
 using UnityEngine.SceneManagement;
 
 
@@ -59,8 +56,6 @@ public class ControladorEncuesta : MonoBehaviour
 
     private int racha = 0;
     private int respuestasCorrectas = 0;
-
-
     
 
     [System.Serializable]
@@ -641,9 +636,6 @@ public class ControladorEncuesta : MonoBehaviour
         dificultadMedia
     };
 
-        // Guardar las categorías ordenadas en PlayerPrefs antes de enviar los datos a predicción
-        GuardarCategoriasOrdenadas();
-
         // 2. Llamar al modelo de Barracuda
         ModeloAI modeloAI = GetComponent<ModeloAI>(); // Asumiendo que ModeloAI está en el mismo GameObject
         if (modeloAI != null)
@@ -698,18 +690,60 @@ public class ControladorEncuesta : MonoBehaviour
         GuardarCategoriasOrdenadas();
     }
 
-    private void GuardarCategoriasOrdenadas()
+    public void GuardarCategoriasOrdenadas()
     {
         // Ordenar de menor a mayor porcentaje
         categorias = categorias.OrderBy(c => c.Porcentaje).ToList();
 
-        // Convertir a JSON y guardar en PlayerPrefs
+        // Convertir a JSON
         CategoriasData data = new CategoriasData { categorias = categorias };
-        string json = JsonUtility.ToJson(data);
-        PlayerPrefs.SetString("CategoriasOrdenadas", json);
-        PlayerPrefs.Save();
+        string json = JsonUtility.ToJson(data, true); // "true" para formato legible
 
-        Debug.Log("📌 Categorías ordenadas guardadas en JSON: " + json);
+        // Ruta del archivo
+        string rutaArchivo = Path.Combine(Application.persistentDataPath, "categorias.json");
+
+        // Guardar localmente
+        File.WriteAllText(rutaArchivo, json);
+        Debug.Log("✅ Categorías ordenadas guardadas en: " + rutaArchivo);
+
+        // Iniciar la copia de los otros JSON
+        StartCoroutine(CopiarJsonDesdeStreamingAssets());
+    }
+
+    private IEnumerator CopiarJsonDesdeStreamingAssets()
+    {
+        List<string> nombresArchivos = new List<string>
+        {
+            "Json_Misiones.json",
+            "Json_Logros.json",
+            "Json_Informacion.json"
+        };
+
+        foreach (string nombreArchivo in nombresArchivos)
+        {
+            string rutaStreaming = Path.Combine(Application.streamingAssetsPath, nombreArchivo);
+            string rutaLocal = Path.Combine(Application.persistentDataPath, nombreArchivo);
+
+            if (!File.Exists(rutaLocal))
+            {
+                UnityWebRequest request = UnityWebRequest.Get(rutaStreaming);
+                yield return request.SendWebRequest();
+
+                if (request.result == UnityWebRequest.Result.Success)
+                {
+                    File.WriteAllText(rutaLocal, request.downloadHandler.text);
+                    Debug.Log($"✅ Archivo copiado localmente: {nombreArchivo}");
+                }
+                else
+                {
+                    Debug.LogError($"❌ Error al copiar {nombreArchivo}: {request.error}");
+                }
+            }
+            else
+            {
+                Debug.Log($"📁 Ya existe localmente: {nombreArchivo}");
+            }
+        }
     }
 
 

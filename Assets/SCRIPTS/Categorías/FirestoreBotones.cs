@@ -2,8 +2,9 @@
 using UnityEngine.UI;
 using TMPro;
 using System.Collections.Generic;
-using Google.MiniJSON;
+using System.IO;
 using SimpleJSON;
+using System.Collections;
 
 public class FirestoreBotones : MonoBehaviour
 {
@@ -20,35 +21,33 @@ public class FirestoreBotones : MonoBehaviour
 
     private Categoria categoriaSeleccionada;
 
-
-    // Dentro de FirestoreBotones, justo después de los demás campos:
+    // Colores por categoría
     private static readonly Dictionary<string, string> coloresPorCategoria = new Dictionary<string, string>
     {
         { "Metales Alcalinos",       "#41B9DE" },
         { "Metales Alcalinotérreos", "#F0812F" },
         { "Metales de Transición",    "#ED6D9D" },
-        { "Metales Postransicionales","#7265AA" },
+        { "Metales postransicionales","#7265AA" },
         { "Metaloides",               "#CDCBCB" },
-        { "No Metales Reactivos",     "#79BB51" },
+        { "No Metales",     "#79BB51" },
         { "Gases Nobles",             "#00A293" },
         { "Lantánidos",               "#C0203C" },
-        { "Actínoides",               "#33378E" },
-        { "Propiedades Desconocidas", "#C28958" }
+        { "Actinoides",               "#33378E" },
+        { "Propiedades desconocidas", "#C28958" }
     };
 
     private List<Categoria> categorias = new List<Categoria>();
 
     void Start()
     {
-        Debug.Log("📌 Cargando categorías desde PlayerPrefs...");
+        Debug.Log("📌 Cargando categorías desde archivo local...");
         CargarCategorias();
-        string username = PlayerPrefs.GetString("DisplayName", "");
         botonSeleccionado.onClick.AddListener(OnClickContinuar);
     }
 
     void CargarCategorias()
     {
-        categorias = ObtenerCategoriasDesdePlayerPrefs();
+        categorias = CargarCategoriasDesdeArchivo();
 
         if (categorias.Count == 0)
         {
@@ -73,6 +72,28 @@ public class FirestoreBotones : MonoBehaviour
         Debug.Log("✅ Categorías cargadas correctamente.");
     }
 
+    List<Categoria> CargarCategoriasDesdeArchivo()
+    {
+        string rutaArchivo = Path.Combine(Application.persistentDataPath, "categorias_encuesta_firebase.json");
+        if (File.Exists(rutaArchivo))
+        {
+            try
+            {
+                string json = File.ReadAllText(rutaArchivo);
+                CategoriasData data = JsonUtility.FromJson<CategoriasData>(json);
+                if (data != null && data.categorias != null)
+                {
+                    return data.categorias;
+                }
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"❌ Error leyendo categorias.json: {ex.Message}");
+            }
+        }
+        return new List<Categoria>();
+    }
+
     GameObject CrearBoton(int numero, Categoria categoria)
     {
         GameObject nuevoBoton = Instantiate(prefabBoton, contenedorBotones);
@@ -84,7 +105,7 @@ public class FirestoreBotones : MonoBehaviour
         if (textoBoton != null)
             textoBoton.text = numero.ToString();
 
-        // — Asigna color de fondo según categoría —
+        // Asigna color
         Image img = boton.GetComponent<Image>();
         if (img != null && coloresPorCategoria.TryGetValue(categoria.Titulo, out string hex))
         {
@@ -92,11 +113,11 @@ public class FirestoreBotones : MonoBehaviour
             img.color = c;
         }
 
-        // Listener para mostrar datos en los TMP
         boton.onClick.AddListener(() => SeleccionarNivel(boton, categoria));
 
         return nuevoBoton;
     }
+
     void SeleccionarNivel(Button boton, Categoria categoria)
     {
         nombreTMP.text = categoria.Titulo;
@@ -104,12 +125,14 @@ public class FirestoreBotones : MonoBehaviour
 
         categoriaSeleccionada = categoria;
 
-        // Mostrar progreso
-        float progreso = ObtenerProgresoCategoria(categoria.Titulo);
-        if (SliderProgreso != null)
+        // Usar la función con callback
+        ObtenerProgresoCategoria(categoria.Titulo, (progreso) =>
         {
-            SliderProgreso.value = progreso;
-        }
+            if (SliderProgreso != null)
+            {
+                SliderProgreso.value = progreso;
+            }
+        });
     }
 
     public void OnClickContinuar()
@@ -120,31 +143,99 @@ public class FirestoreBotones : MonoBehaviour
             return;
         }
 
-        // Guardar en PlayerPrefs
         PlayerPrefs.SetString("CategoriaSeleccionada", categoriaSeleccionada.Titulo);
         PlayerPrefs.Save();
 
-        // Cambiar paneles
         PanelCategorias.SetActive(false);
         PanelElemento.SetActive(true);
     }
 
-    List<Categoria> ObtenerCategoriasDesdePlayerPrefs()
+    public void ObtenerProgresoCategoria(string categoriaTitulo, System.Action<float> callback)
     {
-        if (PlayerPrefs.HasKey("CategoriasOrdenadas"))
+        string rutaMisiones = Path.Combine(Application.persistentDataPath, "Json_Misiones.json");
+
+        if (File.Exists(rutaMisiones))
         {
-            string json = PlayerPrefs.GetString("CategoriasOrdenadas");
-            if (!string.IsNullOrEmpty(json))
+            string jsonText = File.ReadAllText(rutaMisiones);
+            float progreso = ProcesarProgresoDesdeJSON(jsonText, categoriaTitulo);
+            callback(progreso);
+        }
+        else
+        {
+            Debug.LogWarning("⚠️ Json_Misiones.json no encontrado en persistentDataPath, cargando desde StreamingAssets...");
+            StartCoroutine(CargarDesdeStreamingAssets("Json_Misiones.json", (jsonText) =>
             {
-                CategoriasData data = JsonUtility.FromJson<CategoriasData>(json);
-                if (data != null && data.categorias != null)
+                float progreso = ProcesarProgresoDesdeJSON(jsonText, categoriaTitulo);
+                callback(progreso);
+            }));
+        }
+    }
+
+    private float ProcesarProgresoDesdeJSON(string jsonText, string categoriaTitulo)
+    {
+        var json = JSON.Parse(jsonText);
+
+        if (!json.HasKey("Misiones") || !json["Misiones"].HasKey("Categorias"))
+        {
+            Debug.LogError("❌ Estructura del JSON incorrecta.");
+            return 0f;
+        }
+
+        var categoriasJSON = json["Misiones"]["Categorias"];
+        if (!categoriasJSON.HasKey(categoriaTitulo) || !categoriasJSON[categoriaTitulo].HasKey("Elementos"))
+        {
+            Debug.LogError($"❌ No se encontró la categoría '{categoriaTitulo}' en el JSON.");
+            return 0f;
+        }
+
+        var elementos = categoriasJSON[categoriaTitulo]["Elementos"];
+        int totalMisiones = 0;
+        int misionesCompletadas = 0;
+
+        foreach (string key in elementos.Keys)
+        {
+            var misiones = elementos[key]["misiones"].AsArray;
+            int misionesElemento = misiones.Count - 1;
+            totalMisiones += misionesElemento;
+
+            int completadasElemento = 0;
+            for (int i = 0; i < misionesElemento; i++)
+            {
+                if (misiones[i]["completada"].AsBool)
                 {
-                    return data.categorias;
+                    misionesCompletadas++;
+                    completadasElemento++;
                 }
             }
+            if (completadasElemento == misionesElemento && misionesElemento > 0)
+            {
+                misionesCompletadas++; // Bonus por todas completadas
+            }
         }
-        return new List<Categoria>();
+
+        return totalMisiones > 0 ? (float)misionesCompletadas / totalMisiones : 0f;
     }
+
+    IEnumerator CargarDesdeStreamingAssets(string nombreArchivo, System.Action<string> callback)
+    {
+        string rutaArchivo = Path.Combine(Application.streamingAssetsPath, nombreArchivo);
+
+        using (UnityEngine.Networking.UnityWebRequest www = UnityEngine.Networking.UnityWebRequest.Get(rutaArchivo))
+        {
+            yield return www.SendWebRequest();
+
+            if (www.result == UnityEngine.Networking.UnityWebRequest.Result.Success)
+            {
+                callback(www.downloadHandler.text);
+            }
+            else
+            {
+                Debug.LogError($"Error al cargar {nombreArchivo} desde StreamingAssets: {www.error}");
+                callback(null);
+            }
+        }
+    }
+
 
     List<Categoria> ObtenerCategoriasPorDefecto()
     {
@@ -153,69 +244,14 @@ public class FirestoreBotones : MonoBehaviour
             new Categoria("Metales Alcalinos", "¡Prepárate para la reactividad extrema! ¿Podrás dominar estos metales explosivos?"),
             new Categoria("Metales Alcalinotérreos", "¡Más estables, pero igual de sorprendentes! Descubre su papel esencial en la química."),
             new Categoria("Metales de Transición", "¡Los maestros del cambio! Explora los metales que forman los colores más vibrantes."),
-            new Categoria("Metales Postransicionales", "¡Menos famosos, pero igual de útiles! ¿Cuánto sabes de estos metales versátiles?"),
+            new Categoria("Metales postransicionales", "¡Menos famosos, pero igual de útiles! ¿Cuánto sabes de estos metales versátiles?"),
             new Categoria("Metaloides", "¡Ni metal ni no metal! Atrévete a jugar con los elementos más enigmáticos."),
-            new Categoria("No Metales Reactivos", "¡Elementos esenciales para la vida! Descubre su impacto en nuestro mundo."),
+            new Categoria("No Metales", "¡Elementos esenciales para la vida! Descubre su impacto en nuestro mundo."),
             new Categoria("Gases Nobles", "¡Silenciosos pero poderosos! ¿Podrás jugar con los elementos más estables?"),
             new Categoria("Lantánidos", "¡Los metales raros que hacen posible la tecnología moderna! ¿Aceptas el reto?"),
-            new Categoria("Actínoides", "¡La energía del futuro! Juega con los elementos más radioactivos y misteriosos."),
-            new Categoria("Propiedades Desconocidas", "¡Aventúrate en lo desconocido! ¿Cuánto sabes de estos elementos misteriosos?")
+            new Categoria("Actinoides", "¡La energía del futuro! Juega con los elementos más radioactivos y misteriosos."),
+            new Categoria("Propiedades desconocidas", "¡Aventúrate en lo desconocido! ¿Cuánto sabes de estos elementos misteriosos?")
         };
-    }
-
-    // Método para obtener el progreso de una categoría específica
-    float ObtenerProgresoCategoria(string categoriaSeleccionada)
-    {
-        string jsonString = PlayerPrefs.GetString("misionesCategoriasJSON", "");
-        if (string.IsNullOrEmpty(jsonString))
-        {
-            Debug.LogError("❌ No se encontró el JSON en PlayerPrefs.");
-            return 0f;
-        }
-
-        var json = JSON.Parse(jsonString);
-        if (!json.HasKey("Misiones_Categorias") || !json["Misiones_Categorias"].HasKey("Categorias"))
-        {
-            Debug.LogError("❌ Estructura del JSON incorrecta.");
-            return 0f;
-        }
-
-        var categorias = json["Misiones_Categorias"]["Categorias"];
-
-        if (!categorias.HasKey(categoriaSeleccionada) || !categorias[categoriaSeleccionada].HasKey("Elementos"))
-        {
-            Debug.LogError($"❌ No se encontró la categoría '{categoriaSeleccionada}' en el JSON.");
-            return 0f;
-        }
-
-        var elementos = categorias[categoriaSeleccionada]["Elementos"];
-        int totalMisiones = 0;
-        int misionesCompletadas = 0;
-
-        foreach (var elemento in elementos.Keys)
-        {
-            var misiones = elementos[elemento]["misiones"].AsArray;
-            int misionesElemento = misiones.Count - 1; // No contar la misión final
-            totalMisiones += misionesElemento;
-
-            int misionesCompletadasElemento = 0;
-            for (int i = 0; i < misionesElemento; i++)
-            {
-                if (misiones[i]["completada"].AsBool)
-                {
-                    misionesCompletadas++;
-                    misionesCompletadasElemento++;
-                }
-            }
-
-            // Si todas las misiones de un elemento se completan, sumar un pequeño progreso extra
-            if (misionesElemento > 0 && misionesCompletadasElemento == misionesElemento)
-            {
-                misionesCompletadas += 1; // Bonus por completar todas las misiones de un elemento
-            }
-        }
-
-        return totalMisiones > 0 ? (float)misionesCompletadas / totalMisiones : 0f;
     }
 }
 

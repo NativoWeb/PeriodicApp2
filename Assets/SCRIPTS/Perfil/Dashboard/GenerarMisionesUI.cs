@@ -4,11 +4,12 @@ using TMPro;
 using System.Collections.Generic;
 using SimpleJSON;
 using System.Linq;
-using static GeneradorElementosUI;
 using Firebase.Auth;
 using Firebase.Firestore;
 using Firebase.Extensions;
-using UnityEngine.SceneManagement;
+using System.IO;
+using System.Collections;
+using UnityEngine.Networking;
 
 public class GeneradorElementosUI : MonoBehaviour
 {
@@ -65,32 +66,52 @@ public class GeneradorElementosUI : MonoBehaviour
 
     private void Awake()
     {
-        // 1) Inicializa Firebase y userId
         db = FirebaseFirestore.DefaultInstance;
         auth = FirebaseAuth.DefaultInstance;
         userId = PlayerPrefs.GetString("userId", "").Trim();
 
-        // 2) Ahora puedes llamar sin nullrefs
-        CargarJSON();
-        ActualizarTotales();
-        ObtenerPosicionUsuario();
+        CargarJSON();  
+    }
 
-        // 3) Listener de botones
-        BtnDatos.onClick.AddListener(AbrirPanelDatos);
-        BtnLogros.onClick.AddListener(AbrirPanelLogros);
-        BtnIA.onClick.AddListener(AbrirPanelIA);
-        BtnNotificaciones.onClick.AddListener(AbrirPanelNotificaciones);
+    private void CargarJSON()
+    {
+        string rutaArchivo = Path.Combine(Application.persistentDataPath, "Json_Misiones.json");
+        if (File.Exists(rutaArchivo))
+        {
+            string jsonString = File.ReadAllText(rutaArchivo);
+            jsonData = JSON.Parse(jsonString);
+            Debug.Log("✅ Json_Misiones.json cargado desde persistentDataPath.");
+
+            // Ya que jsonData se cargó, podemos actualizar totales:
+            ActualizarTotales();
+            ObtenerPosicionUsuario();
+        }
+        else
+        {
+            Debug.LogWarning("⚠️ Json_Misiones.json no encontrado en persistentDataPath, intentando cargar desde StreamingAssets...");
+            StartCoroutine(CargarDesdeResources("Json_Misiones.json", (json) =>
+            {
+                jsonData = JSON.Parse(json);
+                Debug.Log("📄 Json_Misiones.json cargado temporalmente desde StreamingAssets.");
+
+                // Aquí ahora sí llamar a ActualizarTotales y ObtenerPosicionUsuario
+                ActualizarTotales();
+                ObtenerPosicionUsuario();
+            }));
+        }
     }
 
     void Start()
     {
-        if (jsonData == null || !jsonData.HasKey("Misiones_Categorias") || !jsonData["Misiones_Categorias"].HasKey("Categorias"))
+        CargarJSON();
+
+        if (jsonData == null || !jsonData.HasKey("Misiones") || !jsonData["Misiones"].HasKey("Categorias"))
         {
             Debug.LogError("❌ Error: Estructura del JSON no válida.");
             return;
         }
 
-        var categoriasJson = jsonData["Misiones_Categorias"]["Categorias"];
+        var categoriasJson = jsonData["Misiones"]["Categorias"];
 
         foreach (KeyValuePair<string, JSONNode> categoria in categoriasJson)
         {
@@ -108,8 +129,8 @@ public class GeneradorElementosUI : MonoBehaviour
 
                 Elemento nuevoElemento = new Elemento
                 {
-                    simbolo = datosElemento["simbolo"],
-                    nombre = datosElemento["nombre"],
+                    simbolo = simboloElemento,
+                    nombre = simboloElemento, // O usa otro campo si está disponible
                     misiones = new List<Mision>()
                 };
 
@@ -131,37 +152,40 @@ public class GeneradorElementosUI : MonoBehaviour
                 }
             }
         }
+
+        ActualizarTotales();
     }
 
-    private void CargarJSON()
+    private IEnumerator CargarDesdeResources(string nombreArchivo, System.Action<string> callback)
     {
-        string jsonString = PlayerPrefs.GetString("misionesCategoriasJSON");
+        string ruta = $"Plantillas_Json/{Path.GetFileNameWithoutExtension(nombreArchivo)}";
 
-        if (string.IsNullOrEmpty(jsonString))
+        TextAsset archivo = Resources.Load<TextAsset>(ruta);
+
+        yield return null; // Necesario para que funcione como Coroutine
+
+        if (archivo != null)
         {
-            TextAsset jsonFile = Resources.Load<TextAsset>("Misiones_Categorias");
-            if (jsonFile != null)
+            if (string.IsNullOrEmpty(archivo.text))
             {
-                jsonString = jsonFile.text;
-                PlayerPrefs.SetString("misionesCategoriasJSON", jsonString);
-                PlayerPrefs.Save();
+                Debug.LogWarning($"⚠️ El archivo {nombreArchivo} está vacío en Resources.");
             }
-            else
-            {
-                Debug.LogError("❌ No se encontró el archivo JSON en Resources.");
-                return;
-            }
+            callback(archivo.text);
         }
-
-        jsonData = JSON.Parse(jsonString);
+        else
+        {
+            Debug.LogError($"❌ No se encontró el archivo {nombreArchivo} en Resources/Plantillas_Json/");
+            callback(null);
+        }
     }
+
 
     void ActualizarTotales()
     {
         int totalMisiones = 0;
         int totalLogros = 0;
 
-        var categoriasJson = jsonData["Misiones_Categorias"]["Categorias"];
+        var categoriasJson = jsonData["Misiones"]["Categorias"];
 
         foreach (KeyValuePair<string, JSONNode> categoria in categoriasJson)
         {
@@ -172,7 +196,6 @@ public class GeneradorElementosUI : MonoBehaviour
             int logrosPorCategoria = 0;
             int misionesPorCategoria = 0;
 
-            // 🔹 Contar misiones y logros por elemento
             foreach (KeyValuePair<string, JSONNode> elemento in elementosJson)
             {
                 JSONNode datosElemento = elemento.Value;
@@ -203,26 +226,19 @@ public class GeneradorElementosUI : MonoBehaviour
                     totalLogros++;
                     logrosPorCategoria++;
                 }
-
             }
 
-            // 🔹 Revisar misión final de la categoría
             if (categoriaData.HasKey("mision_final"))
             {
                 var misionFinal = categoriaData["mision_final"];
                 if (misionFinal["completada"].AsBool)
                 {
-                    totalMisiones++; // +1 misión
-                    totalLogros++;   // +1 logro
+                    totalMisiones++;
+                    totalLogros++;
                     misionesPorCategoria++;
                     logrosPorCategoria++;
-
-                }
-                else
-                {
                 }
             }
-
         }
 
         // 🔹 Mostrar totales en UI
@@ -230,6 +246,7 @@ public class GeneradorElementosUI : MonoBehaviour
         TotalLogrosDesbloqueados.text = totalLogros.ToString();
         ActualizarDatosUsuario();
     }
+
     void ActualizarDatosUsuario()
     {
         bool hayInternet = Application.internetReachability != NetworkReachability.NotReachable;

@@ -4,53 +4,24 @@ using System.Collections.Generic;
 using SimpleJSON;
 using UnityEngine.SceneManagement;
 using UnityEngine;
-using Newtonsoft.Json.Linq;
-using Newtonsoft.Json;
-using System;
+using System.IO;
+using System.Collections;
+using UnityEngine.Networking;
 
 public class GestorElementos : MonoBehaviour
 {
-    [Header("Panel Principal del Elemento")]
-    public GameObject PanelDatosElemento;
-    public TextMeshProUGUI txtSimbolo;
-    public TextMeshProUGUI txtNombre;
-    public TextMeshProUGUI txtNumeroAtomico;
-
-    [Header("Contenedores")]
-    public GameObject scrollMisiones;
-    public GameObject scrollInformacion;
-    public Transform contenedorElementos;
-
-    [Header("Botones de Cambio")]
-    public Button btnMisiones;
-    public Button btnInformacion;
-    private Color colorSeleccionado = new Color(110f / 255f, 106f / 255f, 169f / 255f);
-    private Color colorNoSeleccionado = new Color(255, 255, 255);
-
-    [Header("UI Misiones")]
-    public GameObject prefabMision;
-    public Transform contenedorMisiones;
-
     [Header("Prefab de Elementos")]
     public GameObject prefabElemento;
+    public Transform contenedorElementos;
     public Button botonMisionFinal; // Asigna el botón desde el Inspector
     [SerializeField] private Slider sliderProgreso;
 
-
-    [Header("UI Información")]
-    public TextMeshProUGUI txtMasaAtomica;
-    public TextMeshProUGUI txtPuntoFusion;
-    public TextMeshProUGUI txtPuntoEbullicion;
-    public TextMeshProUGUI txtElectronegatividad;
-    public TextMeshProUGUI txtEstado;
-    public TextMeshProUGUI txtDescripcion;
 
     [Header("Descripción de la Categoría")]
     public TextMeshProUGUI txtDescripcionCategoria;
     public TextMeshProUGUI txtTitulo;
 
     [Header("Botón de Regreso")]
-    public Button btnRegresar;
     public GameObject panelMisionesInfo;
 
     [Header("Botón de Regreso a categorias")]
@@ -58,7 +29,8 @@ public class GestorElementos : MonoBehaviour
     public GameObject PanelCategorias;
     public GameObject PanelElemento;
 
-    private JSONNode jsonData;
+    JSONNode jsonDataInformacion;
+    JSONNode jsonDataMisiones;
 
     // Mapea cada categoría a un Color32 único
     private static readonly Dictionary<string, Color32> ColoresPorCategoria = new Dictionary<string, Color32>
@@ -66,13 +38,13 @@ public class GestorElementos : MonoBehaviour
     { "Metales Alcalinos",        new Color32(0x41, 0xB9, 0xDE, 0xFF) },
     { "Metales Alcalinotérreos",  new Color32(0xF0, 0x81, 0x2F, 0xFF) },
     { "Metales de Transición",     new Color32(0xED, 0x6D, 0x9D, 0xFF) },
-    { "Metales Postransicionales", new Color32(0x72, 0x65, 0xAA, 0xFF) },
+    { "Metales postransicionales", new Color32(0x72, 0x65, 0xAA, 0xFF) },
     { "Metaloides",                new Color32(0xCD, 0xCB, 0xCC, 0xFF) },
-    { "No Metales Reactivos",      new Color32(0x79, 0xBB, 0x51, 0xFF) },
+    { "No Metales",      new Color32(0x79, 0xBB, 0x51, 0xFF) },
     { "Gases Nobles",              new Color32(0x00, 0xA2, 0x93, 0xFF) },
     { "Lantánidos",                new Color32(0xC0, 0x20, 0x3C, 0xFF) },
-    { "Actínoides",                new Color32(0x33, 0x37, 0x8E, 0xFF) },
-    { "Propiedades Desconocidas",  new Color32(0xC2, 0x89, 0x58, 0xFF) },
+    { "Actinoides",                new Color32(0x33, 0x37, 0x8E, 0xFF) },
+    { "Propiedades desconocidas",  new Color32(0xC2, 0x89, 0x58, 0xFF) },
 };
 
     List<Categoria> ObtenerCategoriasPorDefecto()
@@ -94,67 +66,103 @@ public class GestorElementos : MonoBehaviour
 
     void OnEnable()
     {
-        InicializarPanelElemento();
-        string PlayerFref = PlayerPrefs.GetString("CategoriaSeleccionada");
-        Debug.Log(PlayerFref);
+        StartCoroutine(InicializarPanelElementoAsync());
     }
 
-    void InicializarPanelElemento()
+    IEnumerator InicializarPanelElementoAsync()
     {
         Debug.Log("Iniciando GestorElementos...");
+
         // 1) Título de categoría
         string cat = PlayerPrefs.GetString("CategoriaSeleccionada", "");
         txtTitulo.text = cat;
 
-        // 2) Descripción según la lista por defecto
+        // 2) Descripción
         var lista = ObtenerCategoriasPorDefecto();
         var match = lista.Find(c => c.Titulo == cat);
         txtDescripcionCategoria.text = match != null
             ? match.Descripcion
             : "Descripción no disponible.";
 
+        yield return StartCoroutine(CargarJSON());
 
-        Debug.Log("Iniciando GestorElementos...");
-        txtTitulo.text = PlayerPrefs.GetString("CategoriaSeleccionada", "");
-        CargarJSON();
+        // Esperar a que termine la carga antes de continuar
         CargarElementosDesdeJSON();
         ActualizarProgresoCategoria();
-        btnMisiones.onClick.AddListener(MostrarMisiones);
-        btnInformacion.onClick.AddListener(MostrarInformacion);
-        btnRegresar.onClick.AddListener(RegresarAlPanelElementos);
+
         botonMisionFinal.onClick.AddListener(IrAMisionFinal);
         BtnCategorias.onClick.AddListener(RegresaraCategorias);
-        MostrarMisiones();
     }
-    
-    void CargarJSON()
-    {
-        string jsonString = PlayerPrefs.GetString("misionesCategoriasJSON");
 
-        if (string.IsNullOrEmpty(jsonString))
+    IEnumerator CargarJSON()
+    {
+        // INFORMACIÓN
+        string pathInformacion = Path.Combine(Application.persistentDataPath, "json_informacion.json");
+
+        if (File.Exists(pathInformacion))
         {
-            TextAsset jsonFile = Resources.Load<TextAsset>("Misiones_Categorias");
-            if (jsonFile != null)
-            {
-                jsonString = jsonFile.text;
-                PlayerPrefs.SetString("misionesCategoriasJSON", jsonString);
-                PlayerPrefs.Save();
-            }
-            else
-            {
-                Debug.LogError("No se encontró el archivo JSON en Resources.");
-                return;
-            }
+            string jsonStringInformacion = File.ReadAllText(pathInformacion);
+            jsonDataInformacion = JSON.Parse(jsonStringInformacion);
+            Debug.Log("json_informacion.json cargado desde persistentDataPath.");
         }
-        jsonData = JSON.Parse(jsonString);
-        Debug.Log(jsonData);
+        else
+        {
+            yield return StartCoroutine(CargarDesdeResources("json_informacion.json", (json) =>
+            {
+                jsonDataInformacion = JSON.Parse(json);
+                Debug.Log("json_informacion.json cargado temporalmente desde StreamingAssets.");
+            }));
+        }
+
+        // MISIONES
+        string pathMisiones = Path.Combine(Application.persistentDataPath, "json_misiones.json");
+        Debug.Log(pathMisiones);
+
+        if (File.Exists(pathMisiones))
+        {
+            string jsonStringMisiones = File.ReadAllText(pathMisiones);
+            jsonDataMisiones = JSON.Parse(jsonStringMisiones);
+            Debug.Log("json_misiones.json cargado desde persistentDataPath.");
+        }
+        else
+        {
+            yield return StartCoroutine(CargarDesdeResources("json_misiones.json", (json) =>
+            {
+                jsonDataMisiones = JSON.Parse(json);
+                Debug.Log("json_misiones.json cargado desde Resources.");
+            }));
+        }
     }
+
+    private IEnumerator CargarDesdeResources(string nombreArchivo, System.Action<string> callback)
+    {
+        string ruta = $"Plantillas_Json/{Path.GetFileNameWithoutExtension(nombreArchivo)}";
+
+        TextAsset archivo = Resources.Load<TextAsset>(ruta);
+
+        yield return null; // Necesario para que funcione como Coroutine
+
+        if (archivo != null)
+        {
+            if (string.IsNullOrEmpty(archivo.text))
+            {
+                Debug.LogWarning($"⚠️ El archivo {nombreArchivo} está vacío en Resources.");
+            }
+            callback(archivo.text);
+        }
+        else
+        {
+            Debug.LogError($"❌ No se encontró el archivo {nombreArchivo} en Resources/Plantillas_Json/");
+            callback(null);
+        }
+    }
+
+
 
     void CargarElementosDesdeJSON()
     {
         string categoriaSeleccionada = PlayerPrefs.GetString("CategoriaSeleccionada");
-        Debug.Log("Categoría seleccionada: " + categoriaSeleccionada);
-
+        Debug.Log(jsonDataInformacion);
 
         if (string.IsNullOrEmpty(categoriaSeleccionada))
         {
@@ -162,45 +170,39 @@ public class GestorElementos : MonoBehaviour
             return;
         }
 
-        if (jsonData == null)
+        if (jsonDataInformacion == null)
         {
             Debug.LogError("Error: jsonData es nulo.");
             return;
         }
 
-        if (!jsonData.HasKey("Misiones_Categorias") ||
-            !jsonData["Misiones_Categorias"].HasKey("Categorias"))
+        if (!jsonDataInformacion.HasKey("Informacion") ||
+            !jsonDataInformacion["Informacion"].HasKey("Categorias"))
         {
-            Debug.LogError("Error: El JSON no tiene la clave 'Misiones_Categorias' o 'Categorias'.");
+            Debug.LogError("Error: El JSON no tiene la clave 'Informacion' o 'Categorias'.");
             return;
         }
 
-        if (!jsonData["Misiones_Categorias"]["Categorias"].HasKey(categoriaSeleccionada))
+        if (!jsonDataInformacion["Informacion"]["Categorias"].HasKey(categoriaSeleccionada))
         {
             Debug.LogError($"Error: La categoría '{categoriaSeleccionada}' no se encuentra en el JSON.");
             return;
         }
 
-        if (!jsonData["Misiones_Categorias"]["Categorias"][categoriaSeleccionada].HasKey("Elementos"))
-        {
-            Debug.LogError($"Error: La categoría '{categoriaSeleccionada}' no tiene elementos.");
-            return;
-        }
-
         LimpiarElementos();
-        var elementos = jsonData["Misiones_Categorias"]["Categorias"][categoriaSeleccionada]["Elementos"];
 
-        // Obtén de una vez el color de la categoría (o blanco si no existe)
+        var elementos = jsonDataInformacion["Informacion"]["Categorias"][categoriaSeleccionada];
+
         Color32 colorCategoria = ColoresPorCategoria.TryGetValue(categoriaSeleccionada, out var c)
             ? c
             : new Color32(255, 255, 255, 255);
 
         foreach (var elemento in elementos)
         {
-            // Extraes datos…
-            CrearBotonElemento(elemento.Key, elemento.Value, colorCategoria );
+            CrearBotonElemento(elemento.Key, elemento.Value, colorCategoria);
         }
     }
+
     void CrearBotonElemento(string nombreElemento, JSONNode datosElemento, Color32 colorBoton)
     {
         if (prefabElemento == null)
@@ -266,311 +268,76 @@ public class GestorElementos : MonoBehaviour
         PanelElemento.SetActive(false);
         PanelCategorias.SetActive(false);
         panelMisionesInfo.SetActive(true);
-
-        CargarDatosElementoSeleccionado();
-    }
-
-    void CargarDatosElementoSeleccionado()
-    {
-
-        string categoriaSeleccionada = PlayerPrefs.GetString("CategoriaSeleccionada");
-
-        // Color del panel de datos según categoría
-        if (PanelDatosElemento != null)
-        {
-            var imgPanel = PanelDatosElemento.GetComponent<Image>();
-            if (imgPanel != null)
-            {
-                Color32 colorCat = ColoresPorCategoria.TryGetValue(categoriaSeleccionada, out var c) ? c : new Color32(255, 255, 255, 255);
-                imgPanel.color = colorCat;
-            }
-        }
-
-        string jsonString = PlayerPrefs.GetString("misionesCategoriasJSON");
-        string elementoSeleccionado = PlayerPrefs.GetString("ElementoSeleccionado");
-
-        if (string.IsNullOrEmpty(jsonString))
-        {
-            TextAsset jsonFile = Resources.Load<TextAsset>("Misiones_Categorias");
-            if (jsonFile != null)
-            {
-                jsonString = jsonFile.text;
-                PlayerPrefs.SetString("misionesCategoriasJSON", jsonString);
-                PlayerPrefs.Save();
-            }
-            else
-            {
-                Debug.LogError("No se encontró el archivo JSON en Resources.");
-                return;
-            }
-        }
-
-        var json = JSON.Parse(jsonString);
-
-        if (json == null ||
-            !json.HasKey("Misiones_Categorias") ||
-            !json["Misiones_Categorias"].HasKey("Categorias"))
-        {
-            Debug.LogError("El JSON es inválido o no se pudo parsear.");
-            return;
-        }
-
-        var categorias = json["Misiones_Categorias"]["Categorias"];
-
-        if (!categorias.HasKey(categoriaSeleccionada) ||
-            !categorias[categoriaSeleccionada].HasKey("Elementos") ||
-            !categorias[categoriaSeleccionada]["Elementos"].HasKey(elementoSeleccionado))
-        {
-            Debug.LogError("No se encontró el elemento seleccionado en la categoría especificada.");
-            return;
-        }
-
-        var elementoJson = categorias[categoriaSeleccionada]["Elementos"][elementoSeleccionado];
-
-        txtSimbolo.text = elementoJson["simbolo"].Value;
-        txtNombre.text = elementoJson["nombre"].Value;
-        txtNumeroAtomico.text = elementoJson["numero_atomico"].Value;
-        txtMasaAtomica.text = elementoJson["masa_atomica"].Value;
-        txtPuntoFusion.text = elementoJson["punto_fusion"].Value + "°C";
-        txtPuntoEbullicion.text = elementoJson["punto_ebullicion"].Value + "°C";
-        txtElectronegatividad.text = elementoJson["electronegatividad"].Value;
-        txtEstado.text = elementoJson["estado"].Value;
-        txtDescripcion.text = elementoJson["descripcion"].Value;
-
-        PlayerPrefs.SetString("NumeroAtomico", elementoJson["numero_atomico"].Value);
-
-        LimpiarMisiones();
-
-        foreach (JSONNode misionJson in elementoJson["misiones"].AsArray)
-        {
-            Mision mision = new Mision
-            {
-                id = misionJson["id"].AsInt,
-                titulo = misionJson["titulo"].Value,
-                descripcion = misionJson["descripcion"].Value,
-                tipo = misionJson["tipo"].Value,
-                rutaEscena = misionJson["rutaescena"].Value,
-                completada = misionJson["completada"].AsBool
-            };
-
-            // Asignar valores según el tipo de misión
-            switch (mision.tipo)
-            {
-                case "AR":
-                    mision.xp = 10;
-                    mision.logoMision = "logosMision/ar";
-                    break;
-                case "QR":
-                    mision.xp =10;
-                    mision.logoMision = "logosMision/qr";
-                    break;
-                case "Juego":
-                    mision.xp = 12;
-                    mision.logoMision = "logosMision/juego";
-                    break;
-                case "Quiz":
-                    mision.xp = 12;
-                    mision.logoMision = "logosMision/quiz";
-                    break;
-                case "Evaluacion":
-                    mision.xp = 12;
-                    mision.logoMision = "logosMision/evaluacion";
-                    break;
-                default:
-                    mision.xp = 0;
-                    mision.logoMision = "logosMision/default";
-                    break;
-            }
-
-            PlayerPrefs.SetInt("xp_mision", mision.xp); // Guardar XP en PlayerPrefs
-
-            CrearPrefabMision(mision);
-        }
-    }
-
-    void CrearPrefabMision(Mision mision)
-    {
-        string elementoseleccionado = PlayerPrefs.GetString("ElementoSeleccionado");
-        GameObject nuevaMision = Instantiate(prefabMision, contenedorMisiones);
-        UI_Mision uiMision = nuevaMision.GetComponent<UI_Mision>();
-        uiMision.ConfigurarMision(mision);
-
-        Button botonMision = nuevaMision.GetComponentInChildren<Button>();
-
-        // Asignar evento para cambiar de escena
-        botonMision.onClick.AddListener(() => CargarEscenaMision(mision.rutaEscena, elementoseleccionado, mision.id));
-    }
-
-    void CargarEscenaMision(string nombreEscena, string elemento, int idMision)
-    {
-        if (string.IsNullOrEmpty(nombreEscena))
-        {
-            Debug.LogError("No se encontró una escena válida para esta misión.");
-            return;
-        }
-
-        // Guardar el estado de la misión antes de cambiar de escena
-        PlayerPrefs.SetString("ElementoSeleccionado", elemento);
-        PlayerPrefs.SetString("SimboloElemento", txtSimbolo.text);
-        PlayerPrefs.SetInt("MisionActual", idMision);
-        if (idMision == 1)
-        {
-            PlayerPrefs.SetString("CargarVuforia", "Misiones");
-        }
-        PlayerPrefs.Save();
-
-        // Cargar la escena de la misión
-        SceneManager.LoadScene(nombreEscena);
-    }
-    public void MostrarInformacion()
-    {
-        scrollMisiones.SetActive(false);
-        scrollInformacion.SetActive(true);
-
-        // Fondo
-        btnInformacion.GetComponent<Image>().color = colorSeleccionado;
-        btnMisiones.GetComponent<Image>().color = colorNoSeleccionado;
-
-        // Texto
-        var txtInfo = btnInformacion.GetComponentInChildren<TextMeshProUGUI>();
-        var txtMis = btnMisiones.GetComponentInChildren<TextMeshProUGUI>();
-        if (txtInfo != null) txtInfo.color = Color.white;
-        if (txtMis != null) txtMis.color = Color.black;
-    }
-
-    public void MostrarMisiones()
-    {
-        scrollMisiones.SetActive(true);
-        scrollInformacion.SetActive(false);
-
-        // Fondo
-        btnMisiones.GetComponent<Image>().color = colorSeleccionado;
-        btnInformacion.GetComponent<Image>().color = colorNoSeleccionado;
-
-        // Texto
-        var txtMis = btnMisiones.GetComponentInChildren<TextMeshProUGUI>();
-        var txtInfo = btnInformacion.GetComponentInChildren<TextMeshProUGUI>();
-        if (txtMis != null) txtMis.color = Color.white;
-        if (txtInfo != null) txtInfo.color = Color.black;
-    }
-
-    public void RegresarAlPanelElementos()
-    {
-        PanelElemento.SetActive(true);
-        panelMisionesInfo.SetActive(false);
-        PanelCategorias.SetActive(false);
-        LimpiarElementos();
-        CargarElementosDesdeJSON();
-    }
-
-    void LimpiarMisiones()
-    {
-        foreach (Transform child in contenedorMisiones)
-        {
-            Destroy(child.gameObject);
-        }
     }
 
     public void ActualizarProgresoCategoria()
     {
+        string categoriaSeleccionada = PlayerPrefs.GetString("CategoriaSeleccionada");
+
         if (sliderProgreso == null)
         {
             Debug.LogError("⚠️ No se ha asignado el Slider en el Inspector.");
             return;
         }
 
-        string categoriaSeleccionada = PlayerPrefs.GetString("CategoriaSeleccionada", "");
-        if (string.IsNullOrEmpty(categoriaSeleccionada))
+        if (jsonDataMisiones == null)
         {
-            Debug.LogError("❌ No hay categoría seleccionada.");
+            Debug.LogError("❌ jsonDataMisiones no ha sido cargado correctamente.");
             return;
         }
 
-        string jsonString = PlayerPrefs.GetString("misionesCategoriasJSON", "");
-        if (string.IsNullOrEmpty(jsonString))
+        var misionesNode = jsonDataMisiones["Misiones"];
+
+        if (!misionesNode.HasKey("Categorias") ||
+            !misionesNode["Categorias"].HasKey(categoriaSeleccionada))
         {
-            Debug.LogError("❌ No se encontró el JSON en PlayerPrefs.");
+            Debug.LogError($"❌ La categoría '{categoriaSeleccionada}' no se encuentra en el JSON.");
             return;
         }
 
-        var json = JSON.Parse(jsonString);
+        var categoriaNode = misionesNode["Categorias"][categoriaSeleccionada];
+        var elementosNode = categoriaNode["Elementos"];
 
-        if (!json.HasKey("Misiones_Categorias") || !json["Misiones_Categorias"].HasKey("Categorias"))
-        {
-            Debug.LogError("❌ Estructura del JSON incorrecta.");
-            return;
-        }
-
-        var categorias = json["Misiones_Categorias"]["Categorias"];
-
-        if (!categorias.HasKey(categoriaSeleccionada) || !categorias[categoriaSeleccionada].HasKey("Elementos"))
-        {
-            Debug.LogError($"❌ No se encontró la categoría '{categoriaSeleccionada}' en el JSON.");
-            return;
-        }
-
-        var elementos = categorias[categoriaSeleccionada]["Elementos"];
         int totalMisiones = 0;
         int misionesCompletadas = 0;
 
-        foreach (KeyValuePair<string, JSONNode> par in elementos)
+        foreach (var elemento in elementosNode.Keys)
         {
-            string nombreElemento = par.Key;
-            var nodoElemento = par.Value;
+            var elementoNode = elementosNode[elemento];
 
-            if (!nodoElemento.HasKey("misiones"))
+            if (elementoNode.HasKey("Misiones"))
             {
-                Debug.LogWarning($"⚠️ El elemento '{nombreElemento}' no tiene misiones.");
-                continue;
+                var misionesElemento = elementoNode["Misiones"];
+
+                foreach (var misionKey in misionesElemento.Keys)
+                {
+                    var mision = misionesElemento[misionKey];
+                    totalMisiones++;
+
+                    if (mision.HasKey("completada") && mision["completada"].AsBool)
+                    {
+                        misionesCompletadas++;
+                    }
+                }
             }
 
-            var misiones = nodoElemento["misiones"].AsArray;
-
-            if (misiones == null || misiones.Count == 0)
+            // Verificar si hay misión final
+            if (elementoNode.HasKey("MisionFinal"))
             {
-                Debug.LogWarning($"⚠️ El elemento '{nombreElemento}' no tiene misiones válidas.");
-                continue;
-            }
+                var misionFinal = elementoNode["MisionFinal"];
+                totalMisiones++;
 
-            totalMisiones += misiones.Count;
-
-            for (int i = 0; i < misiones.Count; i++) // ahora incluye la misión final también
-            {
-                var mision = misiones[i];
-                string completadaStr = mision["completada"].Value.Trim().ToLower();
-                bool completada = completadaStr == "true";
-
-                if (completada)
+                if (misionFinal.HasKey("completada") && misionFinal["completada"].AsBool)
                 {
                     misionesCompletadas++;
                 }
             }
         }
 
-        sliderProgreso.maxValue = totalMisiones;
+        float progreso = (totalMisiones > 0) ? (float)misionesCompletadas / totalMisiones : 0f;
+        sliderProgreso.value = progreso;
 
-        if (totalMisiones == 0)
-        {
-            Debug.LogWarning("⚠️ No hay misiones que evaluar.");
-            sliderProgreso.value = 0f;
-            return;
-        }
-
-        int progreso = (int)misionesCompletadas / totalMisiones;
-        sliderProgreso.value = misionesCompletadas;
-
-        Debug.Log($"📊 Progreso de '{categoriaSeleccionada}': {misionesCompletadas}/{totalMisiones} ({progreso * 100:F2}%)");
-
-        // Verificar si se debe activar la misión final
-        if (misionesCompletadas == totalMisiones)
-        {
-            ActualizarEstadoMisionFinal();
-        }
-        else
-        {
-            botonMisionFinal.interactable = false;
-            Debug.Log("🔒 Misión final aún bloqueada.");
-        }
+        Debug.Log($"✅ Progreso actualizado: {misionesCompletadas}/{totalMisiones} misiones completadas ({progreso * 100:F2}%)");
     }
 
     public void IrAMisionFinal()
@@ -611,45 +378,41 @@ public class GestorElementos : MonoBehaviour
     }
     public string ObtenerRutaMisionFinal(string categoria)
     {
-        string jsonString = PlayerPrefs.GetString("misionesCategoriasJSON", "");
-        if (string.IsNullOrEmpty(jsonString))
+        if (jsonDataMisiones == null)
         {
-            Debug.LogWarning("No se encontró información en PlayerPrefs.");
+            Debug.LogWarning("❌ jsonDataMisiones no está cargado.");
             return null;
         }
 
-        try
+        var misionesNode = jsonDataMisiones["Misiones"];
+        if (misionesNode == null || !misionesNode.HasKey("Categorias"))
         {
-            var jsonData = JsonConvert.DeserializeObject<Dictionary<string, object>>(jsonString);
-
-            if (jsonData.ContainsKey("Misiones_Categorias"))
-            {
-                var misionesCategorias = jsonData["Misiones_Categorias"] as JObject;
-                if (misionesCategorias != null && misionesCategorias.ContainsKey("Categorias"))
-                {
-                    var categorias = misionesCategorias["Categorias"] as JObject;
-                    if (categorias != null && categorias.ContainsKey(categoria))
-                    {
-                        var categoriaSeleccionada = categorias[categoria] as JObject;
-                        if (categoriaSeleccionada != null && categoriaSeleccionada.ContainsKey("Mision Final"))
-                        {
-                            var misionFinal = categoriaSeleccionada["Mision Final"]["MisionFinal"] as JObject;
-                            if (misionFinal != null && misionFinal.ContainsKey("rutaescena"))
-                            {
-                                return misionFinal["rutaescena"].ToString();
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Debug.LogError("Error al procesar el JSON: " + ex.Message);
+            Debug.LogWarning("❌ Estructura JSON incorrecta o no contiene 'Categorias'.");
+            return null;
         }
 
-        Debug.LogWarning("No se encontró la ruta de la Misión Final.");
-        return null;
+        var categorias = misionesNode["Categorias"];
+        if (!categorias.HasKey(categoria))
+        {
+            Debug.LogWarning($"❌ La categoría '{categoria}' no se encontró en JSON.");
+            return null;
+        }
+
+        var categoriaSeleccionada = categorias[categoria];
+        if (!categoriaSeleccionada.HasKey("Mision Final"))
+        {
+            Debug.LogWarning($"❌ La categoría '{categoria}' no contiene 'Mision Final'.");
+            return null;
+        }
+
+        var misionFinal = categoriaSeleccionada["Mision Final"];
+        if (misionFinal == null || !misionFinal.HasKey("rutaescena"))
+        {
+            Debug.LogWarning("❌ No se encontró 'rutaescena' en Mision Final.");
+            return null;
+        }
+
+        return misionFinal["rutaescena"];
     }
 
     private void RegresaraCategorias()
