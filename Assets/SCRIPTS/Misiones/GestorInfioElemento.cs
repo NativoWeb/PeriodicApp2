@@ -65,27 +65,30 @@ public class GestorInfoElemento : MonoBehaviour
         CargarJSON();
         BtnCategorias.onClick.AddListener(RegresaraCategorias);
         BtnCerrar.onClick.AddListener(CerrarPanelPropiedad);
-        CargarInfoElementoSeleccionado();
         btnMisiones.onClick.AddListener(IrAMisiones);
     }
     void CargarJSON()
     {
-        string pathPersistent = Path.Combine(Application.persistentDataPath, "json_informacion.json");
+        string pathPersistent = Path.Combine(Application.persistentDataPath, "Json_informacion.json");
 
         if (File.Exists(pathPersistent))
         {
             string jsonString = File.ReadAllText(pathPersistent);
             jsonDataInformacion = JSON.Parse(jsonString);
             Debug.Log("✅ json_informacion.json cargado desde persistentDataPath.");
+
+            CargarInfoElementoSeleccionado(); // Aquí ya se tiene el JSON, así que es seguro
         }
         else
         {
-            StartCoroutine(CargarDesdeResources("json_informacion.json", (json) =>
+            StartCoroutine(CargarDesdeResources("Json_informacion.json", (json) =>
             {
                 if (!string.IsNullOrEmpty(json))
                 {
                     jsonDataInformacion = JSON.Parse(json);
-                    Debug.Log("📄 json_informacion.json cargado desde Resources (temporal).");
+                    Debug.Log("📄 Json_informacion.json cargado desde Resources (temporal).");
+
+                    CargarInfoElementoSeleccionado(); // Mover aquí para asegurar que el JSON esté listo
                 }
                 else
                 {
