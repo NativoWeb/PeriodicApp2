@@ -241,8 +241,8 @@ namespace QuizGame
 
                 if (logro)
                 {
-                    cambiarLogro();
                     PlayerPrefs.SetInt("CompletarLogro", 0);
+                    cambiarLogro();
                 }
                 // Mostrar solo la correcta
                 for (int i = 0; i < opciones.Length; i++)

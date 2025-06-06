@@ -90,7 +90,6 @@ public class GuardarMisionCompletada : MonoBehaviour
         imagenMision.SetActive(true);
         imagenMision.transform.localScale = Vector3.zero;
         audioSource.Play(); // 🔊 Reproduce el sonido
-        Handheld.Vibrate();
 
         // 🟢 Activar y reproducir el efecto de partículas
         if (particulasMision != null)
@@ -116,7 +115,7 @@ public class GuardarMisionCompletada : MonoBehaviour
 
     void CambiarEscena()
     {
-        SceneManager.LoadScene("Escena_Alcalinos"); // Reemplaza con el nombre de la escena destino
+        SceneManager.LoadScene("Categorias"); // Reemplaza con el nombre de la escena destino
     }
 
     private async void ActualizarMisionEnJSON(string elemento, int idMision)

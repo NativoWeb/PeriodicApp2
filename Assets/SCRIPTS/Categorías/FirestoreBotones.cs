@@ -144,6 +144,7 @@ public class FirestoreBotones : MonoBehaviour
         }
 
         PlayerPrefs.SetString("CategoriaSeleccionada", categoriaSeleccionada.Titulo);
+        PlayerPrefs.SetString("CargarVuforia", "Misiones");
         PlayerPrefs.Save();
 
         PanelCategorias.SetActive(false);

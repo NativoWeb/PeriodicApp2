@@ -310,11 +310,9 @@ public class GameManager2 : MonoBehaviour
                 .Child("presencia")
                 .Child(miUID);
 
-            presenciaRef.RemoveValueAsync().ContinueWithOnMainThread(_ =>
-            {
-                Debug.Log("🚪 Presencia eliminada. Saliendo de la partida...");
-                SceneManager.LoadScene("Inicio");
-            });
+            presenciaRef.RemoveValueAsync();
+
+            SceneManager.LoadScene("Inicio");
         });
 
         BtnNo.onClick.AddListener(() =>
@@ -322,7 +320,6 @@ public class GameManager2 : MonoBehaviour
             PanelConfirmacion.SetActive(false);
         });
     }
-
 
     void EmpezarEscuchaCategoriaDesdeFirebasee()
     {

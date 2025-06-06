@@ -263,6 +263,7 @@ public class GestorElementos : MonoBehaviour
     {
         Debug.Log($"➡ Elemento seleccionado: {nombreElemento}");
         PlayerPrefs.SetString("ElementoSeleccionado", nombreElemento);
+
         PlayerPrefs.Save();
 
         PanelElemento.SetActive(false);

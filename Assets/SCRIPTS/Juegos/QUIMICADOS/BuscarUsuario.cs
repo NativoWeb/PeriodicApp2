@@ -70,6 +70,8 @@ public class BuscarUsuario : MonoBehaviour
         searchInput.onValueChanged.AddListener(OnSearchInputChanged);
         searchButton.onClick.AddListener(() => SearchUser(searchInput.text));
 
+        PlayerPrefs.SetInt("AbrirConPanel", 1);
+
         ShowPartidasMiTurno();
         scrollNuevos.SetActive(false);
         ShowPartidasTurnoOponente();
