@@ -41,61 +41,117 @@ public class SearchUsers : MonoBehaviour
 
     void Start()
     {
-        db = FirebaseFirestore.DefaultInstance;
-        currentUserId = Firebase.Auth.FirebaseAuth.DefaultInstance.CurrentUser.UserId;
-        auth = FirebaseAuth.DefaultInstance;
-
-        if (auth.CurrentUser != null)
+        try
         {
-            currentUser = auth.CurrentUser;
+            // Inicialización de Firebase
+            db = FirebaseFirestore.DefaultInstance;
+            auth = FirebaseAuth.DefaultInstance;
+
+            if (auth.CurrentUser != null)
+            {
+                currentUser = auth.CurrentUser;
+                currentUserId = currentUser.UserId;
+                Debug.Log($"Usuario actual: {currentUserId}");
+            }
+            else
+            {
+                Debug.LogWarning("No hay usuario autenticado");
+            }
+
+            // Verificación de componentes UI
+            if (searchInput == null)
+            {
+                Debug.LogError("searchInput no está asignado en el inspector!");
+                return;
+            }
+
+            if (searchButton == null)
+            {
+                Debug.LogError("searchButton no está asignado en el inspector!");
+                return;
+            }
+
+            if (resultsContainer == null)
+            {
+                Debug.LogError("resultsContainer no está asignado en el inspector!");
+                return;
+            }
+
+            if (userResultPrefab == null)
+            {
+                Debug.LogError("userResultPrefab no está asignado en el inspector!");
+                return;
+            }
+
+            // Configuración robusta de listeners
+            searchInput.onValueChanged.RemoveAllListeners(); // Limpiar listeners previos
+            searchInput.onValueChanged.AddListener(OnSearchInputChanged);
+
+            searchButton.onClick.RemoveAllListeners();
+            searchButton.onClick.AddListener(() => {
+                Debug.Log("Botón de búsqueda presionado");
+                SearchUser(searchInput.text);
+            });
+
+            // Verificación de listeners
+            Debug.Log($"Listeners en searchInput: {searchInput.onValueChanged.GetPersistentEventCount()}");
+            Debug.Log($"Listeners en searchButton: {searchButton.onClick.GetPersistentEventCount()}");
+
+            // Mostrar usuarios aleatorios al inicio
+            Debug.Log("Mostrando usuarios aleatorios iniciales...");
+            ShowRandomUsers();
+
+            Debug.Log("BuscarUsuarios iniciado correctamente");
+            SearchUser("");
+
         }
-
-        // Configurar listener para el input field
-        searchInput.onValueChanged.AddListener(OnSearchInputChanged);
-
-        // Mantener el botón de búsqueda tradicional también
-        searchButton.onClick.AddListener(() => SearchUser(searchInput.text));
-
-        // Mostrar usuarios aleatorios al inicio
-        ShowRandomUsers();
+        catch (Exception e)
+        {
+            Debug.LogError($"Error en Start(): {e.Message}\n{e.StackTrace}");
+        }
     }
-
     void Update()
     {
-        // Manejar la búsqueda programada
-        if (searchScheduled && Time.time >= lastSearchTime + searchDelay)
+        if (searchScheduled)
         {
-            searchScheduled = false;
-            SearchUser(lastSearchText);
+            Debug.Log($"searchScheduled: true | Tiempo restante: {(lastSearchTime + searchDelay) - Time.time}");
+
+            if (Time.time >= lastSearchTime + searchDelay)
+            {
+                Debug.Log("Ejecutando búsqueda programada");
+                searchScheduled = false;
+                SearchUser(lastSearchText);
+            }
         }
     }
 
     void OnSearchInputChanged(string text)
     {
+        Debug.Log($"OnSearchInputChanged: '{text}' (Length: {text?.Length})");
         lastSearchText = text;
 
-        // Si está vacío, mostrar usuarios aleatorios
         if (string.IsNullOrEmpty(text))
         {
+            Debug.Log("Mostrando usuarios aleatorios por texto vacío");
             ShowRandomUsers();
             return;
         }
 
-        // Si no tiene suficientes caracteres, no buscar aún
         if (text.Length < minSearchChars)
         {
+            Debug.Log($"Texto demasiado corto ({text.Length} < {minSearchChars})");
             messageText.text = $"Escribe al menos {minSearchChars} caracteres para buscar";
             return;
         }
 
-        // Programar búsqueda después del retraso
+        Debug.Log($"Programando búsqueda para '{text}'");
         lastSearchTime = Time.time;
         searchScheduled = true;
         messageText.text = "Escribiendo...";
     }
-
     void ShowRandomUsers()
     {
+        Debug.Log(" 11111");
         // Limpiar resultados anteriores
         foreach (Transform child in resultsContainer)
         {
@@ -134,6 +190,8 @@ public class SearchUsers : MonoBehaviour
                     string name = doc.GetValue<string>("DisplayName");
                     string rank = doc.GetValue<string>("Rango");
 
+
+
                     // Instanciar el prefab
                     GameObject userEntry = Instantiate(userResultPrefab, resultsContainer);
 
@@ -141,7 +199,16 @@ public class SearchUsers : MonoBehaviour
                     TMP_Text nameText = userEntry.transform.Find("NombreText").GetComponent<TMP_Text>();
                     TMP_Text rankText = userEntry.transform.Find("RangoText").GetComponent<TMP_Text>();
                     Button addButton = userEntry.transform.Find("AñadirBtn").GetComponent<Button>();
+                    Image avatarimage = userEntry.transform.Find("AvatarImage").GetComponent<Image>();
 
+                    string avatarPath = ObtenerAvatarPorRango(rank);
+                    Debug.Log($"Intentando cargar avatar: {avatarPath}");
+
+                    // 1. Cargar sprite
+                    Sprite avatarSprite = Resources.Load<Sprite>(avatarPath);
+                    avatarimage.sprite = avatarSprite;
+
+                    // asignamos 
                     nameText.text = name;
                     rankText.text = "Rango: " + rank;
 
@@ -169,27 +236,30 @@ public class SearchUsers : MonoBehaviour
 
     void SearchUser(string username)
     {
-        // Si el input está vacío, mostrar un mensaje
         if (string.IsNullOrEmpty(username))
         {
+            Debug.Log("Username vacío - mostrando usuarios aleatorios");
             ShowRandomUsers();
             return;
         }
 
-        // Si no tiene suficientes caracteres, mostrar mensaje
         if (username.Length < minSearchChars)
         {
+            Debug.Log($"Username demasiado corto ({username.Length} < {minSearchChars})");
             messageText.text = $"Escribe al menos {minSearchChars} caracteres para buscar";
             return;
         }
 
+        Debug.Log("Limpiando resultados anteriores");
         // Limpiar resultados anteriores
         foreach (Transform child in resultsContainer)
         {
             Destroy(child.gameObject);
         }
 
-        messageText.text = "Buscando..."; // Mostrar estado de búsqueda
+        messageText.text = "Buscando...";
+        Debug.Log($"Buscando usuarios con nombre: {username}");
+
 
         db.Collection("users")
             .WhereGreaterThanOrEqualTo("DisplayName", username)
@@ -197,12 +267,7 @@ public class SearchUsers : MonoBehaviour
             .GetSnapshotAsync()
             .ContinueWithOnMainThread(task =>
             {
-                // Verificar si esta respuesta corresponde con la última búsqueda
-                if (username != lastSearchText)
-                {
-                    // Los resultados ya no son relevantes para lo que está escrito ahora
-                    return;
-                }
+                if (username != lastSearchText) return;
 
                 if (task.IsFaulted || task.IsCanceled)
                 {
@@ -213,56 +278,92 @@ public class SearchUsers : MonoBehaviour
 
                 Debug.Log($"Usuarios encontrados: {task.Result.Count}");
 
-                int userCount = 0; // Contador para saber si hay resultados válidos
+                int userCount = 0;
 
                 foreach (DocumentSnapshot doc in task.Result.Documents)
                 {
                     string userId = doc.Id;
-
-                    // Omitir el usuario actual
-                    if (userId == currentUserId)
-                        continue;
+                    if (userId == currentUserId) continue;
 
                     string name = doc.GetValue<string>("DisplayName");
                     string rank = doc.GetValue<string>("Rango");
+                    Debug.Log($"Mostrando usuario: {name} (Rango: {rank})");
 
-                    Debug.Log($"Usuario encontrado: {name} - Rango: {rank}");
-
-                    // Instanciar el prefab
+                    // Instanciar prefab
                     GameObject userEntry = Instantiate(userResultPrefab, resultsContainer);
 
-                    // Buscar los elementos de UI dentro del prefab
-                    TMP_Text nameText = userEntry.transform.Find("NombreText").GetComponent<TMP_Text>();
-                    TMP_Text rankText = userEntry.transform.Find("RangoText").GetComponent<TMP_Text>();
-                    Button addButton = userEntry.transform.Find("AñadirBtn").GetComponent<Button>();
+                    try
+                    {
+                        // 1. Configurar texto básico
+                        userEntry.transform.Find("NombreText").GetComponent<TMP_Text>().text = name;
+                        userEntry.transform.Find("RangoText").GetComponent<TMP_Text>().text = $"Rango: {rank}";
 
-                    // Asignar datos al prefab
-                    nameText.text = name;
-                    rankText.text = "Rango: " + rank;
+                        Debug.Log("ppppppppp");
+                        // 2. Configurar avatar (sistema mejorado)
+                        ConfigureAvatar(userEntry, rank);
 
-                    // Verificar si ya se envió la solicitud o si ya son amigos
-                    CheckFriendStatus(userId, addButton);
+                        // 3. Configurar botón
+                        Button addButton = userEntry.transform.Find("AñadirBtn").GetComponent<Button>();
+                        CheckFriendStatus(userId, addButton);
+                        addButton.onClick.AddListener(() => AddFriend(userId, name, addButton));
 
-                    // Configurar evento del botón
-                    addButton.onClick.AddListener(() => AddFriend(userId, name, addButton));
-
-                    userCount++; // Incrementar contador de usuarios válidos
+                        userCount++;
+                    }
+                    catch (Exception e)
+                    {
+                        Debug.LogError($"Error mostrando usuario {name}: {e.Message}");
+                        Destroy(userEntry); // Limpiar instancia si hay error
+                    }
                 }
 
-                // Si no se encontraron usuarios válidos
-                if (userCount == 0)
-                {
-                    ShowMessage("No se encontraron usuarios con ese nombre.");
-                }
-                else
-                {
-                    ShowMessage(""); // Limpiar mensaje si hay resultados
-                }
+                ShowMessage(userCount == 0 ? "No se encontraron usuarios" : "");
             });
+    }
+
+    // Nueva función auxiliar para avatares
+    private void ConfigureAvatar(GameObject userEntry, string rank)
+    {
+        Debug.Log("Iniciando ConfigureAvatar");
+
+        // Verifica la jerarquía completa (opcional, para depuración)
+        PrintHierarchy(userEntry.transform);
+
+        string avatarPath = ObtenerAvatarPorRango(rank);
+        Debug.Log($"Intentando cargar avatar: {avatarPath}");
+
+        // 1. Cargar sprite
+        Sprite avatarSprite = Resources.Load<Sprite>(avatarPath);
+        if (avatarSprite == null)
+        {
+            Debug.LogWarning($"Avatar no encontrado en {avatarPath}, usando predeterminado");
+            avatarSprite = Resources.Load<Sprite>("Avatares/Rango1");
+        }
+
+        // 2. Buscar directamente el componente Image llamado "AvatarImage"
+        Image avatarImg = userEntry.transform.Find("AvatarImage")?.GetComponent<Image>();
+        if (avatarImg == null)
+        {
+            Debug.LogError("No se encontró el componente Image llamado 'AvatarImage' en el prefab");
+            return;
+        }
+
+        // 3. Asignar sprite
+        avatarImg.sprite = avatarSprite;
+        Debug.Log($"Avatar asignado correctamente: {avatarSprite.name}");
+    }
+    // Método auxiliar para imprimir jerarquía
+    private void PrintHierarchy(Transform parent, string indent = "")
+    {
+        Debug.Log($"{indent}{parent.name} ({parent.GetType()})");
+        foreach (Transform child in parent)
+        {
+            PrintHierarchy(child, indent + "  ");
+        }
     }
 
     void CheckFriendStatus(string userId, Button button)
     {
+        Debug.Log("4444");
         // Verificar en ambas direcciones: currentUser -> userId Y userId -> currentUser
         var query1 = db.Collection("SolicitudesAmistad")
             .WhereEqualTo("idRemitente", currentUserId)
@@ -353,5 +454,22 @@ public class SearchUsers : MonoBehaviour
     void ShowMessage(string message)
     {
         messageText.text = message;
+    }
+    
+    private string ObtenerAvatarPorRango(string rango)
+    {
+        Debug.Log("555555");
+        switch (rango)
+        {
+            case "Novato de laboratorio": return "Avatares/Rango1";
+            case "Aprendiz Atomico": return "Avatares/Rango2";
+            case "Promesa quimica": return "Avatares/Rango3";
+            case "Cientifico en Formacion": return "Avatares/Rango4";
+            case "Experto Molecular": return "Avatares/Rango5";
+            case "Maestro de Laboratorio": return "Avatares/Rango6";
+            case "Sabio de la tabla": return "Avatares/Rango7";
+            case "Leyenda química": return "Avatares/Rango8";
+            default: return "Avatares/Rango1";
+        }
     }
 }

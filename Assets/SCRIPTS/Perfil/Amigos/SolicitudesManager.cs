@@ -96,7 +96,6 @@ public class SolicitudesManager : MonoBehaviour
     {
         ShowMessage("Cargando solicitudes...");
         Debug.Log("Cargando solicitudes pendientes...");
-
         db.Collection("SolicitudesAmistad")
           .WhereEqualTo("idDestinatario", currentUserId)
           .WhereEqualTo("estado", "pendiente")
@@ -211,9 +210,36 @@ public class SolicitudesManager : MonoBehaviour
             Debug.LogWarning("No se encontró el componente RangoText en el prefab");
         }
 
+        // buscamos y configuramos la imagen del avatar
+        Image avatarImage = requestItem.transform.Find("AvatarImage")?.GetComponent<Image>();
+
+        string avatarPath = ObtenerAvatarPorRango(userRank);
+        Debug.Log($"Intentando cargar avatar: {avatarPath}");
+
+        // 1. Cargar sprite
+        Sprite avatarSprite = Resources.Load<Sprite>(avatarPath);
+
+        // cargamos la imagen al prefab
+        avatarImage.sprite = avatarSprite;
+
         // Configurar botones
         requestItem.transform.Find("AceptarBtn").GetComponent<Button>().onClick.AddListener(() => AcceptRequest(documentId));
         requestItem.transform.Find("RechazarBtn").GetComponent<Button>().onClick.AddListener(() => RejectRequest(documentId));
+    }
+    private string ObtenerAvatarPorRango(string rango)
+    {
+        switch (rango)
+        {
+            case "Novato de laboratorio": return "Avatares/Rango1";
+            case "Aprendiz Atomico": return "Avatares/Rango2";
+            case "Promesa quimica": return "Avatares/Rango3";
+            case "Cientifico en Formacion": return "Avatares/Rango4";
+            case "Experto Molecular": return "Avatares/Rango5";
+            case "Maestro de Laboratorio": return "Avatares/Rango6";
+            case "Sabio de la tabla": return "Avatares/Rango7";
+            case "Leyenda química": return "Avatares/Rango8";
+            default: return "Avatares/Rango1";
+        }
     }
 
     void AcceptRequest(string documentId)

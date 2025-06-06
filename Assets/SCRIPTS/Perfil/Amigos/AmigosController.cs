@@ -258,10 +258,52 @@ public class AmigosController : MonoBehaviour
             btnEliminar.onClick.AddListener(() => MostrarConfirmacionEliminar(amigoId, nombreAmigo, documentId));
         }
 
-        // Cargar rango
-        LoadFriendRank(amigoId, nuevoAmigo);
+        // Cargar rango y avatar
+        LoadFriendRankAndAvatar(amigoId, nuevoAmigo);
     }
+    void LoadFriendRankAndAvatar(string amigoId, GameObject amigoUI)
+    {
+        db.Collection("users").Document(amigoId).GetSnapshotAsync().ContinueWithOnMainThread(task =>
+        {
+            if (task.IsCompleted && task.Result.Exists)
+            {
+                // Cargar rango
+                string rango = task.Result.GetValue<string>("Rango") ?? "Novato de laboratorio";
+                var rangoText = amigoUI.transform.Find("Rangotxt")?.GetComponent<TMP_Text>();
+                if (rangoText != null) rangoText.text = rango;
 
+                // Cargar avatar
+                string avatarPath = ObtenerAvatarPorRango(rango);
+                Sprite avatarSprite = Resources.Load<Sprite>(avatarPath) ?? Resources.Load<Sprite>("Avatares/defecto");
+
+                // Buscar el componente Image del avatar en el prefab
+                Transform avatarTransform = amigoUI.transform.Find("AvatarImage"); // Asegúrate de que este es el nombre correcto en tu prefab
+                if (avatarTransform != null)
+                {
+                    Image avatarImage = avatarTransform.GetComponent<Image>();
+                    if (avatarImage != null)
+                    {
+                        avatarImage.sprite = avatarSprite;
+                    }
+                }
+            }
+        });
+    }
+    private string ObtenerAvatarPorRango(string rango)
+    {
+        switch (rango)
+        {
+            case "Novato de laboratorio": return "Avatares/Rango1";
+            case "Aprendiz Atomico": return "Avatares/Rango2";
+            case "Promesa quimica": return "Avatares/Rango3";
+            case "Cientifico en Formacion": return "Avatares/Rango4";
+            case "Experto Molecular": return "Avatares/Rango5";
+            case "Maestro de Laboratorio": return "Avatares/Rango6";
+            case "Sabio de la tabla": return "Avatares/Rango7";
+            case "Leyenda química": return "Avatares/Rango8";
+            default: return "Avatares/Rango1";
+        }
+    }
     void MostrarConfirmacionEliminar(string amigoId, string nombreAmigo, string documentId)
     {
         if (panelConfirmacionEliminar == null) return;
