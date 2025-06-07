@@ -8,7 +8,6 @@ public class MenuController : MonoBehaviour
 {
     [Header("ReferenciasUI")]
     public Button Volver;
-    public Button btnCamara;
     public Button btnSeleccion;
 
     [Header("Paneles")]
@@ -25,9 +24,7 @@ public class MenuController : MonoBehaviour
     {
         PanelMainMenu.SetActive(true);
         PanelSeleccion.SetActive(false);
-        btnCamara.onClick.RemoveAllListeners();
         btnSeleccion.onClick.RemoveAllListeners();
-        btnCamara.onClick.AddListener(SeleccionarCamaraAR);
         btnSeleccion.onClick.AddListener(SeleccionarJuegos);
     }
 

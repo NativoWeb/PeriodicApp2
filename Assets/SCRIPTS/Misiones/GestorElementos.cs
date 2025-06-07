@@ -243,7 +243,12 @@ public class GestorElementos : MonoBehaviour
             return;
         }
 
-        boton.onClick.AddListener(() => SeleccionarElemento(nombreElemento));
+        boton.onClick.AddListener(() =>
+        {
+            PlayerPrefs.SetString("NumeroAtomico", datosElemento["numero_atomico"]);
+            SeleccionarElemento(nombreElemento);
+        }
+        );
 
         // Color
         Image img = nuevoBoton.GetComponent<Image>();
@@ -263,7 +268,6 @@ public class GestorElementos : MonoBehaviour
     {
         Debug.Log($"➡ Elemento seleccionado: {nombreElemento}");
         PlayerPrefs.SetString("ElementoSeleccionado", nombreElemento);
-
         PlayerPrefs.Save();
 
         PanelElemento.SetActive(false);
