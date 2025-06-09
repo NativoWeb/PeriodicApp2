@@ -34,7 +34,6 @@ public class AiTutor : MonoBehaviour
     public EmbeddingsLoader loader;
     public MiniLMEmbedder embedder;
     public GuardarMisionCompletada gestorMisiones;
-    public Button btnVolver;
 
     private Dictionary<string, ElementoQuimico> elementos;
 
@@ -72,10 +71,6 @@ public class AiTutor : MonoBehaviour
         CrearBurbujaIA("¡Hola! Soy tu tutor virtual de química. Pregúntame sobre cualquier elemento de la tabla periódica.");
         CargarElementosDesdeJSONL();
         loader.CargarEmbeddings();
-        btnVolver.onClick.AddListener(() =>
-        {
-            SceneManager.LoadScene("Inicio");
-        });
         if (embedder == null)
         {
             Debug.LogError("El embedder no está asignado en el Start().");

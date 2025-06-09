@@ -143,8 +143,8 @@ public class GameManager2 : MonoBehaviour
     public string[] Categorias = new string[]
     {
         "Metales Alcalinos", "Metales Alcalinotérreos", "Metales de Transición",
-        "Metales Postransicionales", "Metaloides", "No Metales Reactivos", "Gases Nobles",
-        "Lantánidos", "Actínoides", "Propiedades Desconocidas"
+        "Metales postransicionales", "Metaloides", "No Metales", "Gases Nobles",
+        "Lantánidos", "Actinoides", "Propiedades desconocidas"
     };
 
     private bool girando = false;
@@ -428,24 +428,40 @@ public class GameManager2 : MonoBehaviour
     }
     public void CargarJsons()
     {
-        TextAsset jsonInfo = Resources.Load<TextAsset>("Misiones_Categorias");
-        TextAsset jsonReacciones = Resources.Load<TextAsset>("JuegoCombate");
+        TextAsset jsonInfo = Resources.Load<TextAsset>("Plantillas_Json/Json_Informacion");
+        if (jsonInfo == null)
+        {
+            Debug.LogError("No se encontró el archivo Json_Informacion en Resources.");
+            return;
+        }
 
-        // Parseamos el JSON usando SimpleJSON
+        TextAsset jsonReacciones = Resources.Load<TextAsset>("JuegoCombate");
+        if (jsonReacciones == null)
+        {
+            Debug.LogError("No se encontró el archivo JuegoCombate en Resources.");
+            return;
+        }
+
         var root = JSON.Parse(jsonInfo.text);
-        var categorias = root["Misiones_Categorias"]["Categorias"];
+        if (root == null || root["Informacion"] == null || root["Informacion"]["Categorias"] == null)
+        {
+            Debug.LogError("Estructura JSON inválida o faltante.");
+            return;
+        }
+        var categorias = root["Informacion"]["Categorias"];
+
 
         infoPorNombre.Clear();
         reaccionPorNombre.Clear();
 
         // Extraemos la categoría seleccionada
-        string categoriaSeleccionada = PlayerPrefs.GetString("CategoriaRuleta");
+        string categoriaSeleccionada = PlayerPrefs.GetString("CategoriaRuleta", "");
 
         List<ElementoInfo> elementosDisponibles = new List<ElementoInfo>();
 
         if (categorias.HasKey(categoriaSeleccionada))
         {
-            var elementosJson = categorias[categoriaSeleccionada]["Elementos"];
+            var elementosJson = categorias[categoriaSeleccionada];
 
             foreach (var kv in elementosJson)
             {
