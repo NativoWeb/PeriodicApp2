@@ -274,6 +274,7 @@ public class GeneradorElementosUI : MonoBehaviour
             if (avatar != null)
             {
                 avatarImage.sprite = avatar;
+                avatarImage.gameObject.SetActive(true);
             }
             else
             {
