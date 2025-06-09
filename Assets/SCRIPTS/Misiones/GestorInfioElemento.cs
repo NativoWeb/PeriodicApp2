@@ -161,6 +161,8 @@ public class GestorInfoElemento : MonoBehaviour
         txtNumeroAtomico.text = elementoJson["numero_atomico"];
         txtDescripcion.text = elementoJson["descripcion"];
 
+        PlayerPrefs.SetString("NumeroAtomico", elementoJson["numero_atomico"]);
+
         // Crear botones dinámicos para cada propiedad
         LimpiarBotonesPropiedades();
 

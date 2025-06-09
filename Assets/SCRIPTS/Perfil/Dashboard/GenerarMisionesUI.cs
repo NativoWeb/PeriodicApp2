@@ -76,11 +76,13 @@ public class GeneradorElementosUI : MonoBehaviour
     private void CargarJSON()
     {
         string rutaArchivo = Path.Combine(Application.persistentDataPath, "Json_Misiones.json");
+        Debug.Log(rutaArchivo);
+
         if (File.Exists(rutaArchivo))
         {
             string jsonString = File.ReadAllText(rutaArchivo);
             jsonData = JSON.Parse(jsonString);
-            Debug.Log("✅ Json_Misiones.json cargado desde persistentDataPath.");
+            Debug.Log("✅ Json_Misiones.json cargado desde persistentDataPath." + rutaArchivo);
 
             // Ya que jsonData se cargó, podemos actualizar totales:
             ActualizarTotales();
