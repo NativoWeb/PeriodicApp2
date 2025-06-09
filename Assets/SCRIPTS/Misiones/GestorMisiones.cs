@@ -49,84 +49,74 @@ public class GestorMisiones : MonoBehaviour
     { "Actinoides",                new Color32(0x33, 0x37, 0x8E, 0xFF) },
     { "Propiedades desconocidas",  new Color32(0xC2, 0x89, 0x58, 0xFF) },
 };
-    void Start()
+    private bool datosCargados = false;
+
+    void Awake()
     {
+        // Setup de listeners que no dependen de JSON
         btnInformacion.onClick.AddListener(IrAIformacion);
+        BtnCategorias.onClick.AddListener(RegresaraCategorias);
     }
 
     void OnEnable()
     {
-        InicializarPanelElemento();
-        string PlayerFref = PlayerPrefs.GetString("CategoriaSeleccionada");
-        Debug.Log(PlayerFref);
+        // Sólo refresca si ya cargamos los datos
+        if (datosCargados)
+        {
+            RefrescarUI();
+        }
     }
 
-    void InicializarPanelElemento()
+    IEnumerator Start()
     {
-        Debug.Log("Iniciando GestorMisiones...");
-        BtnCategorias.onClick.AddListener(RegresaraCategorias);
-        StartCoroutine(CargarJSONYContinuar());
+        // Start es ejecutado después de Awake y OnEnable
+        yield return StartCoroutine(CargarJSONYContinuar());
+
+        datosCargados = true;
+
+        // Aquí sí podemos inicializar la UI por primera vez
+        RefrescarUI();
     }
 
     IEnumerator CargarJSONYContinuar()
     {
-        // Cargar json_informacion.json
-        string pathInformacion = Path.Combine(Application.persistentDataPath, "json_informacion.json");
-        if (File.Exists(pathInformacion))
+        yield return CargarJSON("json_informacion.json", nodo => jsonDataInformacion = nodo);
+        yield return CargarJSON("json_misiones.json", nodo => jsonDataMisiones = nodo);
+    }
+
+    IEnumerator CargarJSON(string nombreArchivo, System.Action<JSONNode> callback)
+    {
+        string rutaPersistente = Path.Combine(Application.persistentDataPath, nombreArchivo);
+        if (File.Exists(rutaPersistente))
         {
-            string jsonStringInformacion = File.ReadAllText(pathInformacion);
-            jsonDataInformacion = JSON.Parse(jsonStringInformacion);
+            callback(JSON.Parse(File.ReadAllText(rutaPersistente)));
+            yield break;
+        }
+
+        // Si no existe, lo cargo de Resources
+        string recurso = $"Plantillas_Json/{Path.GetFileNameWithoutExtension(nombreArchivo)}";
+        TextAsset txt = Resources.Load<TextAsset>(recurso);
+
+        // espero un frame para evitar race conditions
+        yield return null;
+
+        if (txt != null)
+        {
+            callback(JSON.Parse(txt.text));
         }
         else
         {
-            yield return CargarDesdeResources("json_informacion.json", (json) =>
-            {
-                jsonDataInformacion = JSON.Parse(json);
-            });
+            Debug.LogError($"❌ No se encontró {nombreArchivo} en Resources/{recurso}");
+            callback(null);
         }
+    }
 
-        // Cargar json_misiones.json
-        string pathMisiones = Path.Combine(Application.persistentDataPath, "json_misiones.json");
-        if (File.Exists(pathMisiones))
-        {
-            string jsonStringMisiones = File.ReadAllText(pathMisiones);
-            jsonDataMisiones = JSON.Parse(jsonStringMisiones);
-        }
-        else
-        {
-            yield return CargarDesdeResources("json_misiones.json", (json) =>
-            {
-                jsonDataMisiones = JSON.Parse(json);
-            });
-        }
-
-        // AHORA que los JSON ya están cargados
+    private void RefrescarUI()
+    {
         CargarInfoElementoSeleccionado();
         CargarDatosElementoSeleccionado();
     }
 
-    private IEnumerator CargarDesdeResources(string nombreArchivo, System.Action<string> callback)
-    {
-        string ruta = $"Plantillas_Json/{Path.GetFileNameWithoutExtension(nombreArchivo)}";
-
-        TextAsset archivo = Resources.Load<TextAsset>(ruta);
-
-        yield return null; // Necesario para que funcione como Coroutine
-
-        if (archivo != null)
-        {
-            if (string.IsNullOrEmpty(archivo.text))
-            {
-                Debug.LogWarning($"⚠️ El archivo {nombreArchivo} está vacío en Resources.");
-            }
-            callback(archivo.text);
-        }
-        else
-        {
-            Debug.LogError($"❌ No se encontró el archivo {nombreArchivo} en Resources/Plantillas_Json/");
-            callback(null);
-        }
-    }
 
     void CargarInfoElementoSeleccionado()
     {
@@ -184,7 +174,6 @@ public class GestorMisiones : MonoBehaviour
     {
         string categoriaSeleccionada = PlayerPrefs.GetString("CategoriaSeleccionada");
         string elementoSeleccionado = PlayerPrefs.GetString("ElementoSeleccionado");
-
         // Color del panel según categoría
         if (PanelDatosElemento != null)
         {
