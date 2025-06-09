@@ -27,11 +27,6 @@ public class MenuController : MonoBehaviour
         btnSeleccion.onClick.RemoveAllListeners();
         btnSeleccion.onClick.AddListener(SeleccionarJuegos);
     }
-
-    private void SeleccionarCamaraAR()
-    {
-        StartCoroutine(ActivarRawYIrAEscena(escenaCamara));
-    }
     private void SeleccionarJuegos()
     {
         StartCoroutine(esperar());

@@ -71,6 +71,7 @@ public class AiTutor : MonoBehaviour
         CrearBurbujaIA("¡Hola! Soy tu tutor virtual de química. Pregúntame sobre cualquier elemento de la tabla periódica.");
         CargarElementosDesdeJSONL();
         loader.CargarEmbeddings();
+
         if (embedder == null)
         {
             Debug.LogError("El embedder no está asignado en el Start().");
