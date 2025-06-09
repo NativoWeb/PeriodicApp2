@@ -67,7 +67,7 @@ public class DynamicMoleculeLoader : MonoBehaviour
 
         elementoTarget = PlayerPrefs.GetString("NumeroAtomico", "").Trim() + "_" + PlayerPrefs.GetString("ElementoSeleccionado", "").Trim();
         ruta = PlayerPrefs.GetString("CargarVuforia", "");
-
+        Debug.Log(elementoTarget);
         trackable = GetComponent<ObserverBehaviour>();
 
         if (trackable)
