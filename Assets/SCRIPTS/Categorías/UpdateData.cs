@@ -1,21 +1,14 @@
 ﻿using UnityEngine;
-using UnityEngine.UI;
-using UnityEngine.SceneManagement;
-using System.Collections;
 using System.Collections.Generic;
-using TMPro;
 using Firebase.Firestore;
-using Firebase.Database;
 using Firebase.Auth;
 using System;
-using System.Runtime.CompilerServices;
-using Firebase.Extensions;
-using System.Threading.Tasks;
-using Newtonsoft.Json;
+using System.IO;
+using System.Collections;
+using UnityEngine.Networking;
 
 public class UpdateData : MonoBehaviour
 {
-
     // variables firebase 
     private FirebaseAuth auth;
     private FirebaseFirestore db;
@@ -45,7 +38,7 @@ public class UpdateData : MonoBehaviour
 
             Debug.Log("⌛ Verificando conexión a Internet...desde UpdateData");
             HandleOnlineMode();
-
+            StartCoroutine(CheckAndCopyJsons());
         }
         else
         {
@@ -86,14 +79,87 @@ public class UpdateData : MonoBehaviour
                 ActualizarEstadoEncuestaEnFirebase(userId, "EstadoEncuestaConocimiento", estadoencuestaconocimiento);
             }
             
-            await SubirDatosJSON();
             ActualizarXPEnFirebase(userId);
         }
 
     }
 
+    public string[] jsonFileNames = { "Json_Misiones.json", "Json_logros.json", "Json_Informacion.json", "categorias_encuesta_firebase.json" };
 
-    private async void ActualizarEstadoEncuestaEnFirebase(string userId,string encuesta, bool estadoencuesta) // ------------------------------------------------
+    public IEnumerator CheckAndCopyJsons()
+    {
+        string persistentDataPath = Application.persistentDataPath;
+
+        foreach (string fileName in jsonFileNames)
+        {
+            string filePath = Path.Combine(persistentDataPath, fileName);
+
+            if (!File.Exists(filePath))
+            {
+                Debug.Log($"El archivo {fileName} no existe en {persistentDataPath}.");
+
+                if (fileName == "categorias_encuesta_firebase.json")
+                {
+                    // Intentar cargar desde PlayerPrefs
+                    string jsonFromPlayerPrefs = PlayerPrefs.GetString("categorias_encuesta_firebase_json", "");
+
+                    if (!string.IsNullOrEmpty(jsonFromPlayerPrefs))
+                    {
+                        try
+                        {
+                            File.WriteAllText(filePath, jsonFromPlayerPrefs);
+                            Debug.Log($"✅ {fileName} copiado desde PlayerPrefs a {filePath}");
+                        }
+                        catch (System.Exception e)
+                        {
+                            Debug.LogError($"❌ Error al copiar {fileName} desde PlayerPrefs a {filePath}: {e.Message}");
+                        }
+                    }
+                    else
+                    {
+                        Debug.LogWarning($"⚠️ No se encontró {fileName} en PlayerPrefs.");
+
+                        // Definir la ruta completa en StreamingAssets
+                        string streamingAssetsPath = Path.Combine(Application.streamingAssetsPath, fileName);
+
+                        UnityWebRequest request = UnityWebRequest.Get(streamingAssetsPath);
+                        yield return request.SendWebRequest();
+
+                        if (request.result == UnityWebRequest.Result.ConnectionError || request.result == UnityWebRequest.Result.ProtocolError)
+                        {
+                            Debug.LogError($"❌ Error al leer {fileName} desde StreamingAssets: {request.error}");
+                            continue; // Saltar al siguiente archivo
+                        }
+
+                        string fileContent = request.downloadHandler.text;
+
+                        if (!string.IsNullOrEmpty(fileContent))
+                        {
+                            try
+                            {
+                                File.WriteAllText(filePath, fileContent);
+                                Debug.Log($"✅ {fileName} copiado desde StreamingAssets a {filePath}");
+                            }
+                            catch (System.Exception e)
+                            {
+                                Debug.LogError($"❌ Error al copiar {fileName} desde StreamingAssets a {filePath}: {e.Message}");
+                            }
+                        }
+                        else
+                        {
+                            Debug.LogWarning($"⚠️ No se encontró contenido en {fileName} dentro de StreamingAssets.");
+                        }
+                    }
+                }
+                else
+                {
+                    Debug.Log($"✅ El archivo {fileName} ya existe en {persistentDataPath}.");
+                }
+            }
+        }
+    }
+
+private async void ActualizarEstadoEncuestaEnFirebase(string userId,string encuesta, bool estadoencuesta) // ------------------------------------------------
     {
         DocumentReference userRef = db.Collection("users").Document(userId);
         await userRef.UpdateAsync(encuesta, estadoencuesta);
@@ -131,53 +197,6 @@ public class UpdateData : MonoBehaviour
         catch (Exception e)
         {
         }
-    }
-    public async Task SubirDatosJSON()
-    {
-        if (string.IsNullOrEmpty(userId))
-        {
-            return;
-        }
-
-        // Obtener JSON de misiones y categorías desde PlayerPrefs
-        string jsonMisiones = PlayerPrefs.GetString("misionesCategoriasJSON", "{}");
-        string jsonCategorias = PlayerPrefs.GetString("CategoriasOrdenadas", "{}");
-
-        // Referencias a los documentos dentro de la colección del usuario
-        DocumentReference misionesDoc = db.Collection("users").Document(userId).Collection("datos").Document("misiones");
-        DocumentReference categoriasDoc = db.Collection("users").Document(userId).Collection("datos").Document("categorias");
-
-        // Crear tareas para subir ambos JSONs
-        List<Task> tareasSubida = new List<Task>();
-
-        if (jsonMisiones != "{}")
-        {
-            Dictionary<string, object> dataMisiones = new Dictionary<string, object>
-        {
-            { "misiones", jsonMisiones },
-            { "timestamp", FieldValue.ServerTimestamp }
-        };
-            tareasSubida.Add(misionesDoc.SetAsync(dataMisiones, SetOptions.MergeAll));
-        }
-
-        if (jsonCategorias != "{}")
-        {
-            Dictionary<string, object> dataCategorias = new Dictionary<string, object>
-        {
-            { "categorias", jsonCategorias },
-            { "timestamp", FieldValue.ServerTimestamp }
-        };
-            tareasSubida.Add(categoriasDoc.SetAsync(dataCategorias, SetOptions.MergeAll));
-        }
-
-        if (tareasSubida.Count == 0)
-        {
-            return;
-        }
-
-        // Esperar a que todas las tareas finalicen
-        await Task.WhenAll(tareasSubida);
-
     }
 
     private async void GetuserData()

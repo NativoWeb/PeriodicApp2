@@ -224,7 +224,7 @@ public class ControladorEncuesta : MonoBehaviour
                 // Verificar si se deben cargar las categorías
                 if (estadoencuestaaprendizaje && estadoencuestaconocimiento)
                 {
-                    SceneManager.LoadScene("Categorías");
+                    SceneManager.LoadScene("Inicio");
                 }
                 else
                 {

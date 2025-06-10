@@ -1,6 +1,5 @@
 using System.Collections;
 using UnityEngine;
-using UnityEngine.Networking;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
@@ -26,11 +25,6 @@ public class MenuController : MonoBehaviour
         PanelSeleccion.SetActive(false);
         btnSeleccion.onClick.RemoveAllListeners();
         btnSeleccion.onClick.AddListener(SeleccionarJuegos);
-    }
-
-    private void SeleccionarCamaraAR()
-    {
-        StartCoroutine(ActivarRawYIrAEscena(escenaCamara));
     }
     private void SeleccionarJuegos()
     {

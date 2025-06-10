@@ -99,20 +99,41 @@ public class FirestoreBotones : MonoBehaviour
         GameObject nuevoBoton = Instantiate(prefabBoton, contenedorBotones);
         nuevoBoton.SetActive(true);
 
+        // 1) Texto y color básico
         TextMeshProUGUI textoBoton = nuevoBoton.GetComponentInChildren<TextMeshProUGUI>();
         Button boton = nuevoBoton.GetComponent<Button>();
+        if (textoBoton != null) textoBoton.text = numero.ToString();
 
-        if (textoBoton != null)
-            textoBoton.text = numero.ToString();
-
-        // Asigna color
-        Image img = boton.GetComponent<Image>();
+        Image img = nuevoBoton.GetComponent<Image>();
         if (img != null && coloresPorCategoria.TryGetValue(categoria.Titulo, out string hex))
         {
             ColorUtility.TryParseHtmlString(hex, out Color c);
             img.color = c;
+
+            // ✅ Sombra primero (debajo del borde)
+            Shadow shadow = img.GetComponent<Shadow>();
+            if (shadow == null)
+                shadow = img.gameObject.AddComponent<Shadow>();
+
+            Color sombraColor = c * 0.5f;
+            sombraColor.a = 0.8f;
+            shadow.effectColor = sombraColor;
+            shadow.effectDistance = new Vector2(0f, -8f);
+            shadow.useGraphicAlpha = true;
+            shadow.enabled = false;
+
+            // ✅ Borde después (encima de la sombra)
+            Outline outline = img.GetComponent<Outline>();
+            if (outline == null)
+                outline = img.gameObject.AddComponent<Outline>();
+
+            outline.effectColor = Color.white;
+            outline.effectDistance = new Vector2(4f, 4f);
+            outline.useGraphicAlpha = false;
+            outline.enabled = false;
         }
 
+        // 4) Listener de selección
         boton.onClick.AddListener(() => SeleccionarNivel(boton, categoria));
 
         return nuevoBoton;
@@ -120,19 +141,50 @@ public class FirestoreBotones : MonoBehaviour
 
     void SeleccionarNivel(Button boton, Categoria categoria)
     {
+        // 1) Actualiza la UI de texto
         nombreTMP.text = categoria.Titulo;
         descripcionTMP.text = categoria.Descripcion;
-
         categoriaSeleccionada = categoria;
 
-        // Usar la función con callback
-        ObtenerProgresoCategoria(categoria.Titulo, (progreso) =>
+        // 2) Marca visualmente el botón
+        MarcarBoton(boton);
+
+        // 3) Consulta el progreso y ajusta el slider
+        ObtenerProgresoCategoria(categoria.Titulo, progreso =>
         {
             if (SliderProgreso != null)
-            {
                 SliderProgreso.value = progreso;
-            }
         });
+    }
+
+    private Button anteriorSeleccionado;
+
+    private void MarcarBoton(Button nuevo)
+    {
+        if (anteriorSeleccionado != null)
+        {
+            Image imgOld = anteriorSeleccionado.GetComponent<Image>();
+            if (imgOld != null)
+            {
+                var outlineOld = imgOld.GetComponent<Outline>();
+                var shadowOld = imgOld.GetComponent<Shadow>();
+
+                if (outlineOld != null) outlineOld.enabled = false;
+                if (shadowOld != null) shadowOld.enabled = false;
+            }
+        }
+
+        Image img = nuevo.GetComponent<Image>();
+        if (img != null)
+        {
+            var outline = img.GetComponent<Outline>();
+            var shadow = img.GetComponent<Shadow>();
+
+            if (outline != null) outline.enabled = true;
+            if (shadow != null) shadow.enabled = true;
+        }
+
+        anteriorSeleccionado = nuevo;
     }
 
     public void OnClickContinuar()

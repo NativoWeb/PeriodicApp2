@@ -170,7 +170,7 @@ public class StartAppManager : MonoBehaviour
     // Crear y guardar usuario temporal en PlayerPrefs
     void CreateTemporaryUser()
     {
-        string username = "tempUser_" + Random.Range(1000, 9999).ToString();
+        string username = "User_" + Random.Range(0, 999).ToString();
         string ocupacionSeleccionada = "Otro"; // Por defecto
         string avatarUrl = "Avatares/nivel1"; // Por defecto
         bool encuestaCompletada = false;

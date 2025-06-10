@@ -201,9 +201,9 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 0}
-        m_TargetAssemblyTypeName: RankingController, Assembly-CSharp
-        m_MethodName: showlogout
+      - m_Target: {fileID: 166515865}
+        m_TargetAssemblyTypeName: PerfilProfesorManager, Assembly-CSharp
+        m_MethodName: showLogout
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -1351,9 +1351,9 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 0}
-        m_TargetAssemblyTypeName: RankingController, Assembly-CSharp
-        m_MethodName: quitarlogout
+      - m_Target: {fileID: 166515865}
+        m_TargetAssemblyTypeName: PerfilProfesorManager, Assembly-CSharp
+        m_MethodName: ocultarLogout
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -2702,9 +2702,9 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 0}
-        m_TargetAssemblyTypeName: RankingController, Assembly-CSharp
-        m_MethodName: Logout
+      - m_Target: {fileID: 166515865}
+        m_TargetAssemblyTypeName: PerfilProfesorManager, Assembly-CSharp
+        m_MethodName: logout
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -6037,7 +6037,19 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 1151581387}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 1793592286}
+        m_TargetAssemblyTypeName: cambiarescena, Assembly-CSharp
+        m_MethodName: VuforiaDesdeProfesor
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!114 &1151581387
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -7320,10 +7332,10 @@ RectTransform:
   - {fileID: 1270569536}
   m_Father: {fileID: 140560202}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0.5}
-  m_AnchorMax: {x: 1, y: 0.5}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 5.1295166, y: -2.3992}
-  m_SizeDelta: {x: -152.9265, y: 1230.6056}
+  m_SizeDelta: {x: 927.0735, y: 1230.6056}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1288798990
 MonoBehaviour:

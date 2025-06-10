@@ -140,7 +140,7 @@ public class GameManager2 : MonoBehaviour
     public GameObject PanelRuleta;
     public RectTransform ruleta;
     public TextMeshProUGUI textoCategoria;
-    public string[] Categorias = new string[]
+    private string[] Categorias = new string[]
     {
         "Metales Alcalinos", "Metales Alcalinotérreos", "Metales de Transición",
         "Metales postransicionales", "Metaloides", "No Metales", "Gases Nobles",

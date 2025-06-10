@@ -295,6 +295,7 @@ public class GestorPreguntas : MonoBehaviour
         PlayerPrefs.SetInt("RachaActual", rachaActual);
         PlayerPrefs.SetFloat("ProgresoBarra", barraProgresoSlider.value);
         PlayerPrefs.Save();
+        SceneManager.LoadScene("Categorías");
     }
 
     void SumarXPTemporario(int xp)

@@ -18,8 +18,6 @@ public class GeneradorElementosUI : MonoBehaviour
     public Button BtnDatos;
     public GameObject PanelLogros;
     public Button BtnLogros;
-    public GameObject PanelIA;
-    public Button BtnIA;
     public GameObject PanelNotificaciones;
     public Button BtnNotificaciones;
 
@@ -70,17 +68,22 @@ public class GeneradorElementosUI : MonoBehaviour
         auth = FirebaseAuth.DefaultInstance;
         userId = PlayerPrefs.GetString("userId", "").Trim();
 
-        CargarJSON();  
+        CargarJSON();
+        BtnDatos.onClick.AddListener(AbrirPanelDatos);
+        BtnLogros.onClick.AddListener(AbrirPanelLogros);
+        BtnNotificaciones.onClick.AddListener(AbrirPanelNotificaciones);
     }
 
     private void CargarJSON()
     {
         string rutaArchivo = Path.Combine(Application.persistentDataPath, "Json_Misiones.json");
+        Debug.Log(rutaArchivo);
+
         if (File.Exists(rutaArchivo))
         {
             string jsonString = File.ReadAllText(rutaArchivo);
             jsonData = JSON.Parse(jsonString);
-            Debug.Log("✅ Json_Misiones.json cargado desde persistentDataPath.");
+            Debug.Log("✅ Json_Misiones.json cargado desde persistentDataPath." + rutaArchivo);
 
             // Ya que jsonData se cargó, podemos actualizar totales:
             ActualizarTotales();
@@ -268,9 +271,15 @@ public class GeneradorElementosUI : MonoBehaviour
             // 🖼 Avatar offline
             string rutaAvatar = ObtenerAvatarPorRango(rangoLocal);
             Sprite avatar = Resources.Load<Sprite>(rutaAvatar);
-            if (avatar != null) avatarImage.sprite = avatar;
-            else Debug.LogWarning("⚠ Avatar no encontrado en ruta: " + rutaAvatar);
-
+            if (avatar != null)
+            {
+                avatarImage.sprite = avatar;
+                avatarImage.gameObject.SetActive(true);
+            }
+            else
+            {
+                Debug.LogWarning("⚠ Avatar no encontrado en ruta: " + rutaAvatar);
+            }
             return;
         }
 
@@ -368,7 +377,6 @@ public class GeneradorElementosUI : MonoBehaviour
     {
         PanelDatos.SetActive(true);
         PanelLogros.SetActive(false);
-        PanelIA.SetActive(false);
         PanelNotificaciones.SetActive(false);
     }
 
@@ -376,15 +384,6 @@ public class GeneradorElementosUI : MonoBehaviour
     {
         PanelLogros.SetActive(true);
         PanelDatos.SetActive(false);
-        PanelIA.SetActive(false);
-        PanelNotificaciones.SetActive(false);
-    }
-
-    private void AbrirPanelIA()
-    {
-        PanelIA.SetActive(true);
-        PanelDatos.SetActive(false);
-        PanelLogros.SetActive(false);
         PanelNotificaciones.SetActive(false);
     }
 
@@ -393,7 +392,6 @@ public class GeneradorElementosUI : MonoBehaviour
         PanelNotificaciones.SetActive(true);
         PanelDatos.SetActive(false);
         PanelLogros.SetActive(false);
-        PanelIA.SetActive(false);
     }
 
     // Función para obtener la posición del usuario en el ranking

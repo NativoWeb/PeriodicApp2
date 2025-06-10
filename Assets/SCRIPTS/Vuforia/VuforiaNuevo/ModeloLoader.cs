@@ -1,4 +1,4 @@
-using UnityEngine;
+ï»¿using UnityEngine;
 
 public class ModeloLoader : MonoBehaviour
 {
@@ -9,7 +9,7 @@ public class ModeloLoader : MonoBehaviour
     private bool mostrandoAtomico = true;
 
     [Header("Audio")]
-    public bool autoPlayAudio = true; // Activa/desactiva reproducción automática
+    public bool autoPlayAudio = true; // Activa/desactiva reproducciï¿½n automï¿½tica
     private AudioSource audioSource;
 
     public void InicializarCambioVisual(string nombreElemento, GameObject parent)
@@ -21,25 +21,25 @@ public class ModeloLoader : MonoBehaviour
         // Cargar y reproducir audio
         CargarAudio(nombreElemento, parent);
 
-        // Encuentra el contenedor atómico generado
+        // Encuentra el contenedor atï¿½mico generado
         Transform atomo = parent.transform.Find("AtomContainer");
         if (atomo != null)
         {
             modeloAtomico = atomo.gameObject;
         }
 
-        // Carga modelo de aplicación desde Resources/ModelosAplicacion/
+        // Carga modelo de aplicaciï¿½n desde Resources/ModelosAplicacion/
         GameObject prefab = Resources.Load<GameObject>("Modelos3DBlender/" + nombreElemento);
         if (prefab != null)
         {
             modeloAplicacion = Instantiate(prefab, parent.transform);
             modeloAplicacion.transform.localPosition = Vector3.zero;
-            modeloAplicacion.transform.localScale = Vector3.one * 50f; // ajustar tamaño
+            modeloAplicacion.transform.localScale = Vector3.one * 50f; // ajustar tamaï¿½o
             modeloAplicacion.SetActive(false);
         }
         else
         {
-            Debug.LogWarning("No se encontró modelo de aplicación para: " + nombreElemento);
+            Debug.LogWarning("No se encontrï¿½ modelo de aplicaciï¿½n para: " + nombreElemento);
         }
 
         // Carga textura desde Resources/Textures/[nombreElemento].png
@@ -57,7 +57,7 @@ public class ModeloLoader : MonoBehaviour
 
         modeloAplicacion.AddComponent<Rotador>();
 
-        // Mostrar el botón solo si ambos modelos están disponibles
+        // Mostrar el botï¿½n solo si ambos modelos estï¿½n disponibles
         botonCambiarModelo.SetActive(modeloAtomico != null && modeloAplicacion != null);
         mostrandoAtomico = true;
     }
@@ -75,7 +75,7 @@ public class ModeloLoader : MonoBehaviour
         AudioClip clip = Resources.Load<AudioClip>("Modelos3DBlender/audios/" + nombreElemento);
         if (clip == null)
         {
-            Debug.LogError("No se encontró el audio: " + nombreElemento);
+            Debug.LogError("No se encontro el audio: " + nombreElemento);
         }
         else
         {
