@@ -6,15 +6,11 @@ using System.Collections.Generic;
 using Firebase.Auth;
 using Firebase.Firestore;
 using System.Threading.Tasks;
-using Firebase.Extensions;
-using System.Collections;
-using Google.Protobuf.WellKnownTypes;
 using DG.Tweening;
 using UnityEngine.SceneManagement;
-using UnityEngine.Video; // Agregar esto al inicio
+using System.IO;
+using System;
 
-
-//using System.Drawing.Text;
 
 public class GuardarMisionCompletada : MonoBehaviour
 {
@@ -115,26 +111,48 @@ public class GuardarMisionCompletada : MonoBehaviour
 
     void CambiarEscena()
     {
-        SceneManager.LoadScene("Categorias"); // Reemplaza con el nombre de la escena destino
+        SceneManager.LoadScene("Categorias"); 
     }
 
     private async void ActualizarMisionEnJSON(string elemento, int idMision)
     {
-        string jsonString = PlayerPrefs.GetString("misionesCategoriasJSON", "");
+        // Primero intentar cargar desde archivo
+        string jsonString = "";
+        string filePath = Path.Combine(Application.persistentDataPath, "Json_misiones.json");
+
+        if (File.Exists(filePath))
+        {
+            try
+            {
+                jsonString = File.ReadAllText(filePath);
+                Debug.Log("📁 JSON cargado desde almacenamiento del dispositivo");
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"❌ Error al leer el archivo JSON: {e.Message}");
+                return;
+            }
+        }
+        else
+        {
+            jsonString = PlayerPrefs.GetString("misionesCategoriasJSON", "");
+            Debug.Log("📁 Usando JSON de PlayerPrefs (no se encontró archivo)");
+        }
+
         if (string.IsNullOrEmpty(jsonString))
         {
-            Debug.LogError("❌ No se encontró el JSON en PlayerPrefs.");
+            Debug.LogError("❌ No se encontró el JSON ni en archivo ni en PlayerPrefs.");
             return;
         }
 
         var json = JSON.Parse(jsonString);
-        if (!json.HasKey("Misiones_Categorias") || !json["Misiones_Categorias"].HasKey("Categorias"))
+        if (!json.HasKey("Misiones") || !json["Misiones"].HasKey("Categorias"))
         {
             Debug.LogError("❌ Estructura del JSON incorrecta o faltan claves principales.");
             return;
         }
 
-        var categorias = json["Misiones_Categorias"]["Categorias"];
+        var categorias = json["Misiones"]["Categorias"];
         string categoriaSeleccionada = PlayerPrefs.GetString("CategoriaSeleccionada", "");
 
         if (!categorias.HasKey(categoriaSeleccionada) ||
@@ -151,10 +169,20 @@ public class GuardarMisionCompletada : MonoBehaviour
         bool esUltimaMisionPendiente = true;
         int xpGanado = PlayerPrefs.GetInt("xp_mision", 0);
 
-        foreach (KeyValuePair<string, JSONNode> categoria in categorias)
+        // Verificar si hay misiones pendientes en el mismo elemento
+        foreach (JSONNode mision in misiones) // Especificar el tipo JSONNode
         {
-            var nombreCategoria = categoria.Key;
-            var elementos = categoria.Value["Elementos"];
+            if (mision["id"].AsInt != idMision && !mision["completada"].AsBool)
+            {
+                esUltimaMisionPendiente = false;
+                break;
+            }
+        }
+
+        // Corregido: Acceder correctamente a los valores del KeyValuePair
+        foreach (var categoria in categorias)
+        {
+            var elementos = categoria.Value["Elementos"]; // Accedemos al Value primero
 
             if (elementos.HasKey(elemento))
             {
@@ -164,7 +192,6 @@ public class GuardarMisionCompletada : MonoBehaviour
 
                     if (mision["id"].AsInt == idMision)
                     {
-                        // Validar si YA está completada
                         if (mision["completada"].AsBool)
                         {
                             Debug.Log("⚠️ Misión ya estaba completada. Solo se suma 3 XP.");
@@ -173,25 +200,34 @@ public class GuardarMisionCompletada : MonoBehaviour
                                 await SubirMisionesJSON();
                                 SumarXPFirebase(3);
                                 TxtXp.text = 3.ToString();
-
                             }
                             else
                             {
                                 SumarXPTemporario(3);
                                 TxtXp.text = 3.ToString();
-
                             }
-                            return; // salir sin hacer nada
+                            return;
                         }
 
-                        // Si NO está completada, marcarla como completada y sumar XP
                         mision["completada"] = true;
-                        PlayerPrefs.SetString("misionesCategoriasJSON", json.ToString());
-                        PlayerPrefs.Save();
+                        cambioRealizado = true;
+
+                        try
+                        {
+                            File.WriteAllText(filePath, json.ToString());
+                            PlayerPrefs.SetString("misionesCategoriasJSON", json.ToString());
+                            PlayerPrefs.Save();
+                            Debug.Log("💾 Cambios guardados en archivo y PlayerPrefs");
+                        }
+                        catch (Exception e)
+                        {
+                            Debug.LogError($"❌ Error al guardar el archivo: {e.Message}");
+                            PlayerPrefs.SetString("misionesCategoriasJSON", json.ToString());
+                            PlayerPrefs.Save();
+                        }
 
                         Debug.Log("✅ Misión completada por primera vez. Sumando XP.");
                         int xp = PlayerPrefs.GetInt("xp_mision", 0);
-
                         TxtXp.text = xp.ToString();
 
                         if (Application.internetReachability != NetworkReachability.NotReachable)
@@ -203,48 +239,28 @@ public class GuardarMisionCompletada : MonoBehaviour
                         {
                             SumarXPTemporario(xp);
                         }
+
+                        if (esUltimaMisionPendiente)
+                        {
+                            Debug.Log("🎉 ¡Última misión del elemento completada!");
+                            int xpLogroElemento = 15;
+                            if (Application.internetReachability != NetworkReachability.NotReachable)
+                            {
+                                SumarXPFirebase(xpLogroElemento);
+                            }
+                            else
+                            {
+                                SumarXPTemporario(xpLogroElemento);
+                            }
+                        }
                         return;
                     }
                 }
-
                 Debug.LogWarning("⚠️ Misión con ese ID no encontrada en el elemento.");
             }
         }
 
-        if (cambioRealizado)
-        {
-            // Guardar JSON actualizado en PlayerPrefs
-            PlayerPrefs.SetString("misionesCategoriasJSON", json.ToString());
-            PlayerPrefs.Save();
-            Debug.Log($"✅ JSON actualizado para la misión {idMision} del elemento {elemento}");
-
-            // Comprobamos conexión
-            if (Application.internetReachability != NetworkReachability.NotReachable)
-            {
-                await SubirMisionesJSON();
-                SumarXPFirebase(xpGanado);
-
-                if (esUltimaMisionPendiente)
-                {
-                    Debug.Log("🎉 ¡Última misión del elemento completada! Desbloqueando logro...");
-                    int xpLogroElemento = 15;
-                    SumarXPFirebase(xpLogroElemento);
-
-                }
-            }
-            else
-            {
-                SumarXPTemporario(xpGanado);
-
-                if (esUltimaMisionPendiente)
-                {
-                    Debug.Log("🎉 ¡Última misión del elemento completada sin conexión! Logro guardado.");
-                    int xpLogroElemento = 15;
-                    SumarXPTemporario(xpLogroElemento);
-                }
-            }
-        }
-        else
+        if (!cambioRealizado)
         {
             Debug.LogError($"❌ No se encontró la misión con ID {idMision} dentro de '{elemento}'.");
         }
@@ -300,8 +316,29 @@ public class GuardarMisionCompletada : MonoBehaviour
             return;
         }
 
-        // Obtener JSON de misiones y categorías desde PlayerPrefs
-        string jsonMisiones = PlayerPrefs.GetString("misionesCategoriasJSON");
+        string jsonMisiones = "";
+        string filePath = Path.Combine(Application.persistentDataPath, "Json_misiones.json");
+
+        // Primero intentar leer el archivo JSON del almacenamiento del dispositivo
+        if (File.Exists(filePath))
+        {
+            try
+            {
+                jsonMisiones = File.ReadAllText(filePath);
+                Debug.Log("📁 JSON encontrado en almacenamiento del dispositivo");
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"❌ Error al leer el archivo JSON: {e.Message}");
+                return;
+            }
+        }
+        else
+        {
+            // Si no existe en el almacenamiento, usar el de PlayerPrefs como respaldo
+            jsonMisiones = PlayerPrefs.GetString("misionesCategoriasJSON");
+            Debug.Log("📁 Usando JSON de PlayerPrefs (no se encontró archivo)");
+        }
 
         // Referencias a los documentos dentro de la colección del usuario
         DocumentReference misionesDoc = db.Collection("users").Document(userId).Collection("datos").Document("misiones");
@@ -309,7 +346,7 @@ public class GuardarMisionCompletada : MonoBehaviour
         // Crear tareas para subir ambos JSONs
         List<Task> tareasSubida = new List<Task>();
 
-        if (jsonMisiones != "{}")
+        if (!string.IsNullOrEmpty(jsonMisiones) && jsonMisiones != "{}")
         {
             Dictionary<string, object> dataMisiones = new Dictionary<string, object>
         {
@@ -318,16 +355,16 @@ public class GuardarMisionCompletada : MonoBehaviour
         };
             tareasSubida.Add(misionesDoc.SetAsync(dataMisiones, SetOptions.MergeAll));
         }
-       
+
         if (tareasSubida.Count == 0)
         {
-            Debug.LogWarning("⚠️ No hay datos de misiones ni categorías para subir.");
+            Debug.LogWarning("⚠️ No hay datos de misiones para subir.");
             return;
         }
 
         // Esperar a que todas las tareas finalicen
         await Task.WhenAll(tareasSubida);
 
-        Debug.Log("✅ Datos de misiones y categorías subidos en documentos separados.");
+        Debug.Log("✅ Datos de misiones subidos correctamente.");
     }
 }

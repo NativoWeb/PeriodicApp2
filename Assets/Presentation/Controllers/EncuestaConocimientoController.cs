@@ -1,7 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -9,8 +8,8 @@ using UnityEngine.SceneManagement;
 using System.IO;
 using UnityEngine.Networking;
 using Firebase.Firestore;
-using Firebase.Extensions;
 using Firebase.Auth;
+using System;
 
 public class EncuestaConocimientoController : MonoBehaviour
 {
@@ -284,7 +283,7 @@ public class EncuestaConocimientoController : MonoBehaviour
 
         for (int i = 0; i < opcionesAleatorias.Count - 1; i++)
         {
-            int randomIndex = Random.Range(i, opcionesAleatorias.Count);
+            int randomIndex = UnityEngine.Random.Range(i, opcionesAleatorias.Count);
             string temp = opcionesAleatorias[randomIndex];
             opcionesAleatorias[randomIndex] = opcionesAleatorias[i];
             opcionesAleatorias[i] = temp;
@@ -379,16 +378,40 @@ public class EncuestaConocimientoController : MonoBehaviour
 
     private void GuardarCategoriasOrdenadasLocal()
     {
-        categorias = categorias.OrderBy(c => c.Porcentaje).ToList();
-
-        CategoriasData data = new CategoriasData { categorias = categorias };
-        string json = JsonUtility.ToJson(data, true);
-        string rutaArchivo = Path.Combine(Application.persistentDataPath, "categorias_encuesta_firebase.json");
-        File.WriteAllText(rutaArchivo, json);
-
-        Debug.Log("✅ Categorías ordenadas guardadas en: " + rutaArchivo);
-
-        StartCoroutine(CopiarJsonAuxiliaresSiEsNecesario());
+        if (categorias == null)
+        {
+            Debug.LogError("[GuardarCategorias] La lista de categorías es null.");
+            return; // Salir si la lista es null
+        }
+        try
+        {
+            // Ordenar las categorías por porcentaje
+            categorias = categorias.OrderBy(c => c.Porcentaje).ToList();
+            // Crear el objeto de datos para la serialización
+            CategoriasData data = new CategoriasData { categorias = categorias };
+            // Serializar a JSON
+            string json = JsonUtility.ToJson(data, true);
+            if (Application.internetReachability != NetworkReachability.NotReachable)
+            {
+                // Hay conexión a internet: guardar en archivo
+                string rutaArchivo = Path.Combine(Application.persistentDataPath, "categorias_encuesta_firebase.json");
+                File.WriteAllText(rutaArchivo, json);
+                Debug.Log("✅ Categorías ordenadas guardadas en archivo: " + rutaArchivo);
+            }
+            else
+            {
+                // No hay conexión a internet: guardar en PlayerPrefs
+                PlayerPrefs.SetString("categorias_encuesta_firebase_json", json);
+                PlayerPrefs.Save();
+                Debug.Log("✅ Categorías ordenadas guardadas en PlayerPrefs.");
+            }
+            // Iniciar la corrutina (asegúrate de que también maneje errores)
+            StartCoroutine(CopiarJsonAuxiliaresSiEsNecesario());
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"[GuardarCategorias] Error al guardar las categorías: {e.Message}");
+        }
     }
 
     private IEnumerator CopiarJsonAuxiliaresSiEsNecesario()
