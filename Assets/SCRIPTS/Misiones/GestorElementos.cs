@@ -6,16 +6,21 @@ using UnityEngine.SceneManagement;
 using UnityEngine;
 using System.IO;
 using System.Collections;
-using UnityEngine.Networking;
+using TMPro.EditorUtilities;
 
 public class GestorElementos : MonoBehaviour
 {
     [Header("Prefab de Elementos")]
     public GameObject prefabElemento;
     public Transform contenedorElementos;
-    public Button botonMisionFinal; // Asigna el botón desde el Inspector
     [SerializeField] private Slider sliderProgreso;
 
+    [Header("Mision Final")]
+    public Button botonMisionFinal; // Asigna el botón desde el Inspector
+    public GameObject PanelMisionCompletada;
+    public TextMeshProUGUI Descripcion; 
+    public GameObject PanelMisionIncompleta;
+    public TextMeshProUGUI Description;
 
     [Header("Descripción de la Categoría")]
     public TextMeshProUGUI txtDescripcionCategoria;
@@ -89,6 +94,7 @@ public class GestorElementos : MonoBehaviour
         // Esperar a que termine la carga antes de continuar
         CargarElementosDesdeJSON();
         ActualizarProgresoCategoria();
+        ActualizarEstadoMisionFinal();
 
         botonMisionFinal.onClick.AddListener(IrAMisionFinal);
         BtnCategorias.onClick.AddListener(RegresaraCategorias);
@@ -156,8 +162,6 @@ public class GestorElementos : MonoBehaviour
             callback(null);
         }
     }
-
-
 
     void CargarElementosDesdeJSON()
     {
@@ -313,12 +317,10 @@ public class GestorElementos : MonoBehaviour
             if (elementoNode.HasKey("Misiones"))
             {
                 var misionesElemento = elementoNode["Misiones"];
-
                 foreach (var misionKey in misionesElemento.Keys)
                 {
                     var mision = misionesElemento[misionKey];
                     totalMisiones++;
-
                     if (mision.HasKey("completada") && mision["completada"].AsBool)
                     {
                         misionesCompletadas++;
@@ -326,12 +328,23 @@ public class GestorElementos : MonoBehaviour
                 }
             }
 
-            // Verificar si hay misión final
-            if (elementoNode.HasKey("MisionFinal"))
+            // 🔍 Extraer título de la misión final si existe
+            if (elementoNode.HasKey("Mision Final") &&
+                elementoNode["Mision Final"].HasKey("MisionFinal") &&
+                elementoNode["Mision Final"]["MisionFinal"].HasKey("titulo"))
             {
-                var misionFinal = elementoNode["MisionFinal"];
-                totalMisiones++;
+                string tituloMisionFinal = elementoNode["Mision Final"]["MisionFinal"]["titulo"];
+                Descripcion.text = tituloMisionFinal;
+                Description.text = tituloMisionFinal;
+                Debug.Log($"🧪 Misión Final del elemento '{elemento}': {tituloMisionFinal}");
+            }
 
+            // Verificar si misión final está completada
+            if (elementoNode.HasKey("Mision Final") &&
+                elementoNode["Mision Final"].HasKey("MisionFinal"))
+            {
+                var misionFinal = elementoNode["Mision Final"]["MisionFinal"];
+                totalMisiones++;
                 if (misionFinal.HasKey("completada") && misionFinal["completada"].AsBool)
                 {
                     misionesCompletadas++;
@@ -339,7 +352,7 @@ public class GestorElementos : MonoBehaviour
             }
         }
 
-        float progreso = (totalMisiones > 0) ? (float)misionesCompletadas / totalMisiones : 0f;
+    float progreso = (totalMisiones > 0) ? (float)misionesCompletadas / totalMisiones : 0f;
         sliderProgreso.value = progreso;
 
         Debug.Log($"✅ Progreso actualizado: {misionesCompletadas}/{totalMisiones} misiones completadas ({progreso * 100:F2}%)");
@@ -372,15 +385,16 @@ public class GestorElementos : MonoBehaviour
         // Comprobar si el slider está lleno (es decir, si el valor es 1)
         if (sliderProgreso.value >= 1f)
         {
-            botonMisionFinal.interactable = true;
-            Debug.Log("✔️ Misión final desbloqueada, botón activado.");
+            PanelMisionCompletada.SetActive(true);
+            PanelMisionIncompleta.SetActive(false);
         }
         else
         {
-            botonMisionFinal.interactable = false;
-            Debug.Log("❌ Misión final bloqueada, botón desactivado.");
+            PanelMisionIncompleta.SetActive(true);
+            PanelMisionCompletada.SetActive(false);
         }
     }
+
     public string ObtenerRutaMisionFinal(string categoria)
     {
         if (jsonDataMisiones == null)

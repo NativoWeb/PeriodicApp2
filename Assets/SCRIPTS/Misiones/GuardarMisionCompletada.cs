@@ -252,6 +252,22 @@ public class GuardarMisionCompletada : MonoBehaviour
                             {
                                 SumarXPTemporario(xpLogroElemento);
                             }
+
+                            // 👉 Llama aquí para marcar el logro como desbloqueado
+                            MarcarLogroElementoComoDesbloqueado(json, categoriaSeleccionada, elemento);
+
+                            // Guarda los cambios nuevamente
+                            try
+                            {
+                                File.WriteAllText(filePath, json.ToString());
+                                PlayerPrefs.SetString("misionesCategoriasJSON", json.ToString());
+                                PlayerPrefs.Save();
+                                Debug.Log("💾 JSON actualizado con logro desbloqueado.");
+                            }
+                            catch (Exception e)
+                            {
+                                Debug.LogError($"❌ Error al guardar el JSON actualizado: {e.Message}");
+                            }
                         }
                         return;
                     }
@@ -265,6 +281,37 @@ public class GuardarMisionCompletada : MonoBehaviour
             Debug.LogError($"❌ No se encontró la misión con ID {idMision} dentro de '{elemento}'.");
         }
     }
+
+    private void MarcarLogroElementoComoDesbloqueado(JSONNode json, string categoria, string elemento)
+    {
+        if (!json.HasKey("Logros") || !json["Logros"].HasKey("Categorias"))
+        {
+            Debug.LogWarning("⚠️ Estructura de logros no encontrada en el JSON.");
+            return;
+        }
+
+        var categoriasLogros = json["Logros"]["Categorias"];
+
+        if (!categoriasLogros.HasKey(categoria) ||
+            !categoriasLogros[categoria].HasKey("logros_elementos") ||
+            !categoriasLogros[categoria]["logros_elementos"].HasKey(elemento))
+        {
+            Debug.LogWarning($"⚠️ No se encontró el logro del elemento '{elemento}' en la categoría '{categoria}'.");
+            return;
+        }
+
+        var logroElemento = categoriasLogros[categoria]["logros_elementos"][elemento];
+
+        if (logroElemento["desbloqueado"].AsBool)
+        {
+            Debug.Log("🔓 Logro del elemento ya estaba desbloqueado.");
+            return;
+        }
+
+        logroElemento["desbloqueado"] = true;
+        Debug.Log($"🏅 Logro del elemento '{elemento}' desbloqueado.");
+    }
+
 
     public void SumarXPTemporario(int xp)
     {

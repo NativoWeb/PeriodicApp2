@@ -215,12 +215,20 @@ public class FirestoreBotones : MonoBehaviour
         }
         else
         {
-            Debug.LogWarning("⚠️ Json_Misiones.json no encontrado en persistentDataPath, cargando desde StreamingAssets...");
-            StartCoroutine(CargarDesdeStreamingAssets("Json_Misiones.json", (jsonText) =>
+            Debug.LogWarning("⚠️ Json_Misiones.json no encontrado. Buscando en PlayerPrefs...");
+
+            string jsonTextPlayerPrefs = PlayerPrefs.GetString("categorias_encuesta_firebase_json", "");
+
+            if (!string.IsNullOrEmpty(jsonTextPlayerPrefs) && jsonTextPlayerPrefs != "{}")
             {
-                float progreso = ProcesarProgresoDesdeJSON(jsonText, categoriaTitulo);
+                float progreso = ProcesarProgresoDesdeJSON(jsonTextPlayerPrefs, categoriaTitulo);
                 callback(progreso);
-            }));
+            }
+            else
+            {
+                Debug.LogWarning("⚠️ No se encontró información válida en PlayerPrefs.");
+                callback(0f); // O cualquier valor predeterminado
+            }
         }
     }
 
@@ -267,26 +275,6 @@ public class FirestoreBotones : MonoBehaviour
         }
 
         return totalMisiones > 0 ? (float)misionesCompletadas / totalMisiones : 0f;
-    }
-
-    IEnumerator CargarDesdeStreamingAssets(string nombreArchivo, System.Action<string> callback)
-    {
-        string rutaArchivo = Path.Combine(Application.streamingAssetsPath, nombreArchivo);
-
-        using (UnityEngine.Networking.UnityWebRequest www = UnityEngine.Networking.UnityWebRequest.Get(rutaArchivo))
-        {
-            yield return www.SendWebRequest();
-
-            if (www.result == UnityEngine.Networking.UnityWebRequest.Result.Success)
-            {
-                callback(www.downloadHandler.text);
-            }
-            else
-            {
-                Debug.LogError($"Error al cargar {nombreArchivo} desde StreamingAssets: {www.error}");
-                callback(null);
-            }
-        }
     }
 
 

@@ -1,12 +1,10 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
-using TMPro;
 using SimpleJSON;
 using UnityEngine.UI;
 using System.IO;
 using System.Collections;
-using UnityEngine.Networking;
 
 public class LogrosManager : MonoBehaviour
 {
