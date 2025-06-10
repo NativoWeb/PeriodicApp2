@@ -8,11 +8,18 @@ public class ModeloLoader : MonoBehaviour
     private GameObject modeloAplicacion;
     private bool mostrandoAtomico = true;
 
+    [Header("Audio")]
+    public bool autoPlayAudio = true; // Activa/desactiva reproducción automática
+    private AudioSource audioSource;
+
     public void InicializarCambioVisual(string nombreElemento, GameObject parent)
     {
         // Destruye anteriores si existieran
         if (modeloAtomico != null) Destroy(modeloAtomico);
         if (modeloAplicacion != null) Destroy(modeloAplicacion);
+
+        // Cargar y reproducir audio
+        CargarAudio(nombreElemento, parent);
 
         // Encuentra el contenedor atómico generado
         Transform atomo = parent.transform.Find("AtomContainer");
@@ -53,6 +60,29 @@ public class ModeloLoader : MonoBehaviour
         // Mostrar el botón solo si ambos modelos están disponibles
         botonCambiarModelo.SetActive(modeloAtomico != null && modeloAplicacion != null);
         mostrandoAtomico = true;
+    }
+
+    private void CargarAudio(string nombreElemento, GameObject parent)
+    {
+        // Obtener o crear el componente AudioSource
+        audioSource = parent.GetComponent<AudioSource>();
+        if (audioSource == null)
+        {
+            audioSource = parent.AddComponent<AudioSource>();
+        }
+
+        // Cargar el archivo de audio desde Resources/Audios/
+        AudioClip clip = Resources.Load<AudioClip>("Modelos3DBlender/audios/" + nombreElemento);
+        if (clip == null)
+        {
+            Debug.LogError("No se encontró el audio: " + nombreElemento);
+        }
+        else
+        {
+            Debug.Log("Audio cargado: " + clip.name);
+            audioSource.clip = clip;
+            audioSource.Play();
+        }
     }
 
     public void CambiarModelo()
