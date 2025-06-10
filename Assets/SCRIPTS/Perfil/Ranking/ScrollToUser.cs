@@ -69,7 +69,7 @@ public class ScrollToUser : MonoBehaviour, IRankingObserver
         if (auth.CurrentUser != null)
         {
             currentUserId = auth.CurrentUser.UserId;
-            currentUserName = auth.CurrentUser.DisplayName;
+            
             GetUserXP();
         }
     }
@@ -82,6 +82,7 @@ public class ScrollToUser : MonoBehaviour, IRankingObserver
                 if (task.IsCompleted && task.Result.Exists)
                 {
                     currentUserXP = task.Result.GetValue<int>("xp");
+                    currentUserName = task.Result.GetValue<string>("DisplayName");
                     UpdateUserUI();
                 }
             });

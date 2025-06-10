@@ -126,7 +126,7 @@ public class ControladorEncuestaApre : MonoBehaviour
     private void CargarEscenaSegunEstados(bool aprendizaje, bool conocimiento)
     {
         if (aprendizaje && conocimiento)
-            SceneManager.LoadScene("Categorías");
+            SceneManager.LoadScene("Inicio");
         else
             SceneManager.LoadScene("SeleccionarEncuesta");
     }
