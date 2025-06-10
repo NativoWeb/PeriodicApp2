@@ -130,7 +130,9 @@ public class GirarRuleta : MonoBehaviour
         int indiceFinal = Mathf.RoundToInt(anguloZ / anguloPorCategoria) % totalCategorias;
 
         string categoriaElegida = categorias[indiceFinal];
+
         PlayerPrefs.SetString("CategoriaRuleta", categoriaElegida);
+
         textoCategoria.text = categoriaElegida;
 
         Dictionary<string, Color32> coloresCategoria = new Dictionary<string, Color32>

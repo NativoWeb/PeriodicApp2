@@ -8,6 +8,7 @@ using static DynamicMoleculeLoader;
 using SimpleJSON;  // Necesitas agregar "using SimpleJSON" si usas SimpleJSON para el parseo
 using Firebase.Auth;
 using Firebase.Firestore;
+using UnityEngine.SceneManagement;
 
 public class DynamicMoleculeLoader : MonoBehaviour
 {
@@ -68,6 +69,7 @@ public class DynamicMoleculeLoader : MonoBehaviour
         elementoTarget = PlayerPrefs.GetString("NumeroAtomico", "").Trim() + "_" + PlayerPrefs.GetString("ElementoSeleccionado", "").Trim();
         ruta = PlayerPrefs.GetString("CargarVuforia", "");
         Debug.Log(elementoTarget);
+
         trackable = GetComponent<ObserverBehaviour>();
 
         if (trackable)
@@ -87,9 +89,9 @@ public class DynamicMoleculeLoader : MonoBehaviour
 
     private void OnImageDetected(ObserverBehaviour observer, TargetStatus status)
     {
-        LimpiarModelos();
         if (status.Status == Status.TRACKED)
         {
+            LimpiarModelos();
             string resultado = trackable.TargetName.Split('_')[1];
             elementoSeleccionado = resultado.ToLower();
             CargarJSON();
@@ -104,10 +106,19 @@ public class DynamicMoleculeLoader : MonoBehaviour
                 {
                     SumarXPTemporario(5);
                 }
-            }else
+            }
+            else
+            {
                 DesbloquearLogro(trackable.TargetName);
+            }
+        }
+        // Si pierde el tracking, limpiar todo y simular reinicio
+        else if (status.Status == Status.NO_POSE || status.Status == Status.LIMITED)
+        {
+            SceneManager.LoadScene(SceneManager.GetActiveScene().name);
         }
     }
+
 
     void DesbloquearLogro(string elemento)
     {
@@ -393,6 +404,7 @@ public class DynamicMoleculeLoader : MonoBehaviour
         {
             Destroy(child.gameObject);
         }
+        Caching.ClearCache();
     }
 
     void SumarXPTemporario(int xp)

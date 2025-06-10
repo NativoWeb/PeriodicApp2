@@ -5,6 +5,7 @@ using System.Collections;
 using Firebase.Auth;
 using System.Collections.Generic;
 using System;
+using TMPro;
 
 
 public class UpdateDataProfesorManager : MonoBehaviour
@@ -16,7 +17,10 @@ public class UpdateDataProfesorManager : MonoBehaviour
 
     // internet
     bool hayInternet = false;
-    
+
+
+    // añadir nombre rapidoo
+    public TMP_Text nombreprofesor;
 
     void Start()
     {
@@ -52,6 +56,7 @@ public class UpdateDataProfesorManager : MonoBehaviour
                 PlayerPrefs.SetInt("TempXP", xpActual);
                 string username = snapshot.GetValue<string>("DisplayName");
                 PlayerPrefs.SetString("DisplayName", username);
+                nombreprofesor.text = username;
                 string ocupacion = snapshot.GetValue<string>("Ocupacion");
                 PlayerPrefs.SetString("TempOcupacion", ocupacion);
                 string rango = snapshot.GetValue<string>("Rango");

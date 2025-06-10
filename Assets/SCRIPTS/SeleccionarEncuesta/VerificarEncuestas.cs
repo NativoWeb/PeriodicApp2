@@ -125,7 +125,7 @@ public class VerificarEncuestas : MonoBehaviour
                 // Verificar si se deben cargar las categorías
                 if (estadoencuestaaprendizaje && estadoencuestaconocimiento)
                 {
-                    SceneManager.LoadScene("Categorías");
+                    SceneManager.LoadScene("Inicio");
                 }
 
                 Debug.Log($"encuesta aprendizaje : {estadoencuestaaprendizaje}, encuesta conocimiento, {estadoencuestaconocimiento}");
@@ -142,7 +142,7 @@ public class VerificarEncuestas : MonoBehaviour
             // Verificar si se deben cargar las categorías (sin conexión)
             if (estadoencuestaaprendizaje && estadoencuestaconocimiento)
             {
-                SceneManager.LoadScene("Categorías");
+                SceneManager.LoadScene("Inicio");
             }
 
             // Actualizar UI de los botones sin conexión
