@@ -77,7 +77,6 @@ public class SolicitudesAmistadManager : MonoBehaviour
               foreach (var document in task.Result.Documents)
               {
                   string fromUserId = document.GetValue<string>("idRemitente");
-                  string fromUserName = document.GetValue<string>("nombreRemitente");
 
                   var fetchTask = db.Collection("users").Document(fromUserId).GetSnapshotAsync()
                       .ContinueWithOnMainThread(userTask =>
@@ -89,6 +88,8 @@ public class SolicitudesAmistadManager : MonoBehaviour
 
                               string rango = ObtenerAvatarPorRango(rank);// conseguimos el avatar del remitente
 
+                              string fromUserName = userTask.Result.ContainsField("DisplayName") ?
+                              userTask.Result.GetValue<string>("DisplayName") : "Desconocido";
                               allRequests.Add(new FriendRequest
                               {
                                   fromUserId = fromUserId,
@@ -175,21 +176,77 @@ public class SolicitudesAmistadManager : MonoBehaviour
 
     void AcceptRequest(string documentId)
     {
-        db.Collection("SolicitudesAmistad").Document(documentId)
-          .UpdateAsync("estado", "aceptada")
-          .ContinueWithOnMainThread(task =>
-          {
-              if (task.IsCompleted)
-              {
-                  
-                  LoadPendingRequests();
-                  Debug.Log("Solicitud aceptadaaaaaaaaaaaaaa");
-              }
-              else
-              {
-                  Debug.Log("SolicitudesAmistadManager. Error al Aceptar solicitud");
-              }
-          });
+        // Primero obtenemos la información de la solicitud
+        var requestDoc = db.Collection("SolicitudesAmistad").Document(documentId);
+        requestDoc.GetSnapshotAsync().ContinueWithOnMainThread(getTask =>
+        {
+            if (!getTask.IsCompleted || !getTask.Result.Exists)
+            {
+               
+                Debug.LogError("Error al obtener solicitud: " + getTask.Exception);
+                return;
+            }
+
+            // Obtenemos los datos de la solicitud
+            string fromUserId = getTask.Result.GetValue<string>("idRemitente");
+            string fromUserName = getTask.Result.GetValue<string>("nombreRemitente");
+
+            // Actualizamos el estado de la solicitud
+            requestDoc.UpdateAsync("estado", "aceptada").ContinueWithOnMainThread(updateTask =>
+            {
+                if (!updateTask.IsCompleted)
+                {
+                    
+                    Debug.LogError("Error al actualizar solicitud: " + updateTask.Exception);
+                    return;
+                }
+
+                // Creamos la referencia a la subcolección de amigos del usuario actual
+                var currentUserFriendsRef = db.Collection("users").Document(currentUserId).Collection("amigos");
+
+                // Creamos la referencia a la subcolección de amigos del otro usuario
+                var otherUserFriendsRef = db.Collection("users").Document(fromUserId).Collection("amigos");
+
+                // Creamos un diccionario con los datos del amigo a agregar
+                var friendData = new Dictionary<string, object>
+            {
+                { "userId", fromUserId },
+                { "DisplayName", fromUserName },
+                { "fechaAmistad", FieldValue.ServerTimestamp }
+            };
+
+                // Creamos un diccionario con los datos del usuario actual para el otro usuario
+                var currentUserData = new Dictionary<string, object>
+            {
+                { "userId", currentUserId },
+                { "DisplayName", auth.CurrentUser.DisplayName ?? "Usuario sin nombre" },
+                { "fechaAmistad", FieldValue.ServerTimestamp }
+            };
+
+                // Batch para ejecutar ambas operaciones atómicamente
+                var batch = db.StartBatch();
+
+                // Agregamos el amigo al usuario actual
+                batch.Set(currentUserFriendsRef.Document(fromUserId), friendData);
+
+                // Agregamos el usuario actual como amigo del otro usuario
+                batch.Set(otherUserFriendsRef.Document(currentUserId), currentUserData);
+
+                // Ejecutamos el batch
+                batch.CommitAsync().ContinueWithOnMainThread(batchTask =>
+                {
+                    if (batchTask.IsCompleted)
+                    {
+                        
+                        LoadPendingRequests();
+                    }
+                    else
+                    {
+                        Debug.LogError("Error en batch: " + batchTask.Exception);
+                    }
+                });
+            });
+        });
     }
 
     void RejectRequest(string documentId)
