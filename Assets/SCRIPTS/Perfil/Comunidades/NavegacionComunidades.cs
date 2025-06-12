@@ -23,10 +23,13 @@ public class NavegacionComunidades : MonoBehaviour
     public void MostrarInicioComunidades()
     {
         m_InicioComunidadesUI.SetActive(true);
-        m_MisComunidadesUI.SetActive(false);
+        // recargamos el metodo de cargar cada vez que se activa el panel
+        misComunidadesManager.CargarComunidadesDelUsuario();
+
+        //m_MisComunidadesUI.SetActive(false);
         m_CrearComunidadUI.SetActive(false);
         m_ListaComunidadesUI.SetActive(false);
- 
+
     }
 
     public void MostrarMisComunidades()
@@ -35,19 +38,19 @@ public class NavegacionComunidades : MonoBehaviour
         // recargamos el metodo de cargar cada vez que se activa el panel
         misComunidadesManager.CargarComunidadesDelUsuario();
 
-        m_InicioComunidadesUI.SetActive(false);
+        //m_InicioComunidadesUI.SetActive(false);
         m_CrearComunidadUI.SetActive(false);
         m_ListaComunidadesUI.SetActive(false);
-     
+
     }
     public void MostrarCrearComunidad()
     {
 
         m_CrearComunidadUI.SetActive(true);
         m_InicioComunidadesUI.SetActive(false);
-        m_MisComunidadesUI.SetActive(false);
+        //m_MisComunidadesUI.SetActive(false);
         m_ListaComunidadesUI.SetActive(false);
-     
+
     }
    
     public void MostrarListaComunidades()
@@ -57,7 +60,7 @@ public class NavegacionComunidades : MonoBehaviour
         listaComunidadesManager.CargarComunidades();
 
         m_InicioComunidadesUI.SetActive(false);
-        m_MisComunidadesUI.SetActive(false);
+        //m_MisComunidadesUI.SetActive(false);
         m_CrearComunidadUI.SetActive(false);
     }
     

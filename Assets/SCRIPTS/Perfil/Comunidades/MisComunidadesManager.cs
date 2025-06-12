@@ -36,6 +36,9 @@ public class MisComunidadesManager: MonoBehaviour
     public GameObject panelDetalleGrupo;
     public ComunidadDetalleManager detalleManager;
 
+    [Header("Referencia a panel SIN comunidades")]
+    [SerializeField] private GameObject panelSinComunidades;
+
     private string usuarioActualId;
     private FirebaseFirestore db;
     private FirebaseAuth auth;
@@ -53,6 +56,7 @@ public class MisComunidadesManager: MonoBehaviour
             usuarioActualId = auth.CurrentUser.UserId;
             MostrarMensajeEstado(mensajeCargando, true);
             CargarComunidadesDelUsuario();
+           
 
             if (botonBuscar != null)
             {
@@ -146,10 +150,23 @@ public class MisComunidadesManager: MonoBehaviour
                 }
 
                 todasComunidades.Add(data);
+
+               
             }
 
-            MostrarTodasComunidades();
+            if (todasComunidades.Count == 0)
+            {
+                panelSinComunidades.SetActive(true);
+            }
+            else
+            {
+                panelSinComunidades.SetActive(false);
+            }
+
+                MostrarTodasComunidades();
             MostrarMensajeEstado(string.Format(mensajeListo, todasComunidades.Count), true);
+
+            
         });
     }
 
