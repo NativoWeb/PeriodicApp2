@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 
-public class NavegacionAmigosSolicitudesManager : MonoBehaviour
+public class Navegacion2dopanel : MonoBehaviour
 {
 
     // acá tengo que instanciar los 4 paneles el seleccionar x y Y y el de listar amigos y listar solicitudes para dependiendo el btn se activa o desactiva los paneles con el btn
