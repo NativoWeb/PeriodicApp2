@@ -5,19 +5,14 @@ using UnityEngine.UIElements;
 
 public class NavegacionComunidades : MonoBehaviour
 {
-    //[SerializeField] public GameObject m_MisComunidadesUI = null;
     [SerializeField] public GameObject m_CrearComunidadUI = null;
-    //[SerializeField] public GameObject m_ListaComunidadesUI = null;
     [SerializeField] public GameObject m_InicioComunidadesUI = null;
     [SerializeField] public GameObject m_panelMisComunidadesUI = null;
     [SerializeField] public GameObject m_panelEncuentraComunidadesUI = null;
 
-
-
     // declaracion de intancias de script para llamar metodos
     private ListaComunidadesManager listaComunidadesManager;
     private MisComunidadesManager misComunidadesManager;
-
 
     void Start()
     {
@@ -46,7 +41,7 @@ public class NavegacionComunidades : MonoBehaviour
         m_CrearComunidadUI.SetActive(true);
         m_InicioComunidadesUI.SetActive(false);
     }
-   
+
     public void MostrarEncuentraComunidades()
     {
         m_panelEncuentraComunidadesUI.SetActive(true);
@@ -56,6 +51,4 @@ public class NavegacionComunidades : MonoBehaviour
         m_panelMisComunidadesUI.SetActive(false);
     }
     
-
-
 }
