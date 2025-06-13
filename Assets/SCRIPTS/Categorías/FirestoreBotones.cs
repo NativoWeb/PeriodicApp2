@@ -40,7 +40,7 @@ public class FirestoreBotones : MonoBehaviour
 
     void Start()
     {
-        Debug.Log("📌 Cargando categorías desde archivo local...");
+        Debug.Log("📌 Cargando categorías desde archivo local o PlayerPrefs...");
         CargarCategorias();
         botonSeleccionado.onClick.AddListener(OnClickContinuar);
     }
@@ -51,8 +51,33 @@ public class FirestoreBotones : MonoBehaviour
 
         if (categorias.Count == 0)
         {
-            Debug.LogWarning("⚠ No se encontraron categorías guardadas. Usando categorías predeterminadas.");
-            categorias = ObtenerCategoriasPorDefecto();
+            Debug.LogWarning("⚠ No se encontraron categorías en archivo. Intentando cargar desde PlayerPrefs...");
+
+            string jsonDesdePrefs = PlayerPrefs.GetString("categorias_encuesta_firebase_json", "");
+            if (!string.IsNullOrEmpty(jsonDesdePrefs))
+            {
+                try
+                {
+                    CategoriasData data = JsonUtility.FromJson<CategoriasData>(jsonDesdePrefs);
+                    if (data != null && data.categorias != null)
+                    {
+                        categorias = data.categorias;
+                        Debug.Log("✅ Categorías cargadas desde PlayerPrefs.");
+                    }
+                    else
+                    {
+                        Debug.LogWarning("⚠ El JSON en PlayerPrefs está vacío o mal formado.");
+                    }
+                }
+                catch (System.Exception ex)
+                {
+                    Debug.LogError($"❌ Error leyendo PlayerPrefs: {ex.Message}");
+                }
+            }
+            else
+            {
+                Debug.LogWarning("⚠ No se encontró información de categorías en PlayerPrefs.");
+            }
         }
 
         bool primerBotonSeleccionado = false;
@@ -69,12 +94,13 @@ public class FirestoreBotones : MonoBehaviour
             }
         }
 
-        Debug.Log("✅ Categorías cargadas correctamente.");
+        Debug.Log("✅ Proceso de carga de categorías completado.");
     }
 
     List<Categoria> CargarCategoriasDesdeArchivo()
     {
         string rutaArchivo = Path.Combine(Application.persistentDataPath, "categorias_encuesta_firebase.json");
+
         if (File.Exists(rutaArchivo))
         {
             try
@@ -83,16 +109,19 @@ public class FirestoreBotones : MonoBehaviour
                 CategoriasData data = JsonUtility.FromJson<CategoriasData>(json);
                 if (data != null && data.categorias != null)
                 {
+                    Debug.Log("✅ Categorías cargadas desde archivo.");
                     return data.categorias;
                 }
             }
             catch (System.Exception ex)
             {
-                Debug.LogError($"❌ Error leyendo categorias.json: {ex.Message}");
+                Debug.LogError($"❌ Error leyendo archivo de categorías: {ex.Message}");
             }
         }
+
         return new List<Categoria>();
     }
+
 
     GameObject CrearBoton(int numero, Categoria categoria)
     {
@@ -275,24 +304,6 @@ public class FirestoreBotones : MonoBehaviour
         }
 
         return totalMisiones > 0 ? (float)misionesCompletadas / totalMisiones : 0f;
-    }
-
-
-    List<Categoria> ObtenerCategoriasPorDefecto()
-    {
-        return new List<Categoria>
-        {
-            new Categoria("Metales Alcalinos", "¡Prepárate para la reactividad extrema! ¿Podrás dominar estos metales explosivos?"),
-            new Categoria("Metales Alcalinotérreos", "¡Más estables, pero igual de sorprendentes! Descubre su papel esencial en la química."),
-            new Categoria("Metales de Transición", "¡Los maestros del cambio! Explora los metales que forman los colores más vibrantes."),
-            new Categoria("Metales postransicionales", "¡Menos famosos, pero igual de útiles! ¿Cuánto sabes de estos metales versátiles?"),
-            new Categoria("Metaloides", "¡Ni metal ni no metal! Atrévete a jugar con los elementos más enigmáticos."),
-            new Categoria("No Metales", "¡Elementos esenciales para la vida! Descubre su impacto en nuestro mundo."),
-            new Categoria("Gases Nobles", "¡Silenciosos pero poderosos! ¿Podrás jugar con los elementos más estables?"),
-            new Categoria("Lantánidos", "¡Los metales raros que hacen posible la tecnología moderna! ¿Aceptas el reto?"),
-            new Categoria("Actinoides", "¡La energía del futuro! Juega con los elementos más radioactivos y misteriosos."),
-            new Categoria("Propiedades desconocidas", "¡Aventúrate en lo desconocido! ¿Cuánto sabes de estos elementos misteriosos?")
-        };
     }
 }
 

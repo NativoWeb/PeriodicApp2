@@ -96,7 +96,7 @@ public class UpdateData : MonoBehaviour
 
             if (!File.Exists(filePath))
             {
-                Debug.Log($"El archivo {fileName} no existe en {persistentDataPath}.");
+                Debug.Log($"🔍 El archivo {fileName} no existe en {persistentDataPath}.");
 
                 if (fileName == "categorias_encuesta_firebase.json")
                 {
@@ -112,54 +112,48 @@ public class UpdateData : MonoBehaviour
                         }
                         catch (System.Exception e)
                         {
-                            Debug.LogError($"❌ Error al copiar {fileName} desde PlayerPrefs a {filePath}: {e.Message}");
+                            Debug.LogError($"❌ Error al copiar {fileName} desde PlayerPrefs: {e.Message}");
                         }
                     }
                     else
                     {
                         Debug.LogWarning($"⚠️ No se encontró {fileName} en PlayerPrefs.");
-
-                        // Definir la ruta completa en StreamingAssets
-                        string streamingAssetsPath = Path.Combine(Application.streamingAssetsPath, fileName);
-
-                        UnityWebRequest request = UnityWebRequest.Get(streamingAssetsPath);
-                        yield return request.SendWebRequest();
-
-                        if (request.result == UnityWebRequest.Result.ConnectionError || request.result == UnityWebRequest.Result.ProtocolError)
-                        {
-                            Debug.LogError($"❌ Error al leer {fileName} desde StreamingAssets: {request.error}");
-                            continue; // Saltar al siguiente archivo
-                        }
-
-                        string fileContent = request.downloadHandler.text;
-
-                        if (!string.IsNullOrEmpty(fileContent))
-                        {
-                            try
-                            {
-                                File.WriteAllText(filePath, fileContent);
-                                Debug.Log($"✅ {fileName} copiado desde StreamingAssets a {filePath}");
-                            }
-                            catch (System.Exception e)
-                            {
-                                Debug.LogError($"❌ Error al copiar {fileName} desde StreamingAssets a {filePath}: {e.Message}");
-                            }
-                        }
-                        else
-                        {
-                            Debug.LogWarning($"⚠️ No se encontró contenido en {fileName} dentro de StreamingAssets.");
-                        }
                     }
                 }
                 else
                 {
-                    Debug.Log($"✅ El archivo {fileName} ya existe en {persistentDataPath}.");
+                    // Quitar extensión para Resources.Load
+                    string resourceFileName = Path.GetFileNameWithoutExtension(fileName);
+                    TextAsset resourceJson = Resources.Load<TextAsset>(resourceFileName);
+
+                    if (resourceJson != null)
+                    {
+                        try
+                        {
+                            File.WriteAllText(filePath, resourceJson.text);
+                            Debug.Log($"✅ {fileName} copiado desde Resources a {filePath}");
+                        }
+                        catch (System.Exception e)
+                        {
+                            Debug.LogError($"❌ Error al escribir {fileName} desde Resources: {e.Message}");
+                        }
+                    }
+                    else
+                    {
+                        Debug.LogWarning($"⚠️ No se encontró {fileName} en la carpeta Resources.");
+                    }
                 }
             }
+            else
+            {
+                Debug.Log($"✔️ El archivo {fileName} ya existe en {persistentDataPath}");
+            }
         }
+
+        yield return null;
     }
 
-private async void ActualizarEstadoEncuestaEnFirebase(string userId,string encuesta, bool estadoencuesta) // ------------------------------------------------
+    private async void ActualizarEstadoEncuestaEnFirebase(string userId,string encuesta, bool estadoencuesta) // ------------------------------------------------
     {
         DocumentReference userRef = db.Collection("users").Document(userId);
         await userRef.UpdateAsync(encuesta, estadoencuesta);

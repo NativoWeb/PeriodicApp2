@@ -105,18 +105,38 @@ public class EncuestaConocimientoController : MonoBehaviour
         }
 
         categorias = new List<Categoria>
-        {
-            new Categoria("Metales Alcalinos", "¡Prepárate para la reactividad extrema!"),
-            new Categoria("Metales Alcalinotérreos", "¡Más estables, pero igual de sorprendentes!"),
-            new Categoria("Metales de Transición", "¡Los maestros del cambio!"),
-            new Categoria("Metales postransicionales", "¡Menos famosos, pero igual de útiles!"),
-            new Categoria("Metaloides", "¡Ni metal ni no metal!"),
-            new Categoria("No Metales", "¡Elementos esenciales para la vida!"),
-            new Categoria("Gases Nobles", "¡Silenciosos pero poderosos!"),
-            new Categoria("Lantánidos", "¡Los metales raros que hacen posible la tecnología moderna!"),
-            new Categoria("Actinoides", "¡La energía del futuro!"),
-            new Categoria("Propiedades desconocidas", "¡Aventúrate en lo desconocido!")
-        };
+{
+    new Categoria("Metales Alcalinos",
+        "¡Explora a los más reactivos de la tabla! Los metales alcalinos son tan activos que necesitan estar bajo aceite para no reaccionar con el aire. Livianos, brillantes y explosivos con el agua: ¡una aventura química garantizada!"),
+
+    new Categoria("Metales Alcalinotérreos",
+        "¡Estables pero sorprendentes! Estos metales no son tan impulsivos como los alcalinos, pero también saben cómo llamar la atención. Presentes en nuestros huesos, fuegos artificiales y más, ¡prepárate para descubrir su versatilidad!"),
+
+    new Categoria("Metales de Transición",
+        "¡Los verdaderos camaleones de la química! Dominan el arte de formar compuestos coloridos, catalizar reacciones y construir estructuras resistentes. Si te gustan los desafíos y los cambios, esta es tu categoría."),
+
+    new Categoria("Metales postransicionales",
+        "¡No subestimes a los discretos! Aunque menos conocidos, estos elementos son vitales para la tecnología moderna. Suavemente maleables, conductores y con usos cotidianos, ¡descubre su impacto silencioso!"),
+
+    new Categoria("Metaloides",
+        "¡En el límite entre dos mundos! Los metaloides tienen propiedades tanto de metales como de no metales. Impredecibles, interesantes y esenciales en la electrónica, ¡perfectos para quienes aman lo inesperado!"),
+
+    new Categoria("No Metales",
+        "¡Los pilares de la vida y la química orgánica! Desde el oxígeno que respiras hasta el carbono de tu ADN, los no metales son esenciales para todo lo que vive. ¡Investiga su papel crucial en el universo!"),
+
+    new Categoria("Gases Nobles",
+        "¡Silenciosos, invisibles e invaluables! Estos elementos no reaccionan fácilmente, pero están presentes en luces, atmósferas protectoras y experimentos científicos. ¡Su estabilidad es su superpoder!"),
+
+    new Categoria("Lantánidos",
+        "¡Los metales raros que mueven el mundo moderno! Utilizados en imanes potentes, láseres y pantallas de alta tecnología. Aunque raros, su presencia es fundamental en nuestra vida diaria. ¡Descúbrelos!"),
+
+    new Categoria("Actinoides",
+        "¡La energía más poderosa de la tabla! Radiactivos, misteriosos y con potencial para revolucionar el mundo, estos elementos están ligados a la energía nuclear y la exploración científica del futuro."),
+
+    new Categoria("Propiedades desconocidas",
+        "¡Bienvenido al territorio inexplorado! Estos elementos están en los límites de lo conocido. Sus propiedades aún se investigan, y cada descubrimiento puede cambiar lo que sabemos. ¿Te atreves a descubrir lo desconocido?")
+};
+
 
         MostrarPreguntaFirebase();
     }
