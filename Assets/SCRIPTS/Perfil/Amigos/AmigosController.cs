@@ -8,6 +8,7 @@ using TMPro;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
 using System.Collections;
+using System.Threading.Tasks;
 
 public class AmigosController : MonoBehaviour
 {
@@ -77,8 +78,6 @@ public class AmigosController : MonoBehaviour
         {
             panelConfirmacionEliminar.SetActive(false);
 
-            if (botonConfirmarEliminar != null)
-                botonConfirmarEliminar.onClick.AddListener(EliminarAmigoConfirmado);
 
             if (botonCancelarEliminar != null)
                 botonCancelarEliminar.onClick.AddListener(() => panelConfirmacionEliminar.SetActive(false));
@@ -152,15 +151,13 @@ public class AmigosController : MonoBehaviour
     {
         if (isLoading) return;
 
-        // Verificar conexión antes de cargar amigos
         if (!HayConexion())
         {
             ShowMessage("No hay conexión a internet.", true);
-           
+            return;
         }
 
         isLoading = true;
-        consultasCompletadas = 0;
         amigosCargados = 0;
         ClearFriendList();
 
@@ -171,38 +168,90 @@ public class AmigosController : MonoBehaviour
             return;
         }
 
-        HashSet<string> amigosMostrados = new HashSet<string>();
+        // Primero cargamos la lista de amigos
+        db.Collection("users").Document(userId).Collection("amigos")
+            .GetSnapshotAsync().ContinueWithOnMainThread(task =>
+            {
+                if (task.IsFaulted)
+                {
+                    Debug.LogError("Error al cargar amigos: " + task.Exception);
+                    ShowMessage("Error al cargar amigos.", true);
+                    isLoading = false;
+                    return;
+                }
 
-        // Consulta amigos donde el usuario es remitente
-        db.Collection("SolicitudesAmistad")
-          .WhereEqualTo("idRemitente", userId)
-          .WhereIn("estado", new List<object> { "aceptada" })
-          .GetSnapshotAsync().ContinueWithOnMainThread(task =>
-          {
-              if (task.IsCompleted && !task.IsFaulted)
-              {
-                  ProcessFriends(task.Result.Documents, true, filtroNombre, amigosMostrados);
-              }
-              else
-              {
-                  ShowMessage("Error al cargar amigos", true);
-              }
-              ConsultaCompletada(filtroNombre);
-          });
+                // Consulta para solicitudes donde el usuario es remitente
+                Query queryRemitente = db.Collection("SolicitudesAmistad")
+                    .WhereEqualTo("estado", "aceptada")
+                    .WhereEqualTo("idRemitente", userId);
 
-        // Consulta amigos donde el usuario es destinatario
-        db.Collection("SolicitudesAmistad")
-          .WhereEqualTo("idDestinatario", userId)
-          .WhereIn("estado", new List<object> { "aceptada" })
-          .GetSnapshotAsync().ContinueWithOnMainThread(task =>
-          {
-              if (task.IsCompleted && !task.IsFaulted)
-              {
-                  ProcessFriends(task.Result.Documents, false, filtroNombre, amigosMostrados);
-              }
-              ConsultaCompletada(filtroNombre);
-          });
+                // Consulta para solicitudes donde el usuario es destinatario
+                Query queryDestinatario = db.Collection("SolicitudesAmistad")
+                    .WhereEqualTo("estado", "aceptada")
+                    .WhereEqualTo("idDestinatario", userId);
+
+                // Ejecutar ambas consultas
+                Task.WhenAll(
+                    queryRemitente.GetSnapshotAsync(),
+                    queryDestinatario.GetSnapshotAsync()
+                ).ContinueWithOnMainThread(combinedTask =>
+                {
+                    if (combinedTask.IsFaulted)
+                    {
+                        Debug.LogError("Error al cargar solicitudes: " + combinedTask.Exception);
+                        ShowMessage("Error al cargar información de amistad.", true);
+                        isLoading = false;
+                        return;
+                    }
+
+                    // Combinar resultados de ambas consultas
+                    var resultados = combinedTask.Result;
+                    QuerySnapshot remitenteSnapshot = resultados[0];
+                    QuerySnapshot destinatarioSnapshot = resultados[1];
+
+                    // Diccionario para mapear amigoId -> documentId de solicitud
+                    Dictionary<string, string> solicitudesDict = new Dictionary<string, string>();
+
+                    // Procesar solicitudes donde el usuario es remitente
+                    foreach (DocumentSnapshot solicitudDoc in remitenteSnapshot.Documents)
+                    {
+                        string destinatario = solicitudDoc.GetValue<string>("idDestinatario");
+                        solicitudesDict[destinatario] = solicitudDoc.Id;
+                    }
+
+                    // Procesar solicitudes donde el usuario es destinatario
+                    foreach (DocumentSnapshot solicitudDoc in destinatarioSnapshot.Documents)
+                    {
+                        string remitente = solicitudDoc.GetValue<string>("idRemitente");
+                        solicitudesDict[remitente] = solicitudDoc.Id;
+                    }
+
+                    // Procesar los amigos con sus documentIds
+                    HashSet<string> amigosMostrados = new HashSet<string>();
+                    foreach (DocumentSnapshot amigoDoc in task.Result.Documents)
+                    {
+                        string amigoId = amigoDoc.GetValue<string>("userId");
+                        string nombreAmigo = amigoDoc.GetValue<string>("DisplayName");
+                        string solicitudId = solicitudesDict.TryGetValue(amigoId, out var id) ? id : null;
+
+                        if (!amigosMostrados.Contains(amigoId))
+                        {
+                            amigosMostrados.Add(amigoId);
+
+                            if (ShouldShowFriend(nombreAmigo, filtroNombre))
+                            {
+                                CreateFriendCard(amigoId, solicitudId);
+                                amigosCargados++;
+                            }
+                        }
+                    }
+
+                    CheckSearchCompletion(filtroNombre);
+                    isLoading = false;
+                });
+            });
     }
+
 
     void ConsultaCompletada(string filtroNombre)
     {
@@ -228,7 +277,7 @@ public class AmigosController : MonoBehaviour
                 amigosMostrados.Add(amigoId);
                 if (ShouldShowFriend(nombreAmigo, filtroNombre))
                 {
-                    CreateFriendCard(amigoId, nombreAmigo, document.Id);
+                    CreateFriendCard(amigoId, document.Id);
                     amigosCargados++;
                 }
             }
@@ -241,25 +290,40 @@ public class AmigosController : MonoBehaviour
                nombreAmigo.ToLower().Contains(filtroNombre.ToLower());
     }
 
-    void CreateFriendCard(string amigoId, string nombreAmigo, string documentId)
+    void CreateFriendCard(string amigoId, string documentId)
     {
+        
         GameObject nuevoAmigo = Instantiate(amigoPrefab, contentPanel);
-        nuevoAmigo.transform.Find("Nombretxt").GetComponent<TMP_Text>().text = nombreAmigo;
 
-        // Configurar estado
-        var panelEstado = nuevoAmigo.transform.Find("EstadoPanel").gameObject;
-        panelEstado.GetComponent<Image>().color = new Color32(0x52, 0xD9, 0x99, 0xFF);
-        nuevoAmigo.transform.Find("Estadotxt").GetComponent<TMP_Text>().text = "Amigos";
-
-        // Añadir botón de eliminar amigo
-        Button btnEliminar = nuevoAmigo.transform.Find("BtnEliminar")?.GetComponent<Button>();
-        if (btnEliminar != null)
+        db.Collection("users").Document(amigoId).GetSnapshotAsync().ContinueWithOnMainThread(task =>
         {
-            btnEliminar.onClick.AddListener(() => MostrarConfirmacionEliminar(amigoId, nombreAmigo, documentId));
-        }
+            if (task.IsCompleted && task.Result.Exists)
+            {
+                // Cargar nombre del amigo
+                string nombreAmigo = task.Result.GetValue<string>("DisplayName") ?? "Desconocido";
+                nuevoAmigo.transform.Find("Nombretxt").GetComponent<TMP_Text>().text = nombreAmigo;
 
-        // Cargar rango y avatar
-        LoadFriendRankAndAvatar(amigoId, nuevoAmigo);
+                // Configurar estado
+                var panelEstado = nuevoAmigo.transform.Find("EstadoPanel").gameObject;
+                panelEstado.GetComponent<Image>().color = new Color32(0x52, 0xD9, 0x99, 0xFF);
+                nuevoAmigo.transform.Find("Estadotxt").GetComponent<TMP_Text>().text = "Amigos";
+
+                // Añadir botón de eliminar amigo
+                Button btnEliminar = nuevoAmigo.transform.Find("BtnEliminar")?.GetComponent<Button>();
+                if (btnEliminar != null)
+                {
+                    btnEliminar.onClick.AddListener(() => MostrarConfirmacionEliminar(amigoId, nombreAmigo, documentId));
+                }
+
+                // Cargar rango y avatar
+                LoadFriendRankAndAvatar(amigoId, nuevoAmigo);
+
+            }
+        });
+    
+            
+
+        
     }
     void LoadFriendRankAndAvatar(string amigoId, GameObject amigoUI)
     {
@@ -318,43 +382,77 @@ public class AmigosController : MonoBehaviour
         amigoIdSeleccionado = amigoId;
         amigoNombreSeleccionado = nombreAmigo;
         documentoSolicitudSeleccionado = documentId;
+        Debug.Log($" amigo seleccionado{amigoIdSeleccionado}");
+        Debug.Log($"amigo seleccionado{amigoNombreSeleccionado}");
+        Debug.Log($" documento seleccionado {documentoSolicitudSeleccionado}");
+
+
 
         if (textoConfirmacion != null)
             textoConfirmacion.text = $"¿Estás seguro que deseas eliminar a {nombreAmigo} de tu lista de amigos?";
 
         panelConfirmacionEliminar.SetActive(true);
 
+        if (botonConfirmarEliminar!= null)
+        {
+            botonConfirmarEliminar.onClick.AddListener(() => EliminarAmigoConfirmado(documentoSolicitudSeleccionado,amigoIdSeleccionado));
+        }
+
         // Seleccionar el botón de cancelar por defecto para mejor UX
         EventSystem.current.SetSelectedGameObject(botonCancelarEliminar.gameObject);
     }
 
-    void EliminarAmigoConfirmado()
+    void EliminarAmigoConfirmado(string documentoSolicitudSeleccionado, string amigoIdSeleccionado)
     {
-        if (string.IsNullOrEmpty(documentoSolicitudSeleccionado)) return;
+
+        if (string.IsNullOrEmpty(documentoSolicitudSeleccionado) || string.IsNullOrEmpty(amigoIdSeleccionado))
+        {
+            ShowMessage("Datos incompletos para eliminar amigo", true);
+            return;
+        }
 
         ShowMessage($"Eliminando a {amigoNombreSeleccionado}...");
 
-        // Actualizar el estado a "eliminada" en lugar de borrar el documento
-        DocumentReference docRef = db.Collection("SolicitudesAmistad").Document(documentoSolicitudSeleccionado);
-        Dictionary<string, object> updates = new Dictionary<string, object>
-        {
-            { "estado", "eliminada" }
-        };
+        // Referencias a los documentos
+        DocumentReference solicitudRef = db.Collection("SolicitudesAmistad").Document(documentoSolicitudSeleccionado);
 
-        docRef.UpdateAsync(updates).ContinueWithOnMainThread(task => {
+        // Referencias a las subcolecciones de amigos de ambos usuarios
+        DocumentReference miAmigoRef = db.Collection("users")
+                                        .Document(userId)
+                                        .Collection("amigos")
+                                        .Document(amigoIdSeleccionado);
+
+        DocumentReference suAmigoRef = db.Collection("users")
+                                        .Document(amigoIdSeleccionado)
+                                        .Collection("amigos")
+                                        .Document(userId);
+
+        // Ejecutar todas las eliminaciones en un batch
+        WriteBatch batch = db.StartBatch();
+
+        // 1. Eliminar solicitud de amistad
+        batch.Delete(solicitudRef);
+
+        // 2. Eliminar de mi lista de amigos
+        batch.Delete(miAmigoRef);
+
+        // 3. Eliminar de la lista de amigos del otro usuario
+        batch.Delete(suAmigoRef);
+
+        // Ejecutar el batch
+        batch.CommitAsync().ContinueWithOnMainThread(task =>
+        {
+            panelConfirmacionEliminar.SetActive(false);
+
             if (task.IsCompleted && !task.IsFaulted)
             {
                 ShowMessage($"{amigoNombreSeleccionado} ha sido eliminado de tu lista de amigos");
-                panelConfirmacionEliminar.SetActive(false);
-
-                // Recargar la lista de amigos
                 CargarAmigos(inputBuscar.text.Trim());
             }
             else
             {
                 ShowMessage("Error al eliminar amigo", true);
-                Debug.LogError($"Error: {task.Exception}");
-                panelConfirmacionEliminar.SetActive(false);
+                Debug.LogError($"Error al eliminar amigo: {task.Exception}");
             }
         });
     }

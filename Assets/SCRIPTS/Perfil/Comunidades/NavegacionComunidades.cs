@@ -5,11 +5,10 @@ using UnityEngine.UIElements;
 
 public class NavegacionComunidades : MonoBehaviour
 {
-    [SerializeField] public GameObject m_MisComunidadesUI = null;
     [SerializeField] public GameObject m_CrearComunidadUI = null;
-    [SerializeField] public GameObject m_ListaComunidadesUI = null;
     [SerializeField] public GameObject m_InicioComunidadesUI = null;
-
+    [SerializeField] public GameObject m_panelMisComunidadesUI = null;
+    [SerializeField] public GameObject m_panelEncuentraComunidadesUI = null;
 
     // declaracion de intancias de script para llamar metodos
     private ListaComunidadesManager listaComunidadesManager;
@@ -23,44 +22,33 @@ public class NavegacionComunidades : MonoBehaviour
     public void MostrarInicioComunidades()
     {
         m_InicioComunidadesUI.SetActive(true);
-        m_MisComunidadesUI.SetActive(false);
+        // recargamos el metodo de cargar cada vez que se activa el panel
+        misComunidadesManager.CargarComunidadesDelUsuario();
         m_CrearComunidadUI.SetActive(false);
-        m_ListaComunidadesUI.SetActive(false);
- 
     }
 
     public void MostrarMisComunidades()
     {
-        m_MisComunidadesUI.SetActive(true);
+        m_panelMisComunidadesUI.SetActive(true);
         // recargamos el metodo de cargar cada vez que se activa el panel
         misComunidadesManager.CargarComunidadesDelUsuario();
-
-        m_InicioComunidadesUI.SetActive(false);
         m_CrearComunidadUI.SetActive(false);
-        m_ListaComunidadesUI.SetActive(false);
-     
+        m_panelEncuentraComunidadesUI.SetActive(false);
+
     }
     public void MostrarCrearComunidad()
     {
-
         m_CrearComunidadUI.SetActive(true);
         m_InicioComunidadesUI.SetActive(false);
-        m_MisComunidadesUI.SetActive(false);
-        m_ListaComunidadesUI.SetActive(false);
-     
     }
-   
-    public void MostrarListaComunidades()
+
+    public void MostrarEncuentraComunidades()
     {
-        m_ListaComunidadesUI.SetActive(true);
+        m_panelEncuentraComunidadesUI.SetActive(true);
         // recargamos el metodo de cargar cada vez que se activa el panel 
         listaComunidadesManager.CargarComunidades();
-
-        m_InicioComunidadesUI.SetActive(false);
-        m_MisComunidadesUI.SetActive(false);
         m_CrearComunidadUI.SetActive(false);
+        m_panelMisComunidadesUI.SetActive(false);
     }
     
-
-
 }

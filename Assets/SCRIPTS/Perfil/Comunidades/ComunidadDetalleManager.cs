@@ -22,22 +22,31 @@ public class ComunidadDetalleManager : MonoBehaviour
 
     [Header("Panel Detalle Miembros")]
     public GameObject panelMiembros;
+    public GameObject panelSeñalarMiembros;
     public Transform contenedorMiembros;
     public GameObject prefabMiembro;
     public Button btnVerMiembros;
 
     [Header("Panel Detalle Solicitudes")]
     public GameObject panelSolicitudes;
+    public GameObject panelSeñalarSolicitudes;
     public Transform contenedorSolicitudes;
     public GameObject prefabSolicitud;
     public Button btnVerSolicitudes;
 
-    [Header("Botón Abandonar Comunidad")]
+    [Header("Confirmar Abandonar Comunidad")]
     public GameObject panelConfirmacionAbandonar;
     public Button btnAbandonarComunidad;
     public TMP_Text textoConfirmacionAbandonar;
     public Button btnCancelarAbandonar;
     public Button btnConfirmarAbandonar;
+
+    [Header("Confirmar Eliminar Comunidad")]
+    public GameObject panelConfirmarEliminarComunidad;
+    public Button BtnEliminarComunidad;
+    public TMP_Text txtConfirmarEliminar;
+    public Button btnCancelarEliminar;
+    public Button btnConfirmarEliminar;
 
     [Header("Notificación Solicitudes a Comunidad")]
     public GameObject notificationPanel; // Panel que contendrá el número
@@ -61,6 +70,13 @@ public class ComunidadDetalleManager : MonoBehaviour
             btnConfirmarAbandonar.onClick.AddListener(ConfirmarAbandonarComunidad);
             btnCancelarAbandonar.onClick.AddListener(() => panelConfirmacionAbandonar.SetActive(false));
         }
+        if (panelConfirmarEliminarComunidad != null)
+        {
+            panelConfirmarEliminarComunidad.SetActive(false);
+            btnConfirmarEliminar.onClick.AddListener(ConfirmarEliminarComunidad);
+            btnCancelarEliminar.onClick.AddListener(() => panelConfirmarEliminarComunidad.SetActive(false));
+        }
+
 
         if (btnCerrarPanelDetalle != null)
         {
@@ -78,6 +94,7 @@ public class ComunidadDetalleManager : MonoBehaviour
         if (!gameObject.activeSelf) gameObject.SetActive(true);
 
         comunidadActualId = dataComunidad["documentId"].ToString();
+
         ActualizarInterfazConDatos(dataComunidad);
 
         // notificaciones
@@ -100,7 +117,6 @@ public class ComunidadDetalleManager : MonoBehaviour
     public void CheckPendingRequests(string comunidadActualId)
     {
 
-        //comunidadActualId = dataComunidad["documentId"].ToString();
 
         db.Collection("solicitudes_comunidad")
           .WhereEqualTo("idComunidad", comunidadActualId)
@@ -188,7 +204,7 @@ public class ComunidadDetalleManager : MonoBehaviour
         // Actualizar UI
         detalleNombre.text = nombre;
         detalleDescripcion.text = descripcion;
-        detalleFecha.text = $"Creada el {fechaFormateada}";
+        detalleFecha.text = fechaFormateada;
         detalleCreador.text = $"Creada por {creador}";
         detalleMiembros.text = $"{cantidadMiembros} miembros";
     }
@@ -196,6 +212,7 @@ public class ComunidadDetalleManager : MonoBehaviour
     private void ConfigurarBotones(Dictionary<string, object> dataComunidad)
     {
         string creadorId = dataComunidad.GetValueOrDefault("creadorId", "").ToString();
+        string tipocomunidad = dataComunidad.GetValueOrDefault("tipo", "publica").ToString().ToLower();
 
         btnVerMiembros.onClick.RemoveAllListeners();
         btnVerMiembros.onClick.AddListener(() => {
@@ -209,6 +226,10 @@ public class ComunidadDetalleManager : MonoBehaviour
             bool esCreador = usuarioActualId == creadorId;
             btnVerSolicitudes.interactable = esCreador;
             btnVerSolicitudes.gameObject.SetActive(esCreador);
+            if (tipocomunidad != "privada")
+            {
+                btnVerSolicitudes.gameObject.SetActive(false);
+            }
 
             if (esCreador)
             {
@@ -221,11 +242,19 @@ public class ComunidadDetalleManager : MonoBehaviour
             }
         }
 
+
         if (btnAbandonarComunidad != null)
         {
             btnAbandonarComunidad.onClick.RemoveAllListeners();
             btnAbandonarComunidad.onClick.AddListener(() => MostrarConfirmacionAbandonar(dataComunidad));
             btnAbandonarComunidad.gameObject.SetActive(usuarioActualId != creadorId);
+        }
+        // acá ponemos el activar el btn si es creador para que elimine la comunidad y mostrar el panel de confirmación y hacer la función para eliminar la comunidad ----------------------------------------------------------
+        if (BtnEliminarComunidad != null)
+        {
+            BtnEliminarComunidad.onClick.RemoveAllListeners();
+            BtnEliminarComunidad.onClick.AddListener(() => MostrarConfirmacionEliminar(dataComunidad));
+            BtnEliminarComunidad.gameObject.SetActive(usuarioActualId == creadorId);
         }
     }
 
@@ -259,6 +288,15 @@ public class ComunidadDetalleManager : MonoBehaviour
         textoConfirmacionAbandonar.text = $"¿Estás seguro que deseas abandonar {nombreComunidad}?";
         panelConfirmacionAbandonar.SetActive(true);
         EventSystem.current.SetSelectedGameObject(btnCancelarAbandonar.gameObject);
+    }
+    void MostrarConfirmacionEliminar(Dictionary<string, object> dataComunidad)
+    {
+        if (panelConfirmacionAbandonar == null) return;
+
+        string nombreComunidad = dataComunidad.GetValueOrDefault("nombre", "esta comunidad").ToString();
+        txtConfirmarEliminar.text = $"¿Estás seguro que deseas Eliminar {nombreComunidad}?";
+        panelConfirmarEliminarComunidad.SetActive(true);
+        EventSystem.current.SetSelectedGameObject(btnCancelarEliminar.gameObject);
     }
 
     void ConfirmarAbandonarComunidad()
@@ -295,6 +333,40 @@ public class ComunidadDetalleManager : MonoBehaviour
             Invoke("OcultarPanelConfirmarAbandonarComunidad", 4f);
         }
     }
+    void ConfirmarEliminarComunidad()
+    {
+        bool hayConexion = Application.internetReachability != NetworkReachability.NotReachable;
+        if (hayConexion)
+        {
+
+
+            if (string.IsNullOrEmpty(comunidadActualId) || string.IsNullOrEmpty(usuarioActualId))
+            {
+                Debug.LogError("Falta información para eliminar la comunidad");
+                return;
+            }
+
+            panelConfirmacionAbandonar.SetActive(false);
+            DocumentReference comunidadRef = db.Collection("comunidades").Document(comunidadActualId);
+
+            comunidadRef.DeleteAsync()
+                .ContinueWithOnMainThread(task =>
+                {
+                    if (task.IsFaulted || task.IsCanceled)
+                    {
+                        Debug.LogError("Error al eliminar comunidad: " + task.Exception);
+                        return;
+                    }
+
+                    SceneManager.LoadScene("Comunidad");
+                });
+        }
+        else
+        {
+            textoConfirmacionAbandonar.text = ("SIN CONEXIÓN A INTERNET, NO ES POSIBLE REALIZAR ESTA OPERACIÓN EN ESTE MOMENTO, INTENTE MÁS TARDE");
+            Invoke("OcultarPanelConfirmarAbandonarComunidad", 4f);
+        }
+    }
 
 
     public void OcultarPanelConfirmarAbandonarComunidad()
@@ -308,6 +380,12 @@ public class ComunidadDetalleManager : MonoBehaviour
 
     void MostrarMiembros(Dictionary<string, object> dataComunidad = null)
     {
+        panelSeñalarMiembros.SetActive(true);
+        if( panelSeñalarSolicitudes != null)
+        {
+            panelSeñalarSolicitudes.SetActive(false);
+        }
+
         var datosAMostrar = dataComunidad ?? datosComunidadActual;
         if (datosAMostrar == null) return;
 
@@ -334,6 +412,7 @@ public class ComunidadDetalleManager : MonoBehaviour
 
     IEnumerator CargarMiembrosConInfo(List<object> miembros)
     {
+        // Limpiar contenedor
         foreach (Transform child in contenedorMiembros)
         {
             Destroy(child.gameObject);
@@ -343,6 +422,18 @@ public class ComunidadDetalleManager : MonoBehaviour
         {
             string idMiembro = miembro.ToString();
             GameObject item = Instantiate(prefabMiembro, contenedorMiembros);
+
+            // Reiniciar la imagen del avatar a un estado por defecto antes de cargar
+            Transform avatarTransform = item.transform.Find("AvatarImage");
+            if (avatarTransform != null)
+            {
+                Image avatarImage = avatarTransform.GetComponent<Image>();
+                if (avatarImage != null)
+                {
+                    // Cargar imagen por defecto temporalmente
+                    avatarImage.sprite = Resources.Load<Sprite>("Avatares/defecto");
+                }
+            }
 
             TMP_Text[] textos = item.GetComponentsInChildren<TMP_Text>(true);
             TMP_Text nombreText = textos.Length > 0 ? textos[0] : null;
@@ -383,6 +474,20 @@ public class ComunidadDetalleManager : MonoBehaviour
             string displayName = userData.ContainsKey("DisplayName") ? userData["DisplayName"].ToString() : "Sin nombre";
             string rango = userData.ContainsKey("Rango") ? userData["Rango"].ToString() : "Sin rango";
 
+            // Cargar avatar
+            string avatarPath = ObtenerAvatarPorRango(rango);
+            Sprite avatarSprite = Resources.Load<Sprite>(avatarPath) ?? Resources.Load<Sprite>("Avatares/defecto");
+
+            // Actualizar la imagen del avatar en el item actual
+            if (avatarTransform != null)
+            {
+                Image avatarImage = avatarTransform.GetComponent<Image>();
+                if (avatarImage != null)
+                {
+                    avatarImage.sprite = avatarSprite;
+                }
+            }
+
             nombreText.text = displayName;
             rangoText.text = rango;
         }
@@ -392,6 +497,12 @@ public class ComunidadDetalleManager : MonoBehaviour
 
     void MostrarSolicitudes(Dictionary<string, object> dataComunidad)
     {
+        panelSeñalarSolicitudes.SetActive(true);
+        if (panelSeñalarMiembros != null)
+        {
+            panelSeñalarMiembros.SetActive(false);
+        }
+
         foreach (Transform child in contenedorSolicitudes)
         {
             Destroy(child.gameObject);
@@ -556,7 +667,21 @@ public class ComunidadDetalleManager : MonoBehaviour
             Destroy(feedbackItem);
         }
     }
-
+    private string ObtenerAvatarPorRango(string rango)
+    {
+        switch (rango)
+        {
+            case "Novato de laboratorio": return "Avatares/Rango1";
+            case "Aprendiz Atomico": return "Avatares/Rango2";
+            case "Promesa quimica": return "Avatares/Rango3";
+            case "Cientifico en Formacion": return "Avatares/Rango4";
+            case "Experto Molecular": return "Avatares/Rango5";
+            case "Maestro de Laboratorio": return "Avatares/Rango6";
+            case "Sabio de la tabla": return "Avatares/Rango7";
+            case "Leyenda química": return "Avatares/Rango8";
+            default: return "Avatares/Rango1";
+        }
+    }
     void LimpiarYCerrarPaneles()
     {
         foreach (Transform child in contenedorMiembros)

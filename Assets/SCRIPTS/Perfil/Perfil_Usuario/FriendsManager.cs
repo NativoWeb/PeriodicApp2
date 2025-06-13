@@ -89,6 +89,8 @@ public class FriendsManager : MonoBehaviour
             if (task.IsFaulted)
             {
                 Debug.LogError($"Error obteniendo la ciudad del usuario: {task.Exception}");
+                // Si hay error, cargamos usuarios aleatorios
+                LoadRandomUsers(10, new List<DocumentSnapshot>());
                 return;
             }
 
@@ -102,15 +104,30 @@ public class FriendsManager : MonoBehaviour
                 {
                     LoadSuggestedUsers();
                 }
+                else
+                {
+                    // Si no tiene ciudad, cargamos usuarios aleatorios
+                    LoadRandomUsers(10, new List<DocumentSnapshot>());
+                }
+            }
+            else
+            {
+                // Si no existe el campo Ciudad, cargamos usuarios aleatorios
+                LoadRandomUsers(10, new List<DocumentSnapshot>());
             }
         });
     }
 
     void LoadSuggestedUsers()
     {
+        if (string.IsNullOrEmpty(myCity))
+        {
+            LoadRandomUsers(10, new List<DocumentSnapshot>());
+            return;
+        }
+
         Debug.Log($"Buscando usuarios en {myCity}. Excluyendo: {string.Join(", ", excludedUsers)}");
 
-        // Primero cargamos usuarios de la misma ciudad
         firestore.Collection("users")
             .WhereEqualTo("Ciudad", myCity)
             .Limit(10)
@@ -128,22 +145,17 @@ public class FriendsManager : MonoBehaviour
 
                 Debug.Log($"Usuarios locales encontrados en {myCity}: {localUsers.Count}");
 
-                // Calculamos cuántos usuarios adicionales necesitamos para llegar a 10
-                int neededUsers = Mathf.Max(0, 10 - localUsers.Count);
-
-                if (neededUsers > 0)
+                if (localUsers.Count >= 10)
                 {
-                    Debug.Log($"Necesitamos {neededUsers} usuarios más de otras ciudades");
-                    LoadRandomUsers(neededUsers, localUsers);
+                    CreateUserCards(localUsers.Take(10).ToList());
                 }
                 else
                 {
-                    // Si ya tenemos 10 o más usuarios locales, mostramos solo 10
-                    CreateUserCards(localUsers.Take(10).ToList());
+                    // Si no hay suficientes usuarios locales, completamos con aleatorios
+                    LoadRandomUsers(10 - localUsers.Count, localUsers);
                 }
             });
     }
-
 
     void LoadRandomUsers(int cantidad, List<DocumentSnapshot> currentUsers)
     {
@@ -208,6 +220,12 @@ public class FriendsManager : MonoBehaviour
         if (users.Count == 0)
         {
             Debug.Log("No hay usuarios para mostrar");
+            // Mostrar mensaje "No hay sugerencias disponibles en este momento"
+            GameObject noUsersMessage = new GameObject("NoUsersMessage");
+            var text = noUsersMessage.AddComponent<TMP_Text>();
+            text.text = "No hay sugerencias disponibles en este momento";
+            text.alignment = TextAlignmentOptions.Center;
+            noUsersMessage.transform.SetParent(scrollContent);
             return;
         }
 
@@ -217,7 +235,7 @@ public class FriendsManager : MonoBehaviour
             string nombre = doc.GetValue<string>("DisplayName");
             string rango = doc.ContainsField("Rango") ? doc.GetValue<string>("Rango") : "Novato de laboratorio";
             string avatar = ObtenerAvatarPorRango(rango);
-            Sprite avatarSprite = Resources.Load<Sprite>(avatar) ?? Resources.Load<Sprite>("Avatares/defecto");
+            Sprite avatarSprite = Resources.Load<Sprite>(avatar) ?? Resources.Load<Sprite>("Avatares/Rango1");
 
             GameObject newCard = Instantiate(cardPrefab, scrollContent);
             TMP_Text nombreText = newCard.transform.Find("NombreText")?.GetComponent<TMP_Text>();

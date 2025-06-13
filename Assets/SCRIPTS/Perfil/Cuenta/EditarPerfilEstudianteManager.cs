@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
@@ -13,7 +14,7 @@ using System.Threading.Tasks;
 
 public class EditarPerfilEstudianteManager : MonoBehaviour
 {
-    // instancias firebase 
+    // Instancias Firebase 
     private FirebaseAuth auth;
     private FirebaseFirestore db;
     private FirebaseUser currentUser;
@@ -27,11 +28,15 @@ public class EditarPerfilEstudianteManager : MonoBehaviour
     [SerializeField] private TMP_Text messageTxt;
     public Button GuardarCambios;
 
+    [Header("Configuración de mensajes")]
+    [SerializeField] private float messageDuration = 3f;
+    private Coroutine currentMessageCoroutine;
+
     private Dictionary<string, List<string>> ciudadesPorDepartamento = new Dictionary<string, List<string>>();
 
     void Start()
     {
-        // inicializamos firebase
+        // Inicializamos Firebase
         auth = FirebaseAuth.DefaultInstance;
         db = FirebaseFirestore.DefaultInstance;
         currentUser = auth.CurrentUser;
@@ -48,12 +53,33 @@ public class EditarPerfilEstudianteManager : MonoBehaviour
         GuardarCambios.onClick.AddListener(ActualizarDatos);
     }
 
+    private void ShowMessage(string message, bool isError = false)
+    {
+        if (currentMessageCoroutine != null)
+        {
+            StopCoroutine(currentMessageCoroutine);
+        }
+
+        messageTxt.text = message;
+        messageTxt.color = isError ? Color.red : Color.green;
+        messageTxt.gameObject.SetActive(true);
+
+        currentMessageCoroutine = StartCoroutine(HideMessageAfterDelay());
+    }
+
+    private IEnumerator HideMessageAfterDelay()
+    {
+        yield return new WaitForSeconds(messageDuration);
+        messageTxt.text = "";
+        messageTxt.gameObject.SetActive(false);
+        currentMessageCoroutine = null;
+    }
+
     private async void verificarCampos()
     {
         if (!HayInternet())
         {
-            messageTxt.text = "No hay CONEXIÓN A INTERNET";
-            messageTxt.color = Color.red;
+            ShowMessage("No hay CONEXIÓN A INTERNET", true);
             return;
         }
 
@@ -89,13 +115,11 @@ public class EditarPerfilEstudianteManager : MonoBehaviour
             DocumentSnapshot snapshot = await UserRef.GetSnapshotAsync();
             if (snapshot.Exists)
             {
-                // Cargar nombre de usuario
                 if (snapshot.ContainsField("DisplayName"))
                 {
                     usernameInput.text = snapshot.GetValue<string>("DisplayName");
                 }
 
-                // Cargar edad
                 if (snapshot.ContainsField("Edad"))
                 {
                     int edad = snapshot.GetValue<int>("Edad");
@@ -109,7 +133,6 @@ public class EditarPerfilEstudianteManager : MonoBehaviour
                     }
                 }
 
-                // Cargar departamento
                 if (snapshot.ContainsField("Departamento"))
                 {
                     string departamento = snapshot.GetValue<string>("Departamento");
@@ -123,10 +146,8 @@ public class EditarPerfilEstudianteManager : MonoBehaviour
                     }
                 }
 
-                // Actualizar ciudades para el departamento seleccionado
                 ActualizarCiudades();
 
-                // Cargar ciudad
                 if (snapshot.ContainsField("Ciudad"))
                 {
                     string ciudad = snapshot.GetValue<string>("Ciudad");
@@ -149,20 +170,14 @@ public class EditarPerfilEstudianteManager : MonoBehaviour
 
     void LlenarDropdowns()
     {
-        // Lista de edades con opción inicial "Seleccione edad"
         List<string> edades = new List<string> { "Seleccione edad" };
-        for (int i = 10; i <= 100; i++)
-        {
-            edades.Add(i.ToString());
-        }
+        for (int i = 10; i <= 100; i++) edades.Add(i.ToString());
         ActualizarDropdown(edadDropdown, edades);
 
-        // Lista de departamentos de Colombia con opción inicial
         List<string> departamentos = new List<string> { "Seleccione departamento" };
         departamentos.AddRange(ciudadesPorDepartamento.Keys);
         ActualizarDropdown(departamentoDropdown, departamentos);
 
-        // Inicializar ciudades con opción inicial
         List<string> ciudadesInicial = new List<string> { "Seleccione ciudad" };
         ActualizarDropdown(ciudadDropdown, ciudadesInicial);
     }
@@ -209,8 +224,7 @@ public class EditarPerfilEstudianteManager : MonoBehaviour
 
         if (departamentoSeleccionado == "Seleccione departamento")
         {
-            List<string> ciudadesInicial = new List<string> { "Seleccione ciudad" };
-            ActualizarDropdown(ciudadDropdown, ciudadesInicial);
+            ActualizarDropdown(ciudadDropdown, new List<string> { "Seleccione ciudad" });
             return;
         }
 
@@ -239,87 +253,97 @@ public class EditarPerfilEstudianteManager : MonoBehaviour
     {
         if (HayInternet())
         {
-            // Validar que todos los campos estén seleccionados
             if (string.IsNullOrEmpty(usernameInput.text) ||
                 edadDropdown.options[edadDropdown.value].text == "Seleccione edad" ||
                 departamentoDropdown.options[departamentoDropdown.value].text == "Seleccione departamento" ||
                 ciudadDropdown.options[ciudadDropdown.value].text == "Seleccione ciudad")
             {
-                messageTxt.text = "Por favor complete todos los campos";
-                messageTxt.color = Color.red;
+                ShowMessage("Por favor complete todos los campos", true);
                 return;
             }
         }
-        // limpiamos el messageText al salir del panel 
+
+        if (currentMessageCoroutine != null)
+        {
+            StopCoroutine(currentMessageCoroutine);
+            currentMessageCoroutine = null;
+        }
         messageTxt.text = "";
+        messageTxt.gameObject.SetActive(false);
     }
 
     private async void ActualizarDatos()
     {
         if (!HayInternet())
         {
-            messageTxt.text = "No hay CONEXIÓN A INTERNET";
-            messageTxt.color = Color.red;
+            ShowMessage("No hay CONEXIÓN A INTERNET", true);
             return;
         }
 
-        // Validar campos obligatorios
         if (string.IsNullOrEmpty(usernameInput.text) ||
             edadDropdown.options[edadDropdown.value].text == "Seleccione edad" ||
             departamentoDropdown.options[departamentoDropdown.value].text == "Seleccione departamento" ||
             ciudadDropdown.options[ciudadDropdown.value].text == "Seleccione ciudad")
         {
-            messageTxt.text = "Por favor complete todos los campos";
-            messageTxt.color = Color.red;
+            ShowMessage("Por favor complete todos los campos", true);
             return;
         }
 
-        // Validar longitud del nombre de usuario (8-10 caracteres)
         string username = usernameInput.text.Trim();
         if (username.Length < 8 || username.Length > 10)
         {
-            messageTxt.text = "El nombre de usuario debe tener entre 8 y 10 caracteres";
-            messageTxt.color = Color.red;
+            ShowMessage("El nombre de usuario debe tener entre 8 y 10 caracteres", true);
             return;
         }
 
         try
         {
-            // Verificar si el nombre de usuario ya existe (excepto para el usuario actual)
-            bool usernameDisponible = await VerificarUsernameDisponible(username);
-            if (!usernameDisponible)
+            DocumentSnapshot userSnapshot = await db.Collection("users").Document(userId).GetSnapshotAsync();
+            string currentUsername = userSnapshot.GetValue<string>("DisplayName");
+
+            if (username != currentUsername)
             {
-                messageTxt.text = "El nombre de usuario ya está en uso";
-                messageTxt.color = Color.red;
-                return;
+                bool usernameDisponible = await VerificarUsernameDisponible(username);
+                if (!usernameDisponible)
+                {
+                    ShowMessage("El nombre de usuario ya está en uso", true);
+                    return;
+                }
             }
 
-            // Todos los campos son válidos, proceder a actualizar
+            if (username != currentUser.DisplayName)
+            {
+                UserProfile profile = new UserProfile { DisplayName = username };
+                await currentUser.UpdateUserProfileAsync(profile).ContinueWithOnMainThread(task => {
+                    if (task.IsCanceled || task.IsFaulted)
+                    {
+                        Debug.LogError("Error al actualizar el perfil en Auth: " + task.Exception);
+                        return;
+                    }
+                    currentUser = auth.CurrentUser;
+                });
+            }
+
             int edad = int.Parse(edadDropdown.options[edadDropdown.value].text);
             string departamento = departamentoDropdown.options[departamentoDropdown.value].text;
             string ciudad = ciudadDropdown.options[ciudadDropdown.value].text;
 
             DocumentReference userRef = db.Collection("users").Document(userId);
             Dictionary<string, object> datosUsuario = new Dictionary<string, object>
-        {
-            { "DisplayName", username },
-            { "Edad", edad },
-            { "Departamento", departamento },
-            { "Ciudad", ciudad }
-        };
+            {
+                { "DisplayName", username },
+                { "Edad", edad },
+                { "Departamento", departamento },
+                { "Ciudad", ciudad }
+            };
 
-            // Usando await para esperar la operación de Firestore
             await userRef.SetAsync(datosUsuario, SetOptions.MergeAll);
-
-            Debug.Log("Datos actualizados correctamente");
-            messageTxt.text = "Perfil actualizado correctamente";
-            messageTxt.color = Color.green;
+            ShowMessage("Perfil actualizado correctamente");
         }
         catch (Exception ex)
         {
             Debug.LogError("Error al guardar los datos: " + ex.Message);
-            messageTxt.text = "Error al actualizar los datos";
-            messageTxt.color = Color.red;
+            ShowMessage("Error al actualizar los datos", true);
         }
     }
 
@@ -327,20 +351,17 @@ public class EditarPerfilEstudianteManager : MonoBehaviour
     {
         try
         {
-            // Obtener todos los usuarios excepto el actual
-            Query query = db.Collection("users")/*.WhereNotEqualTo("userId", userId)*/;
+            Query query = db.Collection("users").WhereEqualTo("DisplayName", username);
             QuerySnapshot snapshot = await query.GetSnapshotAsync();
 
             foreach (DocumentSnapshot document in snapshot.Documents)
             {
-                if (document.ContainsField("DisplayName") &&
-                    document.GetValue<string>("DisplayName").Equals(username, StringComparison.OrdinalIgnoreCase))
+                if (document.Id != userId)
                 {
-                    return false; // Username ya existe
+                    return false;
                 }
             }
-
-            return true; // Username disponible
+            return true;
         }
         catch (Exception e)
         {
