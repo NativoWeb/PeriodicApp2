@@ -437,38 +437,40 @@ public class EncuestaConocimientoController : MonoBehaviour
     private IEnumerator CopiarJsonAuxiliaresSiEsNecesario()
     {
         List<string> nombresArchivos = new List<string>
-        {
-            "Json_Misiones.json",
-            "Json_Logros.json",
-            "Json_Informacion.json"
-        };
+    {
+        "Json_Misiones.json",
+        "Json_Logros.json",
+        "Json_Informacion.json"
+    };
 
         foreach (string nombreArchivo in nombresArchivos)
         {
-            string rutaStreaming = Path.Combine(Application.streamingAssetsPath, nombreArchivo);
             string rutaLocal = Path.Combine(Application.persistentDataPath, nombreArchivo);
 
-            if (!File.Exists(rutaLocal))
-            {
-                using (UnityWebRequest request = UnityWebRequest.Get(rutaStreaming))
-                {
-                    yield return request.SendWebRequest();
-
-                    if (request.result == UnityWebRequest.Result.Success)
-                    {
-                        File.WriteAllText(rutaLocal, request.downloadHandler.text);
-                        Debug.Log($"✅ (Auxiliar) Archivo copiado localmente: {nombreArchivo}");
-                    }
-                    else
-                    {
-                        Debug.LogError($"❌ (Auxiliar) Error al copiar {nombreArchivo}: {request.error}");
-                    }
-                }
-            }
-            else
+            // ✅ Verificar si el archivo ya existe en la ruta persistente
+            if (File.Exists(rutaLocal))
             {
                 Debug.Log($"📁 (Auxiliar) Ya existe localmente: {nombreArchivo}");
             }
+            else
+            {
+                // 🧩 Cargar el archivo desde Resources si no existe localmente
+                string nombreSinExtension = Path.GetFileNameWithoutExtension(nombreArchivo);
+                TextAsset archivoJson = Resources.Load<TextAsset>($"Plantillas_Json/{nombreSinExtension}");
+
+                if (archivoJson != null)
+                {
+                    File.WriteAllText(rutaLocal, archivoJson.text);
+                    Debug.Log($"✅ (Auxiliar) Archivo copiado desde Resources: {nombreArchivo}");
+                }
+                else
+                {
+                    Debug.LogError($"❌ (Auxiliar) No se encontró {nombreArchivo} en Resources/Plantillas_Json.");
+                }
+            }
+
+            // Pausar un frame entre cada archivo por seguridad
+            yield return null;
         }
     }
 }

@@ -6,7 +6,6 @@ using UnityEngine.SceneManagement;
 using UnityEngine;
 using System.IO;
 using System.Collections;
-using TMPro.EditorUtilities;
 
 public class GestorElementos : MonoBehaviour
 {

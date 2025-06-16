@@ -61,7 +61,32 @@ public class VerificarEstadoUsuario
         await DescargarDocumentoYGuardar(userId, "categorias", "categorias_encuesta_firebase.json");
         await DescargarDocumentoYGuardar(userId, "misiones", "Json_Misiones.json");
         await DescargarDocumentoYGuardar(userId, "logros", "Json_Logros.json");
+
+        // ✅ Verificar si Json_Informacion.json ya existe en persistentDataPath
+        string nombreArchivo = "Json_Informacion.json";
+        string rutaLocal = Path.Combine(Application.persistentDataPath, nombreArchivo);
+
+        if (!File.Exists(rutaLocal))
+        {
+            string nombreSinExtension = Path.GetFileNameWithoutExtension(nombreArchivo);
+            TextAsset archivoJson = Resources.Load<TextAsset>($"Plantillas_Json/{nombreSinExtension}");
+
+            if (archivoJson != null)
+            {
+                File.WriteAllText(rutaLocal, archivoJson.text);
+                Debug.Log($"✅ Archivo auxiliar '{nombreArchivo}' copiado desde Resources.");
+            }
+            else
+            {
+                Debug.LogError($"❌ No se encontró '{nombreArchivo}' en Resources/Plantillas_Json.");
+            }
+        }
+        else
+        {
+            Debug.Log($"📁 El archivo auxiliar '{nombreArchivo}' ya existe localmente.");
+        }
     }
+
 
     private async Task DescargarDocumentoYGuardar(string userId, string nombreDocumento, string nombreArchivo)
     {

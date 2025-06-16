@@ -5,7 +5,7 @@ using Firebase.Auth;
 using System;
 using System.IO;
 using System.Collections;
-using UnityEngine.Networking;
+
 
 public class UpdateData : MonoBehaviour
 {
@@ -25,6 +25,7 @@ public class UpdateData : MonoBehaviour
 
     void Start()
     {
+        StartCoroutine(CheckAndCopyJsons());
 
         // Verificar conexión a internet
         hayInternet = Application.internetReachability != NetworkReachability.NotReachable;
@@ -35,10 +36,8 @@ public class UpdateData : MonoBehaviour
             auth = FirebaseAuth.DefaultInstance;
             db = FirebaseFirestore.DefaultInstance;
 
-
             Debug.Log("⌛ Verificando conexión a Internet...desde UpdateData");
             HandleOnlineMode();
-            StartCoroutine(CheckAndCopyJsons());
         }
         else
         {
@@ -86,7 +85,7 @@ public class UpdateData : MonoBehaviour
 
     public string[] jsonFileNames = { "Json_Misiones.json", "Json_logros.json", "Json_Informacion.json", "categorias_encuesta_firebase.json" };
 
-    public IEnumerator CheckAndCopyJsons()
+    private IEnumerator CheckAndCopyJsons()
     {
         string persistentDataPath = Application.persistentDataPath;
 
@@ -124,7 +123,7 @@ public class UpdateData : MonoBehaviour
                 {
                     // Quitar extensión para Resources.Load
                     string resourceFileName = Path.GetFileNameWithoutExtension(fileName);
-                    TextAsset resourceJson = Resources.Load<TextAsset>(resourceFileName);
+                    TextAsset resourceJson = Resources.Load<TextAsset>($"Plantillas_Json/{ resourceFileName}");
 
                     if (resourceJson != null)
                     {
@@ -239,8 +238,6 @@ public class UpdateData : MonoBehaviour
                         PlayerPrefs.SetString("Departamento", departamento);
                         string ciudad = snapshot.GetValue<string>("Ciudad");
                         PlayerPrefs.SetString("Ciudad", ciudad);
-
-                        
                     }
                 }
 
