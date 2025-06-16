@@ -1,12 +1,15 @@
 ﻿using UnityEngine;
 using UnityEngine.SceneManagement;
 using System.Collections;
-using System.Collections.Generic;
-using TMPro;
 using Firebase.Auth;
 using Firebase.Firestore;
 using Firebase.Extensions;
 using Firebase;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using Newtonsoft.Json;
+using System;
+
 
 public class StartAppManager : MonoBehaviour
 {
@@ -64,8 +67,6 @@ public class StartAppManager : MonoBehaviour
         yaVerificado = true; // 🔹 Marcar como ejecutado
 
         string estadoUsuario = PlayerPrefs.GetString("Estadouser", "");
-        
-
 
         // ---------------------------------------------- VALIDACIONES --------------------------------------------------------------------------
 
@@ -100,7 +101,6 @@ public class StartAppManager : MonoBehaviour
                 }
 
             }
-
         }
         else if (string.IsNullOrEmpty(estadoUsuario))
         {
@@ -170,7 +170,7 @@ public class StartAppManager : MonoBehaviour
     // Crear y guardar usuario temporal en PlayerPrefs
     void CreateTemporaryUser()
     {
-        string username = "User_" + Random.Range(0, 999).ToString();
+        string username = "User_" + UnityEngine.Random.Range(0, 999).ToString();
         string ocupacionSeleccionada = "Otro"; // Por defecto
         string avatarUrl = "Avatares/nivel1"; // Por defecto
         bool encuestaCompletada = false;
@@ -200,7 +200,7 @@ public class StartAppManager : MonoBehaviour
 
             Debug.Log($"📧 Email: {savedEmail}, ✅ rememberMe: 1");
 
-            auth.SignInWithEmailAndPasswordAsync(savedEmail, savedPassword).ContinueWithOnMainThread(task =>
+            auth.SignInWithEmailAndPasswordAsync(savedEmail, savedPassword).ContinueWithOnMainThread(async task =>
             {
                 if (task.IsCompleted && !task.IsFaulted && task.Result != null)
                 {
@@ -210,8 +210,7 @@ public class StartAppManager : MonoBehaviour
                     PlayerPrefs.SetString("userId", user.UserId);
                     PlayerPrefs.SetString("Estadouser", "nube");
                     PlayerPrefs.Save();
-
-                    CheckAndDownloadMisiones(user.UserId);  // debería cargar la escena
+                    CheckUserStatus(user.UserId);
                 }
                 else
                 {
@@ -227,8 +226,6 @@ public class StartAppManager : MonoBehaviour
         }
     }
 
-
-
     void AutoLoginOnlyRegister() // funcion para cuando se registra con wifi y no se loguea, no le vuelva a crear otro usuario temporal -----------------------------
     {
         
@@ -238,45 +235,6 @@ public class StartAppManager : MonoBehaviour
             TryOfflineLogin(savedEmail, savedPassword);
           
     }
-
-
-    /* ------------------------ 🔥 NUEVA FUNCIÓN PARA DESCARGAR MISIONES 🔥 ------------------------ */
-    private void CheckAndDownloadMisiones(string userId)
-    {
-        Debug.Log("Verificando misiones...");
-
-        DocumentReference userDoc = db.Collection("users").Document(userId);
-
-        userDoc.GetSnapshotAsync().ContinueWithOnMainThread(task =>
-        {
-            if (task.IsFaulted || task.IsCanceled)
-            {
-                Debug.LogError("❌ Fallo al obtener snapshot de misiones.");
-                return;
-            }
-
-            DocumentSnapshot snapshot = task.Result;
-
-            if (!snapshot.Exists || !snapshot.ContainsField("misiones"))
-            {
-                Debug.Log("No hay campo 'misiones', saltando a CheckUserStatus");
-                CheckUserStatus(userId);
-                return;
-            }
-
-            string misionesJson = snapshot.GetValue<string>("misiones");
-            Debug.Log("Misiones obtenidas");
-
-            if (!string.IsNullOrEmpty(misionesJson))
-            {
-                PlayerPrefs.SetString("misionesJSON", misionesJson);
-                PlayerPrefs.Save();
-            }
-
-            CheckUserStatus(userId);
-        });
-    }
-
 
     private void CheckUserStatus(string userId)
     {
@@ -298,9 +256,7 @@ public class StartAppManager : MonoBehaviour
 
             string ocupacion = snapshot.GetValue<string>("Ocupacion");
 
-
             bool estadoencuestaaprendizaje = snapshot.ContainsField("EstadoEncuestaAprendizaje") ? snapshot.GetValue<bool>("EstadoEncuestaAprendizaje") : false;
-
             bool estadoencuestaconocimiento = snapshot.ContainsField("EstadoEncuestaConocimiento") ? snapshot.GetValue<bool>("EstadoEncuestaConocimiento") : false;  // Valor por defecto si el campo no existe
 
             if (ocupacion == "Profesor")
@@ -318,7 +274,6 @@ public class StartAppManager : MonoBehaviour
                     SceneManager.LoadScene("SeleccionarEncuesta");
                 }
             }
-
         });
     }
 
@@ -358,14 +313,10 @@ public class StartAppManager : MonoBehaviour
                     }
 
                 }
-
             }
             else if (email == savedEmail && password != savedPassword)
             {
             }
-        }
-        else
-        {
         }
     }
     private IEnumerator DeleteAccount()
@@ -385,14 +336,7 @@ public class StartAppManager : MonoBehaviour
                 {
                     PlayerPrefs.DeleteKey("UsuarioEliminar");
                 }
-                else
-                {
-                    
-                }
             }
-        }
-        else
-        {
         }
     }
 }

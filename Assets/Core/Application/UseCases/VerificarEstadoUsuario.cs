@@ -4,6 +4,7 @@ using UnityEngine.SceneManagement;
 using System.IO;
 using Firebase.Firestore;
 using System.Collections.Generic;
+using System.Linq;
 
 public class VerificarEstadoUsuario
 {
@@ -87,7 +88,6 @@ public class VerificarEstadoUsuario
         }
     }
 
-
     private async Task DescargarDocumentoYGuardar(string userId, string nombreDocumento, string nombreArchivo)
     {
         var docRef = FirebaseFirestore.DefaultInstance
@@ -95,19 +95,43 @@ public class VerificarEstadoUsuario
             .Collection("datos").Document(nombreDocumento);
 
         var snapshot = await docRef.GetSnapshotAsync();
-
         if (!snapshot.Exists)
         {
             Debug.LogWarning($"⚠️ No se encontró el documento '{nombreDocumento}'.");
             return;
         }
 
-        Dictionary<string, object> data = snapshot.ToDictionary();
+        // 1) Traemos todos los campos del doc en un diccionario
+        var data = snapshot.ToDictionary();
 
-        // Serializamos con Newtonsoft.Json para manejar estructuras anidadas correctamente
-        string json = Newtonsoft.Json.JsonConvert.SerializeObject(data, Newtonsoft.Json.Formatting.Indented);
+        string contenidoAEscribir = null;
+
+        // 2) Buscamos el primer campo que sea un string y parezca JSON
+        foreach (var kv in data)
+        {
+            if (kv.Value is string s)
+            {
+                var t = s.TrimStart();
+                if (t.StartsWith("{") || t.StartsWith("["))
+                {
+                    contenidoAEscribir = s;
+                    Debug.Log($"📑 Extrayendo JSON desde el campo '{kv.Key}'.");
+                    break;
+                }
+            }
+        }
+
+        // 3) Si no había campo JSON-texto, serializamos todo el diccionario
+        if (contenidoAEscribir == null)
+        {
+            contenidoAEscribir = Newtonsoft.Json.JsonConvert
+                .SerializeObject(data, Newtonsoft.Json.Formatting.Indented);
+            Debug.Log("🗄️ Ningún campo era JSON-texto. Serializando el diccionario completo.");
+        }
+
+        // 4) Guardamos en disco
         string ruta = Path.Combine(Application.persistentDataPath, nombreArchivo);
-        File.WriteAllText(ruta, json);
+        File.WriteAllText(ruta, contenidoAEscribir);
         Debug.Log($"✅ Documento '{nombreDocumento}' guardado en: {ruta}");
     }
 

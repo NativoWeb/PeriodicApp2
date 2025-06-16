@@ -1,4 +1,4 @@
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 using UnityEngine;
 
 public class SubirDatosJSON
@@ -16,10 +16,24 @@ public class SubirDatosJSON
     public async Task Ejecutar()
     {
         string userId = localStorage.Obtener("userId");
-        string misionesJson = localStorage.Obtener("Json_Misiones.json", "{}");
-        string logrosJson = localStorage.Obtener("Json_Logros.json", "{}");
-        string categoriasJson = PlayerPrefs.GetString("categorias_encuesta_firebase_json");
+
+        // Cargar archivos desde Resources/Plantillas_Json
+        TextAsset misionesAsset = Resources.Load<TextAsset>("Plantillas_Json/Json_Misiones");
+        TextAsset logrosAsset = Resources.Load<TextAsset>("Plantillas_Json/Json_Logros");
+
+        if (misionesAsset == null || logrosAsset == null)
+        {
+            Debug.LogError("No se pudieron cargar los archivos JSON desde Resources.");
+            return;
+        }
+
+        string misionesJson = misionesAsset.text;
+        string logrosJson = logrosAsset.text;
+
+        // Obtener categorías desde PlayerPrefs (si ya fue cargado antes)
+        string categoriasJson = PlayerPrefs.GetString("categorias_encuesta_firebase_json", "{}");
 
         await firestore.SubirJson(userId, misionesJson, logrosJson, categoriasJson);
     }
+
 }

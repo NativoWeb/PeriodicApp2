@@ -147,18 +147,18 @@ public class GestorInfoElemento : MonoBehaviour
 
         // Asignar color según el elemento
 
-        if (elementoSeleccionado == "Astato" || elementoSeleccionado == "Teneso")
+        if (elementoSeleccionado == "Astato" || elementoSeleccionado == "Téneso")
         {
             ImgElemento.sprite = Resources.Load<Sprite>("ImagenesElementos/desconocidoVerde");
         }
         else if (elementoSeleccionado == "Proactinio" || elementoSeleccionado == "Neptunio" || elementoSeleccionado == "Berkelio" ||
                  elementoSeleccionado == "Einstenio" || elementoSeleccionado == "Fermio" || elementoSeleccionado == "Mendelevio" ||
-                 elementoSeleccionado == "Nobelio" || elementoSeleccionado == "Lawrencio")
+                 elementoSeleccionado == "Nobelio" || elementoSeleccionado == "Lawrencio" || elementoSeleccionado == "Prometio")
         {
             ImgElemento.sprite = Resources.Load<Sprite>("ImagenesElementos/desconocidoAzul");
         }
         else if (elementoSeleccionado == "Rutherfordio" || elementoSeleccionado == "Dubnio" || elementoSeleccionado == "Seaborgio" ||
-                 elementoSeleccionado == "Bohrio" || elementoSeleccionado == "Hasio" || elementoSeleccionado == "Meitnerio" ||
+                 elementoSeleccionado == "Bohrio" || elementoSeleccionado == "Hassio" || elementoSeleccionado == "Meitnerio" ||
                  elementoSeleccionado == "Darmstatio" || elementoSeleccionado == "Roentgenio" || elementoSeleccionado == "Copernicio" ||
                  elementoSeleccionado == "Nihonio" || elementoSeleccionado == "Flerovio" || elementoSeleccionado == "Moscovio" || elementoSeleccionado == "Livermorio")
         {
