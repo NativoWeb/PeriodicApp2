@@ -8,6 +8,7 @@ using Firebase.Extensions;
 
 public class StartAppManager : MonoBehaviour
 {
+    // acá si sirveeeeeeee
     public static bool IsReady = false; // 🔹 Bandera para indicar si terminó
     private bool yaVerificado = false; // 🔹 Evita ejecuciones repetidas
 
