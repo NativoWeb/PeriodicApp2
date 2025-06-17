@@ -238,7 +238,7 @@ public class DynamicMoleculeLoader : MonoBehaviour
                     electronModels[level % electronModels.Count],
                     orbit.transform,
                     electronPos,
-                    new Color(0.4f,.8f,0.4f),
+                    new Color(0.4f,.6f,0.4f),
                     3f,
                     level
                 ));
@@ -303,8 +303,8 @@ public class DynamicMoleculeLoader : MonoBehaviour
         LineRenderer line = orbit.AddComponent<LineRenderer>();
         line.useWorldSpace = false;
         line.loop = true;
-        line.startWidth = 0.005f;
-        line.endWidth = 0.005f;
+        line.startWidth = 0.000f;
+        line.endWidth = 0.000f;
         line.positionCount = 100;
 
         Material mat = new Material(Shader.Find("Standard"));
