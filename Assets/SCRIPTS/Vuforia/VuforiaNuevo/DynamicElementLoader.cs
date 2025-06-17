@@ -239,7 +239,7 @@ public class DynamicMoleculeLoader : MonoBehaviour
                     orbit.transform,
                     electronPos,
                     new Color(0.4f,.6f,0.4f),
-                    3f,
+                    .25f,
                     level
                 ));
 
@@ -264,7 +264,7 @@ public class DynamicMoleculeLoader : MonoBehaviour
             electron.transform.localPosition = position;
             electron.transform.localScale = Vector3.one * size;
 
-            ApplyColorToParticle(electron, color);
+            //ApplyColorToParticle(electron, color);
 
 
             // Instancia el Particle System como hijo del electrón
@@ -275,7 +275,6 @@ public class DynamicMoleculeLoader : MonoBehaviour
             var ps = electronParticles.GetComponent<ParticleSystem>();
             var main = ps.main;
             main.startSize = 1f;
-            main.startColor = new Color(0.4f, .9f, 0.4f);
 
             // Añadir comportamiento orbital sincronizado con la órbita padre
             var orbitBehavior = electron.AddComponent<ElectronOrbit>();
@@ -303,8 +302,8 @@ public class DynamicMoleculeLoader : MonoBehaviour
         LineRenderer line = orbit.AddComponent<LineRenderer>();
         line.useWorldSpace = false;
         line.loop = true;
-        line.startWidth = 0.000f;
-        line.endWidth = 0.000f;
+        line.startWidth = 0.003f;
+        line.endWidth = 0.003f;
         line.positionCount = 100;
 
         Material mat = new Material(Shader.Find("Standard"));
@@ -361,6 +360,7 @@ public class DynamicMoleculeLoader : MonoBehaviour
             Vector3 pos = FibonacciSphere(i, protons, 0.1f);
             GameObject proton = Instantiate(Resources.Load<GameObject>("Moleculas/NuevoElemento/SM_MOLECULA_PROTON"), nucleus.transform);
             proton.transform.localPosition = pos;
+            proton.transform.localScale = Vector3.one * 10;
             ApplyColorToParticle(proton, protonColor);
             yield return new WaitForSeconds(0.02f);
         }
@@ -370,6 +370,7 @@ public class DynamicMoleculeLoader : MonoBehaviour
             Vector3 pos = FibonacciSphere(i, neutrons, 0.1f);
             GameObject neutron = Instantiate(Resources.Load<GameObject>("Moleculas/NuevoElemento/SM_MOLECULA_NEUTRON"), nucleus.transform);
             neutron.transform.localPosition = pos;
+            neutron.transform.localScale = Vector3.one * 10;
             ApplyColorToParticle(neutron, neutronColor);
             yield return new WaitForSeconds(0.02f);
         }
