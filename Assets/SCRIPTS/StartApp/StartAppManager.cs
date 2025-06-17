@@ -1,10 +1,12 @@
 ﻿using UnityEngine;
 using UnityEngine.SceneManagement;
 using System.Collections;
+using System.Collections.Generic;
+using TMPro;
 using Firebase.Auth;
 using Firebase.Firestore;
 using Firebase.Extensions;
-
+using Firebase;
 
 public class StartAppManager : MonoBehaviour
 {
@@ -20,30 +22,18 @@ public class StartAppManager : MonoBehaviour
     {
         Debug.Log("StartAppManager START ejecutado");
 
-        // 1) Comprueba primero si tienes internet:
-        if (Application.internetReachability == NetworkReachability.NotReachable)
-        {
-            Debug.Log("🔌 MODO OFFLINE (no hay conexión). Saltando Firebase.");
-            // Ejecuta directamente tu flujo offline
-            HandleOfflineMode();
-            return;
-        }
-
-        // 2) Si hay conexión, inicializa Firebase y sigue con online/offline dinámico
         bool listo = await FirebaseServiceLocator.InicializarFirebase();
         Debug.Log("Firebase inicializado: " + listo);
         if (!listo)
         {
             Debug.LogError("Firebase no se inicializó correctamente.");
-            // Quizá muestres un mensaje y fuerces modo offline también
-            HandleOfflineMode();
+            // Aquí podrías mostrar UI de error o reintentar
             return;
         }
 
         auth = FirebaseServiceLocator.Auth;
         db = FirebaseServiceLocator.Firestore;
 
-        // Ahora que Firebase está listo, lanza tu rutina de chequeo
         StartCoroutine(CheckInternetConnection());
         StartCoroutine(DeleteAccount());
     }
@@ -66,7 +56,7 @@ public class StartAppManager : MonoBehaviour
         }
     }
 
-   
+
     // 🔹 Modo offline
     void HandleOfflineMode()
     {
@@ -76,9 +66,11 @@ public class StartAppManager : MonoBehaviour
 
         string estadoUsuario = PlayerPrefs.GetString("Estadouser", "");
 
+
+
         // ---------------------------------------------- VALIDACIONES --------------------------------------------------------------------------
 
-        if (estadoUsuario == "nube") 
+        if (estadoUsuario == "nube")
         {
             AutoLogin();
 
@@ -95,7 +87,7 @@ public class StartAppManager : MonoBehaviour
             if (ocupacion == "Profesor")
             {
                 SceneManager.LoadScene("InicioProfesor1");
-            }   
+            }
             else if (ocupacion == "Estudiante")
             {
                 if (estadoencuestaaprendizaje == true && estadoencuestaconocimiento == true)
@@ -109,6 +101,7 @@ public class StartAppManager : MonoBehaviour
                 }
 
             }
+
         }
         else if (string.IsNullOrEmpty(estadoUsuario))
         {
@@ -122,7 +115,7 @@ public class StartAppManager : MonoBehaviour
             AutoLoginOnlyRegister();
         }
 
-            IsReady = true; // 🔹 Marcamos como listo también en modo offline
+        IsReady = true; // 🔹 Marcamos como listo también en modo offline
     }
 
 
@@ -133,11 +126,11 @@ public class StartAppManager : MonoBehaviour
 
         yaVerificado = true;
 
-        string EstadoUsuario = PlayerPrefs.GetString("Estadouser","");
+        string EstadoUsuario = PlayerPrefs.GetString("Estadouser", "");
         Debug.Log("📍 EstadoUsuario = " + EstadoUsuario);
 
         // ---------------------------------------------- VALIDACIONES --------------------------------------------------------------------------
-        if (EstadoUsuario == "local") 
+        if (EstadoUsuario == "local")
         {
 
             SceneManager.LoadScene("Email");
@@ -162,7 +155,7 @@ public class StartAppManager : MonoBehaviour
             LoadSceneIfNotAlready("Login");
         }
 
-            IsReady = true; // ✅ Marcamos como listo
+        IsReady = true; // ✅ Marcamos como listo
     }
 
     // 🔹 Evita recargar la misma escena si ya está activa
@@ -178,7 +171,7 @@ public class StartAppManager : MonoBehaviour
     // Crear y guardar usuario temporal en PlayerPrefs
     void CreateTemporaryUser()
     {
-        string username = "User_" + UnityEngine.Random.Range(0, 999).ToString();
+        string username = "User_" + Random.Range(0, 999).ToString();
         string ocupacionSeleccionada = "Otro"; // Por defecto
         string avatarUrl = "Avatares/nivel1"; // Por defecto
         bool encuestaCompletada = false;
@@ -208,7 +201,7 @@ public class StartAppManager : MonoBehaviour
 
             Debug.Log($"📧 Email: {savedEmail}, ✅ rememberMe: 1");
 
-            auth.SignInWithEmailAndPasswordAsync(savedEmail, savedPassword).ContinueWithOnMainThread(async task =>
+            auth.SignInWithEmailAndPasswordAsync(savedEmail, savedPassword).ContinueWithOnMainThread(task =>
             {
                 if (task.IsCompleted && !task.IsFaulted && task.Result != null)
                 {
@@ -218,7 +211,8 @@ public class StartAppManager : MonoBehaviour
                     PlayerPrefs.SetString("userId", user.UserId);
                     PlayerPrefs.SetString("Estadouser", "nube");
                     PlayerPrefs.Save();
-                    CheckUserStatus(user.UserId);
+
+                    CheckAndDownloadMisiones(user.UserId);  // debería cargar la escena
                 }
                 else
                 {
@@ -234,15 +228,56 @@ public class StartAppManager : MonoBehaviour
         }
     }
 
+
+
     void AutoLoginOnlyRegister() // funcion para cuando se registra con wifi y no se loguea, no le vuelva a crear otro usuario temporal -----------------------------
     {
-        
-            string savedEmail = PlayerPrefs.GetString("userEmail");
-            string savedPassword = PlayerPrefs.GetString("userPassword");
-            Debug.Log("entrando a tryofflinelogin, el usuario solo se registro, no se logueo");
-            TryOfflineLogin(savedEmail, savedPassword);
-          
+
+        string savedEmail = PlayerPrefs.GetString("userEmail");
+        string savedPassword = PlayerPrefs.GetString("userPassword");
+        Debug.Log("entrando a tryofflinelogin, el usuario solo se registro, no se logueo");
+        TryOfflineLogin(savedEmail, savedPassword);
+
     }
+
+
+    /* ------------------------ 🔥 NUEVA FUNCIÓN PARA DESCARGAR MISIONES 🔥 ------------------------ */
+    private void CheckAndDownloadMisiones(string userId)
+    {
+        Debug.Log("Verificando misiones...");
+
+        DocumentReference userDoc = db.Collection("users").Document(userId);
+
+        userDoc.GetSnapshotAsync().ContinueWithOnMainThread(task =>
+        {
+            if (task.IsFaulted || task.IsCanceled)
+            {
+                Debug.LogError("❌ Fallo al obtener snapshot de misiones.");
+                return;
+            }
+
+            DocumentSnapshot snapshot = task.Result;
+
+            if (!snapshot.Exists || !snapshot.ContainsField("misiones"))
+            {
+                Debug.Log("No hay campo 'misiones', saltando a CheckUserStatus");
+                CheckUserStatus(userId);
+                return;
+            }
+
+            string misionesJson = snapshot.GetValue<string>("misiones");
+            Debug.Log("Misiones obtenidas");
+
+            if (!string.IsNullOrEmpty(misionesJson))
+            {
+                PlayerPrefs.SetString("misionesJSON", misionesJson);
+                PlayerPrefs.Save();
+            }
+
+            CheckUserStatus(userId);
+        });
+    }
+
 
     private void CheckUserStatus(string userId)
     {
@@ -264,7 +299,9 @@ public class StartAppManager : MonoBehaviour
 
             string ocupacion = snapshot.GetValue<string>("Ocupacion");
 
+
             bool estadoencuestaaprendizaje = snapshot.ContainsField("EstadoEncuestaAprendizaje") ? snapshot.GetValue<bool>("EstadoEncuestaAprendizaje") : false;
+
             bool estadoencuestaconocimiento = snapshot.ContainsField("EstadoEncuestaConocimiento") ? snapshot.GetValue<bool>("EstadoEncuestaConocimiento") : false;  // Valor por defecto si el campo no existe
 
             if (ocupacion == "Profesor")
@@ -282,6 +319,7 @@ public class StartAppManager : MonoBehaviour
                     SceneManager.LoadScene("SeleccionarEncuesta");
                 }
             }
+
         });
     }
 
@@ -321,10 +359,14 @@ public class StartAppManager : MonoBehaviour
                     }
 
                 }
+
             }
             else if (email == savedEmail && password != savedPassword)
             {
             }
+        }
+        else
+        {
         }
     }
     private IEnumerator DeleteAccount()
@@ -344,7 +386,14 @@ public class StartAppManager : MonoBehaviour
                 {
                     PlayerPrefs.DeleteKey("UsuarioEliminar");
                 }
+                else
+                {
+
+                }
             }
+        }
+        else
+        {
         }
     }
 }
