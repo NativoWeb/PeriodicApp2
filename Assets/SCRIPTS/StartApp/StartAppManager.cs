@@ -4,11 +4,6 @@ using System.Collections;
 using Firebase.Auth;
 using Firebase.Firestore;
 using Firebase.Extensions;
-using Firebase;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using Newtonsoft.Json;
-using System;
 
 
 public class StartAppManager : MonoBehaviour
@@ -24,18 +19,30 @@ public class StartAppManager : MonoBehaviour
     {
         Debug.Log("StartAppManager START ejecutado");
 
+        // 1) Comprueba primero si tienes internet:
+        if (Application.internetReachability == NetworkReachability.NotReachable)
+        {
+            Debug.Log("🔌 MODO OFFLINE (no hay conexión). Saltando Firebase.");
+            // Ejecuta directamente tu flujo offline
+            HandleOfflineMode();
+            return;
+        }
+
+        // 2) Si hay conexión, inicializa Firebase y sigue con online/offline dinámico
         bool listo = await FirebaseServiceLocator.InicializarFirebase();
         Debug.Log("Firebase inicializado: " + listo);
         if (!listo)
         {
             Debug.LogError("Firebase no se inicializó correctamente.");
-            // Aquí podrías mostrar UI de error o reintentar
+            // Quizá muestres un mensaje y fuerces modo offline también
+            HandleOfflineMode();
             return;
         }
 
         auth = FirebaseServiceLocator.Auth;
         db = FirebaseServiceLocator.Firestore;
 
+        // Ahora que Firebase está listo, lanza tu rutina de chequeo
         StartCoroutine(CheckInternetConnection());
         StartCoroutine(DeleteAccount());
     }
