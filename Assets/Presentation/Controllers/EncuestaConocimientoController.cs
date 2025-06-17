@@ -357,7 +357,7 @@ public class EncuestaConocimientoController : MonoBehaviour
         bool estadoConocimiento = PlayerPrefs.GetInt("EstadoEncuestaConocimiento", 0) == 1;
 
         if (estadoAprendizaje && estadoConocimiento)
-            SceneManager.LoadScene("Categorías");
+            SceneManager.LoadScene("Inicio");
         else
             SceneManager.LoadScene("SeleccionarEncuesta");
     }

@@ -144,14 +144,14 @@ public class CrearComunidad : MonoBehaviour
         else
         {
             MostrarMensaje($"SIN CONEXION A INTERNET, esta operación no esta disponible por el momento, intente nuevamente más tarde", true);
-            Invoke("Volveralranking", 4f);
+            Invoke("VolverAComunidad", 4f);
         }
     }
 
     // función para volver al ranking si no tiene wifi
-    void Volveralranking()
+    void VolverAComunidad()
     {
-        SceneManager.LoadScene("ranking");
+        SceneManager.LoadScene("Comunidad");
     }
     private void MostrarMensaje(string mensaje, bool esError)
     {
