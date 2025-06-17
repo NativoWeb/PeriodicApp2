@@ -418,13 +418,7 @@ public class EncuestaConocimientoController : MonoBehaviour
                 File.WriteAllText(rutaArchivo, json);
                 Debug.Log("✅ Categorías ordenadas guardadas en archivo: " + rutaArchivo);
             }
-            else
-            {
-                // No hay conexión a internet: guardar en PlayerPrefs
-                PlayerPrefs.SetString("categorias_encuesta_firebase_json", json);
-                PlayerPrefs.Save();
-                Debug.Log("✅ Categorías ordenadas guardadas en PlayerPrefs.");
-            }
+           
             // Iniciar la corrutina (asegúrate de que también maneje errores)
             StartCoroutine(CopiarJsonAuxiliaresSiEsNecesario());
         }
