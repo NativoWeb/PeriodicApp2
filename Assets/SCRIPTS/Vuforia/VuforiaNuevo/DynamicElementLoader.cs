@@ -44,7 +44,9 @@ public class DynamicMoleculeLoader : MonoBehaviour
     }
 
     public GameObject imageTargetPrefab;
+    
     private ObserverBehaviour imageTargetBehaviour;
+
     private string elementoSeleccionado;
     private string elementoTarget;
     private string ruta;
@@ -58,7 +60,7 @@ public class DynamicMoleculeLoader : MonoBehaviour
     private FirebaseFirestore db;
     private string userId;
 
-
+    public GameObject particlePrefab;
     void Start()
     {
         auth = FirebaseAuth.DefaultInstance;
@@ -186,7 +188,7 @@ public class DynamicMoleculeLoader : MonoBehaviour
     {
         // 1. Configuración exacta de distribución de electrones por nivel
         int[] levelCapacity = { 2, 8, 18, 32, 32, 18, 8 }; // Capacidad máxima por nivel
-        float[] orbitRadii = { .2f, .25f, .3f, .35f, .4f, .45f, .5f }; // Radios para cada capa
+        float[] orbitRadii = { .35f, .4f, .45f, .5f, .55f, .6f, .65f }; // Radios para cada capa
 
         // 2. Distribución exacta de electrones
         int[] electronDistribution = new int[electronLevels];
@@ -236,8 +238,8 @@ public class DynamicMoleculeLoader : MonoBehaviour
                     electronModels[level % electronModels.Count],
                     orbit.transform,
                     electronPos,
-                    new Color(0.878f, 0.408f, 0.169f),
-                    3f,
+                    new Color(0.4f,.6f,0.4f),
+                    .25f,
                     level
                 ));
 
@@ -262,14 +264,17 @@ public class DynamicMoleculeLoader : MonoBehaviour
             electron.transform.localPosition = position;
             electron.transform.localScale = Vector3.one * size;
 
-            // Configurar renderer
-            Renderer renderer = electron.GetComponent<Renderer>();
-            if (renderer != null)
-            {
-                renderer.material.color = color;
-                renderer.material.SetFloat("_Glossiness", 0.9f);
-                renderer.material.SetFloat("_Metallic", 0.7f);
-            }
+            //ApplyColorToParticle(electron, color);
+
+
+            // Instancia el Particle System como hijo del electrón
+            var electronParticles = Instantiate(particlePrefab, electron.transform);
+            electronParticles.transform.localPosition = Vector3.zero;
+
+            // Obtén el componente ParticleSystem y ajusta el start size
+            var ps = electronParticles.GetComponent<ParticleSystem>();
+            var main = ps.main;
+            main.startSize = 1f;
 
             // Añadir comportamiento orbital sincronizado con la órbita padre
             var orbitBehavior = electron.AddComponent<ElectronOrbit>();
@@ -282,6 +287,7 @@ public class DynamicMoleculeLoader : MonoBehaviour
         GameObject orbit = new GameObject($"Orbit_Level_{level + 1}");
         orbit.transform.SetParent(parent);
         orbit.transform.localPosition = Vector3.zero;
+
 
         // Configurar animación completa en X e Y
         var anim = orbit.AddComponent<OrbitAnimation>();
@@ -296,8 +302,8 @@ public class DynamicMoleculeLoader : MonoBehaviour
         LineRenderer line = orbit.AddComponent<LineRenderer>();
         line.useWorldSpace = false;
         line.loop = true;
-        line.startWidth = 0.008f;
-        line.endWidth = 0.008f;
+        line.startWidth = 0.003f;
+        line.endWidth = 0.003f;
         line.positionCount = 100;
 
         Material mat = new Material(Shader.Find("Standard"));
@@ -344,12 +350,17 @@ public class DynamicMoleculeLoader : MonoBehaviour
         nucleus.transform.SetParent(parent);
         nucleus.transform.localPosition = Vector3.zero;
 
+        // Instancia el Particle System como hijo del protón
+        var protonParticles = Instantiate(particlePrefab, nucleus.transform);
+        protonParticles.transform.localPosition = Vector3.zero;
+
         // Nuclear particle distribution
         for (int i = 0; i < protons; i++)
         {
             Vector3 pos = FibonacciSphere(i, protons, 0.1f);
             GameObject proton = Instantiate(Resources.Load<GameObject>("Moleculas/NuevoElemento/SM_MOLECULA_PROTON"), nucleus.transform);
             proton.transform.localPosition = pos;
+            proton.transform.localScale = Vector3.one * 10;
             ApplyColorToParticle(proton, protonColor);
             yield return new WaitForSeconds(0.02f);
         }
@@ -359,11 +370,11 @@ public class DynamicMoleculeLoader : MonoBehaviour
             Vector3 pos = FibonacciSphere(i, neutrons, 0.1f);
             GameObject neutron = Instantiate(Resources.Load<GameObject>("Moleculas/NuevoElemento/SM_MOLECULA_NEUTRON"), nucleus.transform);
             neutron.transform.localPosition = pos;
+            neutron.transform.localScale = Vector3.one * 10;
             ApplyColorToParticle(neutron, neutronColor);
             yield return new WaitForSeconds(0.02f);
         }
     }
-    //// Método auxiliar para aplicar color a cualquier partícula
     private void ApplyColorToParticle(GameObject particle, Color color)
     {
         Renderer renderer = particle.GetComponent<Renderer>();
@@ -378,13 +389,14 @@ public class DynamicMoleculeLoader : MonoBehaviour
             {
                 renderer.material.SetFloat("_Glossiness", 0.9f); // Equivalente a glossiness
                 renderer.material.SetFloat("_Metallic", 0.7f); // Equivalente a metallic
-                //propBlock.SetFloat("_Metallic", 0.7f);
-                //propBlock.SetFloat("_Glossiness", 0.9f);
+                propBlock.SetFloat("_Metallic", 0.7f);
+                propBlock.SetFloat("_Glossiness", 0.9f);
             }
 
             renderer.SetPropertyBlock(propBlock);
         }
     }
+
     private Vector3 FibonacciSphere(int index, int total, float radius)
     {
         // Distribución uniforme en esfera usando algoritmo de Fibonacci
@@ -439,4 +451,5 @@ public class DynamicMoleculeLoader : MonoBehaviour
             Debug.LogError($"❌ Error al subir XP: {e.Message}");
         }
     }
+
 }

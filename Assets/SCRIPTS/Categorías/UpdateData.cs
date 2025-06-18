@@ -5,6 +5,9 @@ using Firebase.Auth;
 using System;
 using System.IO;
 using System.Collections;
+using System.Threading.Tasks;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 
 public class UpdateData : MonoBehaviour
@@ -43,14 +46,21 @@ public class UpdateData : MonoBehaviour
         {
             Debug.Log("No es posible actualizar datos por el momento, el progreso se cargará cuando tengas conexión a internet... desde UpdateData");
         }
+        LLamarVerificarCategorias();
         GetuserData();
     }
 
+    private async Task LLamarVerificarCategorias()
+    {
+        currentUser = auth.CurrentUser;
+        userId = currentUser.UserId;
+
+        await VerificarOCrearCategoriasEnFirestore(userId);
+    }
 
     // 🔹 Modo online
     private async void HandleOnlineMode() // ----------------------------------------------------------------------------------
     {
-
         string estadoUsuario = PlayerPrefs.GetString("Estadouser", "");
 
         if (estadoUsuario == "local")
@@ -80,7 +90,6 @@ public class UpdateData : MonoBehaviour
             
             ActualizarXPEnFirebase(userId);
         }
-
     }
 
     public string[] jsonFileNames = { "Json_Misiones.json", "Json_logros.json", "Json_Informacion.json", "categorias_encuesta_firebase.json" };
@@ -157,7 +166,6 @@ public class UpdateData : MonoBehaviour
         DocumentReference userRef = db.Collection("users").Document(userId);
         await userRef.UpdateAsync(encuesta, estadoencuesta);
     }
-
 
     private async void ActualizarXPEnFirebase(string userId)
     {
@@ -242,12 +250,93 @@ public class UpdateData : MonoBehaviour
                 }
 
             }
-            catch (Exception e)
+            catch (Exception )
             {
+            }
+        }
+    }
+
+    public async Task VerificarOCrearCategoriasEnFirestore(string userId)
+    {
+        Debug.Log("📁 Iniciando verificación/creación de categorías en Firestore...");
+
+        // — 1) Cargar JSON (PlayerPrefs o archivo) —
+        string json = PlayerPrefs.GetString("categorias_encuesta_firebase_json", null);
+        if (string.IsNullOrEmpty(json))
+        {
+            string path = Path.Combine(Application.persistentDataPath, "categorias_encuesta_firebase.json");
+            if (File.Exists(path))
+            {
+                json = File.ReadAllText(path);
+                Debug.Log($"📂 JSON cargado desde archivo: {path}");
+            }
+            else
+            {
+                Debug.LogError("❌ No hay JSON de categorías en PlayerPrefs ni en archivo.");
+                return;
             }
         }
         else
         {
+            Debug.Log("🗄️ JSON cargado desde PlayerPrefs.");
+        }
+
+        // — 2) Parsear con JObject y extraer el JArray —
+        JToken rootToken;
+        try
+        {
+            rootToken = JToken.Parse(json);
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError("❌ JSON inválido: " + ex.Message);
+            return;
+        }
+
+        var categoriasToken = rootToken["categorias"] as JArray;
+        if (categoriasToken == null)
+        {
+            Debug.LogError("❌ No se encontró la propiedad 'categorias' en el JSON.");
+            return;
+        }
+
+        // — 3) Convertir cada item en Dictionary<string, object> —
+        var listaCategorias = new List<object>();
+        foreach (var item in categoriasToken)
+        {
+            // esto convierte {"Titulo": "...", "Descripcion": "...", "Porcentaje": 10.39}
+            // en un Dictionary<string, object>
+            var dictItem = item.ToObject<Dictionary<string, object>>();
+            listaCategorias.Add(dictItem);
+        }
+
+        // — 4) Preparar el payload para Firestore —
+        var payload = new Dictionary<string, object>
+    {
+        { "categorias", listaCategorias }
+    };
+
+        // — 5) Subir a Firestore si no existe —
+        var docRef = FirebaseFirestore.DefaultInstance
+            .Collection("users").Document(userId)
+            .Collection("datos").Document("categorias");
+
+        try
+        {
+            var snapshot = await docRef.GetSnapshotAsync();
+            if (snapshot.Exists)
+            {
+                Debug.Log("✅ El documento de categorías ya existe en Firestore.");
+            }
+            else
+            {
+                await docRef.SetAsync(payload);
+                Debug.Log("🆕 Categorías subidas a Firestore con la estructura JSON original.");
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogError("❌ Error al subir categorías a Firestore: " + e.Message);
         }
     }
 }

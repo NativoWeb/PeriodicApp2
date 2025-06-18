@@ -2,7 +2,7 @@
 using UnityEngine.UI;
 using TMPro;
 using System.Collections;
-using UnityEngine.SceneManagement;
+
 public class LoginController : MonoBehaviour
 {
     [Header("UI Login")]

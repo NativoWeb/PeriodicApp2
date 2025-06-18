@@ -34,7 +34,7 @@ public class ModeloLoader : MonoBehaviour
         {
             modeloAplicacion = Instantiate(prefab, parent.transform);
             modeloAplicacion.transform.localPosition = Vector3.zero;
-            modeloAplicacion.transform.localScale = Vector3.one * 50f; // ajustar tama�o
+            modeloAplicacion.transform.localScale = Vector3.one * 1f; // ajustar tama�o
             modeloAplicacion.SetActive(false);
         }
         else

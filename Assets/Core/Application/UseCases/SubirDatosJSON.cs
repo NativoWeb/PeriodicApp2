@@ -1,5 +1,6 @@
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 using UnityEngine;
+using System.IO;
 
 public class SubirDatosJSON
 {
@@ -15,11 +16,18 @@ public class SubirDatosJSON
 
     public async Task Ejecutar()
     {
-        string userId = localStorage.Obtener("userId");
-        string misionesJson = localStorage.Obtener("Json_Misiones.json", "{}");
-        string logrosJson = localStorage.Obtener("Json_Logros.json", "{}");
-        string categoriasJson = PlayerPrefs.GetString("categorias_encuesta_firebase_json");
+        string userId = localStorage.Obtener("userId"); // o ajusta si también quieres cargarlo desde archivo
 
-        await firestore.SubirJson(userId, misionesJson, logrosJson, categoriasJson);
+        // Reemplaza estas rutas con la ubicación real de tus archivos JSON
+        string pathMisiones = Path.Combine(Application.persistentDataPath, "Json_Misiones.json");
+        string pathCategorias = Path.Combine(Application.persistentDataPath, "categorias_encuesta_firebase.json");
+        string pathLogros = Path.Combine(Application.persistentDataPath, "Json_Logros.json");
+
+        // Lee el contenido de los archivos
+        string misionesJson = File.Exists(pathMisiones) ? File.ReadAllText(pathMisiones) : "{}";
+        string categoriasJson = File.Exists(pathCategorias) ? File.ReadAllText(pathCategorias) : "{}";
+        string logrosJson = File.Exists(pathLogros) ? File.ReadAllText(pathLogros) : "{}";
+
+        await firestore.SubirJson(userId, misionesJson, categoriasJson, logrosJson);
     }
 }
