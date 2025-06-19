@@ -13,17 +13,20 @@ public class NavegacionComunidades : MonoBehaviour
     // declaracion de intancias de script para llamar metodos
     private ListaComunidadesManager listaComunidadesManager;
     private MisComunidadesManager misComunidadesManager;
-
+    private CrearComunidad crearcomunidad;
     void Start()
     {
+        
         listaComunidadesManager = FindFirstObjectByType<ListaComunidadesManager>();
         misComunidadesManager = FindFirstObjectByType<MisComunidadesManager>();
+        crearcomunidad = FindFirstObjectByType<CrearComunidad>();
     }
     public void MostrarInicioComunidades()
     {
         m_InicioComunidadesUI.SetActive(true);
         // recargamos el metodo de cargar cada vez que se activa el panel
         misComunidadesManager.CargarComunidadesDelUsuario();
+        crearcomunidad.LimpiarFormulario();
         m_CrearComunidadUI.SetActive(false);
     }
 

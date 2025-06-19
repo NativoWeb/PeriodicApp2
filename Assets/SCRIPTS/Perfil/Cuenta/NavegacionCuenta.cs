@@ -9,6 +9,7 @@ public class NavegacionCuenta : MonoBehaviour
     [SerializeField] public GameObject panelTerminos_Condiciones;
     [SerializeField] public GameObject panelPoliticas;
     [SerializeField] public GameObject panelDatosPersonales;
+    [SerializeField] public GameObject panelCerrarSesion;
     
     
 
@@ -40,6 +41,16 @@ public class NavegacionCuenta : MonoBehaviour
         panelTerminos_Condiciones.SetActive(false);
         panelMenuCuenta.SetActive(false);
         
+    }
+    public void ActivarPaneCerrarSesion()
+    {
+        panelCerrarSesion.SetActive(true);
+    }
+    public void DesactivarPaneCerrarSesion()
+    {
+        if (panelCerrarSesion != null )
+        panelCerrarSesion.SetActive(false);
+
     }
 
 

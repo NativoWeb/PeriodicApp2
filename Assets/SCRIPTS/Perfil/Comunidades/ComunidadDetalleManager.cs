@@ -8,6 +8,8 @@ using UnityEngine.EventSystems;
 using System.Collections;
 using System;
 using UnityEngine.SceneManagement;
+using Unity.Barracuda;
+using static UnityEngine.GraphicsBuffer;
 
 public class ComunidadDetalleManager : MonoBehaviour
 {
@@ -19,6 +21,7 @@ public class ComunidadDetalleManager : MonoBehaviour
     public TMP_Text detalleMiembros;
     public GameObject PanelDetalleGrupo;
     public Button btnCerrarPanelDetalle;
+    public Image ImagenComunidad;
 
     [Header("Panel Detalle Miembros")]
     public GameObject panelMiembros;
@@ -178,7 +181,10 @@ public class ComunidadDetalleManager : MonoBehaviour
         string descripcion = dataComunidad.GetValueOrDefault("descripcion", "Sin descripción").ToString();
         string creador = dataComunidad.GetValueOrDefault("creadorUsername", "Sin creador").ToString();
         string creadorId = dataComunidad.GetValueOrDefault("creadorId", "").ToString();
+        string comunidadPath = dataComunidad.GetValueOrDefault("imagenRuta", "").ToString();
 
+        Sprite Comunidadsprite = Resources.Load<Sprite>(comunidadPath)?? Resources.Load<Sprite>("Comunidades/ImagenesComunidades/default");
+        
         // Manejo de la fecha
         string fechaFormateada = "Fecha desconocida";
         if (dataComunidad.TryGetValue("fechaCreacion", out object fechaObj))
@@ -207,6 +213,7 @@ public class ComunidadDetalleManager : MonoBehaviour
         detalleFecha.text = fechaFormateada;
         detalleCreador.text = $"Creada por {creador}";
         detalleMiembros.text = $"{cantidadMiembros} miembros";
+        ImagenComunidad.sprite = Comunidadsprite;
     }
 
     private void ConfigurarBotones(Dictionary<string, object> dataComunidad)
@@ -566,6 +573,12 @@ public class ComunidadDetalleManager : MonoBehaviour
         {
             item.transform.Find("Nombretxt").GetComponent<TMP_Text>().text = dataSolicitud["nombreUsuario"].ToString();
         }
+        if (dataSolicitud.ContainsKey("idUsuario"))
+        {
+            string idusuario = dataSolicitud["idUsuario"].ToString();
+            ConseguirAvatar(idusuario, item);
+        }
+
 
         if (dataSolicitud.ContainsKey("fechaSolicitud"))
         {
@@ -581,6 +594,33 @@ public class ComunidadDetalleManager : MonoBehaviour
         btnRechazar.onClick.AddListener(() => ProcesarSolicitud(item, comunidadId, solicitudId, dataSolicitud["idUsuario"].ToString(), false));
     }
 
+    private void ConseguirAvatar(string idUsuario, GameObject item)
+    {
+        if (idUsuario != null)
+        {
+            db.Collection("users").Document(idUsuario).GetSnapshotAsync().ContinueWithOnMainThread(task =>
+            {
+                if (task.IsFaulted)
+                {
+                    Debug.LogError("Error al cargar datos del solicitante: " + task.Exception);
+                    return;
+                }
+
+                DocumentSnapshot snapshot = task.Result;
+
+                if (snapshot.Exists)
+                {
+                    string rango = snapshot.GetValue<string>("Rango");
+                    string avatarPath =ObtenerAvatarPorRango(rango);
+                    Sprite avatarSprite = Resources.Load<Sprite>(avatarPath)?? Resources.Load<Sprite>("Avatares/Rango1");
+
+                    Image ImageComunidad = FindChildByName(item, "ImageComunidad")?.GetComponent<Image>();
+                    if (ImageComunidad != null)
+                    ImageComunidad.sprite = avatarSprite;
+                }
+            });
+        }
+    }
     void ProcesarSolicitud(GameObject itemSolicitud, string comunidadId, string solicitudId, string usuarioId, bool aceptar)
     {
         Destroy(itemSolicitud);
@@ -730,5 +770,19 @@ public class ComunidadDetalleManager : MonoBehaviour
             ActualizarDatosComunidad();
             
         }
+    }
+    // Método auxiliar para encontrar hijos por nombre
+    GameObject FindChildByName(GameObject parent, string name)
+    {
+        foreach (Transform child in parent.transform)
+        {
+            if (child.name == name)
+                return child.gameObject;
+
+            GameObject found = FindChildByName(child.gameObject, name);
+            if (found != null)
+                return found;
+        }
+        return null;
     }
 }
