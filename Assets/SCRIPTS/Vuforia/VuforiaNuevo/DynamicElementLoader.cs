@@ -9,6 +9,8 @@ using SimpleJSON;  // Necesitas agregar "using SimpleJSON" si usas SimpleJSON pa
 using Firebase.Auth;
 using Firebase.Firestore;
 using UnityEngine.SceneManagement;
+using System;
+using System.Linq;
 
 public class DynamicMoleculeLoader : MonoBehaviour
 {
@@ -48,6 +50,7 @@ public class DynamicMoleculeLoader : MonoBehaviour
     private ObserverBehaviour imageTargetBehaviour;
 
     private string elementoSeleccionado;
+    private string elementoTargetprov;
     private string elementoTarget;
     private string ruta;
     private Dictionary<string, Element> elementDatabase = new Dictionary<string, Element>();
@@ -68,7 +71,9 @@ public class DynamicMoleculeLoader : MonoBehaviour
 
         ControladorBotones = FindAnyObjectByType<ControllerBotones>();
 
-        elementoTarget = PlayerPrefs.GetString("NumeroAtomico", "").Trim() + "_" + PlayerPrefs.GetString("ElementoSeleccionado", "").Trim();
+        elementoTargetprov = PlayerPrefs.GetString("NumeroAtomico", "").Trim() + "_" + PlayerPrefs.GetString("ElementoSeleccionado", "").Trim();
+        elementoTarget = FormatearNombreArchivo(elementoTargetprov);
+
         ruta = PlayerPrefs.GetString("CargarVuforia", "");
         Debug.Log(elementoTarget);
 
@@ -88,7 +93,20 @@ public class DynamicMoleculeLoader : MonoBehaviour
             }
         }
     }
+    string FormatearNombreArchivo(string original)
+    {
+        string sinTildes = original
+            .Replace("á", "a")
+            .Replace("é", "e")
+            .Replace("í", "i")
+            .Replace("ó", "o")
+            .Replace("ú", "u")
+            .Replace("ñ", "n");
 
+        string sinEspacios = sinTildes.Replace(" ", ""); // Quitar espacios internos
+
+        return sinEspacios.Trim(); // Por seguridad
+    }
     private void OnImageDetected(ObserverBehaviour observer, TargetStatus status)
     {
         if (status.Status == Status.TRACKED)
@@ -208,7 +226,7 @@ public class DynamicMoleculeLoader : MonoBehaviour
 
         // Núcleo
         yield return StartCoroutine(CreateNucleus(atomContainer.transform, protons, neutrons,
-            new Color(0.8f, 0.2f, 0.2f), new Color(0.2f, 0.2f, 0.8f)));
+            new Color(0.8f, 0.2f, 0.2f), new Color(0.2f, 0.2f, 0.8f), protons + neutrons));
 
         // Generar todas las capas y electrones
         for (int level = 0; level < electronLevels; level++)
@@ -239,7 +257,7 @@ public class DynamicMoleculeLoader : MonoBehaviour
                     orbit.transform,
                     electronPos,
                     new Color(0.4f,.6f,0.4f),
-                    .25f,
+                    .2f,
                     level
                 ));
 
@@ -302,8 +320,8 @@ public class DynamicMoleculeLoader : MonoBehaviour
         LineRenderer line = orbit.AddComponent<LineRenderer>();
         line.useWorldSpace = false;
         line.loop = true;
-        line.startWidth = 0.003f;
-        line.endWidth = 0.003f;
+        line.startWidth = 0.002f;
+        line.endWidth = 0.002f;
         line.positionCount = 100;
 
         Material mat = new Material(Shader.Find("Standard"));
@@ -343,9 +361,12 @@ public class DynamicMoleculeLoader : MonoBehaviour
             electron.EnableOrbit();
         }
     }
-
-    private IEnumerator CreateNucleus(Transform parent, int protons, int neutrons, Color protonColor, Color neutronColor)
+    private IEnumerator CreateNucleus(Transform parent, int protons, int neutrons, Color protonColor, Color neutronColor, int totalNucleones)
     {
+
+        //double log = Math.Log(totalNucleones); // Esto es 0
+        float escala = Mathf.Clamp(100f / Mathf.Pow(totalNucleones, 1f / 3f), 10f, 100f);
+
         GameObject nucleus = new GameObject("Nucleus");
         nucleus.transform.SetParent(parent);
         nucleus.transform.localPosition = Vector3.zero;
@@ -357,10 +378,12 @@ public class DynamicMoleculeLoader : MonoBehaviour
         // Nuclear particle distribution
         for (int i = 0; i < protons; i++)
         {
-            Vector3 pos = FibonacciSphere(i, protons, 0.1f);
+            Vector3 pos = FibonacciSphere(i, protons, 0.12f);
             GameObject proton = Instantiate(Resources.Load<GameObject>("Moleculas/NuevoElemento/SM_MOLECULA_PROTON"), nucleus.transform);
             proton.transform.localPosition = pos;
-            proton.transform.localScale = Vector3.one * 10;
+
+            proton.transform.localScale = Vector3.one * escala;
+
             ApplyColorToParticle(proton, protonColor);
             yield return new WaitForSeconds(0.02f);
         }
@@ -370,11 +393,12 @@ public class DynamicMoleculeLoader : MonoBehaviour
             Vector3 pos = FibonacciSphere(i, neutrons, 0.1f);
             GameObject neutron = Instantiate(Resources.Load<GameObject>("Moleculas/NuevoElemento/SM_MOLECULA_NEUTRON"), nucleus.transform);
             neutron.transform.localPosition = pos;
-            neutron.transform.localScale = Vector3.one * 10;
+            neutron.transform.localScale = Vector3.one * escala;
             ApplyColorToParticle(neutron, neutronColor);
             yield return new WaitForSeconds(0.02f);
         }
     }
+
     private void ApplyColorToParticle(GameObject particle, Color color)
     {
         Renderer renderer = particle.GetComponent<Renderer>();
