@@ -65,7 +65,7 @@ public class PreguntaController : MonoBehaviour
     private void EliminarPregunta()
     {
         // Notifica al EncuestaManager antes de destruir
-        EncuestaManager manager = FindFirstObjectByType<EncuestaManager>();
+        EncuestasManager manager = FindFirstObjectByType<EncuestasManager>();
         if (manager != null) manager.PreguntaEliminada(this);
 
         Destroy(gameObject);
@@ -166,7 +166,6 @@ public class PreguntaController : MonoBehaviour
         ValidarBotonAgregarOpcion();
     }
     // Corrutina para asegurar que la nueva opción sea visible
-
 
     // ✅ Validar si la última opción tiene texto para habilitar el botón
     private void ValidarBotonAgregarOpcion()
