@@ -233,10 +233,16 @@ public class MisComunidadesManager: MonoBehaviour
     {
         GameObject tarjeta = Instantiate(tarjetaPrefab, contenedor);
         TMP_Text[] textos = tarjeta.GetComponentsInChildren<TMP_Text>();
-     ;
+        Image imageComunidad = FindChildByName(tarjeta, "ImageComunidad")?.GetComponent<Image>();
+        
 
         string nombre = dataComunidad.GetValueOrDefault("nombre", "Sin nombre").ToString();
-     
+        string ComunidadPath = dataComunidad.GetValueOrDefault("imagenRuta", "").ToString(); // conseguimos la ruta de la imagen
+
+       Sprite imageSprite = Resources.Load<Sprite>(ComunidadPath) ?? Resources.Load<Sprite>("Comunidades/ImagenesComunidades/default");
+
+       imageComunidad.sprite = imageSprite; // ponemos la imagem
+
 
         int cantidadMiembros = 0;
         if (dataComunidad.TryGetValue("miembros", out object miembrosObj) && miembrosObj is List<object> miembros)

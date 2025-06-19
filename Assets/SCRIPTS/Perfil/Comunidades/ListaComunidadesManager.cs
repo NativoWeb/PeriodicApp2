@@ -266,11 +266,17 @@ public class ListaComunidadesManager : MonoBehaviour
         TMP_Text[] textos = tarjeta.GetComponentsInChildren<TMP_Text>();
         GameObject iconoPrivado = FindChildByName(tarjeta, "IconoPrivado");
         GameObject iconoPublico = FindChildByName(tarjeta, "IconoPublico");
+        Image ImageComunidad = FindChildByName(tarjeta, "ImageComunidad")?.GetComponent<Image>();
 
         string nombre = dataComunidad.GetValueOrDefault("nombre", "Sin nombre").ToString();
         string descripcion = dataComunidad.GetValueOrDefault("descripcion", "Sin descripción").ToString();
         string tipo = dataComunidad.GetValueOrDefault("tipo", "publica").ToString().ToLower();
         string idComunidad = snapshot.Id;
+        string ComunidadPath = dataComunidad.GetValueOrDefault("imagenRuta", "").ToString();// consigo la ruta de la imagen 
+
+        Sprite ComunidadSprite = Resources.Load<Sprite>(ComunidadPath) ?? Resources.Load<Sprite>("Comunidades/ImagenComunidades/default");// cargo la imagen desde resources
+
+        ImageComunidad.sprite = ComunidadSprite; // la pongo en la IU
 
         string fechaFormateada = "Fecha desconocida";
         if (dataComunidad.TryGetValue("fechaCreacion", out object fechaObj))
@@ -305,9 +311,7 @@ public class ListaComunidadesManager : MonoBehaviour
                 case "TextoMiembros":
                     texto.text = string.Format(formatoMiembros, cantidadMiembros);
                     break;
-                case "TextoTipo":
-                    texto.text = tipo == "privada" ? "Privada" : "Pública";
-                    break;
+                
             }
         }
 
@@ -331,14 +335,12 @@ public class ListaComunidadesManager : MonoBehaviour
             {
                 // Configurar botón como "Miembro"
                 botonSolicitar.interactable = false;
-                botonSolicitar.GetComponent<Image>().color = new Color32(0, 200, 0, 255);
                 if (textoBoton != null) textoBoton.text = "Miembro";
             }
             else if (tipo == "publica")
             {
                 // Lógica para comunidades públicas
                 botonSolicitar.interactable = true;
-                botonSolicitar.GetComponent<Image>().color = new Color32(0, 200, 0, 150);
                 if (textoBoton != null) textoBoton.text = "Unirme";
 
                 botonSolicitar.onClick.AddListener(() => {
@@ -361,21 +363,19 @@ public class ListaComunidadesManager : MonoBehaviour
                         {
                             // Ya hay una solicitud enviada
                             botonSolicitar.interactable = false;
-                            botonSolicitar.GetComponent<Image>().color = new Color32(55, 189, 247, 255); // Azul claro
                             if (textoBoton != null) textoBoton.text = "Solicitud enviada";
                         }
                         else
                         {
                             // No hay solicitud, permitir enviar
                             botonSolicitar.interactable = true;
-                            botonSolicitar.GetComponent<Image>().color = new Color32(55, 189, 247, 255); // Azul claro
                             if (textoBoton != null) textoBoton.text = "Solicitar unirse";
 
                             botonSolicitar.onClick.AddListener(() =>
                             {
                                 CrearSolicitudUnirse(nombre, idComunidad);
                                 botonSolicitar.interactable = false;
-                                if (textoBoton != null) textoBoton.text = "Solicitud enviada";
+                                if (textoBoton != null) textoBoton.text = "Esperando respuesta";
                             });
                         }
                     });
@@ -395,7 +395,6 @@ public class ListaComunidadesManager : MonoBehaviour
                 {
                     // Actualización UI inmediata
                     boton.interactable = false;
-                    boton.GetComponent<Image>().color = new Color32(0, 200, 0, 255); // Verde sólido
                     if (textoBoton != null) textoBoton.text = "Miembro";
 
                     MostrarMensajeEstado("¡Te has unido a la comunidad!", true);
