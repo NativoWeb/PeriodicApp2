@@ -71,10 +71,15 @@ public class GestorPreguntas : MonoBehaviour
     void CargarPreguntasDesdeJSON(string categoriaSeleccionada, string elementoSeleccionado)
     {
 
-        TextAsset jsonFile = Resources.Load<TextAsset>("metales_alcalinos"); // Cargar JSON desde Resources
+        string nombreArchivo = categoriaSeleccionada.ToLower().Replace(' ', '_');
+
+        string rutaCompleta = "Preguntas_misiones_json/" + nombreArchivo;
+
+        TextAsset jsonFile = Resources.Load<TextAsset>(rutaCompleta); // Cargar JSON desde Resources
         if (jsonFile == null)
         {
-            Debug.LogError("❌ No se encontró el archivo JSON en Resources.");
+            Debug.LogError($"No se encontró el archivo JSON en la ruta: '{rutaCompleta}'. " +
+                       $"Verifica que el nombre del archivo y la categoría seleccionada ('{categoriaSeleccionada}') coincidan.");
             return;
         }
 
@@ -86,7 +91,7 @@ public class GestorPreguntas : MonoBehaviour
             return;
         }
 
-        Debug.Log("✅ JSON cargado correctamente.");
+        Debug.Log("JSON '{nombreArchivo}.json' cargado correctamente.");
 
         // 💡 Verifica si preguntasFiltradas ha sido inicializada
         if (preguntasFiltradas == null)
@@ -97,24 +102,15 @@ public class GestorPreguntas : MonoBehaviour
 
         bool categoriaEncontrada = json["grupo"].Value == categoriaSeleccionada;
         bool elementoEncontrado = false;
-
-        if (!categoriaEncontrada)
-        {
-            Debug.LogError("⚠ No se encontró la categoría seleccionada en el JSON.");
-            return;
-        }
-
         foreach (JSONNode elementoJson in json["elementos"].AsArray)
         {
             if (elementoJson.HasKey("elemento") && elementoJson["elemento"].Value == elementoSeleccionado)
             {
                 elementoEncontrado = true;
-
                 if (elementoJson.HasKey("preguntas") && elementoJson["preguntas"].IsArray)
                 {
                     foreach (JSONNode preguntaJson in elementoJson["preguntas"].AsArray)
                     {
-                        // 💡 Verificación adicional para evitar null
                         if (!preguntaJson.HasKey("opcionesRespuesta") || !preguntaJson["opcionesRespuesta"].IsArray)
                         {
                             Debug.LogError("⚠ La pregunta no tiene opciones de respuesta.");
@@ -133,7 +129,6 @@ public class GestorPreguntas : MonoBehaviour
                             opcionesRespuesta = opciones,
                             indiceRespuestaCorrecta = preguntaJson["indiceRespuestaCorrecta"].AsInt
                         };
-
                         preguntasFiltradas.Add(pregunta);
                     }
                 }
@@ -141,10 +136,10 @@ public class GestorPreguntas : MonoBehaviour
                 {
                     Debug.LogError("⚠ El elemento no tiene preguntas registradas.");
                 }
-
-                break; // Ya encontramos el elemento, salimos del loop
+                break;
             }
         }
+
 
         if (!elementoEncontrado)
         {
