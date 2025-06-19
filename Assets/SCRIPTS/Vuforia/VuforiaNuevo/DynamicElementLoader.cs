@@ -50,6 +50,7 @@ public class DynamicMoleculeLoader : MonoBehaviour
     private ObserverBehaviour imageTargetBehaviour;
 
     private string elementoSeleccionado;
+    private string elementoTargetprov;
     private string elementoTarget;
     private string ruta;
     private Dictionary<string, Element> elementDatabase = new Dictionary<string, Element>();
@@ -70,7 +71,9 @@ public class DynamicMoleculeLoader : MonoBehaviour
 
         ControladorBotones = FindAnyObjectByType<ControllerBotones>();
 
-        elementoTarget = PlayerPrefs.GetString("NumeroAtomico", "").Trim() + "_" + PlayerPrefs.GetString("ElementoSeleccionado", "").Trim();
+        elementoTargetprov = PlayerPrefs.GetString("NumeroAtomico", "").Trim() + "_" + PlayerPrefs.GetString("ElementoSeleccionado", "").Trim();
+        elementoTarget = FormatearNombreArchivo(elementoTargetprov);
+
         ruta = PlayerPrefs.GetString("CargarVuforia", "");
         Debug.Log(elementoTarget);
 
@@ -90,7 +93,20 @@ public class DynamicMoleculeLoader : MonoBehaviour
             }
         }
     }
+    string FormatearNombreArchivo(string original)
+    {
+        string sinTildes = original
+            .Replace("á", "a")
+            .Replace("é", "e")
+            .Replace("í", "i")
+            .Replace("ó", "o")
+            .Replace("ú", "u")
+            .Replace("ñ", "n");
 
+        string sinEspacios = sinTildes.Replace(" ", ""); // Quitar espacios internos
+
+        return sinEspacios.Trim(); // Por seguridad
+    }
     private void OnImageDetected(ObserverBehaviour observer, TargetStatus status)
     {
         if (status.Status == Status.TRACKED)
