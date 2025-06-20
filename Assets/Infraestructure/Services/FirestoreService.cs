@@ -32,7 +32,7 @@ public class FirestoreService :IServicioFirestore
         Debug.Log("Datos del usuario guardados correctamente");
     }
 
-    public async Task SubirJson(string userId, string misionesJson, string categoriasJson)
+    public async Task SubirJson(string userId, string misionesJson, string logrosJson, string categoriasJson)
     {
         if (string.IsNullOrEmpty(userId))
         {
@@ -52,7 +52,18 @@ public class FirestoreService :IServicioFirestore
             tareas.Add(firestore.Collection("users").Document(userId).Collection("datos").Document("misiones").SetAsync(data, SetOptions.MergeAll));
         }
 
-        if(!string.IsNullOrEmpty(categoriasJson) && categoriasJson != "{}")
+        if (!string.IsNullOrEmpty(logrosJson) && logrosJson != "{}")
+        {
+            var data = new Dictionary<string, object>
+            {
+                { "logros", logrosJson},
+                { "timestamp", FieldValue.ServerTimestamp}
+            };
+
+            tareas.Add(firestore.Collection("users").Document(userId).Collection("datos").Document("logros").SetAsync(data, SetOptions.MergeAll));
+        }
+
+        if (!string.IsNullOrEmpty(categoriasJson) && categoriasJson != "{}")
         {
             var data = new Dictionary<string, object>
             {
@@ -66,7 +77,7 @@ public class FirestoreService :IServicioFirestore
         if (tareas.Count > 0)
         {
             await Task.WhenAll(tareas);
-            Debug.Log("Misiones y categorias subidas correctamente");
+            Debug.Log("Misiones logros y categorias subidas correctamente");
         }
         else
         {

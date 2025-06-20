@@ -5,67 +5,83 @@ using System.Collections.Generic;
 
 public class LogroElemento : MonoBehaviour
 {
-    public TMP_Text SimboloElemento; // TMP para el símbolo del elemento
-    public TMP_Text logroElemento;   // TMP para el logro del elemento
-    public GameObject Fondo;         // Objeto de fondo (debe tener componente Image)
-    public GameObject PanelElemento; // Panel del logro (también debe tener componente Image)
+    public TMP_Text SimboloElemento;
+    public TMP_Text logroElemento;
+    public Image ImgCat;
+    public Image Fondo;
+    public GameObject PanelElemento;
 
-    // Diccionario de colores por categoría
-    private Dictionary<string, string> coloresPorCategoria = new Dictionary<string, string>
+    private static readonly Dictionary<string, Color32> ColoresPorCategoria = new Dictionary<string, Color32>
     {
-        { "Metales Alcalinos", "#41B9DE" },
-        { "Metales Alcalinotérreos", "#F0812F" },
-        { "Metales de Transición", "#ED6D9D" },
-        { "Metales Postransicionales", "#7265AA" },
-        { "Metaloides", "#CDCBCB" },
-        { "No Metales Reactivos", "#79BB51" },
-        { "Gases Nobles", "#00A293" },
-        { "Lantánidos", "#C0203C" },
-        { "Actínoides", "#33378E" },
-        { "Propiedades Desconocidas", "#C28958" }
+        { "Metales Alcalinos",        new Color32(0x41, 0xB9, 0xDE, 0xFF) },
+        { "Metales Alcalinotérreos",  new Color32(0xF0, 0x81, 0x2F, 0xFF) },
+        { "Metales de Transición",     new Color32(0xED, 0x6D, 0x9D, 0xFF) },
+        { "Metales postransicionales", new Color32(0x72, 0x65, 0xAA, 0xFF) },
+        { "Metaloides",                new Color32(0xCD, 0xCB, 0xCC, 0xFF) },
+        { "No Metales",                new Color32(0x79, 0xBB, 0x51, 0xFF) },
+        { "Gases Nobles",              new Color32(0x00, 0xA2, 0x93, 0xFF) },
+        { "Lantánidos",                new Color32(0xC0, 0x20, 0x3C, 0xFF) },
+        { "Actinoides",                new Color32(0x33, 0x37, 0x8E, 0xFF) },
+        { "Propiedades desconocidas",  new Color32(0xC2, 0x89, 0x58, 0xFF) },
     };
 
-    // Función para actualizar el estado del logro
-    public void ActualizarLogro(string simbolo, string logro, bool completado, string categoria)
+    public void ActualizarLogro(string simbolo, string logro, string categoria, bool desbloqueado)
     {
         SimboloElemento.text = simbolo;
         logroElemento.text = logro;
 
-        // Cambiar color del fondo según la categoría
-        Image fondoImage = Fondo.GetComponent<Image>();
-        if (fondoImage != null)
+        Color grisClaro;
+        ColorUtility.TryParseHtmlString("#DBDBDB", out grisClaro);
+
+        if (desbloqueado)
         {
-            if (completado && coloresPorCategoria.ContainsKey(categoria))
+            // Fondo según categoría
+            if (ColoresPorCategoria.TryGetValue(categoria, out Color32 colorCategoria))
             {
-                Color colorCategoria;
-                ColorUtility.TryParseHtmlString(coloresPorCategoria[categoria], out colorCategoria);
-                fondoImage.color = colorCategoria;
+                Fondo.color = colorCategoria;
             }
             else
             {
-                Color grisClaro;
-                ColorUtility.TryParseHtmlString("#DBDBDB", out grisClaro);
-                fondoImage.color = grisClaro;
+                Fondo.color = grisClaro;
             }
+
+            // Imagen correspondiente
+            Sprite sprite = Resources.Load<Sprite>("ImagenesLogroElementos/" + categoria);
+            if (sprite != null)
+                ImgCat.sprite = sprite;
+            else
+                Debug.LogWarning("No se encontró la imagen para la categoría: " + categoria);
         }
         else
         {
-            Debug.LogWarning("El GameObject Fondo no tiene un componente Image.");
+            // Texto gris claro
+            SimboloElemento.color = grisClaro;
+            logroElemento.color = grisClaro;
+
+            // Fondo gris claro
+            Fondo.color = grisClaro;
+
+            // Imagen correspondiente
+            Sprite sprite = Resources.Load<Sprite>("ImagenesLogroElementos/" + categoria);
+            if (sprite != null)
+                ImgCat.sprite = sprite;
+            else
+                Debug.LogWarning("No se encontró la imagen para la categoría (bloqueado): " + categoria);
         }
 
-        // Cambiar color del panel (efecto bloqueado si no está completado)
+        // Panel: blanco si desbloqueado, gris claro con alpha 150 si bloqueado
         Image panelImage = PanelElemento.GetComponent<Image>();
         if (panelImage != null)
         {
-            if (completado)
+            if (desbloqueado)
             {
                 panelImage.color = Color.white;
             }
             else
             {
-                Color grisOscuro;
-                ColorUtility.TryParseHtmlString("#E7E7E7", out grisOscuro);
-                panelImage.color = grisOscuro;
+                Color colorConTransparencia = grisClaro;
+                colorConTransparencia.a = 150f / 255f; // Alpha de 150
+                panelImage.color = colorConTransparencia;
             }
         }
         else

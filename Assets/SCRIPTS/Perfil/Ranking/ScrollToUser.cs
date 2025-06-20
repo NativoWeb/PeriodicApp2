@@ -69,7 +69,6 @@ public class ScrollToUser : MonoBehaviour, IRankingObserver
         if (auth.CurrentUser != null)
         {
             currentUserId = auth.CurrentUser.UserId;
-            
             GetUserXP();
         }
     }

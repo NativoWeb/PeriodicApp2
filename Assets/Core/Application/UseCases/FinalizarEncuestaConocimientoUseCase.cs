@@ -39,8 +39,9 @@ public class FinalizarEncuestaConocimientoUseCase
             estadoConocimiento = userData.ContainsKey("EstadoEncuestaConocimiento") && (bool)userData["EstadoEncuestaConocimiento"];
         }
 
+
         if (estadoAprendizaje && estadoConocimiento)
-            SceneManager.LoadScene("Categorías");
+            SceneManager.LoadScene("Inicio");
         else
             SceneManager.LoadScene("SeleccionarEncuesta");
     }

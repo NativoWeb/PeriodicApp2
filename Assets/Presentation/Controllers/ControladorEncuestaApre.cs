@@ -107,13 +107,12 @@ public class ControladorEncuestaApre : MonoBehaviour
             return;
         }
 
-        await usuarioRepositorio.ActualizarEstadoEncuestaAprendizajeAsync(user.UserId, true);
-
         bool aprendizaje = PlayerPrefs.GetInt("EstadoEncuestaAprendizaje", 0) == 1;
         bool conocimiento = PlayerPrefs.GetInt("EstadoEncuestaConocimiento", 0) == 1;
 
         if (Application.internetReachability != NetworkReachability.NotReachable)
         {
+            await usuarioRepositorio.ActualizarEstadoEncuestaAprendizajeAsync(user.UserId, true);
             var (estadoAprendizaje, estadoConocimiento) = await usuarioRepositorio.ObtenerEstadosEncuestasAsync(user.UserId);
             CargarEscenaSegunEstados(estadoAprendizaje, estadoConocimiento);
         }

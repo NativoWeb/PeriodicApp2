@@ -85,6 +85,11 @@ public class CrearComunidad : MonoBehaviour
             mensajeError = "El nombre es demasiado largo (máx. 50 caracteres)";
             return false;
         }
+        if( descripcionInput.text.Length > 400)
+        {
+            mensajeError = "La descripción es demasiada larga (máx. 400 caracteres)";
+            return false;
+        }
 
         return true;
     }

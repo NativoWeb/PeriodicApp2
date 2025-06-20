@@ -36,6 +36,9 @@ public class MisComunidadesManager: MonoBehaviour
     public GameObject panelDetalleGrupo;
     public ComunidadDetalleManager detalleManager;
 
+    [Header("Referencia a panel SIN comunidades")]
+    [SerializeField] private GameObject panelSinComunidades;
+
     private string usuarioActualId;
     private FirebaseFirestore db;
     private FirebaseAuth auth;
@@ -53,6 +56,7 @@ public class MisComunidadesManager: MonoBehaviour
             usuarioActualId = auth.CurrentUser.UserId;
             MostrarMensajeEstado(mensajeCargando, true);
             CargarComunidadesDelUsuario();
+           
 
             if (botonBuscar != null)
             {
@@ -146,10 +150,23 @@ public class MisComunidadesManager: MonoBehaviour
                 }
 
                 todasComunidades.Add(data);
+
+               
             }
 
-            MostrarTodasComunidades();
+            if (todasComunidades.Count == 0)
+            {
+                panelSinComunidades.SetActive(true);
+            }
+            else
+            {
+                panelSinComunidades.SetActive(false);
+            }
+
+                MostrarTodasComunidades();
             MostrarMensajeEstado(string.Format(mensajeListo, todasComunidades.Count), true);
+
+            
         });
     }
 
@@ -216,26 +233,10 @@ public class MisComunidadesManager: MonoBehaviour
     {
         GameObject tarjeta = Instantiate(tarjetaPrefab, contenedor);
         TMP_Text[] textos = tarjeta.GetComponentsInChildren<TMP_Text>();
-        GameObject iconoPrivado = FindChildByName(tarjeta, "IconoPrivado");
-        GameObject iconoPublico = FindChildByName(tarjeta, "IconoPublico");
+     ;
 
         string nombre = dataComunidad.GetValueOrDefault("nombre", "Sin nombre").ToString();
-        string descripcion = dataComunidad.GetValueOrDefault("descripcion", "Sin descripción").ToString();
-        string tipo = dataComunidad.GetValueOrDefault("tipo", "publica").ToString().ToLower();
-
-        string fechaFormateada = "Fecha desconocida";
-        if (dataComunidad.TryGetValue("fechaCreacion", out object fechaObj))
-        {
-            if (fechaObj is Timestamp timestamp)
-            {
-                DateTime fecha = timestamp.ToDateTime();
-                fechaFormateada = fecha.ToString("dd MMMM yyyy", new System.Globalization.CultureInfo("es-ES"));
-            }
-            else if (fechaObj is string fechaString)
-            {
-                fechaFormateada = fechaString;
-            }
-        }
+     
 
         int cantidadMiembros = 0;
         if (dataComunidad.TryGetValue("miembros", out object miembrosObj) && miembrosObj is List<object> miembros)
@@ -250,29 +251,12 @@ public class MisComunidadesManager: MonoBehaviour
                 case "TextoNombre":
                     texto.text = nombre;
                     break;
-                case "TextoDescripcion":
-                    texto.text = descripcion;
-                    break;
-                case "TextoFecha":
-                    texto.text = fechaFormateada;
-                    break;
                 case "TextoMiembros":
                     texto.text = string.Format(formatoMiembros, cantidadMiembros);
                     break;
-                case "TextoTipo":
-                    texto.text = tipo == "privada" ? "Privada" : "Pública";
-                    break;
             }
-
-            
         }
-
-        if (iconoPrivado != null && iconoPublico != null)
-        {
-            iconoPrivado.SetActive(tipo == "privada");
-            iconoPublico.SetActive(tipo != "privada");
-        }
-
+        
         Button botonDetalle = FindChildByName(tarjeta, "BotonVerDetalle")?.GetComponent<Button>();
         if (botonDetalle != null)
         {

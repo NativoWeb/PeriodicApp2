@@ -116,9 +116,10 @@ public class GuardarMisionCompletada : MonoBehaviour
 
     private async void ActualizarMisionEnJSON(string elemento, int idMision)
     {
-        // Primero intentar cargar desde archivo
-        string jsonString = "";
-        string filePath = Path.Combine(Application.persistentDataPath, "Json_misiones.json");
+        // 1) Intentar cargar desde archivo
+        string jsonString;
+        string fileName = "Json_Misiones.json";
+        string filePath = Path.Combine(Application.persistentDataPath, fileName);
 
         if (File.Exists(filePath))
         {
@@ -135,10 +136,21 @@ public class GuardarMisionCompletada : MonoBehaviour
         }
         else
         {
-            jsonString = PlayerPrefs.GetString("misionesCategoriasJSON", "");
-            Debug.Log("📁 Usando JSON de PlayerPrefs (no se encontró archivo)");
+            // 2) Fallback: cargar desde Resources/Plantillas_Json
+            var textAsset = Resources.Load<TextAsset>("Plantillas_Json/Json_Misiones");
+            if (textAsset != null)
+            {
+                jsonString = textAsset.text;
+                Debug.Log("📁 JSON cargado desde Resources/Plantillas_Json");
+            }
+            else
+            {
+                Debug.LogError($"❌ No se encontró '{fileName}' ni en persistentDataPath ni en Resources/Plantillas_Json");
+                return;
+            }
         }
 
+        // 3) Validaciones iniciales
         if (string.IsNullOrEmpty(jsonString))
         {
             Debug.LogError("❌ No se encontró el JSON ni en archivo ni en PlayerPrefs.");
@@ -169,101 +181,115 @@ public class GuardarMisionCompletada : MonoBehaviour
         bool esUltimaMisionPendiente = true;
         int xpGanado = PlayerPrefs.GetInt("xp_mision", 0);
 
-        // Verificar si hay misiones pendientes en el mismo elemento
-        foreach (JSONNode mision in misiones) // Especificar el tipo JSONNode
+        // 4) Detectar si quedan misiones pendientes distintas a esta
+        foreach (JSONNode m in misiones)
         {
-            if (mision["id"].AsInt != idMision && !mision["completada"].AsBool)
+            if (m["id"].AsInt != idMision && !m["completada"].AsBool)
             {
                 esUltimaMisionPendiente = false;
                 break;
             }
         }
 
-        // Corregido: Acceder correctamente a los valores del KeyValuePair
-        foreach (var categoria in categorias)
+        // 5) Buscar y marcar la misión
+        for (int i = 0; i < misiones.Count; i++)
         {
-            var elementos = categoria.Value["Elementos"]; // Accedemos al Value primero
-
-            if (elementos.HasKey(elemento))
+            var mision = misiones[i];
+            if (mision["id"].AsInt == idMision)
             {
-                for (int i = 0; i < misiones.Count; i++)
+                if (mision["completada"].AsBool)
                 {
-                    var mision = misiones[i];
-
-                    if (mision["id"].AsInt == idMision)
-                    {
-                        if (mision["completada"].AsBool)
-                        {
-                            Debug.Log("⚠️ Misión ya estaba completada. Solo se suma 3 XP.");
-                            if (Application.internetReachability != NetworkReachability.NotReachable)
-                            {
-                                await SubirMisionesJSON();
-                                SumarXPFirebase(3);
-                                TxtXp.text = 3.ToString();
-                            }
-                            else
-                            {
-                                SumarXPTemporario(3);
-                                TxtXp.text = 3.ToString();
-                            }
-                            return;
-                        }
-
-                        mision["completada"] = true;
-                        cambioRealizado = true;
-
-                        try
-                        {
-                            File.WriteAllText(filePath, json.ToString());
-                            PlayerPrefs.SetString("misionesCategoriasJSON", json.ToString());
-                            PlayerPrefs.Save();
-                            Debug.Log("💾 Cambios guardados en archivo y PlayerPrefs");
-                        }
-                        catch (Exception e)
-                        {
-                            Debug.LogError($"❌ Error al guardar el archivo: {e.Message}");
-                            PlayerPrefs.SetString("misionesCategoriasJSON", json.ToString());
-                            PlayerPrefs.Save();
-                        }
-
-                        Debug.Log("✅ Misión completada por primera vez. Sumando XP.");
-                        int xp = PlayerPrefs.GetInt("xp_mision", 0);
-                        TxtXp.text = xp.ToString();
-
-                        if (Application.internetReachability != NetworkReachability.NotReachable)
-                        {
-                            await SubirMisionesJSON();
-                            SumarXPFirebase(xp);
-                        }
-                        else
-                        {
-                            SumarXPTemporario(xp);
-                        }
-
-                        if (esUltimaMisionPendiente)
-                        {
-                            Debug.Log("🎉 ¡Última misión del elemento completada!");
-                            int xpLogroElemento = 15;
-                            if (Application.internetReachability != NetworkReachability.NotReachable)
-                            {
-                                SumarXPFirebase(xpLogroElemento);
-                            }
-                            else
-                            {
-                                SumarXPTemporario(xpLogroElemento);
-                            }
-                        }
-                        return;
-                    }
+                    Debug.Log("⚠️ Misión ya estaba completada. Solo se suma 3 XP.");
+                    await ProcesarXP(3);
+                    return;
                 }
-                Debug.LogWarning("⚠️ Misión con ese ID no encontrada en el elemento.");
+
+                // Marcar completada
+                mision["completada"] = true;
+                cambioRealizado = true;
+
+                // Guardar cambios físico y en PlayerPrefs
+                GuardarJsonActualizado(filePath, json.ToString());
+
+                Debug.Log("✅ Misión completada por primera vez. Sumando XP.");
+                int xp = PlayerPrefs.GetInt("xp_mision", 0);
+                TxtXp.text = xp.ToString();
+                await ProcesarXP(xp);
+
+                // Si es la última pendiente, gestionar logro de elemento
+                if (esUltimaMisionPendiente)
+                {
+                    Debug.Log("🎉 ¡Última misión del elemento completada!");
+                    await ProcesarXP(15);
+
+                    MarcarLogroElementoComoDesbloqueado(json, categoriaSeleccionada, elemento);
+                    GuardarJsonActualizado(filePath, json.ToString());
+                    Debug.Log("💾 JSON actualizado con logro desbloqueado.");
+                }
+                return;
             }
         }
 
         if (!cambioRealizado)
-        {
             Debug.LogError($"❌ No se encontró la misión con ID {idMision} dentro de '{elemento}'.");
+    }
+
+    private void GuardarJsonActualizado(string filePath, string json)
+    {
+        try
+        {
+            File.WriteAllText(filePath, json);
+            Debug.Log("💾 Cambios guardados en archivo");
         }
+        catch (Exception e)
+        {
+            Debug.LogError($"❌ Error al guardar el archivo: {e.Message}");
+        }
+        PlayerPrefs.SetString("misionesCategoriasJSON", json);
+        PlayerPrefs.Save();
+    }
+
+    private async Task ProcesarXP(int xp)
+    {
+        if (Application.internetReachability != NetworkReachability.NotReachable)
+        {
+            await SubirMisionesJSON();
+            SumarXPFirebase(xp);
+        }
+        else
+        {
+            SumarXPTemporario(xp);
+        }
+    }
+
+    private void MarcarLogroElementoComoDesbloqueado(JSONNode json, string categoria, string elemento)
+    {
+        if (!json.HasKey("Logros") || !json["Logros"].HasKey("Categorias"))
+        {
+            Debug.LogWarning("⚠️ Estructura de logros no encontrada en el JSON.");
+            return;
+        }
+
+        var categoriasLogros = json["Logros"]["Categorias"];
+
+        if (!categoriasLogros.HasKey(categoria) ||
+            !categoriasLogros[categoria].HasKey("logros_elementos") ||
+            !categoriasLogros[categoria]["logros_elementos"].HasKey(elemento))
+        {
+            Debug.LogWarning($"⚠️ No se encontró el logro del elemento '{elemento}' en la categoría '{categoria}'.");
+            return;
+        }
+
+        var logroElemento = categoriasLogros[categoria]["logros_elementos"][elemento];
+
+        if (logroElemento["desbloqueado"].AsBool)
+        {
+            Debug.Log("🔓 Logro del elemento ya estaba desbloqueado.");
+            return;
+        }
+
+        logroElemento["desbloqueado"] = true;
+        Debug.Log($"🏅 Logro del elemento '{elemento}' desbloqueado.");
     }
 
     public void SumarXPTemporario(int xp)

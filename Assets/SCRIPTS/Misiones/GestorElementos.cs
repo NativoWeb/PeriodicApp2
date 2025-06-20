@@ -6,16 +6,21 @@ using UnityEngine.SceneManagement;
 using UnityEngine;
 using System.IO;
 using System.Collections;
-using UnityEngine.Networking;
 
 public class GestorElementos : MonoBehaviour
 {
     [Header("Prefab de Elementos")]
     public GameObject prefabElemento;
     public Transform contenedorElementos;
-    public Button botonMisionFinal; // Asigna el botón desde el Inspector
     [SerializeField] private Slider sliderProgreso;
+    public Image PanelCat;
 
+    [Header("Mision Final")]
+    public Button botonMisionFinal; // Asigna el botón desde el Inspector
+    public GameObject PanelMisionCompletada;
+    public TextMeshProUGUI Descripcion; 
+    public GameObject PanelMisionIncompleta;
+    public TextMeshProUGUI Description;
 
     [Header("Descripción de la Categoría")]
     public TextMeshProUGUI txtDescripcionCategoria;
@@ -50,18 +55,37 @@ public class GestorElementos : MonoBehaviour
     List<Categoria> ObtenerCategoriasPorDefecto()
     {
         return new List<Categoria>
-    {
-        new Categoria("Metales Alcalinos",       "Extremadamente reactivos al agua y al aire: desde el sodio en jabones hasta el potasio en fertilizantes."),
-        new Categoria("Metales Alcalinotérreos", "Menos reactivos, clave en aleaciones aeronáuticas y huesos: magnesio y calcio."),
-        new Categoria("Metales de Transición",   "Múltiples estados de oxidación y colores vivos: hierro en construcción, cobre en circuitos."),
-        new Categoria("Metales Postransicionales","Suaves y maleables: aluminio en aviones, estaño en soldaduras, plomo en baterías."),
-        new Categoria("Metaloides",               "Intermedios metal/no metal: silicio en semiconductores, boro en vidrios resistentes."),
-        new Categoria("No Metales Reactivos",     "Oxígeno en respiración, nitrógeno en fertilizantes, fósforo en detergentes."),
-        new Categoria("Gases Nobles",             "Inertes pero útiles: helio en RMN, argón en soldadura, neón en iluminación."),
-        new Categoria("Lantánidos",               "Tierras raras en tecnología: neodimio en imanes, cerio en catalizadores."),
-        new Categoria("Actínoides",               "Radioactivos potentes: uranio en centrales, americio en detectores de humo."),
-        new Categoria("Propiedades Desconocidas", "Elementos inestables o poco estudiados: la frontera de la química.")
-    };
+{
+    new Categoria("Metales Alcalinos",
+        "¡Explora a los más reactivos de la tabla! Los metales alcalinos son tan activos que necesitan estar bajo aceite para no reaccionar con el aire. Livianos, brillantes y explosivos con el agua: ¡una aventura química garantizada!"),
+
+    new Categoria("Metales Alcalinotérreos",
+        "¡Estables pero sorprendentes! Estos metales no son tan impulsivos como los alcalinos, pero también saben cómo llamar la atención. Presentes en nuestros huesos, fuegos artificiales y más, ¡prepárate para descubrir su versatilidad!"),
+
+    new Categoria("Metales de Transición",
+        "¡Los verdaderos camaleones de la química! Dominan el arte de formar compuestos coloridos, catalizar reacciones y construir estructuras resistentes. Si te gustan los desafíos y los cambios, esta es tu categoría."),
+
+    new Categoria("Metales postransicionales",
+        "¡No subestimes a los discretos! Aunque menos conocidos, estos elementos son vitales para la tecnología moderna. Suavemente maleables, conductores y con usos cotidianos, ¡descubre su impacto silencioso!"),
+
+    new Categoria("Metaloides",
+        "¡En el límite entre dos mundos! Los metaloides tienen propiedades tanto de metales como de no metales. Impredecibles, interesantes y esenciales en la electrónica, ¡perfectos para quienes aman lo inesperado!"),
+
+    new Categoria("No Metales",
+        "¡Los pilares de la vida y la química orgánica! Desde el oxígeno que respiras hasta el carbono de tu ADN, los no metales son esenciales para todo lo que vive. ¡Investiga su papel crucial en el universo!"),
+
+    new Categoria("Gases Nobles",
+        "¡Silenciosos, invisibles e invaluables! Estos elementos no reaccionan fácilmente, pero están presentes en luces, atmósferas protectoras y experimentos científicos. ¡Su estabilidad es su superpoder!"),
+
+    new Categoria("Lantánidos",
+        "¡Los metales raros que mueven el mundo moderno! Utilizados en imanes potentes, láseres y pantallas de alta tecnología. Aunque raros, su presencia es fundamental en nuestra vida diaria. ¡Descúbrelos!"),
+
+    new Categoria("Actinoides",
+        "¡La energía más poderosa de la tabla! Radiactivos, misteriosos y con potencial para revolucionar el mundo, estos elementos están ligados a la energía nuclear y la exploración científica del futuro."),
+
+    new Categoria("Propiedades desconocidas",
+        "¡Bienvenido al territorio inexplorado! Estos elementos están en los límites de lo conocido. Sus propiedades aún se investigan, y cada descubrimiento puede cambiar lo que sabemos. ¿Te atreves a descubrir lo desconocido?")
+};
     }
 
     void OnEnable()
@@ -89,6 +113,7 @@ public class GestorElementos : MonoBehaviour
         // Esperar a que termine la carga antes de continuar
         CargarElementosDesdeJSON();
         ActualizarProgresoCategoria();
+        ActualizarEstadoMisionFinal();
 
         botonMisionFinal.onClick.AddListener(IrAMisionFinal);
         BtnCategorias.onClick.AddListener(RegresaraCategorias);
@@ -157,8 +182,6 @@ public class GestorElementos : MonoBehaviour
         }
     }
 
-
-
     void CargarElementosDesdeJSON()
     {
         string categoriaSeleccionada = PlayerPrefs.GetString("CategoriaSeleccionada");
@@ -168,6 +191,28 @@ public class GestorElementos : MonoBehaviour
         {
             Debug.LogError("Error: No se ha seleccionado ninguna categoría.");
             return;
+        }
+
+        if (PanelCat == null)
+        {
+            Debug.LogError("PanelCatBackground no asignado en el Inspector.");
+            return;
+        }
+
+        // Construye la ruta relativa dentro de Resources
+        string ruta = "FondoCategorias/" + categoriaSeleccionada;
+        Sprite fondo = Resources.Load<Sprite>(ruta);
+
+        if (fondo != null)
+        {
+            PanelCat.sprite = fondo;
+            PanelCat.enabled = true;
+            Debug.Log($"✅ Fondo de categoría '{categoriaSeleccionada}' cargado: Resources/{ruta}.png");
+        }
+        else
+        {
+            PanelCat.enabled = false;
+            Debug.LogWarning($"⚠️ No se encontró sprite en Resources/{ruta}.png");
         }
 
         if (jsonDataInformacion == null)
@@ -313,12 +358,10 @@ public class GestorElementos : MonoBehaviour
             if (elementoNode.HasKey("Misiones"))
             {
                 var misionesElemento = elementoNode["Misiones"];
-
                 foreach (var misionKey in misionesElemento.Keys)
                 {
                     var mision = misionesElemento[misionKey];
                     totalMisiones++;
-
                     if (mision.HasKey("completada") && mision["completada"].AsBool)
                     {
                         misionesCompletadas++;
@@ -326,12 +369,23 @@ public class GestorElementos : MonoBehaviour
                 }
             }
 
-            // Verificar si hay misión final
-            if (elementoNode.HasKey("MisionFinal"))
+            // 🔍 Extraer título de la misión final si existe
+            if (elementoNode.HasKey("Mision Final") &&
+                elementoNode["Mision Final"].HasKey("MisionFinal") &&
+                elementoNode["Mision Final"]["MisionFinal"].HasKey("titulo"))
             {
-                var misionFinal = elementoNode["MisionFinal"];
-                totalMisiones++;
+                string tituloMisionFinal = elementoNode["Mision Final"]["MisionFinal"]["titulo"];
+                Descripcion.text = tituloMisionFinal;
+                Description.text = tituloMisionFinal;
+                Debug.Log($"🧪 Misión Final del elemento '{elemento}': {tituloMisionFinal}");
+            }
 
+            // Verificar si misión final está completada
+            if (elementoNode.HasKey("Mision Final") &&
+                elementoNode["Mision Final"].HasKey("MisionFinal"))
+            {
+                var misionFinal = elementoNode["Mision Final"]["MisionFinal"];
+                totalMisiones++;
                 if (misionFinal.HasKey("completada") && misionFinal["completada"].AsBool)
                 {
                     misionesCompletadas++;
@@ -339,7 +393,7 @@ public class GestorElementos : MonoBehaviour
             }
         }
 
-        float progreso = (totalMisiones > 0) ? (float)misionesCompletadas / totalMisiones : 0f;
+    float progreso = (totalMisiones > 0) ? (float)misionesCompletadas / totalMisiones : 0f;
         sliderProgreso.value = progreso;
 
         Debug.Log($"✅ Progreso actualizado: {misionesCompletadas}/{totalMisiones} misiones completadas ({progreso * 100:F2}%)");
@@ -372,15 +426,16 @@ public class GestorElementos : MonoBehaviour
         // Comprobar si el slider está lleno (es decir, si el valor es 1)
         if (sliderProgreso.value >= 1f)
         {
-            botonMisionFinal.interactable = true;
-            Debug.Log("✔️ Misión final desbloqueada, botón activado.");
+            PanelMisionCompletada.SetActive(true);
+            PanelMisionIncompleta.SetActive(false);
         }
         else
         {
-            botonMisionFinal.interactable = false;
-            Debug.Log("❌ Misión final bloqueada, botón desactivado.");
+            PanelMisionIncompleta.SetActive(true);
+            PanelMisionCompletada.SetActive(false);
         }
     }
+
     public string ObtenerRutaMisionFinal(string categoria)
     {
         if (jsonDataMisiones == null)

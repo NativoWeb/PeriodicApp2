@@ -101,13 +101,8 @@ public class ListarAmigosManager : MonoBehaviour
             return;
         }
 
-        // Consulta amigos donde el usuario es remitente o destinatario
-        db.Collection("SolicitudesAmistad")
-          .WhereEqualTo("estado", "aceptada")
-          .Where(Filter.Or(
-              Filter.EqualTo("idRemitente", userId),
-              Filter.EqualTo("idDestinatario", userId)
-          ))
+        // Consulta la subcolección de amigos del usuario actual
+        db.Collection("users").Document(userId).Collection("amigos")
           .GetSnapshotAsync().ContinueWithOnMainThread(task =>
           {
               isLoading = false;
@@ -127,7 +122,7 @@ public class ListarAmigosManager : MonoBehaviour
                   return;
               }
 
-              // Obtener todos los amigos y ordenarlos (si es necesario)
+              // Obtener todos los amigos y ordenarlos por fecha de amistad (si es necesario)
               var amigos = snapshot.Documents.ToList();
 
               // Limpiar todos los paneles primero
@@ -137,15 +132,9 @@ public class ListarAmigosManager : MonoBehaviour
               for (int i = 0; i < Mathf.Min(amigos.Count, 3); i++)
               {
                   Dictionary<string, object> amigo = amigos[i].ToDictionary();
-                  string idAmigo = amigo["idRemitente"].ToString() == userId
-                      ? amigo["idDestinatario"].ToString()
-                      : amigo["idRemitente"].ToString();
-
-                  string nombreAmigo = amigo["idRemitente"].ToString() == userId
-                      ? amigo["nombreDestinatario"].ToString()
-                      : amigo["nombreRemitente"].ToString();
-
-                  MostrarAmigoEnPanel(idAmigo, nombreAmigo, i + 1);
+                  string idAmigo = amigo["userId"].ToString();
+                  string nombreAmigo = amigo["DisplayName"].ToString();
+                  MostrarAmigoEnPanel(idAmigo, i + 1);
               }
 
               // Gestionar visibilidad de paneles según cantidad de amigos
@@ -156,13 +145,11 @@ public class ListarAmigosManager : MonoBehaviour
     public void LimpiarPaneles()
     {
         // Limpiar panel 1
-        if(nombreAmigo1 && rangoAmigo1 != null)
+        if (nombreAmigo1 && rangoAmigo1 != null)
         {
             nombreAmigo1.text = "";
             rangoAmigo1.text = "";
         }
-
-
 
         // Limpiar panel 2
         if (nombreAmigo2 && rangoAmigo2 != null)
@@ -171,18 +158,15 @@ public class ListarAmigosManager : MonoBehaviour
             rangoAmigo2.text = "";
         }
 
-
-
         // Limpiar panel 3
         if (nombreAmigo3 && rangoAmigo3 != null)
         {
             nombreAmigo3.text = "";
             rangoAmigo3.text = "";
         }
-          
     }
 
-    private void MostrarAmigoEnPanel(string amigoId, string nombreAmigo, int panelIndex)
+    private void MostrarAmigoEnPanel(string amigoId, int panelIndex)
     {
         db.Collection("users").Document(amigoId).GetSnapshotAsync()
             .ContinueWithOnMainThread(task =>
@@ -194,12 +178,13 @@ public class ListarAmigosManager : MonoBehaviour
                 }
 
                 DocumentSnapshot snapshot = task.Result;
+
                 if (snapshot.Exists)
                 {
                     Dictionary<string, object> datosAmigo = snapshot.ToDictionary();
 
                     string rango = datosAmigo.ContainsKey("Rango") ? datosAmigo["Rango"].ToString() : "Sin rango";
-
+                    string nombreAmigo = datosAmigo.ContainsKey("DisplayName") ? datosAmigo["DisplayName"].ToString() : "Desconocido";
                     string avatarPath = ObtenerAvatarPorRango(rango);
                     Sprite avatarSprite = Resources.Load<Sprite>(avatarPath) ?? Resources.Load<Sprite>("Avatares/defecto");
 
@@ -249,12 +234,12 @@ public class ListarAmigosManager : MonoBehaviour
         // Configurar el panel 1 con el mensaje
         nombreAmigo1.text = mensajeSinAmigos;
         rangoAmigo1.text = rangoDefault;
-        
+
         // desactivar componenetes no necesarios si no tiene amigos
         AvatarAmigo1.GetComponent<Image>().enabled = false;
         BtnAmigossinfuncionalidad.gameObject.SetActive(false);
         BtnAñadirAmigos.gameObject.SetActive(true);
-        
+
 
         // Aplicar estilo especial para el mensaje "sin amigos"
         nombreAmigo1.color = colorTextoSinAmigos;
@@ -287,6 +272,7 @@ public class ListarAmigosManager : MonoBehaviour
         PlayerPrefs.SetInt("MostrarSugerencias", 1);
         SceneManager.LoadScene("Amigos");
     }
+
     void VerTodosAmigos()
     {
         SceneManager.LoadScene("Amigos");

@@ -5,7 +5,7 @@ using SimpleJSON;
 using UnityEngine;
 using System.IO;
 using System.Collections;
-using UnityEngine.Networking;
+
 
 public class GestorInfoElemento : MonoBehaviour
 {
@@ -14,6 +14,7 @@ public class GestorInfoElemento : MonoBehaviour
     public TextMeshProUGUI txtSimbolo;
     public TextMeshProUGUI txtNombre;
     public TextMeshProUGUI txtNumeroAtomico;
+    public Image ImgElemento;
 
     [Header("Botones de Cambio")]
     public Button btnMisiones;
@@ -135,6 +136,39 @@ public class GestorInfoElemento : MonoBehaviour
                 Color32 colorCat = ColoresPorCategoria.TryGetValue(categoriaSeleccionada, out var c) ? c : new Color32(255, 255, 255, 255);
                 imgPanel.color = colorCat;
             }
+
+            var imgPanelInfo = PanelInformacion.GetComponent<Image>();
+            if (imgPanelInfo != null)
+            {
+                Color32 colorCat = ColoresPorCategoria.TryGetValue(categoriaSeleccionada, out var c) ? c : new Color32(255, 255, 255, 255);
+                imgPanelInfo.color = colorCat;
+            }
+        }
+
+        // Asignar color según el elemento
+
+        if (elementoSeleccionado == "Astato" || elementoSeleccionado == "Téneso")
+        {
+            ImgElemento.sprite = Resources.Load<Sprite>("ImagenesElementos/desconocidoVerde");
+        }
+        else if (elementoSeleccionado == "Proactinio" || elementoSeleccionado == "Neptunio" || elementoSeleccionado == "Berkelio" ||
+                 elementoSeleccionado == "Einstenio" || elementoSeleccionado == "Fermio" || elementoSeleccionado == "Mendelevio" ||
+                 elementoSeleccionado == "Nobelio" || elementoSeleccionado == "Lawrencio" || elementoSeleccionado == "Prometio")
+        {
+            ImgElemento.sprite = Resources.Load<Sprite>("ImagenesElementos/desconocidoAzul");
+        }
+        else if (elementoSeleccionado == "Rutherfordio" || elementoSeleccionado == "Dubnio" || elementoSeleccionado == "Seaborgio" ||
+                 elementoSeleccionado == "Bohrio" || elementoSeleccionado == "Hassio" || elementoSeleccionado == "Meitnerio" ||
+                 elementoSeleccionado == "Darmstatio" || elementoSeleccionado == "Roentgenio" || elementoSeleccionado == "Copernicio" ||
+                 elementoSeleccionado == "Nihonio" || elementoSeleccionado == "Flerovio" || elementoSeleccionado == "Moscovio" || elementoSeleccionado == "Livermorio")
+        {
+            ImgElemento.sprite = Resources.Load<Sprite>("ImagenesElementos/desconocidoRosado");
+        }
+        else
+        {
+            // Intentar cargar la imagen del elemento
+            Sprite spriteElemento = Resources.Load<Sprite>("ImagenesElementos/" + elementoSeleccionado);
+            ImgElemento.sprite = spriteElemento;
         }
 
         if (jsonDataInformacion == null ||
@@ -270,10 +304,7 @@ public class GestorInfoElemento : MonoBehaviour
    
     private void RegresaraCategorias()
     {
-        PlayerPrefs.DeleteKey("CategoriaSeleccionada");
-        PlayerPrefs.Save();
-        PanelCategorias.SetActive(true);
-        PanelElemento.SetActive(false);
+        PanelElemento.SetActive(true);
         PanelMisones.SetActive(false);
         PanelInformacion.SetActive(false);
     }
