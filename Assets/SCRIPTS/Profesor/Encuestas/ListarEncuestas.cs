@@ -26,6 +26,8 @@ public class ListarEncuestas : MonoBehaviour
     public TMP_Text txtNumeroPreguntas;
     public Button btnEditarEncuesta;
     public Button btnEliminarEncuesta;
+
+    [Header("Panel Confirmar Eliminacion")]
     public GameObject panelConfirmacionEliminar;
     public Button btnConfirmarEliminar;
     public Button btnCancelarEliminar;

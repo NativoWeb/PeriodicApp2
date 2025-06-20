@@ -13,6 +13,8 @@ public class PreguntaController : MonoBehaviour
     public Button btnAgregarOpcion;
     private int maxOpciones = 4;
     private List<Opcion> opciones = new List<Opcion>();
+    public TMP_Dropdown dropdownTiempo; // Asigna desde el inspector
+    private int tiempoRespuesta = 15; // Valor por defecto
 
     [Header("Referencias panel eliminar pregunta")]
     public Button btnEliminar;
@@ -23,9 +25,10 @@ public class PreguntaController : MonoBehaviour
         // Desactivar el botón inicialmente
         btnAgregarOpcion.interactable = false;
 
+        dropdownTiempo.onValueChanged.AddListener(ActualizarTiempoRespuesta);
+
         // Agregar la primera opción al crear la pregunta
         AgregarOpcion();
-
         btnEliminar.onClick.AddListener(MostrarConfirmacion);
     }
     private void MostrarConfirmacion()
@@ -210,7 +213,7 @@ public class PreguntaController : MonoBehaviour
 
     public Preguntas ObtenerPregunta()
     {
-        return new Preguntas(inputPregunta.text, new List<Opcion>(opciones));
+        return new Preguntas(inputPregunta.text, new List<Opcion>(opciones), tiempoRespuesta);
     }
 
     public List<string> ObtenerOpciones()
@@ -225,5 +228,20 @@ public class PreguntaController : MonoBehaviour
             }
         }
         return opcionesTexto;
+    }
+
+    private void ActualizarTiempoRespuesta(int index)
+    {
+        // Según el índice, asignamos el tiempo
+        switch (index)
+        {
+            case 0: tiempoRespuesta = 15; break;
+            case 1: tiempoRespuesta = 30; break;
+            case 2: tiempoRespuesta = 45; break;
+            case 3: tiempoRespuesta = 60; break;
+            default: tiempoRespuesta = 15; break;
+        }
+
+        Debug.Log("⏱️ Tiempo de respuesta asignado: " + tiempoRespuesta + " segundos");
     }
 }
