@@ -27,6 +27,10 @@ public class CrearComunidad : MonoBehaviour
     public GameObject prefabBotonImagen;
     public Sprite spriteDefault;
 
+    [Header("Contadores de caracteres")]
+    public TMP_Text contadorNombre;
+    public TMP_Text contadorDescripcion;
+
     private string currentUserId;
     private string currentUsername;
 
@@ -41,6 +45,26 @@ public class CrearComunidad : MonoBehaviour
 
         // El botón siempre está habilitado
         crearButton.interactable = true;
+
+        nombreInput.onValueChanged.AddListener(ActualizarContadorNombre);
+        descripcionInput.onValueChanged.AddListener(ActualizarContadorDescripcion);
+
+        // Mostrar los valores iniciales también
+        ActualizarContadorNombre(nombreInput.text);
+        ActualizarContadorDescripcion(descripcionInput.text);
+
+    }
+
+    private void ActualizarContadorNombre(string texto)
+    {
+        int cantidad = texto.Length;
+        contadorNombre.text = $"{cantidad}/50";
+    }
+
+    private void ActualizarContadorDescripcion(string texto)
+    {
+        int cantidad = texto.Length;
+        contadorDescripcion.text = $"{cantidad}/400";
     }
 
     public void AbrirSelectorImagenes()
@@ -75,6 +99,12 @@ public class CrearComunidad : MonoBehaviour
         imagenSeleccionada.sprite = sprite;
         rutaImagenSeleccionada = "Comunidades/ImagenesComunidades/" + nombreImagen;
         panelSelectorImagenes.SetActive(false); // Cierra el panel
+    }
+
+    public void CerrarPanelSelectorImagen ()
+    {
+        if (panelSelectorImagenes != null)
+        panelSelectorImagenes.SetActive(false);
     }
     private async Task CargarDatosUsuario()
     {
@@ -182,6 +212,7 @@ public class CrearComunidad : MonoBehaviour
 
                 MostrarMensaje("Comunidad creada exitosamente!", false);
                 LimpiarFormulario();
+                Invoke("VolverAComunidad", 2f);
             }
             catch (Exception e)
             {
@@ -222,7 +253,8 @@ public class CrearComunidad : MonoBehaviour
         rutaImagenSeleccionada = "";
         imagenSeleccionada.sprite = null; // borra la imagen del botón
         imagenSeleccionada.sprite = spriteDefault;
-
-       
+        if (panelSelectorImagenes != null)
+            panelSelectorImagenes.SetActive(false); 
+               
     }
 }

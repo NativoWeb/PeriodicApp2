@@ -116,7 +116,9 @@ public class ComunidadDetalleManager : MonoBehaviour
         }
 
     }
+
     // ----------------------------------NOTIFICACIONES DE SOLICITUDES A COMUNIDAD-----------------------------------
+
     public void CheckPendingRequests(string comunidadActualId)
     {
 
@@ -172,9 +174,6 @@ public class ComunidadDetalleManager : MonoBehaviour
     }
 
     // ----------------------------------NOTIFICACIONES DE SOLICITUDES A COMUNIDAD-----------------------------------
-
-   
-
     private void ActualizarInterfazConDatos(Dictionary<string, object> dataComunidad)
     {
         string nombre = dataComunidad.GetValueOrDefault("nombre", "Sin nombre").ToString();
@@ -183,8 +182,8 @@ public class ComunidadDetalleManager : MonoBehaviour
         string creadorId = dataComunidad.GetValueOrDefault("creadorId", "").ToString();
         string comunidadPath = dataComunidad.GetValueOrDefault("imagenRuta", "").ToString();
 
-        Sprite Comunidadsprite = Resources.Load<Sprite>(comunidadPath)?? Resources.Load<Sprite>("Comunidades/ImagenesComunidades/default");
-        
+        Sprite Comunidadsprite = Resources.Load<Sprite>(comunidadPath) ?? Resources.Load<Sprite>("Comunidades/ImagenesComunidades/default");
+
         // Manejo de la fecha
         string fechaFormateada = "Fecha desconocida";
         if (dataComunidad.TryGetValue("fechaCreacion", out object fechaObj))
@@ -200,6 +199,25 @@ public class ComunidadDetalleManager : MonoBehaviour
             }
         }
 
+        // obtener información del creador desde sus datos directamente
+        db.Collection("users").Document(creadorId).GetSnapshotAsync().ContinueWithOnMainThread(Task =>
+        {
+            if (Task.IsFaulted)
+            {
+                Debug.Log("falló traer nombre de creador desde sus datos" + Task.Exception);
+                return;
+            }
+
+            DocumentSnapshot snapshot = Task.Result;
+
+            if (snapshot.Exists)
+            {
+                string CreadorNombre = snapshot.GetValue<string>("DisplayName");
+                detalleCreador.text = $"Creada por {CreadorNombre}";
+            }
+
+        });
+
         // Obtener cantidad de miembros
         int cantidadMiembros = 0;
         if (dataComunidad.TryGetValue("miembros", out object miembrosObj) && miembrosObj is List<object> miembros)
@@ -211,7 +229,6 @@ public class ComunidadDetalleManager : MonoBehaviour
         detalleNombre.text = nombre;
         detalleDescripcion.text = descripcion;
         detalleFecha.text = fechaFormateada;
-        detalleCreador.text = $"Creada por {creador}";
         detalleMiembros.text = $"{cantidadMiembros} miembros";
         ImagenComunidad.sprite = Comunidadsprite;
     }
@@ -584,7 +601,7 @@ public class ComunidadDetalleManager : MonoBehaviour
         {
             Timestamp timestamp = (Timestamp)dataSolicitud["fechaSolicitud"];
             DateTime fecha = timestamp.ToDateTime().ToLocalTime();
-            item.transform.Find("Fechatxt").GetComponent<TMP_Text>().text = fecha.ToString("dd/MM/yyyy HH:mm");
+            item.transform.Find("Fechatxt").GetComponent<TMP_Text>().text = fecha.ToString("dd/MM/yyyy");
         }
 
         Button btnAceptar = item.transform.Find("AceptarBtn").GetComponent<Button>();
