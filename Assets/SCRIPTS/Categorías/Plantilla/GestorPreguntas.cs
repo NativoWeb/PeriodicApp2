@@ -32,6 +32,7 @@ public class GestorPreguntas : MonoBehaviour
     private string simboloSeleccionado;
     private string elementoCompleto;
     private string categoriaSeleccionada;
+    private List<string> temasFallados;
 
     [System.Serializable]
     public class Pregunta
@@ -39,6 +40,8 @@ public class GestorPreguntas : MonoBehaviour
         public string textoPregunta;
         public List<string> opcionesRespuesta;
         public int indiceRespuestaCorrecta;
+        public string tema;
+        
     }
 
     void Start()
@@ -62,8 +65,12 @@ public class GestorPreguntas : MonoBehaviour
         preguntaActual = PlayerPrefs.GetInt($"Progreso_{elementoCompleto}", 0);
 
         CargarPreguntasDesdeJSON(categoriaSeleccionada, elementoCompleto);
-        MostrarPregunta();
-        StartCoroutine(Temporizador());
+        if(preguntasFiltradas.Count > 0)
+        {
+            MostrarPregunta();
+            StartCoroutine(Temporizador());
+        }
+        
         SistemaXP.CrearInstancia();
     }
 
@@ -127,7 +134,8 @@ public class GestorPreguntas : MonoBehaviour
                         {
                             textoPregunta = preguntaJson["textoPregunta"].Value,
                             opcionesRespuesta = opciones,
-                            indiceRespuestaCorrecta = preguntaJson["indiceRespuestaCorrecta"].AsInt
+                            indiceRespuestaCorrecta = preguntaJson["indiceRespuestaCorrecta"].AsInt,
+                            tema = preguntaJson.HasKey("tema") ? preguntaJson["tema"].Value : "General"
                         };
                         preguntasFiltradas.Add(pregunta);
                     }
@@ -225,6 +233,10 @@ public class GestorPreguntas : MonoBehaviour
         else
         {
             rachaActual = 0;
+            if (!temasFallados.Contains(pregunta.tema))
+            {
+                temasFallados.Add(pregunta.tema);
+            }
         }
 
         txtRacha.text = "" + rachaActual;
@@ -245,6 +257,11 @@ public class GestorPreguntas : MonoBehaviour
         preguntaEnCurso = false;
         rachaActual = 0;
         txtRacha.text = "" + rachaActual;
+
+        if(!temasFallados.Contains(preguntasFiltradas[preguntaActual].tema))
+        {
+            temasFallados.Add(preguntasFiltradas[preguntaActual].tema);
+        }
         StartCoroutine(EsperarYSiguientePregunta());
     }
 
@@ -264,6 +281,9 @@ public class GestorPreguntas : MonoBehaviour
     void MostrarResultadosFinales()
     {
         PanelContinuar.SetActive(true);
+
+        float porcentajeAciertos = (float)respuestasCorrectas / preguntasFiltradas.Count * 100f;
+        bool ganoElQuiz = porcentajeAciertos >= 70f;
 
         int experiencia = (respuestasCorrectas * 100) / preguntasFiltradas.Count;
         txtResultado.text = $"Bonificación de racha: {rachaActual * 3}";
