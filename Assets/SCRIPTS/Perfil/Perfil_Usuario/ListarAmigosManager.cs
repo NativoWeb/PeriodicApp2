@@ -41,6 +41,9 @@ public class ListarAmigosManager : MonoBehaviour
     private FirebaseFirestore db;
     private string userId;
 
+    [Header("Referencias a paneles debajo de amigos, para poder moverlos")]
+    [SerializeField] private RectTransform panelesInferiores;
+
     public void Start()
     {
         InitializeUIComponents();
@@ -55,11 +58,13 @@ public class ListarAmigosManager : MonoBehaviour
         else
         {
             Debug.Log("ListarAmigosManager.Error: no hay usuario autenticado");
-            MostrarEstadoSinAmigos();
+            MostrarEstadoSinAmigos(0);
         }
 
         BtnVerTodosAmigos.onClick.AddListener(VerTodosAmigos);
         BtnAñadirAmigos.onClick.AddListener(VerTodosUsuariosSugeridos);
+        Debug.Log("anchoredPosition Y = " + panelesInferiores.anchoredPosition.y);
+
     }
 
     private void InitializeUIComponents()
@@ -87,7 +92,7 @@ public class ListarAmigosManager : MonoBehaviour
         if (!HayConexion())
         {
             Debug.Log("No hay conexión a internet.");
-            MostrarEstadoSinAmigos();
+            MostrarEstadoSinAmigos(0);
             return;
         }
 
@@ -97,7 +102,7 @@ public class ListarAmigosManager : MonoBehaviour
         {
             Debug.Log("ListarAmigosManager.Error: ID de usuario vacío");
             isLoading = false;
-            MostrarEstadoSinAmigos();
+            MostrarEstadoSinAmigos(0);
             return;
         }
 
@@ -110,7 +115,7 @@ public class ListarAmigosManager : MonoBehaviour
               if (task.IsFaulted)
               {
                   Debug.LogError("Error al cargar amigos: " + task.Exception);
-                  MostrarEstadoSinAmigos();
+                  MostrarEstadoSinAmigos(0);
                   return;
               }
 
@@ -118,7 +123,7 @@ public class ListarAmigosManager : MonoBehaviour
 
               if (snapshot.Count == 0)
               {
-                  MostrarEstadoSinAmigos();
+                  MostrarEstadoSinAmigos(0);
                   return;
               }
 
@@ -141,6 +146,7 @@ public class ListarAmigosManager : MonoBehaviour
               GestionarVisibilidadPaneles(amigos.Count);
           });
     }
+
 
     public void LimpiarPaneles()
     {
@@ -220,30 +226,63 @@ public class ListarAmigosManager : MonoBehaviour
         // Si no hay amigos, mostrar estado especial
         if (cantidadAmigos == 0)
         {
-            MostrarEstadoSinAmigos();
+            MostrarEstadoSinAmigos(cantidadAmigos);
+        }
+        AjustarPosicionPanelesInferiores(cantidadAmigos);
+    }
+    private void AjustarPosicionPanelesInferiores(int cantidadAmigos)
+    {
+        // Posiciones sugeridas (ajústalas según tu diseño)
+        float yCon3Amigos = -944f;
+        float yCon2Amigos = -708f;
+        float yCon1Amigo = -450f;
+
+        if (panelesInferiores == null) return;
+
+        Vector2 posActual = panelesInferiores.anchoredPosition;
+
+        switch (cantidadAmigos)
+        {
+            case 1:
+                panelesInferiores.anchoredPosition = new Vector2(posActual.x, yCon1Amigo);
+                break;
+            case 2:
+                panelesInferiores.anchoredPosition = new Vector2(posActual.x, yCon2Amigos);
+                break;
+            default: // 3 o más
+                panelesInferiores.anchoredPosition = new Vector2(posActual.x, yCon3Amigos);
+                break;
         }
     }
 
-    private void MostrarEstadoSinAmigos()
+
+    private void MostrarEstadoSinAmigos(int cantidadAmigos)
     {
-        // Activar solo el primer panel
-        panelAmigo1.SetActive(true);
-        panelAmigo2.SetActive(false);
-        panelAmigo3.SetActive(false);
+        if (cantidadAmigos == 0)
+        {
+            // Activar solo el primer panel
+            panelAmigo1.SetActive(true);
+            panelAmigo2.SetActive(false);
+            panelAmigo3.SetActive(false);
 
-        // Configurar el panel 1 con el mensaje
-        nombreAmigo1.text = mensajeSinAmigos;
-        rangoAmigo1.text = rangoDefault;
+            // Configurar el panel 1 con el mensaje
+            nombreAmigo1.text = mensajeSinAmigos;
+            rangoAmigo1.text = rangoDefault;
 
-        // desactivar componenetes no necesarios si no tiene amigos
-        AvatarAmigo1.GetComponent<Image>().enabled = false;
-        BtnAmigossinfuncionalidad.gameObject.SetActive(false);
-        BtnAñadirAmigos.gameObject.SetActive(true);
+            // desactivar componenetes no necesarios si no tiene amigos
+            AvatarAmigo1.GetComponent<Image>().enabled = false;
+            BtnAmigossinfuncionalidad.gameObject.SetActive(false);
+            BtnAñadirAmigos.gameObject.SetActive(true);
 
 
-        // Aplicar estilo especial para el mensaje "sin amigos"
-        nombreAmigo1.color = colorTextoSinAmigos;
-        rangoAmigo1.color = colorTextoSinAmigos;
+            // Aplicar estilo especial para el mensaje "sin amigos"
+            nombreAmigo1.color = colorTextoSinAmigos;
+            rangoAmigo1.color = colorTextoSinAmigos;
+
+            // subimos el panel de abajo para quitar espacio en blanco 
+            Vector2 posActual = panelesInferiores.anchoredPosition;
+            panelesInferiores.anchoredPosition = new Vector2(posActual.x, -450f);
+        }
     }
 
     private string ObtenerAvatarPorRango(string rangos)
