@@ -15,7 +15,7 @@ using System;
 public class GuardarMisionCompletada : MonoBehaviour
 {
     public static GuardarMisionCompletada instancia;
-    public Button botonCompletarMision; // Asigna el botón desde el Inspector
+    //public Button botonCompletarMision; // Asigna el botón desde el Inspector
     public GameObject imagenMision; // Asigna el objeto desde el Inspector
     public GameObject panel;
     public AudioSource audioSource;
@@ -53,16 +53,29 @@ public class GuardarMisionCompletada : MonoBehaviour
             Debug.LogError("❌ No hay usuario autenticado en Start.");
         }
 
-        if (botonCompletarMision != null)
-        {
-            botonCompletarMision.onClick.AddListener(MarcarMisionComoCompletada);
-            botonCompletarMision.onClick.AddListener(AnimacionMisionCompletada);
-        }
-        else
-        {
-            Debug.LogError("❌ botonCompletarMision no está asignado en el Inspector.");
-        }
+        //if (botonCompletarMision != null)
+        //{
+        //    botonCompletarMision.onClick.AddListener(MarcarMisionComoCompletada);
+        //    botonCompletarMision.onClick.AddListener(AnimacionMisionCompletada);
+        //}
+        //else
+        //{
+        //    Debug.LogError("❌ botonCompletarMision no está asignado en el Inspector.");
+        //}
     }
+
+    public void IniciarProcesoMisionCompletada(GameObject panelAnim, GameObject imagenAnim, AudioSource audio, ParticleSystem particulas)
+    {
+        Debug.Log("<color=yellow>Recibiendo nuevas referencias de animación...</color>");
+        this.panel = panelAnim;
+        this.imagenMision = imagenAnim;
+        this.audioSource = audio;
+        this.particulasMision = particulas;
+
+        MarcarMisionComoCompletada();
+        AnimacionMisionCompletada();
+    }
+
 
     public void MarcarMisionComoCompletada()
     {
@@ -80,12 +93,18 @@ public class GuardarMisionCompletada : MonoBehaviour
 
     public void AnimacionMisionCompletada()
     {
-        if (panel == null || imagenMision == null) return;
+        if (panel == null || imagenMision == null)
+        {
+            Debug.LogError("Referencias de animacion no validas. Abortando animacion");
+            //CambiarEscena();
+            return;
+        };
 
         panel.SetActive(true);
         imagenMision.SetActive(true);
         imagenMision.transform.localScale = Vector3.zero;
-        audioSource.Play(); // 🔊 Reproduce el sonido
+        if (audioSource != null) audioSource.Play();
+
 
         // 🟢 Activar y reproducir el efecto de partículas
         if (particulasMision != null)
@@ -100,19 +119,19 @@ public class GuardarMisionCompletada : MonoBehaviour
             .Append(imagenMision.transform.DORotate(new Vector3(0, 0, -10f), 0.3f).SetEase(Ease.InOutSine))
             .Append(imagenMision.transform.DORotate(Vector3.zero, 0.3f).SetEase(Ease.InOutSine))
             .Append(imagenMision.transform.DOMoveY(imagenMision.transform.position.y + 50, 1f).SetEase(Ease.OutQuad))
-            .OnComplete(() => {
-                if (particulasMision != null)
-                {
-                    particulasMision.gameObject.SetActive(false);
-                }
-                CambiarEscena();
+            .OnComplete(() =>
+            {
+                Debug.Log("Animación de misión completada finalizada.");
             });
     }
 
-    void CambiarEscena()
-    {
-        SceneManager.LoadScene("Categorías"); 
-    }
+    
+
+    //void CambiarEscena()
+    //{
+    //    CancelInvoke("CambiarEscena");
+    //    SceneManager.LoadScene("Categorías");
+    //}
 
     private async void ActualizarMisionEnJSON(string elemento, int idMision)
     {

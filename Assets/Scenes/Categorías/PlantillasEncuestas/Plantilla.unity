@@ -2382,7 +2382,7 @@ ParticleSystem:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 867661022}
   serializedVersion: 8
-  lengthInSec: 5
+  lengthInSec: 50
   simulationSpeed: 1
   stopAction: 0
   cullingMode: 3
@@ -7146,9 +7146,13 @@ MonoBehaviour:
   - {fileID: 2012909531}
   txtTiempo: {fileID: 823880327}
   txtRacha: {fileID: 1449515077}
-  txtResultado: {fileID: 0}
+  txtResultado: {fileID: 2129147414}
   PanelContinuar: {fileID: 747474282}
   barraProgresoSlider: {fileID: 57689281}
+  panelAnimacionMision: {fileID: 602546310}
+  imagenAnimacionMision: {fileID: 571628261}
+  audioMisionCompletada: {fileID: 588902381}
+  particulasMisionCompletada: {fileID: 867661025}
 --- !u!4 &1000679899
 Transform:
   m_ObjectHideFlags: 0
@@ -7610,7 +7614,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3e8aa86a808d3984ebbd308de9a7a4ed, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  botonCompletarMision: {fileID: 372736810}
   imagenMision: {fileID: 571628261}
   panel: {fileID: 602546310}
   audioSource: {fileID: 588902381}
