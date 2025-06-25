@@ -39,7 +39,8 @@ public class SolicitudesAmistadManager : MonoBehaviour
 
     private Vector2 posicionBaseInferiorSolicitudes;
 
-    public void Start()
+    
+    public void OnEnable()
     {
         auth = FirebaseAuth.DefaultInstance;
         db = FirebaseFirestore.DefaultInstance;
@@ -208,19 +209,19 @@ public class SolicitudesAmistadManager : MonoBehaviour
     {
         if (panelInferiorSolicitudes == null) return;
         
-            TercerPanelManager.instancia.ResetearPosicion(); // Restauramos
+            //TercerPanelManager.instancia.ResetearPosicion(); // Restauramos
 
             float offsetY = 0f;
             switch (cantidadSolicitudes)
             {
-                case 1: offsetY = 400f; break;
-                case 2: offsetY = 200f; break;
-                default: offsetY = 0f; break;
+                case 1: offsetY = 650f; break;
+                case 2: offsetY = 390f; break;
+                default: offsetY = 150f; break;
             }
 
             panelInferiorSolicitudes.DOAnchorPos(
                 TercerPanelManager.instancia.GetPosicionBase() + new Vector2(0, offsetY),
-                0.3f
+                1f
             ).SetEase(Ease.OutCubic);
         
     }

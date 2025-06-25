@@ -49,7 +49,7 @@ public class ListarAmigosManager : MonoBehaviour
     private Vector2 posicionBaseInferior;
     
 
-    public void Start()
+    public void OnEnable()
     {
 
         InitializeUIComponents();
@@ -79,8 +79,6 @@ public class ListarAmigosManager : MonoBehaviour
         // posición base del panel que se mueve para quitar el espacio
         posicionBaseInferior = panelesInferiores.anchoredPosition;
 
-        // GUARDAMOS LA POSICIÓN INICIAL UNA VEZ
-       
 
     }
 
@@ -264,19 +262,20 @@ public class ListarAmigosManager : MonoBehaviour
     {
         if (panelesInferiores == null) return;
 
-        TercerPanelManager.instancia.ResetearPosicion(); // Restauramos
+        //TercerPanelManager.instancia.ResetearPosicion(); // Restauramos
 
         float offsetY = 0f;
+
         switch (cantidadAmigos)
         {
-            case 1: offsetY = 400f; break;
-            case 2: offsetY = 200f; break;
-            default: offsetY = 0f; break;
+            case 1: offsetY = 650f; break;
+            case 2: offsetY = 390f; break;
+            default: offsetY = 150f; break;
         }
 
         panelesInferiores.DOAnchorPos(
             TercerPanelManager.instancia.GetPosicionBase() + new Vector2(0, offsetY),
-            0.3f
+            1f
         ).SetEase(Ease.OutCubic);
     }
 
@@ -298,10 +297,6 @@ public class ListarAmigosManager : MonoBehaviour
             BtnAmigossinfuncionalidad.gameObject.SetActive(false);
             BtnAñadirAmigos.gameObject.SetActive(true);
 
-
-            // subimos el panel de abajo para quitar espacio en blanco 
-            //Vector2 posActual = panelesInferiores.anchoredPosition;
-            //panelesInferiores.anchoredPosition = new Vector2(posActual.x, -450f);
             AjustarPosicionPanelInferior(1);
         
     }
