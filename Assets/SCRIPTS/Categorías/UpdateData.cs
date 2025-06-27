@@ -49,7 +49,7 @@ public class UpdateData : MonoBehaviour
 
 
     // 🔹 Modo online
-    private async void HandleOnlineMode() // ----------------------------------------------------------------------------------
+    private  void HandleOnlineMode() // ----------------------------------------------------------------------------------
     {
 
         string estadoUsuario = PlayerPrefs.GetString("Estadouser", "");
@@ -179,9 +179,8 @@ private async void ActualizarEstadoEncuestaEnFirebase(string userId,string encue
             if (snapshot.Exists)
             {
                 int xpActual = snapshot.GetValue<int>("xp"); // XP actual en Firebase
-                int tempXp = xpActual + RachaXp;
+                tempXP = xpActual + RachaXp;
                 int nuevoXP = tempXP; // Actualiza XP
-
                 // Actualizar el XP en Firebase
                 Dictionary<string, object> updates = new Dictionary<string, object>
             {
@@ -189,13 +188,15 @@ private async void ActualizarEstadoEncuestaEnFirebase(string userId,string encue
             };
 
                 await userRef.UpdateAsync(updates);
+                Debug.Log($"nuevoo xpppppppppDiccionario:{updates}");
             }
             else
             {
             }
         }
-        catch (Exception e)
+        catch (Exception ex)
         {
+            Debug.Log("Error al obtener xp desde updatedata Firebase:" + ex.Message);
         }
     }
 
@@ -219,6 +220,7 @@ private async void ActualizarEstadoEncuestaEnFirebase(string userId,string encue
                 {
                     int xpActual = snapshot.GetValue<int>("xp"); // XP actual en Firebase
                     PlayerPrefs.SetInt("TempXP", xpActual);
+                    Debug.Log($"el xp traido desde UpdateData es de: {xpActual}");
                     string username = snapshot.GetValue<string>("DisplayName");
                     PlayerPrefs.SetString("DisplayName", username);
                     bool estadoencuestaaprendizaje = snapshot.GetValue<bool>("EstadoEncuestaAprendizaje");
@@ -251,8 +253,9 @@ private async void ActualizarEstadoEncuestaEnFirebase(string userId,string encue
                 }
 
             }
-            catch (Exception e)
+            catch (Exception ex)
             {
+                Debug.LogError($"Error al traer los datos desde firebase: {ex.Message}");
             }
         }
         else
