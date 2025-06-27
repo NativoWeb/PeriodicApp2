@@ -15,13 +15,14 @@ public class Navegacion2dopanel : MonoBehaviour
 
     [Header("Paneles amigos y solicitudes")]
     [SerializeField] public GameObject panelAmigos;
-    [SerializeField] public GameObject panelSolicitudes;                                                        
+    [SerializeField] public GameObject panelSolicitudes;
 
 
     void Start()
     {
         BtnPanelAmigos.onClick.AddListener(ActivarPanelAmigos);
         BtnPanelSolicitudes.onClick.AddListener(ActivarPanelSolicitudes);
+
     }
 
     void ActivarPanelAmigos()
@@ -41,7 +42,7 @@ public class Navegacion2dopanel : MonoBehaviour
     {
         panelSolicitudes.SetActive(true);
         panelseleccionarY.SetActive(true);
-
+        
         // desactivamos los paneles anteriores
         if (panelAmigos != null)
             panelAmigos.SetActive(false);
@@ -49,7 +50,7 @@ public class Navegacion2dopanel : MonoBehaviour
         if (panelseleccionarX != null)
             panelseleccionarX.SetActive(false);
 
+
     }
 
-   
 }

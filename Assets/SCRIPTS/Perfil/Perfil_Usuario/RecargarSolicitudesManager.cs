@@ -2,18 +2,24 @@ using UnityEngine;
 
 public class RecargarSolicitudesManager : MonoBehaviour
 {
-    // instanciamos el script que recarga las solicitudes
-    private SolicitudesAmistadManager Solicitudesmanager;
-    void Start()
-    {
-        Solicitudesmanager = FindFirstObjectByType<SolicitudesAmistadManager>();
-    }
+    [SerializeField] private SolicitudesAmistadManager Solicitudesmanager;
 
     private void OnEnable()
     {
+        if (Solicitudesmanager != null)
+        {
+            Solicitudesmanager = FindFirstObjectByType<SolicitudesAmistadManager>();
+        }
 
-        Solicitudesmanager.LoadPendingRequests();
-        
+        if (Solicitudesmanager != null)
+        {
+            Debug.Log("instancia correctaaaa SolicitudesAmistadManager");
+
+            Solicitudesmanager.LoadPendingRequests();
+        }
+        else
+        {
+            Debug.LogWarning("No se encontró SolicitudesAmistadManager al activar el panel.");
+        }
     }
-
 }

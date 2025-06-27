@@ -7,7 +7,7 @@ using Firebase.Extensions;
 using TMPro;
 using System.Threading.Tasks;
 using UnityEngine.SceneManagement;
-
+using DG.Tweening; 
 public class SolicitudesAmistadManager : MonoBehaviour
 {
     public GameObject[] solicitudPanels; // Asigna los paneles en el inspector
@@ -30,7 +30,17 @@ public class SolicitudesAmistadManager : MonoBehaviour
 
     public Button BtnVerSolicitudes;
     public Button BtnAñadirAmigos;
-    void Start()
+
+    [Header("Panel que se moverá al mostrar solicitudes")]
+    [SerializeField] private RectTransform panelInferiorSolicitudes;
+
+    [Header("Panel general solcitudes")]
+    [SerializeField] private GameObject panelgeneralSolicitudes;
+
+    private Vector2 posicionBaseInferiorSolicitudes;
+
+    
+    public void OnEnable()
     {
         auth = FirebaseAuth.DefaultInstance;
         db = FirebaseFirestore.DefaultInstance;
@@ -40,12 +50,20 @@ public class SolicitudesAmistadManager : MonoBehaviour
             Debug.LogError("Usuario no autenticado.");
             return;
         }
+        // GUARDAMOS LA POSICIÓN INICIAL UNA VEZ
+
+        if (panelInferiorSolicitudes != null)
+        {
+            posicionBaseInferiorSolicitudes = panelInferiorSolicitudes.anchoredPosition;
+            Debug.Log("Posición base del panel inferior guardada: " + posicionBaseInferiorSolicitudes);
+        }
 
         currentUserId = auth.CurrentUser.UserId;
         LoadPendingRequests();
 
         BtnVerSolicitudes.onClick.AddListener(VerTodasSolicitudes);
         BtnAñadirAmigos.onClick.AddListener(VerTodosUsuariosSugeridos);
+
     }
 
     void VerTodosUsuariosSugeridos()
@@ -132,8 +150,17 @@ public class SolicitudesAmistadManager : MonoBehaviour
                 solicitudPanels[0].transform.Find("AceptarBtn").gameObject.SetActive(false);
                 solicitudPanels[0].transform.Find("RechazarBtn").gameObject.SetActive(false);
 
+               
             }
+            // subimos el panel de abajo para quitar espacio en blanco 
+            //Vector2 posActual = panelInferiorSolicitudes.anchoredPosition;
+            //panelInferiorSolicitudes.anchoredPosition = new Vector2(posActual.x, -450f);
+
+            panelInferiorSolicitudes.anchoredPosition = posicionBaseInferiorSolicitudes;
+            AjustarPosicionPanelInferior(1);
+
             return;
+           
         }
 
 
@@ -172,7 +199,35 @@ public class SolicitudesAmistadManager : MonoBehaviour
             aceptarBtn.onClick.AddListener(() => AcceptRequest(docId));
             rechazarBtn.onClick.AddListener(() => RejectRequest(docId));
         }
+        
+        if ( panelgeneralSolicitudes != null)
+            AjustarPosicionPanelInferior(allRequests.Count);
+        
+        
     }
+    public void AjustarPosicionPanelInferior(int cantidadSolicitudes)
+    {
+        if (panelInferiorSolicitudes == null) return;
+        
+            //TercerPanelManager.instancia.ResetearPosicion(); // Restauramos
+
+            float offsetY = 0f;
+            switch (cantidadSolicitudes)
+            {
+                case 1: offsetY = 650f; break;
+                case 2: offsetY = 390f; break;
+                default: offsetY = 150f; break;
+            }
+
+            panelInferiorSolicitudes.DOAnchorPos(
+                TercerPanelManager.instancia.GetPosicionBase() + new Vector2(0, offsetY),
+                1f
+            ).SetEase(Ease.OutCubic);
+        
+    }
+
+
+
 
     void AcceptRequest(string documentId)
     {

@@ -93,19 +93,30 @@ public class ComunidadDetalleManager : MonoBehaviour
         usuarioActualId = usuarioId;
         datosComunidadActual = new Dictionary<string, object>(dataComunidad);
         LimpiarYCerrarPaneles();
-        
+
         if (!gameObject.activeSelf) gameObject.SetActive(true);
 
         comunidadActualId = dataComunidad["documentId"].ToString();
+        string creadorId = dataComunidad.GetValueOrDefault("creadorId", "").ToString();
 
         ActualizarInterfazConDatos(dataComunidad);
 
-        // notificaciones
-        CheckPendingRequests(comunidadActualId);
-        SetupRealTimeListener(comunidadActualId);
+        // notificaciones - solo si es creador
+        if (usuarioId == creadorId)
+        {
+            CheckPendingRequests(comunidadActualId);
+            SetupRealTimeListener(comunidadActualId);
+        }
+        else
+        {
+            // Asegurarse de ocultar las notificaciones si no es el creador
+            if (notificationPanel != null)
+            {
+                notificationPanel.SetActive(false);
+            }
+        }
 
         PanelDetalleGrupo.SetActive(true);
-
         ConfigurarBotones(dataComunidad);
         MostrarMiembros();
         ActualizarEstadoBotones(true, false);
@@ -114,15 +125,12 @@ public class ComunidadDetalleManager : MonoBehaviour
         {
             EventSystem.current.SetSelectedGameObject(btnVerMiembros.gameObject);
         }
-
     }
 
     // ----------------------------------NOTIFICACIONES DE SOLICITUDES A COMUNIDAD-----------------------------------
 
     public void CheckPendingRequests(string comunidadActualId)
     {
-
-
         db.Collection("solicitudes_comunidad")
           .WhereEqualTo("idComunidad", comunidadActualId)
           .WhereEqualTo("estado", "pendiente")
@@ -142,12 +150,22 @@ public class ComunidadDetalleManager : MonoBehaviour
 
     void UpdateNotificationUI(int count)
     {
-        if (notificationPanel == null || notificationCountText == null) return; // ❗ Seguridad
+        if (notificationPanel == null || notificationCountText == null) return;
 
-        if (count > 0)
+        // Verificar si el usuario actual es el creador
+        if (datosComunidadActual != null &&
+            datosComunidadActual.TryGetValue("creadorId", out object creadorIdObj) &&
+            creadorIdObj.ToString() == usuarioActualId)
         {
-            notificationPanel.SetActive(true);
-            notificationCountText.text = count.ToString();
+            if (count > 0)
+            {
+                notificationPanel.SetActive(true);
+                notificationCountText.text = count.ToString();
+            }
+            else
+            {
+                notificationPanel.SetActive(false);
+            }
         }
         else
         {
@@ -272,6 +290,7 @@ public class ComunidadDetalleManager : MonoBehaviour
             btnAbandonarComunidad.onClick.RemoveAllListeners();
             btnAbandonarComunidad.onClick.AddListener(() => MostrarConfirmacionAbandonar(dataComunidad));
             btnAbandonarComunidad.gameObject.SetActive(usuarioActualId != creadorId);
+          
         }
         // acá ponemos el activar el btn si es creador para que elimine la comunidad y mostrar el panel de confirmación y hacer la función para eliminar la comunidad ----------------------------------------------------------
         if (BtnEliminarComunidad != null)
@@ -279,6 +298,7 @@ public class ComunidadDetalleManager : MonoBehaviour
             BtnEliminarComunidad.onClick.RemoveAllListeners();
             BtnEliminarComunidad.onClick.AddListener(() => MostrarConfirmacionEliminar(dataComunidad));
             BtnEliminarComunidad.gameObject.SetActive(usuarioActualId == creadorId);
+           
         }
     }
 

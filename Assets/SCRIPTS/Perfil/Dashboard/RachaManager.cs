@@ -111,9 +111,9 @@ public class RachaManager : MonoBehaviour
 
     private void SumarXPTemporario(int xp)
     {
-        int xpTemp = PlayerPrefs.GetInt("xpTemporal", 0);
+        int xpTemp = PlayerPrefs.GetInt("TempXP", 0);
         xpTemp += xp;
-        PlayerPrefs.SetInt("xpTemporal", xpTemp);
+        PlayerPrefs.SetInt("TempXP", xpTemp);
         Debug.Log($"XP temporal actualizado: {xpTemp}");
     }
 
