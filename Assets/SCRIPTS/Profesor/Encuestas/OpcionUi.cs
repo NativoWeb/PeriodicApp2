@@ -6,6 +6,7 @@ public class OpcionUI : MonoBehaviour
 {
     public TMP_InputField inputOpcion;  // Campo para el texto de la opción
     public Toggle toggleCorrecta;      // Toggle para marcar como correcta
+    public Button BtnEliminar;
 
     public string ObtenerTextoOpcion()
     {
@@ -16,4 +17,5 @@ public class OpcionUI : MonoBehaviour
     {
         return toggleCorrecta.isOn;
     }
+
 }

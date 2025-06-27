@@ -11,10 +11,13 @@ using System.Linq;
 using System.Net;
 using System.IO;
 using System;
+using System.Threading.Tasks;
 
 public class ListarEncuestas : MonoBehaviour
 {
     #region Referencias Inspector
+
+    public TMP_Text txtNombre;
 
     [Header("Visualización de Encuestas")]
     public Transform contenedorEncuestas;
@@ -40,7 +43,21 @@ public class ListarEncuestas : MonoBehaviour
     [Header("Paneles para navegacion")]
     public GameObject PanelEncuesta;
     public GameObject PanelListar;
+    public GameObject PanelTipoEncuesta;
+    public GameObject PanelElementoMision;
     public Button btnNuevaEncuesta;
+    public Button btnEncuestaRecreativa;
+    public Button btnEncuestaMision;
+    public Button btnSalirTipoEncuesta;
+    public Button btnSalirElemento;
+
+    [Header("Panel Elemento Mision")]
+    public Button btnContinuarMision;
+
+
+
+    public ControladorSeleccionMision controladorSeleccion; // Arrastra el GameObject "ControladorSeleccion" aquí en el Inspector
+
 
     #endregion
 
@@ -54,35 +71,56 @@ public class ListarEncuestas : MonoBehaviour
     private HashSet<string> encuestasCargadas = new();
     private EncuestasManager encuestasManager;
 
+
     #endregion
 
     #region Unity Methods
     void Start()
     {
-        InicializarFirebase();
-        StartCoroutine(VerificarConexionPeriodicamente());
-
-        // Obtenemos el componente EncuestasManager que está EN ESTE MISMO GameObject.
         encuestasManager = GetComponent<EncuestasManager>();
+        InicializarFirebase();
 
-        // Es una buena práctica verificar si se encontró el componente.
-        if (encuestasManager == null)
+        txtNombre.text = auth.CurrentUser.DisplayName;
+
+        //StartCoroutine(VerificarConexionPeriodicamente());
+
+        // --- FLUJO DE INICIO MEJORADO ---
+        CargarYsincronizarDatos();
+        ConfigurarBotones();
+    }
+    void OnDestroy()
+    {
+        encuestasListener?.Stop();
+    }
+
+
+    private async Task CargarYsincronizarDatos()
+    {
+        // Primero cargamos lo que tengamos localmente para que el usuario vea algo rápido
+        CargarDesdeLocal();
+
+        if (HayInternet())
         {
-            Debug.LogError("¡Error! No se encontró el componente EncuestasManager en el GameObject.");
+            // Luego, en segundo plano, sincronizamos todo
+            await SincronizarDatosCompletos();
+            // Y refrescamos la UI con los datos actualizados
+            CargarDesdeLocal();
         }
+    }
 
+    private void ConfigurarBotones()
+    {
         btnNuevaEncuesta.onClick.AddListener(AbrirPanelEncuestaCrearEncuesta);
         btnEliminarEncuesta.onClick.AddListener(MostrarPanelConfirmacionEliminar);
         btnConfirmarEliminar.onClick.AddListener(EliminarEncuestaConfirmada);
         btnCancelarEliminar.onClick.AddListener(OcultarPanelConfirmacionEliminar);
-
-        PanelListar.SetActive(true);
-        panelConfirmacionEliminar.SetActive(false);
+        // ... otros botones ...
     }
-
-    void OnDestroy()
+    // --- SINCRONIZACIÓN PRINCIPAL ---
+    private async Task SincronizarDatosCompletos()
     {
-        encuestasListener?.Stop();
+        await SincronizarEncuestasConFirebase();
+        await SincronizarEliminacionesPendientes();
     }
     #endregion
 
@@ -111,14 +149,11 @@ public class ListarEncuestas : MonoBehaviour
             // Espera 10 segundos antes de la siguiente verificación.
             yield return new WaitForSeconds(3);
 
-            Debug.Log("Verificando conexión..."); // Agrega logs para depurar
 
             if (HayInternet())
             {
-                Debug.Log("Hay internet. Sincronizando...");
-         
-                SincronizarEncuestasConFirebase();
-                SincronizarEliminacionesPendientes();
+                //SincronizarEncuestasConFirebase();
+                //SincronizarEliminacionesPendientes();
             }
         }
     }
@@ -134,7 +169,7 @@ public class ListarEncuestas : MonoBehaviour
         catch { return false; }
     }
 
-    private async void SincronizarEliminacionesPendientes()
+    private async Task SincronizarEliminacionesPendientes()
     {
         string clave = $"EliminadasOffline_{userId}";
         List<string> eliminadas = ObtenerEliminadasOffline(clave);
@@ -227,45 +262,13 @@ public class ListarEncuestas : MonoBehaviour
                     if (encuestasCargadas.Contains(id)) continue;
 
                     string titulo = doc.GetValue<string>("titulo");
-                    bool activo = doc.GetValue<bool>("activo");
+                    bool activo = doc.GetValue<bool>("publicada");
                     var preguntas = doc.ContainsField("preguntas") ? doc.GetValue<List<object>>("preguntas").Count : 0;
 
                     CrearTarjetaEncuesta(titulo, preguntas, id);
                     encuestasCargadas.Add(id);
                 }
             });
-    }
-
-    private void CargarDesdeLocal()
-    {
-        string carpetaEncuestas = Path.Combine(Application.persistentDataPath, "Encuestas");
-
-        if (!Directory.Exists(carpetaEncuestas))
-        {
-            Debug.Log("📁 Carpeta de encuestas local no existe.");
-            return;
-        }
-
-        string[] archivos = Directory.GetFiles(carpetaEncuestas, "*.json");
-
-        foreach (string rutaArchivo in archivos)
-        {
-            try
-            {
-                string jsonEncuesta = File.ReadAllText(rutaArchivo);
-                EncuestaData encuesta = JsonUtility.FromJson<EncuestaData>(jsonEncuesta);
-
-                CrearTarjetaEncuesta(
-                    encuesta.titulo,
-                    encuesta.preguntas.Count,
-                    encuesta.id
-                );
-            }
-            catch (System.Exception e)
-            {
-                Debug.LogError($"❌ Error al cargar encuesta desde archivo '{rutaArchivo}': {e.Message}");
-            }
-        }
     }
 
     private void CrearTarjetaEncuesta(string titulo, int numPreguntas, string id)
@@ -419,231 +422,161 @@ public class ListarEncuestas : MonoBehaviour
 
     private void AbrirPanelEncuestaCrearEncuesta()
     {
-        PanelListar.SetActive(false);
-        PanelEncuesta.SetActive(true);
-
         PlayerPrefs.SetString("ModoEditar", "Desactivado");
         PlayerPrefs.Save();
+
+        PanelTipoEncuesta.SetActive(true);
+        btnSalirTipoEncuesta.onClick.AddListener(() => { PanelTipoEncuesta.SetActive(false); });
+        btnSalirElemento.onClick.AddListener(() => { PanelElementoMision.SetActive(false); });
+
+        // --- MODIFICACIÓN AQUÍ ---
+        btnEncuestaMision.onClick.AddListener(() =>
+        {
+            PlayerPrefs.SetString("TipoEncuesta", "Mision");
+
+            PanelElementoMision.SetActive(true);
+            PanelTipoEncuesta.SetActive(false);
+
+            // Llamamos al método de nuestro controlador para que prepare el panel
+            controladorSeleccion.IniciarPanel();
+
+            // Limpiamos el listener del botón continuar para evitar que se acumulen
+            btnContinuarMision.onClick.RemoveAllListeners();
+            btnContinuarMision.onClick.AddListener(() => {
+
+                // Usamos nuestro controlador para obtener los datos
+                var seleccion = controladorSeleccion.ObtenerSeleccion();
+                if (seleccion.categoria != null && seleccion.elemento != null)
+                {
+                    // Guardar la selección
+                    Debug.Log($"Categoría: {seleccion.categoria}, Elemento: {seleccion.elemento}");
+                    PlayerPrefs.SetString("CategoriaMision", seleccion.categoria);
+                    PlayerPrefs.SetString("ElementoMision", seleccion.elemento);
+                    PlayerPrefs.Save();
+
+                    // Continuar al siguiente panel
+                    PanelElementoMision.SetActive(false);
+                    PanelEncuesta.SetActive(true);
+                }
+            });
+
+        });
+
+        btnEncuestaRecreativa.onClick.AddListener(() =>
+        {
+            PlayerPrefs.SetString("TipoEncuesta", "recreativa");
+            // ... Lógica para la encuesta recreativa
+        });
+
         panelDetallesEncuesta.SetActive(false);
-        encuestasManager.InicializarEncuesta();
+        encuestasManager.InicializarEncuesta(); // Probablemente quieras llamar esto después de seleccionar el elemento
     }
 
-    public async void SincronizarEncuestasConFirebase()
+    // --- MÉTODO DE SINCRONIZACIÓN TOTALMENTE CORREGIDO Y UNIFICADO ---
+    public async Task SincronizarEncuestasConFirebase()
     {
-
         if (!HayInternet() || string.IsNullOrEmpty(userId)) return;
 
         string carpetaEncuestas = Path.Combine(Application.persistentDataPath, "Encuestas");
-        if (!Directory.Exists(carpetaEncuestas))
-            Directory.CreateDirectory(carpetaEncuestas);
+        if (!Directory.Exists(carpetaEncuestas)) Directory.CreateDirectory(carpetaEncuestas);
 
-        Debug.Log(carpetaEncuestas);
-
-        // SUBIR encuestas locales
+        // PARTE 1: SUBIR ENCUESTAS LOCALES QUE NO ESTÁN EN FIREBASE
         string[] archivosLocales = Directory.GetFiles(carpetaEncuestas, "*.json");
         foreach (string rutaArchivo in archivosLocales)
         {
             try
             {
+                // --- AÑADIMOS VALIDACIÓN DE NOMBRE DE ARCHIVO ---
+                string nombreArchivo = Path.GetFileNameWithoutExtension(rutaArchivo);
+                if (string.IsNullOrEmpty(nombreArchivo))
+                {
+                    Debug.LogWarning($"Se encontró un archivo JSON sin nombre en '{rutaArchivo}'. Se ignorará y se eliminará.");
+                    File.Delete(rutaArchivo); // Eliminamos el archivo corrupto
+                    continue; // Saltamos al siguiente archivo
+                }
+
                 string contenidoJson = File.ReadAllText(rutaArchivo);
-                EncuestaData encuesta = JsonUtility.FromJson<EncuestaData>(contenidoJson);
+                if (string.IsNullOrWhiteSpace(contenidoJson))
+                {
+                    Debug.LogWarning($"El archivo JSON en '{rutaArchivo}' está vacío. Se ignorará.");
+                    continue;
+                }
 
-                DocumentReference docRef = FirebaseFirestore.DefaultInstance
-                    .Collection("users").Document(userId)
-                    .Collection("encuestas").Document(encuesta.id);
+                EncuestaModelo encuestaLocal = JsonUtility.FromJson<EncuestaModelo>(contenidoJson);
 
+                // --- AÑADIMOS VALIDACIÓN DEL ID DENTRO DEL JSON ---
+                if (encuestaLocal == null || string.IsNullOrEmpty(encuestaLocal.Id))
+                {
+                    Debug.LogWarning($"El JSON en '{rutaArchivo}' no contiene un ID válido o no se pudo deserializar. Se ignorará.");
+                    continue;
+                }
+
+                DocumentReference docRef = db.Collection("users").Document(userId).Collection("encuestas").Document(encuestaLocal.Id);
                 DocumentSnapshot snapshot = await docRef.GetSnapshotAsync();
 
                 if (!snapshot.Exists)
                 {
-                    // Convertir preguntas a diccionario para subir
-                    List<Dictionary<string, object>> preguntasDic = new List<Dictionary<string, object>>();
-                    foreach (var p in encuesta.preguntas)
-                    {
-                        preguntasDic.Add(new Dictionary<string, object>
-                {
-                    { "pregunta", p.pregunta },
-                    { "opciones", p.opciones },
-                    { "respuestaCorrecta", p.respuestaCorrecta }
-                });
-                    }
-
-                    Dictionary<string, object> datos = new Dictionary<string, object>
-            {
-                { "titulo", encuesta.titulo },
-                { "descripcion", encuesta.descripcion },
-                { "publicada", encuesta.publicada },
-                { "preguntas", preguntasDic }
-            };
-
-                    await docRef.SetAsync(datos);
-                    Debug.Log($"☁️ Encuesta subida: {encuesta.id}");
+                    Debug.Log($"⬆️ Subiendo encuesta local '{encuestaLocal.Titulo}' a Firebase.");
+                    await docRef.SetAsync(encuestaLocal);
                 }
             }
             catch (Exception e)
             {
-                Debug.LogError($"❌ Error subiendo {Path.GetFileName(rutaArchivo)}: {e.Message}");
+                Debug.LogError($"❌ Error procesando el archivo local {Path.GetFileName(rutaArchivo)}: {e.Message}");
             }
         }
 
-        CollectionReference encuestasRef = FirebaseFirestore.DefaultInstance
-            .Collection("users").Document(userId)
-            .Collection("encuestas");
+        // PARTE 2 (sin cambios, ya es bastante robusta)
+        try
+        {
+            QuerySnapshot qSnap = await db.Collection("users").Document(userId).Collection("encuestas").GetSnapshotAsync();
+            foreach (DocumentSnapshot doc in qSnap.Documents)
+            {
+                string rutaLocal = Path.Combine(carpetaEncuestas, doc.Id + ".json");
+                if (!File.Exists(rutaLocal))
+                {
+                    Debug.Log($"📥 Descargando encuesta remota '{doc.GetValue<string>("titulo")}' a local.");
+                    try
+                    {
+                        EncuestaModelo encuestaRemota = doc.ConvertTo<EncuestaModelo>();
+                        string jsonParaGuardar = JsonUtility.ToJson(encuestaRemota, true);
+                        File.WriteAllText(rutaLocal, jsonParaGuardar);
+                    }
+                    catch (Exception e)
+                    {
+                        Debug.LogError($"Error al convertir la encuesta {doc.Id}. ¿Están los atributos [FirestoreData] y [FirestoreProperty] en el modelo? Error: {e.Message}");
+                    }
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"❌ Error en la fase de descarga de Firebase: {e.Message}");
+        }
+    }
 
-        QuerySnapshot encuestasSnapshot = await encuestasRef.GetSnapshotAsync();
+    // El CargarDesdeLocal ahora solo se usa para la carga INICIAL.
+    private void CargarDesdeLocal()
+    {
+        foreach (Transform child in contenedorEncuestas) Destroy(child.gameObject);
+        string carpetaEncuestas = Path.Combine(Application.persistentDataPath, "Encuestas");
+        if (!Directory.Exists(carpetaEncuestas)) return;
 
-        foreach (DocumentSnapshot doc in encuestasSnapshot.Documents)
+        string[] archivos = Directory.GetFiles(carpetaEncuestas, "*.json");
+        foreach (string rutaArchivo in archivos)
         {
             try
             {
-                string encuestaId = doc.Id;
-                string rutaLocal = Path.Combine(carpetaEncuestas, encuestaId + ".json");
-
-                if (!File.Exists(rutaLocal))
-                {
-                    var data = doc.ToDictionary();
-
-                    // Extraer datos principales de la encuesta
-                    string titulo = data.ContainsKey("titulo") ? data["titulo"].ToString() : "";
-                    string descripcion = data.ContainsKey("descripcion") ? data["descripcion"].ToString() : "";
-                    // Asumo que 'publicada' puede no existir en Firebase, así que la manejo con seguridad
-                    bool publicada = data.ContainsKey("publicada") ? Convert.ToBoolean(data["publicada"]) : false;
-
-                    List<PreguntaData> preguntas = new List<PreguntaData>();
-
-                    // Comprobar si existe la clave "preguntas" y si es una lista
-                    if (data.TryGetValue("preguntas", out object preguntasObj) && preguntasObj is List<object> listaPreguntasFirebase)
-                    {
-                        // Iterar sobre cada pregunta (que es un diccionario/mapa)
-                        foreach (var preguntaItem in listaPreguntasFirebase)
-                        {
-                            if (preguntaItem is Dictionary<string, object> preguntaDict)
-                            {
-                                // OBTENER EL TEXTO DE LA PREGUNTA
-                                // En Firebase se llama 'textoPregunta', en tu clase es 'pregunta'
-                                string textoDeLaPregunta = preguntaDict.ContainsKey("textoPregunta") ? preguntaDict["textoPregunta"].ToString() : "";
-
-                                List<string> opcionesParaJson = new List<string>();
-                                string respuestaCorrectaParaJson = "";
-
-                                // PROCESAR LA LISTA DE OPCIONES
-                                // En Firebase es una lista de mapas, hay que convertirla a una lista de strings
-                                if (preguntaDict.TryGetValue("opciones", out object opcionesObj) && opcionesObj is List<object> listaOpcionesFirebase)
-                                {
-                                    foreach (var opcionItem in listaOpcionesFirebase)
-                                    {
-                                        if (opcionItem is Dictionary<string, object> opcionDict)
-                                        {
-                                            // Extraer el texto de la opción
-                                            if (opcionDict.TryGetValue("texto", out object textoOpcionObj))
-                                            {
-                                                string textoOpcion = textoOpcionObj.ToString();
-                                                opcionesParaJson.Add(textoOpcion); // Añadir el texto a la lista
-
-                                                // Comprobar si esta es la respuesta correcta
-                                                if (opcionDict.TryGetValue("esCorrecta", out object esCorrectaObj) && Convert.ToBoolean(esCorrectaObj))
-                                                {
-                                                    respuestaCorrectaParaJson = textoOpcion; // Guardar el texto de la respuesta correcta
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-
-                                // Crear el objeto PreguntaData con la estructura que tu clase espera
-                                PreguntaData p = new PreguntaData
-                                {
-                                    pregunta = textoDeLaPregunta,
-                                    opciones = opcionesParaJson,
-                                    respuestaCorrecta = respuestaCorrectaParaJson
-                                };
-
-                                preguntas.Add(p);
-                            }
-                        }
-                    }
-
-                    // Crear el objeto EncuestaData final
-                    EncuestaData encuesta = new EncuestaData(encuestaId, titulo, descripcion, preguntas, publicada);
-
-                    // Serializar a JSON y guardar en el archivo local
-                    string json = JsonUtility.ToJson(encuesta, true);
-                    File.WriteAllText(rutaLocal, json);
-                    Debug.Log($"📥 Encuesta descargada y adaptada: {encuestaId}");
-                }
+                string jsonEncuesta = File.ReadAllText(rutaArchivo);
+                // --- Usamos el modelo unificado ---
+                EncuestaModelo encuesta = JsonUtility.FromJson<EncuestaModelo>(jsonEncuesta);
+                CrearTarjetaEncuesta(encuesta.Titulo, encuesta.Preguntas.Count, encuesta.Id);
             }
             catch (Exception e)
             {
-                Debug.LogError($"❌ Error descargando y adaptando {doc.Id}: {e.Message}\n{e.StackTrace}");
+                Debug.LogError($"❌ Error al cargar encuesta '{Path.GetFileName(rutaArchivo)}': {e.Message}");
             }
         }
     }
-
-    [System.Serializable]
-    public class ListaSimple
-    {
-        public List<string> ids;
-
-        public ListaSimple(List<string> lista)
-        {
-            ids = lista;
-        }
-    }
-
-    [System.Serializable]
-    public class PreguntaData
-    {
-        public string pregunta;
-        public List<string> opciones;
-        public string respuestaCorrecta;
-    }
-
-    [System.Serializable]
-
-    public class EncuestaData
-    {
-        public string id;
-        public string titulo;
-        public string descripcion;
-        public List<PreguntaData> preguntas;
-        public bool publicada;
-
-        public EncuestaData() { }
-
-        // Constructor usando directamente List<PreguntaData>
-        public EncuestaData(string id, string titulo, string descripcion, List<PreguntaData> preguntas, bool publicada)
-        {
-            this.id = id;
-            this.titulo = titulo;
-            this.descripcion = descripcion;
-            this.preguntas = preguntas;
-            this.publicada = publicada;
-        }
-
-        public Dictionary<string, object> ToDictionary()
-        {
-            var preguntasList = new List<Dictionary<string, object>>();
-            foreach (var pregunta in preguntas)
-            {
-                preguntasList.Add(new Dictionary<string, object>
-        {
-            { "pregunta", pregunta.pregunta },
-            { "opciones", pregunta.opciones },
-            { "respuestaCorrecta", pregunta.respuestaCorrecta }
-        });
-            }
-
-            return new Dictionary<string, object>
-    {
-        { "id", id },
-        { "titulo", titulo },
-        { "descripcion", descripcion },
-        { "publicada", publicada },
-        { "preguntas", preguntasList }
-    };
-        }
-
-    }
-
     #endregion
 }

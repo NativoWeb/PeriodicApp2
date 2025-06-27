@@ -26,7 +26,8 @@ public class cambiarescena : MonoBehaviour
     public void DevolverComunidades()
     {
         string Ocupacion = PlayerPrefs.GetString("TempOcupacion", "");
-        if(Ocupacion == "Estudiante")
+        string vuforia = PlayerPrefs.GetString("CargarVuforia", "");
+        if(Ocupacion == "Estudiante" || vuforia == "inicio")
         {
             SceneManager.LoadScene("Perfil_Usuario");
         }

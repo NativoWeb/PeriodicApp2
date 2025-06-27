@@ -20,6 +20,8 @@ public class PreguntaController : MonoBehaviour
     public Button btnEliminar;
     public GameObject panelConfirmacionPrefab;
 
+    public EncuestasManager encuestasManager; // ¡Asegúrate de tener esta línea!
+
     private void Start()
     {
         // Desactivar el botón inicialmente
@@ -73,6 +75,7 @@ public class PreguntaController : MonoBehaviour
 
         Destroy(gameObject);
     }
+
     public void AgregarOpcion()
     {
         if (contenedorOpciones.childCount >= maxOpciones)
@@ -244,4 +247,55 @@ public class PreguntaController : MonoBehaviour
 
         Debug.Log("⏱️ Tiempo de respuesta asignado: " + tiempoRespuesta + " segundos");
     }
+    public PreguntaModelo ObtenerModeloDesdeUI()
+    {
+        var modelo = new PreguntaModelo();
+
+        // Aquí usas los métodos que ya tienes
+        modelo.TextoPregunta = ObtenerTextoPregunta();
+        modelo.Opciones = ObtenerOpcionesUI();
+
+        return modelo;
+    }
+
+
+    public string ObtenerTextoPregunta()
+    {
+        return inputPregunta.text;
+    }
+
+    public List<OpcionModelo> ObtenerOpcionesUI()
+    {
+        var listaOpciones = new List<OpcionModelo>();
+        // Itera sobre tus GameObjects de opciones en la UI
+        foreach (OpcionUI opcionController in contenedorOpciones.GetComponentsInChildren<OpcionUI>())
+        {
+            listaOpciones.Add(new OpcionModelo
+            {
+                Texto = opcionController.ObtenerTextoOpcion(),      // Método que devuelve el texto de la opción
+                EsCorrecta = opcionController.EsCorrecta() // Método que devuelve si el toggle está activado
+            });
+        }
+        return listaOpciones;
+    }
+
+    // MÉTODO 2: Para rellenar la UI desde un modelo de datos
+    public void PoblarUIDesdeModelo(PreguntaModelo modelo)
+    {
+        inputPregunta.text = modelo.TextoPregunta;
+
+        // Limpia las opciones viejas
+        foreach (Transform child in contenedorOpciones)
+        {
+            Destroy(child.gameObject);
+        }
+
+        // Crea las nuevas opciones desde el modelo
+        foreach (var opcionModelo in modelo.Opciones)
+        {
+            // Llama a tu método existente para añadir una opción a la UI
+            AgregarOpcionUI(opcionModelo.Texto, opcionModelo.EsCorrecta);
+        }
+    }
+
 }
