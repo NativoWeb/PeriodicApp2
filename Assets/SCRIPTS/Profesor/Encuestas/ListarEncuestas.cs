@@ -5,7 +5,6 @@ using TMPro;
 using Firebase.Firestore;
 using Firebase.Auth;
 using Firebase.Extensions;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
@@ -27,6 +26,7 @@ public class ListarEncuestas : MonoBehaviour
     public GameObject panelDetallesEncuesta;
     public TMP_Text txtTituloEncuesta;
     public TMP_Text txtNumeroPreguntas;
+    public TMP_Text txtNumeroComunidades;
     public Button btnEditarEncuesta;
     public Button btnEliminarEncuesta;
 
@@ -50,18 +50,17 @@ public class ListarEncuestas : MonoBehaviour
     public Button btnEncuestaMision;
     public Button btnSalirTipoEncuesta;
     public Button btnSalirElemento;
+    public Button btnSalirVerDetalles;
 
     [Header("Panel Elemento Mision")]
     public Button btnContinuarMision;
 
-
-
     public ControladorSeleccionMision controladorSeleccion; // Arrastra el GameObject "ControladorSeleccion" aquí en el Inspector
-
 
     #endregion
 
     #region Variables Privadas
+
     private FirebaseFirestore db;
     private FirebaseAuth auth;
     private FirebaseUser currentUser;
@@ -69,15 +68,14 @@ public class ListarEncuestas : MonoBehaviour
     private string encuestaActualID;
     private ListenerRegistration encuestasListener;
     private HashSet<string> encuestasCargadas = new();
-    private EncuestasManager encuestasManager;
-
+    public EncuestasManager encuestasManager;
 
     #endregion
 
     #region Unity Methods
     void Start()
     {
-        encuestasManager = GetComponent<EncuestasManager>();
+        //encuestasManager = GetComponent<EncuestasManager>();
         InicializarFirebase();
 
         txtNombre.text = auth.CurrentUser.DisplayName;
@@ -93,8 +91,7 @@ public class ListarEncuestas : MonoBehaviour
         encuestasListener?.Stop();
     }
 
-
-    private async Task CargarYsincronizarDatos()
+    public async Task CargarYsincronizarDatos()
     {
         // Primero cargamos lo que tengamos localmente para que el usuario vea algo rápido
         CargarDesdeLocal();
@@ -114,8 +111,10 @@ public class ListarEncuestas : MonoBehaviour
         btnEliminarEncuesta.onClick.AddListener(MostrarPanelConfirmacionEliminar);
         btnConfirmarEliminar.onClick.AddListener(EliminarEncuestaConfirmada);
         btnCancelarEliminar.onClick.AddListener(OcultarPanelConfirmacionEliminar);
-        // ... otros botones ...
+        btnSalirVerDetalles.onClick.AddListener(CerrarPanelVerDetalles);
     }
+
+
     // --- SINCRONIZACIÓN PRINCIPAL ---
     private async Task SincronizarDatosCompletos()
     {
@@ -140,22 +139,6 @@ public class ListarEncuestas : MonoBehaviour
 
         encuestasListener = db.Collection("users").Document(userId).Collection("encuestas")
             .Listen(snapshot => UnityMainThreadDispatcher.Instance().Enqueue(CargarEncuestas));
-    }
-
-    private IEnumerator VerificarConexionPeriodicamente()
-    {
-        while (true)
-        {
-            // Espera 10 segundos antes de la siguiente verificación.
-            yield return new WaitForSeconds(3);
-
-
-            if (HayInternet())
-            {
-                //SincronizarEncuestasConFirebase();
-                //SincronizarEliminacionesPendientes();
-            }
-        }
     }
 
     private bool HayInternet()
@@ -293,8 +276,8 @@ public class ListarEncuestas : MonoBehaviour
     {
         encuestaActualID = id;
         txtTituloEncuesta.text = titulo;
-        txtNumeroPreguntas.text = numPreguntas.ToString();
-
+        txtNumeroPreguntas.text = numPreguntas.ToString() + " pregunta(s)";
+        txtNumeroComunidades.text = "Asignada a " + numPreguntas + " comunidad(es)";
         panelDetallesEncuesta.SetActive(true);
 
         btnEditarEncuesta.onClick.RemoveAllListeners();
@@ -443,19 +426,22 @@ public class ListarEncuestas : MonoBehaviour
             // Limpiamos el listener del botón continuar para evitar que se acumulen
             btnContinuarMision.onClick.RemoveAllListeners();
             btnContinuarMision.onClick.AddListener(() => {
-
-                // Usamos nuestro controlador para obtener los datos
                 var seleccion = controladorSeleccion.ObtenerSeleccion();
                 if (seleccion.categoria != null && seleccion.elemento != null)
                 {
                     // Guardar la selección
-                    Debug.Log($"Categoría: {seleccion.categoria}, Elemento: {seleccion.elemento}");
                     PlayerPrefs.SetString("CategoriaMision", seleccion.categoria);
                     PlayerPrefs.SetString("ElementoMision", seleccion.elemento);
                     PlayerPrefs.Save();
 
-                    // Continuar al siguiente panel
+                    // Cerrar panel de selección
                     PanelElementoMision.SetActive(false);
+                    LimpiarEncuestasEnPantalla();
+
+                    // ← AÑADE AQUÍ: reiniciar datos de encuesta
+                    encuestasManager.InicializarEncuesta();
+
+                    // Mostrar panel de creación de encuesta
                     PanelEncuesta.SetActive(true);
                 }
             });
@@ -465,93 +451,131 @@ public class ListarEncuestas : MonoBehaviour
         btnEncuestaRecreativa.onClick.AddListener(() =>
         {
             PlayerPrefs.SetString("TipoEncuesta", "recreativa");
-            // ... Lógica para la encuesta recreativa
+            encuestasManager.InicializarEncuesta();
+            PanelListar.SetActive(false);
+            PanelTipoEncuesta.SetActive(false);
+            LimpiarEncuestasEnPantalla();
+            PanelEncuesta.SetActive(true);
         });
 
         panelDetallesEncuesta.SetActive(false);
-        encuestasManager.InicializarEncuesta(); // Probablemente quieras llamar esto después de seleccionar el elemento
     }
 
     // --- MÉTODO DE SINCRONIZACIÓN TOTALMENTE CORREGIDO Y UNIFICADO ---
     public async Task SincronizarEncuestasConFirebase()
     {
-        if (!HayInternet() || string.IsNullOrEmpty(userId)) return;
-
-        string carpetaEncuestas = Path.Combine(Application.persistentDataPath, "Encuestas");
-        if (!Directory.Exists(carpetaEncuestas)) Directory.CreateDirectory(carpetaEncuestas);
-
-        // PARTE 1: SUBIR ENCUESTAS LOCALES QUE NO ESTÁN EN FIREBASE
-        string[] archivosLocales = Directory.GetFiles(carpetaEncuestas, "*.json");
-        foreach (string rutaArchivo in archivosLocales)
+        // 0) Asegúrate de que db y userId estén inicializados
+        if (db == null)
         {
-            try
-            {
-                // --- AÑADIMOS VALIDACIÓN DE NOMBRE DE ARCHIVO ---
-                string nombreArchivo = Path.GetFileNameWithoutExtension(rutaArchivo);
-                if (string.IsNullOrEmpty(nombreArchivo))
-                {
-                    Debug.LogWarning($"Se encontró un archivo JSON sin nombre en '{rutaArchivo}'. Se ignorará y se eliminará.");
-                    File.Delete(rutaArchivo); // Eliminamos el archivo corrupto
-                    continue; // Saltamos al siguiente archivo
-                }
-
-                string contenidoJson = File.ReadAllText(rutaArchivo);
-                if (string.IsNullOrWhiteSpace(contenidoJson))
-                {
-                    Debug.LogWarning($"El archivo JSON en '{rutaArchivo}' está vacío. Se ignorará.");
-                    continue;
-                }
-
-                EncuestaModelo encuestaLocal = JsonUtility.FromJson<EncuestaModelo>(contenidoJson);
-
-                // --- AÑADIMOS VALIDACIÓN DEL ID DENTRO DEL JSON ---
-                if (encuestaLocal == null || string.IsNullOrEmpty(encuestaLocal.Id))
-                {
-                    Debug.LogWarning($"El JSON en '{rutaArchivo}' no contiene un ID válido o no se pudo deserializar. Se ignorará.");
-                    continue;
-                }
-
-                DocumentReference docRef = db.Collection("users").Document(userId).Collection("encuestas").Document(encuestaLocal.Id);
-                DocumentSnapshot snapshot = await docRef.GetSnapshotAsync();
-
-                if (!snapshot.Exists)
-                {
-                    Debug.Log($"⬆️ Subiendo encuesta local '{encuestaLocal.Titulo}' a Firebase.");
-                    await docRef.SetAsync(encuestaLocal);
-                }
-            }
-            catch (Exception e)
-            {
-                Debug.LogError($"❌ Error procesando el archivo local {Path.GetFileName(rutaArchivo)}: {e.Message}");
-            }
+            Debug.LogWarning("[Sync] Firebase no inicializado, omitiendo sincronización.");
+            return;
+        }
+        if (string.IsNullOrEmpty(userId))
+        {
+            Debug.LogWarning("[Sync] Sin usuario logueado, omitiendo sincronización.");
+            return;
+        }
+        if (!HayInternet())
+        {
+            Debug.LogWarning("[Sync] Sin Internet, omitiendo sincronización.");
+            return;
         }
 
-        // PARTE 2 (sin cambios, ya es bastante robusta)
+        // 1) Asegúrate de que la carpeta exista (si no, la creas)
+        string carpetaEncuestas = Path.Combine(Application.persistentDataPath, "Encuestas");
         try
         {
-            QuerySnapshot qSnap = await db.Collection("users").Document(userId).Collection("encuestas").GetSnapshotAsync();
-            foreach (DocumentSnapshot doc in qSnap.Documents)
-            {
-                string rutaLocal = Path.Combine(carpetaEncuestas, doc.Id + ".json");
-                if (!File.Exists(rutaLocal))
-                {
-                    Debug.Log($"📥 Descargando encuesta remota '{doc.GetValue<string>("titulo")}' a local.");
-                    try
-                    {
-                        EncuestaModelo encuestaRemota = doc.ConvertTo<EncuestaModelo>();
-                        string jsonParaGuardar = JsonUtility.ToJson(encuestaRemota, true);
-                        File.WriteAllText(rutaLocal, jsonParaGuardar);
-                    }
-                    catch (Exception e)
-                    {
-                        Debug.LogError($"Error al convertir la encuesta {doc.Id}. ¿Están los atributos [FirestoreData] y [FirestoreProperty] en el modelo? Error: {e.Message}");
-                    }
-                }
-            }
+            if (!Directory.Exists(carpetaEncuestas))
+                Directory.CreateDirectory(carpetaEncuestas);
         }
         catch (Exception e)
         {
-            Debug.LogError($"❌ Error en la fase de descarga de Firebase: {e.Message}");
+            Debug.LogError($"[Sync] No se pudo crear o acceder a la carpeta local: {e.Message}");
+            // Podemos continuar; en el peor caso no habrá archivos locales que subir
+        }
+
+        // 2) Subir JSONs locales
+        string[] archivosLocales = new string[0];
+        try
+        {
+            archivosLocales = Directory.GetFiles(carpetaEncuestas, "*.json");
+        }
+        catch (DirectoryNotFoundException)
+        {
+            // Si la carpeta no existía, ya la creamos; no hay archivos => no hay nada que subir
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"[Sync] Error listando archivos locales: {e.Message}");
+        }
+
+        foreach (var rutaArchivo in archivosLocales)
+        {
+            try
+            {
+                var nombre = Path.GetFileNameWithoutExtension(rutaArchivo);
+                if (string.IsNullOrEmpty(nombre))
+                {
+                    File.Delete(rutaArchivo);
+                    continue;
+                }
+
+                var contenido = File.ReadAllText(rutaArchivo);
+                if (string.IsNullOrWhiteSpace(contenido)) continue;
+
+                var encuestaLocal = JsonUtility.FromJson<EncuestaModelo>(contenido);
+                if (encuestaLocal == null || string.IsNullOrEmpty(encuestaLocal.Id))
+                    continue;
+
+                var docRef = db
+                    .Collection("users")
+                    .Document(userId)
+                    .Collection("encuestas")
+                    .Document(encuestaLocal.Id);
+
+                var snapshot = await docRef.GetSnapshotAsync();
+                if (!snapshot.Exists)
+                    await docRef.SetAsync(encuestaLocal);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[Sync] Error procesando '{rutaArchivo}': {e.Message}");
+            }
+        }
+
+        // 3) Descargar encuestas remotas (si existen)
+        QuerySnapshot remotoSnap = null;
+        try
+        {
+            remotoSnap = await db
+                .Collection("users")
+                .Document(userId)
+                .Collection("encuestas")
+                .GetSnapshotAsync();
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning($"[Sync] No hay encuestas en Firebase o fallo al leer: {e.Message}");
+        }
+
+        if (remotoSnap != null)
+        {
+            foreach (var doc in remotoSnap.Documents)
+            {
+                try
+                {
+                    var rutaLocal = Path.Combine(carpetaEncuestas, doc.Id + ".json");
+                    if (File.Exists(rutaLocal)) continue;
+
+                    var encuesta = doc.ConvertTo<EncuestaModelo>();
+                    var json = JsonUtility.ToJson(encuesta, true);
+                    File.WriteAllText(rutaLocal, json);
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError($"[Sync] Error guardando encuesta '{doc.Id}': {e.Message}");
+                }
+            }
         }
     }
 
@@ -577,6 +601,21 @@ public class ListarEncuestas : MonoBehaviour
                 Debug.LogError($"❌ Error al cargar encuesta '{Path.GetFileName(rutaArchivo)}': {e.Message}");
             }
         }
+    }
+
+    public void LimpiarEncuestasEnPantalla()
+    {
+        // 1. Elimina todos los hijos del contenedor visual
+        foreach (Transform child in contenedorEncuestas)
+            Destroy(child.gameObject);
+
+        // 2. Limpia la lista de encuestas cargadas (si usas alguna)
+        encuestasCargadas.Clear();
+    }
+
+    void CerrarPanelVerDetalles()
+    {
+        panelDetallesEncuesta.SetActive(false);
     }
     #endregion
 }

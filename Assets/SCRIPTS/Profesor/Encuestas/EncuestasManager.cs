@@ -5,7 +5,6 @@ using TMPro;
 using System.Collections.Generic;
 using Firebase.Auth;
 using Firebase.Firestore;
-using System.Collections;
 using System.Net;
 using System.Linq;
 using Firebase.Extensions;
@@ -20,7 +19,7 @@ public class EncuestasManager : MonoBehaviour
     public TMP_InputField inputTituloEncuesta;
     public TMP_InputField inputDescripcion;
     public Transform contenedorPreguntas;
-    public GameObject preguntaPrefab;
+    public GameObject itemPreguntaPrefab;
     public Button btnGuardarEncuesta;
     public Button btnActualizarEncuesta;
     public Button btnAñadirPregunta;
@@ -33,6 +32,7 @@ public class EncuestasManager : MonoBehaviour
     public GameObject PanelEncuesta;
     public GameObject PanelCancelarEncuesta;
     public GameObject PanelListar;
+    public GameObject panelFormularioPregunta; // Panel que contiene el PreguntaController (desactivado por defecto)
     public Button BtnSalir;
     public Button BtnCancelar;
     public Button btnSalirCreacionE;
@@ -41,7 +41,12 @@ public class EncuestasManager : MonoBehaviour
 
     #region Variables Privadas
     // --- CAMBIO CLAVE: Nombre y tipo de la variable corregidos ---
-    private List<PreguntaController> listaPreguntasUI = new();
+
+    private List<PreguntaModelo> listaPreguntas = new();          // Datos
+    private List<PreguntaController> listaPreguntasUI = new();    // Controladores de la UI
+
+    private int indiceEdicion = -1;
+    private PreguntaController controladorPregunta;
     private FirebaseFirestore db;
     private FirebaseAuth auth;
     private FirebaseUser currentUser;
@@ -55,6 +60,8 @@ public class EncuestasManager : MonoBehaviour
     {
         InicializarFirebase();
 
+        panelFormularioPregunta.SetActive(false);
+
         btnGuardarEncuesta.onClick.RemoveAllListeners();
         btnActualizarEncuesta.onClick.RemoveAllListeners();
         btnAñadirPregunta.onClick.RemoveAllListeners();
@@ -63,7 +70,7 @@ public class EncuestasManager : MonoBehaviour
 
         BtnCancelar.onClick.AddListener(FinalizarEdicion);
         BtnSalir.onClick.AddListener(FinalizarEdicion);
-        btnAñadirPregunta.onClick.AddListener(AgregarPregunta);
+        btnAñadirPregunta.onClick.AddListener(AbrirPanelCrearPregunta);
 
         string modoEditar = PlayerPrefs.GetString("ModoEditar", "Desactivado");
         IdEncuestaEditando = PlayerPrefs.GetString("IdEncuesta", "");
@@ -163,7 +170,7 @@ public class EncuestasManager : MonoBehaviour
             ShowMessage("La descripción está vacía", Color.red);
             return false;
         }
-        if (listaPreguntasUI.Count == 0)
+        if (listaPreguntas.Count == 0)
         {
             ShowMessage("Debe haber al menos una pregunta", Color.red);
             return false;
@@ -173,11 +180,9 @@ public class EncuestasManager : MonoBehaviour
 
     private bool ValidarPreguntas()
     {
-        // --- CAMBIO CLAVE: Se valida usando el nuevo modelo ---
-        for (int i = 0; i < listaPreguntasUI.Count; i++)
+        for (int i = 0; i < listaPreguntas.Count; i++)
         {
-            var preguntaController = listaPreguntasUI[i];
-            PreguntaModelo preguntaModelo = preguntaController.ObtenerModeloDesdeUI(); // Pide el modelo a la UI
+            var preguntaModelo = listaPreguntas[i];
 
             if (string.IsNullOrWhiteSpace(preguntaModelo.TextoPregunta))
             {
@@ -200,7 +205,7 @@ public class EncuestasManager : MonoBehaviour
                 }
             }
 
-            if (!preguntaModelo.Opciones.Any(o => o.EsCorrecta))
+            if (!preguntaModelo.Opciones.Exists(o => o.EsCorrecta))
             {
                 ShowMessage($"La pregunta '{preguntaModelo.TextoPregunta}' no tiene opción correcta marcada", Color.red);
                 return false;
@@ -208,6 +213,7 @@ public class EncuestasManager : MonoBehaviour
         }
         return true;
     }
+
     #endregion
 
     #region Utilidades (Sin cambios)
@@ -248,6 +254,8 @@ public class EncuestasManager : MonoBehaviour
                   // Si falla, creamos el modelo desde el diccionario y guardamos localmente
                   EncuestaModelo encuesta = CrearModeloDesdeUI(false); // Recreamos el modelo para guardado local
                   GuardarLocalmente(encuesta);
+                  PanelEncuesta.SetActive(false);
+                  PanelListar.SetActive(true);
               }
           });
     }
@@ -262,6 +270,8 @@ public class EncuestasManager : MonoBehaviour
         File.WriteAllText(rutaArchivo, json);
 
         Debug.Log("💾 Encuesta guardada/actualizada localmente en: " + rutaArchivo);
+        PanelEncuesta.SetActive(false);
+        PanelListar.SetActive(true);
     }
 
     private void ActualizarEncuestaEnFirebase(string encuestaID, Dictionary<string, object> data)
@@ -274,6 +284,9 @@ public class EncuestasManager : MonoBehaviour
               if (task.IsCompletedSuccessfully)
               {
                   ShowMessage("✅ Encuesta actualizada en Firebase", Color.green);
+
+                  PanelEncuesta.SetActive(false);
+                  PanelListar.SetActive(true);
               }
               else
               {
@@ -281,6 +294,8 @@ public class EncuestasManager : MonoBehaviour
                   ShowMessage("⚠️ Error actualizando en Firebase. Se actualizará localmente.", Color.red);
                   EncuestaModelo encuesta = CrearModeloDesdeUI(true); // Recreamos el modelo para guardado local
                   GuardarLocalmente(encuesta);
+                  PanelEncuesta.SetActive(false);
+                  PanelListar.SetActive(true);
               }
           });
     }
@@ -332,18 +347,25 @@ public class EncuestasManager : MonoBehaviour
     {
         inputTituloEncuesta.text = encuesta.Titulo;
         inputDescripcion.text = encuesta.Descripcion;
-        LimpiarPreguntasUI();
+        listaPreguntasUI.Clear();
 
-        foreach (var preguntaModelo in encuesta.Preguntas)
+        // Limpia primero
+        foreach (Transform t in contenedorPreguntas)
+            Destroy(t.gameObject);
+        listaPreguntas.Clear();
+
+        // Carga cada pregunta como ítem visual
+        for (int i = 0; i < encuesta.Preguntas.Count; i++)
         {
-            GameObject nuevaPreguntaGO = Instantiate(preguntaPrefab, contenedorPreguntas);
-            PreguntaController controller = nuevaPreguntaGO.GetComponent<PreguntaController>();
-            if (controller != null)
-            {
-                controller.encuestasManager = this;
-                controller.PoblarUIDesdeModelo(preguntaModelo);
-                listaPreguntasUI.Add(controller);
-            }
+            var preguntaModelo = encuesta.Preguntas[i];
+
+            GameObject nuevaPreguntaGO = Instantiate(itemPreguntaPrefab, contenedorPreguntas);
+            PreguntaItemUI itemUI = nuevaPreguntaGO.GetComponent<PreguntaItemUI>();
+
+            if (itemUI != null)
+                itemUI.Configurar(preguntaModelo, i, this);
+
+            listaPreguntas.Add(preguntaModelo);
         }
     }
 
@@ -367,7 +389,7 @@ public class EncuestasManager : MonoBehaviour
         {
             Destroy(child.gameObject);
         }
-        listaPreguntasUI.Clear();
+        listaPreguntas.Clear();
     }
 
     public void LimpiarCampos()
@@ -380,32 +402,80 @@ public class EncuestasManager : MonoBehaviour
         PlayerPrefs.DeleteKey("IdEncuesta");
     }
 
-    public void AgregarPregunta()
+    public void AbrirPanelCrearPregunta()
     {
-        if (preguntaPrefab == null || contenedorPreguntas == null)
-        {
-            Debug.LogError("Referencias no asignadas en el inspector");
-            return;
-        }
+        indiceEdicion = -1;
+        panelFormularioPregunta.SetActive(true);
 
-        GameObject nuevaPregunta = Instantiate(preguntaPrefab, contenedorPreguntas);
-        PreguntaController controlador = nuevaPregunta.GetComponent<PreguntaController>();
+        // Asegúrate de limpiar el formulario
+        controladorPregunta = panelFormularioPregunta.GetComponent<PreguntaController>();
+        controladorPregunta.LimpiarCampos();
+    }
 
-        if (controlador != null)
+    // === LLAMADO DESDE PreguntaItemUI PARA EDITAR ===
+    public void AbrirPanelEditarPregunta(int indice)
+    {
+        if (indice < 0 || indice >= listaPreguntas.Count) return;
+
+        panelFormularioPregunta.SetActive(true);
+        indiceEdicion = indice;
+
+        controladorPregunta = panelFormularioPregunta.GetComponent<PreguntaController>();
+        controladorPregunta.encuestasManager = this;
+        controladorPregunta.PoblarUIDesdeModelo(listaPreguntas[indice]);
+    }
+
+    // === LLAMADO DESDE PreguntaController AL GUARDAR ===
+    public void GuardarPregunta(PreguntaModelo nuevaPregunta)
+    {
+
+        if (indiceEdicion >= 0 && indiceEdicion < listaPreguntas.Count)
         {
-            controlador.encuestasManager = this;
-            listaPreguntasUI.Add(controlador);
+            listaPreguntas[indiceEdicion] = nuevaPregunta;
         }
         else
         {
-            Debug.LogError("El prefab de pregunta no tiene el componente PreguntaController");
+            listaPreguntas.Add(nuevaPregunta);
+        }
+        indiceEdicion = -1; // resetea después
+
+        ActualizarListado();
+        controladorPregunta = panelFormularioPregunta.GetComponent<PreguntaController>();
+        controladorPregunta.LimpiarCampos();
+        panelFormularioPregunta.SetActive(false);
+    }
+
+    // === LLAMADO DESDE PreguntaItemUI AL CONFIRMAR ELIMINAR ===
+    public void EliminarPregunta(int indice)
+    {
+        if (indice < 0 || indice >= listaPreguntas.Count) return;
+        listaPreguntas.RemoveAt(indice);
+        ActualizarListado();
+    }
+
+    public void PreguntaEliminada(PreguntaController pregunta)
+    {
+        listaPreguntasUI.Remove(pregunta); // Asegúrate que esta lista sea List<PreguntaController>
+        ActualizarListado();             // O actualiza visualmente si usas un método diferente
+        Debug.Log("Pregunta eliminada correctamente.");
+    }
+
+    private void ActualizarListado()
+    {
+        foreach (Transform t in contenedorPreguntas)
+            Destroy(t.gameObject);
+
+        for (int i = 0; i < listaPreguntas.Count; i++)
+        {
+            var go = Instantiate(itemPreguntaPrefab, contenedorPreguntas);
+            var ui = go.GetComponent<PreguntaItemUI>();
+            ui.Configurar(listaPreguntas[i], i, this);
         }
     }
 
-    public void PreguntaEliminada(PreguntaController preguntaEliminada)
+    public List<PreguntaModelo> ObtenerPreguntas()
     {
-        listaPreguntasUI.Remove(preguntaEliminada);
-        Debug.Log($"Pregunta eliminada. Total restantes: {listaPreguntasUI.Count}");
+        return listaPreguntas;
     }
 
     #endregion
@@ -437,15 +507,11 @@ public class EncuestasManager : MonoBehaviour
         // El resto del método sigue igual...
         string titulo = inputTituloEncuesta.text;
         string descripcion = inputDescripcion.text;
-        string tipoEncuesta = PlayerPrefs.GetString("TipoEncuesta", "recreativa");
+        string tipoEncuesta = PlayerPrefs.GetString("TipoEncuesta", "");
         string categoriaMision = (tipoEncuesta == "Mision") ? PlayerPrefs.GetString("CategoriaMision") : null;
         string elementoMision = (tipoEncuesta == "Mision") ? PlayerPrefs.GetString("ElementoMision") : null;
 
-        List<PreguntaModelo> preguntas = new List<PreguntaModelo>();
-        foreach (var controller in listaPreguntasUI)
-        {
-            preguntas.Add(controller.ObtenerModeloDesdeUI());
-        }
+        List<PreguntaModelo> preguntas = new(listaPreguntas);
 
         return new EncuestaModelo(encuestaID, titulo, descripcion, preguntas, false, tipoEncuesta, categoriaMision, elementoMision);
     }

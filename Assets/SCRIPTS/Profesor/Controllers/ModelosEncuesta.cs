@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+Ôªøusing System.Collections.Generic;
 using Firebase.Firestore;
 using UnityEngine;
 
@@ -27,19 +27,41 @@ public class PreguntaModelo
     [SerializeField] private string textoPregunta;
     [SerializeField] private List<OpcionModelo> opciones = new List<OpcionModelo>();
 
+    // NUEVOS CAMPOS
+    [SerializeField] private int tipopregunta;             // 0 = VerdaderoFalso, 1 = OpcionMultiple
+    [SerializeField] private int tiempoSegundos;   // 15, 30, 45, 60
+
     [FirestoreProperty("textoPregunta")]
-    public string TextoPregunta { get { return textoPregunta; } set { textoPregunta = value; } }
+    public string TextoPregunta
+    {
+        get => textoPregunta;
+        set => textoPregunta = value;
+    }
 
     [FirestoreProperty("opciones")]
-    public List<OpcionModelo> Opciones { get { return opciones; } set { opciones = value; } }
-
-    public PreguntaModelo()
+    public List<OpcionModelo> Opciones
     {
-        opciones = new List<OpcionModelo>();
+        get => opciones;
+        set => opciones = value;
+    }
+
+    [FirestoreProperty("tipo")]
+    public int Tipo
+    {
+        get => tipopregunta;
+        set => tipopregunta = value;
+    }
+
+    [FirestoreProperty("tiempoSegundos")]
+    public int TiempoSegundos
+    {
+        get => tiempoSegundos;
+        set => tiempoSegundos = value;
     }
 }
 
-// --- MODELO PRINCIPAL PARA LA ENCUESTA (VERSI”N CON ToDictionary CORREGIDO) ---
+
+// --- MODELO PRINCIPAL PARA LA ENCUESTA (VERSI√ìN CON ToDictionary CORREGIDO) ---
 [FirestoreData]
 [System.Serializable]
 public class EncuestaModelo
@@ -54,8 +76,11 @@ public class EncuestaModelo
     [SerializeField] private string categoriaMision;
     [SerializeField] private string elementoMision; 
     [SerializeField] private string codigoUnion;
+    [SerializeField] private int tipopregunta;             // e.g. 0 = VF, 1 = M√∫ltiple
+    [SerializeField] private int tiempoSegundos;
 
-    // --- PROPIEDADES P⁄BLICAS PARA FIREBASE (Y PARA EL RESTO DEL C”DIGO) ---
+    
+    // --- PROPIEDADES P√öBLICAS PARA FIREBASE (Y PARA EL RESTO DEL C√ìDIGO) ---
     [FirestoreProperty("id")]
     public string Id { get { return id; } set { id = value; } }
 
@@ -83,7 +108,13 @@ public class EncuestaModelo
     [FirestoreProperty("elementoMision")]
     public string ElementoMision { get { return elementoMision; } set { elementoMision = value; } }
 
-    // Constructor vacÌo
+    [FirestoreProperty("tipoPregunta")]
+    public int Tipo { get { return tipopregunta; } set { tipopregunta = value; } }
+
+    [FirestoreProperty("tiempoSegundos")]
+    public int TiempoSegundos { get { return tiempoSegundos; } set { tiempoSegundos = value; } }
+
+    // Constructor vac√≠o
     public EncuestaModelo()
     {
         preguntas = new List<PreguntaModelo>();
@@ -102,10 +133,9 @@ public class EncuestaModelo
         this.ElementoMision = (tipo == "Mision") ? elem : null;
     }
 
-    // --- M…TODO ToDictionary() REINTEGRADO Y CORREGIDO ---
+    // --- M√âTODO ToDictionary() REINTEGRADO Y CORREGIDO ---
     public Dictionary<string, object> ToDictionary()
     {
-        // 1. Convertir la lista de PreguntaModelo a una lista de diccionarios
         var preguntasList = new List<object>();
         foreach (var pregunta in Preguntas)
         {
@@ -113,31 +143,32 @@ public class EncuestaModelo
             foreach (var opcion in pregunta.Opciones)
             {
                 opcionesList.Add(new Dictionary<string, object>
-                {
-                    { "texto", opcion.Texto },
-                    { "esCorrecta", opcion.EsCorrecta }
-                });
+            {
+                { "texto", opcion.Texto },
+                { "esCorrecta", opcion.EsCorrecta }
+            });
             }
 
             preguntasList.Add(new Dictionary<string, object>
-            {
-                { "textoPregunta", pregunta.TextoPregunta },
-                { "opciones", opcionesList }
-            });
+        {
+            { "textoPregunta", pregunta.TextoPregunta },
+            { "opciones", opcionesList },
+            { "tipo", pregunta.Tipo },               // ‚Üê aqu√≠
+            { "tiempoSegundos", pregunta.TiempoSegundos } // ‚Üê y aqu√≠
+        });
         }
 
-        // 2. Crear el diccionario principal
         var dict = new Dictionary<string, object>
-        {
-            { "id", Id },
-            { "titulo", Titulo },
-            { "descripcion", Descripcion },
-            { "publicada", Publicada },
-            { "preguntas", preguntasList }, // AÒadimos la lista de diccionarios de preguntas
-            { "tipoEncuesta", TipoEncuesta },
-            { "categoriaMision", CategoriaMision },
-            { "elementoMision", ElementoMision }
-        };
+    {
+        { "id", Id },
+        { "titulo", Titulo },
+        { "descripcion", Descripcion },
+        { "publicada", Publicada },
+        { "preguntas", preguntasList },
+        { "tipoEncuesta", TipoEncuesta },
+        { "categoriaMision", CategoriaMision },
+        { "elementoMision", ElementoMision }
+    };
 
         return dict;
     }
