@@ -56,6 +56,7 @@ public class GestorPreguntas : MonoBehaviour
         simboloSeleccionado = "(" + PlayerPrefs.GetString("SimboloElemento", "").Trim() + ")";
         elementoCompleto = elementoSeleccionado + simboloSeleccionado;
         categoriaSeleccionada = PlayerPrefs.GetString("CategoriaSeleccionada", "").Trim();
+        categoriaSeleccionada = devolverCatTrad(categoriaSeleccionada);
         rachaActual = PlayerPrefs.GetInt("RachaActual");
 
         // Cargar progreso guardado para el elemento
@@ -66,7 +67,44 @@ public class GestorPreguntas : MonoBehaviour
         StartCoroutine(Temporizador());
         SistemaXP.CrearInstancia();
     }
+    public string devolverCatTrad(string categoriaSeleccionada)
+    {
+        switch (categoriaSeleccionada)
+        {
+            case "Alkali Metals":
+                return "Metales Alcalinos";
 
+            case "Alkaline Earth Metals":
+                return "Metales Alcalinotérreos";
+
+            case "Transition Metals":
+                return "Metales de Transición";
+
+            case "Post-transition Metals":
+                return "Metales postransicionales";
+
+            case "Metalloids":
+                return "Metaloides";
+
+            case "Nonmetals":
+                return "No Metales";
+
+            case "Noble Gases":
+                return "Gases Nobles";
+
+            case "Lanthanides":
+                return "Lantánidos";
+
+            case "Actinides":
+                return "Actinoides";
+
+            case "Unknown Properties":
+                return "Propiedades desconocidas";
+
+            default:
+                return categoriaSeleccionada;
+        }
+    }
 
     void CargarPreguntasDesdeJSON(string categoriaSeleccionada, string elementoSeleccionado)
     {

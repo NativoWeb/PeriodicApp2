@@ -92,7 +92,7 @@ public class UpdateData : MonoBehaviour
         }
     }
 
-    public string[] jsonFileNames = { "Json_Misiones.json", "Json_logros.json", "Json_Informacion.json", "categorias_encuesta_firebase.json" };
+    public string[] jsonFileNames = { "Json_Misiones.json", "Json_logros.json", "Json_Informacion.json", "categorias_encuesta_firebase.json", "Json_Informacion_en.json" };
 
     private IEnumerator CheckAndCopyJsons()
     {
