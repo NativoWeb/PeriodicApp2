@@ -90,7 +90,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7fcf5a2a4d6d03e40b6aa9951a5f585c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  tituloMisionFinal: {fileID: 9117216941514262644}
+  nombre: {fileID: 0}
+  logroscompletados: {fileID: 0}
   imagenCompletada: {fileID: 4920577790418567741}
 --- !u!1 &2745450601309308419
 GameObject:
@@ -103,6 +104,7 @@ GameObject:
   - component: {fileID: 5648709209282701797}
   - component: {fileID: 7697331843623134528}
   - component: {fileID: 9117216941514262644}
+  - component: {fileID: 6040963506810311903}
   m_Layer: 5
   m_Name: TmpLogro
   m_TagString: Untagged
@@ -228,6 +230,19 @@ MonoBehaviour:
   m_hasFontAssetChanged: 0
   m_baseMaterial: {fileID: 0}
   m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
+--- !u!114 &6040963506810311903
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2745450601309308419}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 85c1164fcc3574741acc7d845736f5b0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  localizationKey: PREFABPANELCATCOM_TMPLOGRO
 --- !u!1 &3052955409699420523
 GameObject:
   m_ObjectHideFlags: 0

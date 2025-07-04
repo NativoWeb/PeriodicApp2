@@ -39,6 +39,8 @@ public class GestorInfoElemento : MonoBehaviour
 
     JSONNode jsonDataInformacion;
 
+    private string JsonIdioma;
+
     // Mapea cada categoría a un Color32 único
     private static readonly Dictionary<string, Color32> ColoresPorCategoria = new Dictionary<string, Color32>
 {
@@ -63,14 +65,25 @@ public class GestorInfoElemento : MonoBehaviour
 
     void InicializarPanelElemento()
     {
+        string appIdioma = PlayerPrefs.GetString("appIdioma", "español");
+        if (appIdioma == "español")
+        {
+            JsonIdioma = "Json_Informacion.json";
+        }
+        else
+        {
+            JsonIdioma = "Json_Informacion_en.json";
+
+        }
         CargarJSON();
+        
         BtnCategorias.onClick.AddListener(RegresaraCategorias);
         BtnCerrar.onClick.AddListener(CerrarPanelPropiedad);
         btnMisiones.onClick.AddListener(IrAMisiones);
     }
     void CargarJSON()
     {
-        string pathPersistent = Path.Combine(Application.persistentDataPath, "Json_informacion.json");
+        string pathPersistent = Path.Combine(Application.persistentDataPath, JsonIdioma);
 
         if (File.Exists(pathPersistent))
         {
@@ -82,7 +95,7 @@ public class GestorInfoElemento : MonoBehaviour
         }
         else
         {
-            StartCoroutine(CargarDesdeResources("Json_informacion.json", (json) =>
+            StartCoroutine(CargarDesdeResources(JsonIdioma, (json) =>
             {
                 if (!string.IsNullOrEmpty(json))
                 {
@@ -125,6 +138,7 @@ public class GestorInfoElemento : MonoBehaviour
     void CargarInfoElementoSeleccionado()
     {
         string categoriaSeleccionada = PlayerPrefs.GetString("CategoriaSeleccionada");
+        categoriaSeleccionada = devolverCatTrad(categoriaSeleccionada);
         string elementoSeleccionado = PlayerPrefs.GetString("ElementoSeleccionado");
 
         // Cambiar color del panel según categoría
@@ -211,6 +225,44 @@ public class GestorInfoElemento : MonoBehaviour
         }
     }
 
+    public string devolverCatTrad(string categoriaSeleccionada)
+    {
+        switch (categoriaSeleccionada)
+        {
+            case "Alkali Metals":
+                return "Metales Alcalinos";
+
+            case "Alkaline Earth Metals":
+                return "Metales Alcalinotérreos";
+
+            case "Transition Metals":
+                return "Metales de Transición";
+
+            case "Post-transition Metals":
+                return "Metales postransicionales";
+
+            case "Metalloids":
+                return "Metaloides";
+
+            case "Nonmetals":
+                return "No Metales";
+
+            case "Noble Gases":
+                return "Gases Nobles";
+
+            case "Lanthanides":
+                return "Lantánidos";
+
+            case "Actinides":
+                return "Actinoides";
+
+            case "Unknown Properties":
+                return "Propiedades desconocidas";
+
+            default:
+                return categoriaSeleccionada;
+        }
+    }
     void CrearBotonPropiedad(string clave, string valor, string info)
     {
         // Instanciar el botón
@@ -265,20 +317,37 @@ public class GestorInfoElemento : MonoBehaviour
 
     string ObtenerNombreImagenPropiedad(string clave)
     {
+        // Usamos ToLower() para hacer la comparación insensible a mayúsculas/minúsculas.
         switch (clave.ToLower())
         {
+            // Caso para Masa Atómica
             case "masa_atomica":
+            case "atomic_mass":
                 return "m_atomica";
+
+            // Caso para Punto de Fusión
             case "punto_fusion":
+            case "melting_point":
                 return "p_fusion";
+
+            // Caso para Punto de Ebullición
             case "punto_ebullicion":
+            case "boiling_point":
                 return "p_ebullicion";
+
+            // Caso para Estado
             case "estado":
+            case "state":
                 return "estado";
+
+            // Caso para Electronegatividad
             case "electronegatividad":
+            case "electronegativity":
                 return "electronegatividad";
+
+            // Caso por defecto si no coincide ninguna clave
             default:
-                return "default"; // imagen por defecto si no coincide
+                return "default"; // Devuelve una imagen por defecto
         }
     }
 

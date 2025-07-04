@@ -32,6 +32,10 @@ public class GestorMisiones : MonoBehaviour
     public GameObject PanelElemento;
     public GameObject PanelInformacion;
 
+    private string JsonIdioma;
+    string appIdioma;
+    string categoriaSeleccionada;
+
     JSONNode jsonDataInformacion;
     JSONNode jsonDataMisiones;
 
@@ -60,6 +64,18 @@ public class GestorMisiones : MonoBehaviour
 
     void OnEnable()
     {
+        categoriaSeleccionada = PlayerPrefs.GetString("CategoriaSeleccionada");
+
+        appIdioma = PlayerPrefs.GetString("appIdioma", "español");
+        if (appIdioma == "español")
+        {
+            JsonIdioma = "Json_Informacion.json";
+        }
+        else
+        {
+            JsonIdioma = "Json_Informacion_en.json";
+            categoriaSeleccionada = devolverCatTrad(categoriaSeleccionada);
+        }
         // Sólo refresca si ya cargamos los datos
         if (datosCargados)
         {
@@ -70,6 +86,7 @@ public class GestorMisiones : MonoBehaviour
     IEnumerator Start()
     {
         // Start es ejecutado después de Awake y OnEnable
+        
         yield return StartCoroutine(CargarJSONYContinuar());
 
         datosCargados = true;
@@ -78,9 +95,9 @@ public class GestorMisiones : MonoBehaviour
         RefrescarUI();
     }
 
-    IEnumerator CargarJSONYContinuar()
+    public IEnumerator CargarJSONYContinuar()
     {
-        yield return CargarJSON("json_informacion.json", nodo => jsonDataInformacion = nodo);
+        yield return CargarJSON( JsonIdioma, nodo => jsonDataInformacion = nodo);
         yield return CargarJSON("json_misiones.json", nodo => jsonDataMisiones = nodo);
     }
 
@@ -111,7 +128,7 @@ public class GestorMisiones : MonoBehaviour
         }
     }
 
-    private void RefrescarUI()
+    public void RefrescarUI()
     {
         CargarInfoElementoSeleccionado();
         CargarDatosElementoSeleccionado();
@@ -121,6 +138,7 @@ public class GestorMisiones : MonoBehaviour
     void CargarInfoElementoSeleccionado()
     {
         string categoriaSeleccionada = PlayerPrefs.GetString("CategoriaSeleccionada");
+        categoriaSeleccionada = devolverCatTrad(categoriaSeleccionada);
         string elementoSeleccionado = PlayerPrefs.GetString("ElementoSeleccionado");
 
         // Cambiar color del panel según categoría
@@ -199,7 +217,7 @@ public class GestorMisiones : MonoBehaviour
 
     void CargarDatosElementoSeleccionado()
     {
-        string categoriaSeleccionada = PlayerPrefs.GetString("CategoriaSeleccionada");
+
         string elementoSeleccionado = PlayerPrefs.GetString("ElementoSeleccionado");
         // Color del panel según categoría
         if (PanelDatosElemento != null)
@@ -226,49 +244,139 @@ public class GestorMisiones : MonoBehaviour
 
         LimpiarMisiones(); // Limpia el contenido previo
 
-        foreach (JSONNode misionJson in misionesArray)
+        if (appIdioma == "español")
         {
-            Mision mision = new Mision
+            foreach (JSONNode misionJson in misionesArray)
             {
-                id = misionJson["id"].AsInt,
-                titulo = misionJson["titulo"],
-                descripcion = misionJson["descripcion"],
-                tipo = misionJson["tipo"],
-                rutaEscena = misionJson["rutaescena"],
-                completada = misionJson["completada"].AsBool
-            };
+                Mision mision = new Mision
+                {
+                    id = misionJson["id"].AsInt,
+                    titulo = misionJson["titulo"],
+                    descripcion = misionJson["descripcion"],
+                    tipo = misionJson["tipo"],
+                    rutaEscena = misionJson["rutaescena"],
+                    completada = misionJson["completada"].AsBool
+                };
 
-            switch (mision.tipo)
-            {
-                case "AR":
-                    mision.xp = 10;
-                    mision.logoMision = "logosMision/ar";
-                    break;
-                case "QR":
-                    mision.xp = 10;
-                    mision.logoMision = "logosMision/qr";
-                    break;
-                case "Juego":
-                    mision.xp = 12;
-                    mision.logoMision = "logosMision/juego";
-                    break;
-                case "Quiz":
-                    mision.xp = 12;
-                    mision.logoMision = "logosMision/quiz";
-                    break;
-                case "Evaluacion":
-                    mision.xp = 12;
-                    mision.logoMision = "logosMision/evaluacion";
-                    break;
-                default:
-                    mision.xp = 0;
-                    mision.logoMision = "logosMision/default";
-                    break;
+                switch (mision.tipo)
+                {
+                    case "AR":
+                        mision.xp = 10;
+                        mision.logoMision = "logosMision/ar";
+                        break;
+                    case "QR":
+                        mision.xp = 10;
+                        mision.logoMision = "logosMision/qr";
+                        break;
+                    case "Juego":
+                        mision.xp = 12;
+                        mision.logoMision = "logosMision/juego";
+                        break;
+                    case "Quiz":
+                        mision.xp = 12;
+                        mision.logoMision = "logosMision/quiz";
+                        break;
+                    case "Evaluacion":
+                        mision.xp = 12;
+                        mision.logoMision = "logosMision/evaluacion";
+                        break;
+                    default:
+                        mision.xp = 0;
+                        mision.logoMision = "logosMision/default";
+                        break;
+                }
+
+                PlayerPrefs.SetInt("xp_mision", mision.xp); // Puedes quitarlo si no es necesario
+
+                CrearPrefabMision(mision);
             }
+        }
+        else
+        {
+            foreach (JSONNode misionJson in misionesArray)
+            {
+                Mision mision = new Mision
+                {
+                    id = misionJson["id"].AsInt,
+                    titulo = misionJson["titulo_en"],
+                    descripcion = misionJson["descripcion_en"],
+                    tipo = misionJson["tipo"],
+                    rutaEscena = misionJson["rutaescena"],
+                    completada = misionJson["completada"].AsBool
+                };
 
-            PlayerPrefs.SetInt("xp_mision", mision.xp); // Puedes quitarlo si no es necesario
+                switch (mision.tipo)
+                {
+                    case "AR":
+                        mision.xp = 10;
+                        mision.logoMision = "logosMision/ar";
+                        break;
+                    case "QR":
+                        mision.xp = 10;
+                        mision.logoMision = "logosMision/qr";
+                        break;
+                    case "Juego":
+                        mision.xp = 12;
+                        mision.logoMision = "logosMision/juego";
+                        break;
+                    case "Quiz":
+                        mision.xp = 12;
+                        mision.logoMision = "logosMision/quiz";
+                        break;
+                    case "Evaluacion":
+                        mision.xp = 12;
+                        mision.logoMision = "logosMision/evaluacion";
+                        break;
+                    default:
+                        mision.xp = 0;
+                        mision.logoMision = "logosMision/default";
+                        break;
+                }
 
-            CrearPrefabMision(mision);
+                PlayerPrefs.SetInt("xp_mision", mision.xp); // Puedes quitarlo si no es necesario
+
+                CrearPrefabMision(mision);
+            }
+        }
+
+    }
+
+    public string devolverCatTrad(string categoriaSeleccionada)
+    {
+        switch (categoriaSeleccionada)
+        {
+            case "Alkali Metals":
+                return "Metales Alcalinos";
+
+            case "Alkaline Earth Metals":
+                return "Metales Alcalinotérreos";
+
+            case "Transition Metals":
+                return "Metales de Transición";
+
+            case "Post-transition Metals":
+                return "Metales postransicionales";
+
+            case "Metalloids":
+                return "Metaloides";
+
+            case "Nonmetals":
+                return "No Metales";
+
+            case "Noble Gases":
+                return "Gases Nobles";
+
+            case "Lanthanides":
+                return "Lantánidos";
+
+            case "Actinides":
+                return "Actinoides";
+
+            case "Unknown Properties":
+                return "Propiedades desconocidas";
+
+            default:
+                return categoriaSeleccionada;
         }
     }
 

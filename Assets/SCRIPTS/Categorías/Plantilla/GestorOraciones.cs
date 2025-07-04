@@ -288,6 +288,7 @@ public class GestorOraciones : MonoBehaviour
         {
             Debug.Log("❌ Misión fallida, activando retroalimentación.");
             string categoria = PlayerPrefs.GetString("CategoriaSeleccionada", "");
+            categoria = devolverCatTrad(categoria);
             string elemento = PlayerPrefs.GetString("ElementoSeleccionado", "");
             int idMision = PlayerPrefs.GetInt("MisionActual", -1);
 
@@ -296,6 +297,44 @@ public class GestorOraciones : MonoBehaviour
             Debug.Log("❌ Misión fallida, activando retroalimentación.");
         }
 
+    }
+    public string devolverCatTrad(string categoriaSeleccionada)
+    {
+        switch (categoriaSeleccionada)
+        {
+            case "Alkali Metals":
+                return "Metales Alcalinos";
+
+            case "Alkaline Earth Metals":
+                return "Metales Alcalinotérreos";
+
+            case "Transition Metals":
+                return "Metales de Transición";
+
+            case "Post-transition Metals":
+                return "Metales postransicionales";
+
+            case "Metalloids":
+                return "Metaloides";
+
+            case "Nonmetals":
+                return "No Metales";
+
+            case "Noble Gases":
+                return "Gases Nobles";
+
+            case "Lanthanides":
+                return "Lantánidos";
+
+            case "Actinides":
+                return "Actinoides";
+
+            case "Unknown Properties":
+                return "Propiedades desconocidas";
+
+            default:
+                return categoriaSeleccionada;
+        }
     }
 
     public void DarRecomendacion(string categoria, string elemento, int idMision)

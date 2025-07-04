@@ -55,6 +55,8 @@ public class EncuestaConocimientoController : MonoBehaviour
     private float dificultadTotalPreguntas = 0f;
     private int cantidadPreguntasRespondidas = 0;
     private List<Categoria> categorias;
+    private List<Categoria> categorias_en;
+
 
     [System.Serializable]
     public class Categoria
@@ -75,6 +77,7 @@ public class EncuestaConocimientoController : MonoBehaviour
     public class CategoriasData
     {
         public List<Categoria> categorias;
+
     }
 
     private async void Start()
@@ -135,6 +138,39 @@ public class EncuestaConocimientoController : MonoBehaviour
 
     new Categoria("Propiedades desconocidas",
         "¡Bienvenido al territorio inexplorado! Estos elementos están en los límites de lo conocido. Sus propiedades aún se investigan, y cada descubrimiento puede cambiar lo que sabemos. ¿Te atreves a descubrir lo desconocido?")
+};
+
+        categorias_en = new List<Categoria>
+{
+    new Categoria("Alkali Metals",
+        "Explore the most reactive on the table! Alkali metals are so active they need to be stored under oil to avoid reacting with the air. Lightweight, shiny, and explosive with water: a chemical adventure is guaranteed!"),
+
+    new Categoria("Alkaline Earth Metals",
+        "Stable but surprising! These metals aren't as impulsive as the alkali metals, but they also know how to grab attention. Found in our bones, fireworks, and more, get ready to discover their versatility!"),
+
+    new Categoria("Transition Metals",
+        "The true chameleons of chemistry! They master the art of forming colorful compounds, catalyzing reactions, and building strong structures. If you like challenges and change, this is your category."),
+
+    new Categoria("Post-transition Metals",
+        "Don't underestimate the discreet ones! Although less known, these elements are vital for modern technology. Softly malleable, conductive, and with everyday uses, discover their silent impact!"),
+
+    new Categoria("Metalloids",
+        "On the edge between two worlds! Metalloids have properties of both metals and non-metals. Unpredictable, interesting, and essential in electronics, perfect for those who love the unexpected!"),
+
+    new Categoria("Nonmetals",
+        "The pillars of life and organic chemistry! From the oxygen you breathe to the carbon in your DNA, nonmetals are essential for everything that lives. Investigate their crucial role in the universe!"),
+
+    new Categoria("Noble Gases",
+        "Silent, invisible, and invaluable! These elements don't react easily, but they are present in lights, protective atmospheres, and scientific experiments. Their stability is their superpower!"),
+
+    new Categoria("Lanthanides",
+        "The rare metals that move the modern world! Used in powerful magnets, lasers, and high-tech screens. Although rare, their presence is fundamental in our daily lives. Discover them!"),
+
+    new Categoria("Actinides",
+        "The most powerful energy on the table! Radioactive, mysterious, and with the potential to revolutionize the world, these elements are linked to nuclear energy and the scientific exploration of the future."),
+
+    new Categoria("Unknown Properties",
+        "Welcome to unexplored territory! These elements are at the limits of what is known. Their properties are still being investigated, and each discovery can change what we know. Do you dare to discover the unknown?")
 };
 
 
@@ -384,15 +420,10 @@ public class EncuestaConocimientoController : MonoBehaviour
 
     private void ProcesarPrediccionDeConocimientoFirebase(float[] predictions)
     {
-        float umbral = 0.5f;
         for (int i = 0; i < predictions.Length && i < categorias.Count; i++)
         {
             float porcentaje = predictions[i] * 100f;
             categorias[i].Porcentaje = porcentaje;
-            if (predictions[i] > umbral)
-                Debug.Log($"[Predicción] CONOCE {categorias[i].Titulo}: {porcentaje:F2}%");
-            else
-                Debug.Log($"[Predicción] NO CONOCE {categorias[i].Titulo}: {porcentaje:F2}%");
         }
     }
 
@@ -407,18 +438,32 @@ public class EncuestaConocimientoController : MonoBehaviour
         {
             // Ordenar las categorías por porcentaje
             categorias = categorias.OrderBy(c => c.Porcentaje).ToList();
+
+            categorias_en = categorias_en.OrderBy(c => c.Porcentaje).ToList();
             // Crear el objeto de datos para la serialización
             CategoriasData data = new CategoriasData { categorias = categorias };
+            CategoriasData data_en = new CategoriasData { categorias = categorias_en };
             // Serializar a JSON
             string json = JsonUtility.ToJson(data, true);
+            string json_en = JsonUtility.ToJson(data_en, true);
+
             if (Application.internetReachability != NetworkReachability.NotReachable)
             {
                 // Hay conexión a internet: guardar en archivo
                 string rutaArchivo = Path.Combine(Application.persistentDataPath, "categorias_encuesta_firebase.json");
+                string rutaArchivo_en = Path.Combine(Application.persistentDataPath, "categorias_encuesta_firebase_en.json");
                 File.WriteAllText(rutaArchivo, json);
+                File.WriteAllText(rutaArchivo_en, json_en);
                 Debug.Log("✅ Categorías ordenadas guardadas en archivo: " + rutaArchivo);
             }
-           
+            else
+            {
+                // No hay conexión a internet: guardar en PlayerPrefs
+                PlayerPrefs.SetString("categorias_encuesta_firebase_json", json);
+                PlayerPrefs.SetString("categorias_encuesta_firebase_json_en", json);
+                PlayerPrefs.Save();
+                Debug.Log("✅ Categorías ordenadas guardadas en PlayerPrefs.");
+            }
             // Iniciar la corrutina (asegúrate de que también maneje errores)
             StartCoroutine(CopiarJsonAuxiliaresSiEsNecesario());
         }
@@ -434,7 +479,8 @@ public class EncuestaConocimientoController : MonoBehaviour
     {
         "Json_Misiones.json",
         "Json_Logros.json",
-        "Json_Informacion.json"
+        "Json_Informacion.json",
+        "Json_Informacion_en.json"
     };
 
         foreach (string nombreArchivo in nombresArchivos)

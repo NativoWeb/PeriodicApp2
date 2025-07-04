@@ -93,7 +93,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   SimboloElemento: {fileID: 8465418607571987411}
   logroElemento: {fileID: 8577289643111721414}
-  Fondo: {fileID: 3961074092482793333}
+  ImgCat: {fileID: 0}
+  Fondo: {fileID: 2502359225933363633}
   PanelElemento: {fileID: 798714744354284321}
 --- !u!1 &2261476646277029776
 GameObject:
@@ -106,6 +107,7 @@ GameObject:
   - component: {fileID: 8399611849408129537}
   - component: {fileID: 6612431849086403788}
   - component: {fileID: 8465418607571987411}
+  - component: {fileID: 6168494826664118053}
   m_Layer: 5
   m_Name: NombreELem
   m_TagString: Untagged
@@ -231,6 +233,19 @@ MonoBehaviour:
   m_hasFontAssetChanged: 0
   m_baseMaterial: {fileID: 0}
   m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
+--- !u!114 &6168494826664118053
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2261476646277029776}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 85c1164fcc3574741acc7d845736f5b0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  localizationKey: PREFABLOGROELEMCOM_NOMBREELEM
 --- !u!1 &3961074092482793333
 GameObject:
   m_ObjectHideFlags: 0
@@ -318,6 +333,7 @@ GameObject:
   - component: {fileID: 6649759100782594306}
   - component: {fileID: 3721635641824157684}
   - component: {fileID: 8577289643111721414}
+  - component: {fileID: 4524359630416161935}
   m_Layer: 5
   m_Name: Logro
   m_TagString: Untagged
@@ -443,6 +459,19 @@ MonoBehaviour:
   m_hasFontAssetChanged: 0
   m_baseMaterial: {fileID: 0}
   m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
+--- !u!114 &4524359630416161935
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5255137585142276671}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 85c1164fcc3574741acc7d845736f5b0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  localizationKey: PREFABLOGROELEMCOM_LOGRO
 --- !u!1 &8720864837619903881
 GameObject:
   m_ObjectHideFlags: 0

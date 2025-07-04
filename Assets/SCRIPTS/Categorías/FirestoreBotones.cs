@@ -20,7 +20,7 @@ public class FirestoreBotones : MonoBehaviour
     public Button botonSeleccionado;
 
     private Categoria categoriaSeleccionada;
-
+    string appIdioma;
     // Colores por categoría
     private static readonly Dictionary<string, string> coloresPorCategoria = new Dictionary<string, string>
     {
@@ -53,13 +53,20 @@ public class FirestoreBotones : MonoBehaviour
         {
             Debug.LogWarning("⚠ No se encontraron categorías en archivo. Intentando cargar desde PlayerPrefs...");
 
+
+            string jsonDesdePrefs_en = PlayerPrefs.GetString("categorias_encuesta_firebase_json_en", "");
             string jsonDesdePrefs = PlayerPrefs.GetString("categorias_encuesta_firebase_json", "");
             if (!string.IsNullOrEmpty(jsonDesdePrefs))
             {
                 try
                 {
                     CategoriasData data = JsonUtility.FromJson<CategoriasData>(jsonDesdePrefs);
-                    if (data != null && data.categorias != null)
+                    CategoriasData data_en = JsonUtility.FromJson<CategoriasData>(jsonDesdePrefs_en);
+                    if (data_en != null && data_en.categorias != null)
+                    {
+                        categorias = data_en.categorias;
+                    }
+                    else if (data != null && data.categorias != null)
                     {
                         categorias = data.categorias;
                         Debug.Log("✅ Categorías cargadas desde PlayerPrefs.");
@@ -99,7 +106,18 @@ public class FirestoreBotones : MonoBehaviour
 
     List<Categoria> CargarCategoriasDesdeArchivo()
     {
-        string rutaArchivo = Path.Combine(Application.persistentDataPath, "categorias_encuesta_firebase.json");
+        string rutaArchivo;
+        appIdioma = PlayerPrefs.GetString("appIdioma", "español");
+        Debug.Log(appIdioma);
+        if (appIdioma == "español")
+        {
+            rutaArchivo = Path.Combine(Application.persistentDataPath, "categorias_encuesta_firebase.json");
+        }
+        else
+        {
+            rutaArchivo = Path.Combine(Application.persistentDataPath, "categorias_encuesta_firebase_en.json");
+        }
+
 
         if (File.Exists(rutaArchivo))
         {
@@ -134,32 +152,41 @@ public class FirestoreBotones : MonoBehaviour
         if (textoBoton != null) textoBoton.text = numero.ToString();
 
         Image img = nuevoBoton.GetComponent<Image>();
-        if (img != null && coloresPorCategoria.TryGetValue(categoria.Titulo, out string hex))
+        if (img != null)
         {
-            ColorUtility.TryParseHtmlString(hex, out Color c);
-            img.color = c;
+            // --- INICIO DE LA MODIFICACIÓN ---
 
-            // ✅ Sombra primero (debajo del borde)
-            Shadow shadow = img.GetComponent<Shadow>();
-            if (shadow == null)
-                shadow = img.gameObject.AddComponent<Shadow>();
+            // 1. Traduce el título a español para usarlo como clave.
+            // Si ya está en español, la función debería devolverlo tal cual.
+            // Si está en inglés, lo traducirá.
+            string claveCategoria = devolverCatTrad(categoria.Titulo);
 
-            Color sombraColor = c * 0.5f;
-            sombraColor.a = 0.8f;
-            shadow.effectColor = sombraColor;
-            shadow.effectDistance = new Vector2(0f, -8f);
-            shadow.useGraphicAlpha = true;
-            shadow.enabled = false;
+            // 2. Usa la clave ya traducida para buscar el color.
+            if (coloresPorCategoria.TryGetValue(claveCategoria, out string hex))
+            {
+                ColorUtility.TryParseHtmlString(hex, out Color c);
+                img.color = c;
 
-            // ✅ Borde después (encima de la sombra)
-            Outline outline = img.GetComponent<Outline>();
-            if (outline == null)
-                outline = img.gameObject.AddComponent<Outline>();
+                // ... (el resto del código para sombra y borde sigue igual) ...
+                Shadow shadow = img.GetComponent<Shadow>();
+                if (shadow == null)
+                    shadow = img.gameObject.AddComponent<Shadow>();
+                Color sombraColor = c * 0.5f;
+                sombraColor.a = 0.8f;
+                shadow.effectColor = sombraColor;
+                shadow.effectDistance = new Vector2(0f, -8f);
+                shadow.useGraphicAlpha = true;
+                shadow.enabled = false;
 
-            outline.effectColor = Color.white;
-            outline.effectDistance = new Vector2(4f, 4f);
-            outline.useGraphicAlpha = false;
-            outline.enabled = false;
+                Outline outline = img.GetComponent<Outline>();
+                if (outline == null)
+                    outline = img.gameObject.AddComponent<Outline>();
+                outline.effectColor = Color.white;
+                outline.effectDistance = new Vector2(4f, 4f);
+                outline.useGraphicAlpha = false;
+                outline.enabled = false;
+            }
+            // --- FIN DE LA MODIFICACIÓN ---
         }
 
         // 4) Listener de selección
@@ -238,6 +265,9 @@ public class FirestoreBotones : MonoBehaviour
 
         if (File.Exists(rutaMisiones))
         {
+            if(appIdioma == "ingles")
+                categoriaTitulo = devolverCatTrad(categoriaTitulo);
+
             string jsonText = File.ReadAllText(rutaMisiones);
             float progreso = ProcesarProgresoDesdeJSON(jsonText, categoriaTitulo);
             callback(progreso);
@@ -250,6 +280,9 @@ public class FirestoreBotones : MonoBehaviour
 
             if (!string.IsNullOrEmpty(jsonTextPlayerPrefs) && jsonTextPlayerPrefs != "{}")
             {
+                if (appIdioma == "ingles")
+                    categoriaTitulo = devolverCatTrad(categoriaTitulo);
+
                 float progreso = ProcesarProgresoDesdeJSON(jsonTextPlayerPrefs, categoriaTitulo);
                 callback(progreso);
             }
@@ -305,6 +338,46 @@ public class FirestoreBotones : MonoBehaviour
 
         return totalMisiones > 0 ? (float)misionesCompletadas / totalMisiones : 0f;
     }
+
+    string devolverCatTrad(string categoriaSeleccionada)
+    {
+        switch (categoriaSeleccionada)
+        {
+            case "Alkali Metals":
+                return "Metales Alcalinos";
+
+            case "Alkaline Earth Metals":
+                return "Metales Alcalinotérreos";
+
+            case "Transition Metals":
+                return "Metales de Transición";
+
+            case "Post-transition Metals":
+                return "Metales postransicionales";
+
+            case "Metalloids":
+                return "Metaloides";
+
+            case "Nonmetals":
+                return "No Metales";
+
+            case "Noble Gases":
+                return "Gases Nobles";
+
+            case "Lanthanides":
+                return "Lantánidos";
+
+            case "Actinides":
+                return "Actinoides";
+
+            case "Unknown Properties":
+                return "Propiedades desconocidas";
+
+            default:
+                return categoriaSeleccionada;
+        }
+    }
+
 }
 
 [System.Serializable]

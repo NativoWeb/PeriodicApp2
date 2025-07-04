@@ -24,7 +24,7 @@ public class GuardarMisionCompletada : MonoBehaviour
     private FirebaseFirestore db;
     private string userId;
     public ParticleSystem particulasMision; // 🌟 Agregar en el Inspector
-
+    private string appIdioma;
     void Awake()
     {
         if (instancia == null)
@@ -66,6 +66,8 @@ public class GuardarMisionCompletada : MonoBehaviour
 
     public void MarcarMisionComoCompletada()
     {
+        appIdioma = PlayerPrefs.GetString("appIdioma", "español");
+
         string elemento = PlayerPrefs.GetString("ElementoSeleccionado", "");
         int idMision = PlayerPrefs.GetInt("MisionActual", -1);
 
@@ -167,6 +169,10 @@ public class GuardarMisionCompletada : MonoBehaviour
         var categorias = json["Misiones"]["Categorias"];
         string categoriaSeleccionada = PlayerPrefs.GetString("CategoriaSeleccionada", "");
 
+        if (appIdioma == "ingles")
+            categoriaSeleccionada = devolverCatTrad(categoriaSeleccionada);
+
+
         if (!categorias.HasKey(categoriaSeleccionada) ||
             !categorias[categoriaSeleccionada].HasKey("Elementos") ||
             !categorias[categoriaSeleccionada]["Elementos"].HasKey(elemento))
@@ -232,6 +238,45 @@ public class GuardarMisionCompletada : MonoBehaviour
 
         if (!cambioRealizado)
             Debug.LogError($"❌ No se encontró la misión con ID {idMision} dentro de '{elemento}'.");
+    }
+
+    string devolverCatTrad(string categoriaSeleccionada)
+    {
+        switch (categoriaSeleccionada)
+        {
+            case "Alkali Metals":
+                return "Metales Alcalinos";
+
+            case "Alkaline Earth Metals":
+                return "Metales Alcalinotérreos";
+
+            case "Transition Metals":
+                return "Metales de Transición";
+
+            case "Post-transition Metals":
+                return "Metales postransicionales";
+
+            case "Metalloids":
+                return "Metaloides";
+
+            case "Nonmetals":
+                return "No Metales";
+
+            case "Noble Gases":
+                return "Gases Nobles";
+
+            case "Lanthanides":
+                return "Lantánidos";
+
+            case "Actinides":
+                return "Actinoides";
+
+            case "Unknown Properties":
+                return "Propiedades desconocidas";
+
+            default:
+                return categoriaSeleccionada;
+        }
     }
 
     private void GuardarJsonActualizado(string filePath, string json)
