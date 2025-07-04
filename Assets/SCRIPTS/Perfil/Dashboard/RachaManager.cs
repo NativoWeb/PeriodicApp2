@@ -102,10 +102,10 @@ public class RachaManager : MonoBehaviour
 
     private int CalcularXPSegunRacha(int racha)
     {
-        if (racha >= 30) return 5;
-        if (racha >= 15) return 4;
-        if (racha >= 7) return 3;
-        if (racha >= 3) return 2;
+        if (racha >= 200) return 5;
+        if (racha >= 100) return 4;
+        if (racha >= 30) return 3;
+        if (racha >= 7) return 2;
         return 1;
     }
 
