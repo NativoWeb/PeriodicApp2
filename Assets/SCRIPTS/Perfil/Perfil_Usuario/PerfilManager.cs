@@ -118,7 +118,7 @@ public class PerfilManager : MonoBehaviour
             Debug.LogError("Usuario no encontrado en la base de datos.");
             UserName.text = "¡Usuario no encontrado!";
             rangotext.text = "Sin rango";
-            Xptext.text = "0";
+            Xptext.text = "sin xp";
             return; // Sale de la función si el usuario no existe
         }
 
@@ -128,6 +128,7 @@ public class PerfilManager : MonoBehaviour
         string userName = snapshot.ContainsField("DisplayName") ? snapshot.GetValue<string>("DisplayName") : "Sin nombre";
         string rangos = snapshot.ContainsField("Rango") ? snapshot.GetValue<string>("Rango") : "Sin rango";
         int xp = snapshot.ContainsField("xp") ? snapshot.GetValue<int>("xp") : 0;
+
 
         // Muestra los datos en la interfaz
         Xptext.text = xp.ToString(); // Muestra los puntos de experiencia

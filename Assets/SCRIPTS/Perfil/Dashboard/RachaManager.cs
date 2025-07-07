@@ -102,18 +102,18 @@ public class RachaManager : MonoBehaviour
 
     private int CalcularXPSegunRacha(int racha)
     {
-        if (racha >= 30) return 5;
-        if (racha >= 15) return 4;
-        if (racha >= 7) return 3;
-        if (racha >= 3) return 2;
+        if (racha >= 200) return 5;
+        if (racha >= 100) return 4;
+        if (racha >= 30) return 3;
+        if (racha >= 7) return 2;
         return 1;
     }
 
     private void SumarXPTemporario(int xp)
     {
-        int xpTemp = PlayerPrefs.GetInt("xpTemporal", 0);
+        int xpTemp = PlayerPrefs.GetInt("TempXP", 0);
         xpTemp += xp;
-        PlayerPrefs.SetInt("xpTemporal", xpTemp);
+        PlayerPrefs.SetInt("TempXP", xpTemp);
         Debug.Log($"XP temporal actualizado: {xpTemp}");
     }
 

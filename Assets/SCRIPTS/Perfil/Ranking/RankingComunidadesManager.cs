@@ -6,6 +6,7 @@ using System.Collections;
 using System.Collections.Generic;
 using Firebase.Extensions;
 using System.Linq;
+using UnityEngine.SceneManagement;
 
 
 public class RankingComunidadesManager : BaseRankingManager
@@ -31,6 +32,8 @@ public class RankingComunidadesManager : BaseRankingManager
     public float anteriorPosY = -429f;
     public float duracion = 1f;
 
+    [Header("panel sugerir unirse a comunidad")]
+    [SerializeField] public GameObject panelSinComunidades;
     protected override void Start()
     {
         base.Start();
@@ -49,6 +52,7 @@ public class RankingComunidadesManager : BaseRankingManager
                 if (!panel.activeSelf)
                 {
                     RankingStateManager.Instance.SwitchToComunidades();
+                    ClearRanking();
                     // Activar el dropdown cuando se hace clic en el botón
                     if (comunidadesDropdown != null)
                     {
@@ -206,17 +210,25 @@ public class RankingComunidadesManager : BaseRankingManager
                 if (opcionesComunidades.Count > 0)
                 {
                     comunidadesDropdown.AddOptions(opcionesComunidades);
+                    if (panelSinComunidades != null)
+                        panelSinComunidades.SetActive(false);
                 }
                 else
                 {
                     comunidadesDropdown.ClearOptions();
                     comunidadesDropdown.AddOptions(new List<string> { "No perteneces a ninguna comunidad" });
+                    panelSinComunidades.SetActive(true); // activar panel sugerir unirse a comunidad
                 }
 
                 comunidadesDropdown.value = 0;
                 comunidadesDropdown.RefreshShownValue();
             }
         });
+    }
+
+    public void IraComunidades()
+    {
+        SceneManager.LoadScene("Comunidad");
     }
 
     private bool IsUserMember(object miembrosObj)

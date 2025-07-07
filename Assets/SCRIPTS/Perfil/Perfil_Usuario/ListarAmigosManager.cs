@@ -1,4 +1,4 @@
-using Firebase.Firestore;
+Ôªøusing Firebase.Firestore;
 using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
@@ -9,16 +9,22 @@ using System.Collections;
 using UnityEngine.SceneManagement;
 using Firebase.Auth;
 using System.Linq;
+using DG.Tweening;
 
 public class ListarAmigosManager : MonoBehaviour
 {
+
+
+    [Header("Panel general amigos activar por defecto")]
+    [SerializeField] private GameObject panelgeneralAmigos;
+
     [Header("Paneles para listar amigos")]
     [SerializeField] private GameObject panelAmigo1;
     private TMP_Text nombreAmigo1;
     private TMP_Text rangoAmigo1;
     private Image AvatarAmigo1;
     public Button BtnAmigossinfuncionalidad;
-    public Button BtnAÒadirAmigos;
+    public Button BtnA√±adirAmigos;
     public Button BtnVerTodosAmigos;
 
     [SerializeField] private GameObject panelAmigo2;
@@ -31,21 +37,30 @@ public class ListarAmigosManager : MonoBehaviour
     private TMP_Text rangoAmigo3;
     private Image AvatarAmigo3;
 
-    [Header("ConfiguraciÛn sin amigos")]
-    [SerializeField] private string mensajeSinAmigos = "AÒade amigos para comenzar";
-    [SerializeField] private string rangoDefault = "-";
-    [SerializeField] private Color colorTextoSinAmigos = Color.black;
 
     private bool isLoading = false;
     private FirebaseAuth auth;
     private FirebaseFirestore db;
     private string userId;
 
-    public void Start()
+    [Header("Referencias a paneles debajo de amigos, para poder moverlos")]
+    [SerializeField] private RectTransform panelesInferiores;
+
+    private Vector2 posicionBaseInferior;
+    
+
+    public void OnEnable()
     {
+
         InitializeUIComponents();
         auth = FirebaseAuth.DefaultInstance;
         db = FirebaseFirestore.DefaultInstance;
+
+        if (panelesInferiores != null)
+        {
+            posicionBaseInferior = panelesInferiores.anchoredPosition;
+            Debug.Log("Posici√≥n base del panel inferior guardada: " + posicionBaseInferior);
+        }
 
         if (auth.CurrentUser != null)
         {
@@ -59,11 +74,17 @@ public class ListarAmigosManager : MonoBehaviour
         }
 
         BtnVerTodosAmigos.onClick.AddListener(VerTodosAmigos);
-        BtnAÒadirAmigos.onClick.AddListener(VerTodosUsuariosSugeridos);
+        BtnA√±adirAmigos.onClick.AddListener(VerTodosUsuariosSugeridos);
+
+        // posici√≥n base del panel que se mueve para quitar el espacio
+        posicionBaseInferior = panelesInferiores.anchoredPosition;
+
+
     }
 
     private void InitializeUIComponents()
     {
+        panelgeneralAmigos.SetActive(true);
         // Panel 1
         nombreAmigo1 = panelAmigo1.transform.Find("NombreAmigo").GetComponent<TMP_Text>();
         rangoAmigo1 = panelAmigo1.transform.Find("RangoAmigo").GetComponent<TMP_Text>();
@@ -86,7 +107,7 @@ public class ListarAmigosManager : MonoBehaviour
 
         if (!HayConexion())
         {
-            Debug.Log("No hay conexiÛn a internet.");
+            Debug.Log("No hay conexi√≥n a internet.");
             MostrarEstadoSinAmigos();
             return;
         }
@@ -95,13 +116,13 @@ public class ListarAmigosManager : MonoBehaviour
 
         if (string.IsNullOrEmpty(userId))
         {
-            Debug.Log("ListarAmigosManager.Error: ID de usuario vacÌo");
+            Debug.Log("ListarAmigosManager.Error: ID de usuario vac√≠o");
             isLoading = false;
             MostrarEstadoSinAmigos();
             return;
         }
 
-        // Consulta la subcolecciÛn de amigos del usuario actual
+        // Consulta la subcolecci√≥n de amigos del usuario actual
         db.Collection("users").Document(userId).Collection("amigos")
           .GetSnapshotAsync().ContinueWithOnMainThread(task =>
           {
@@ -122,6 +143,11 @@ public class ListarAmigosManager : MonoBehaviour
                   return;
               }
 
+              // activamos si no esta activo el avatar
+              AvatarAmigo1.GetComponent<Image>().enabled = true;
+              BtnAmigossinfuncionalidad.gameObject.SetActive(true);
+              BtnA√±adirAmigos.gameObject.SetActive(false);
+
               // Obtener todos los amigos y ordenarlos por fecha de amistad (si es necesario)
               var amigos = snapshot.Documents.ToList();
 
@@ -134,13 +160,17 @@ public class ListarAmigosManager : MonoBehaviour
                   Dictionary<string, object> amigo = amigos[i].ToDictionary();
                   string idAmigo = amigo["userId"].ToString();
                   string nombreAmigo = amigo["DisplayName"].ToString();
+
+                  // Gestionar visibilidad de paneles seg√∫n cantidad de amigos
+                  GestionarVisibilidadPaneles(amigos.Count);
+
                   MostrarAmigoEnPanel(idAmigo, i + 1);
               }
 
-              // Gestionar visibilidad de paneles seg˙n cantidad de amigos
-              GestionarVisibilidadPaneles(amigos.Count);
+              
           });
     }
+
 
     public void LimpiarPaneles()
     {
@@ -212,6 +242,8 @@ public class ListarAmigosManager : MonoBehaviour
 
     private void GestionarVisibilidadPaneles(int cantidadAmigos)
     {
+        Debug.Log($"la cantidad de amigos esss:::{cantidadAmigos}");
+
         // Activar solo los paneles necesarios
         panelAmigo1.SetActive(cantidadAmigos >= 1);
         panelAmigo2.SetActive(cantidadAmigos >= 2);
@@ -222,28 +254,51 @@ public class ListarAmigosManager : MonoBehaviour
         {
             MostrarEstadoSinAmigos();
         }
+        panelesInferiores.anchoredPosition = posicionBaseInferior;
+        AjustarPosicionPanelInferior(cantidadAmigos);
     }
+
+    public void AjustarPosicionPanelInferior(int cantidadAmigos)
+    {
+        if (panelesInferiores == null) return;
+
+        //TercerPanelManager.instancia.ResetearPosicion(); // Restauramos
+
+        float offsetY = 0f;
+
+        switch (cantidadAmigos)
+        {
+            case 1: offsetY = 650f; break;
+            case 2: offsetY = 390f; break;
+            default: offsetY = 150f; break;
+        }
+
+        panelesInferiores.DOAnchorPos(
+            TercerPanelManager.instancia.GetPosicionBase() + new Vector2(0, offsetY),
+            1f
+        ).SetEase(Ease.OutCubic);
+    }
+
+
 
     private void MostrarEstadoSinAmigos()
     {
-        // Activar solo el primer panel
-        panelAmigo1.SetActive(true);
-        panelAmigo2.SetActive(false);
-        panelAmigo3.SetActive(false);
+       
+            // Activar solo el primer panel
+            panelAmigo1.SetActive(true);
+            panelAmigo2.SetActive(false);
+            panelAmigo3.SetActive(false);
 
-        // Configurar el panel 1 con el mensaje
-        nombreAmigo1.text = mensajeSinAmigos;
-        rangoAmigo1.text = rangoDefault;
+            // Configurar el panel 1 con el mensaje
+            nombreAmigo1.text = "Sin amigos, amplia tu circulo cientifico!!!";
 
-        // desactivar componenetes no necesarios si no tiene amigos
-        AvatarAmigo1.GetComponent<Image>().enabled = false;
-        BtnAmigossinfuncionalidad.gameObject.SetActive(false);
-        BtnAÒadirAmigos.gameObject.SetActive(true);
+            // desactivar componenetes no necesarios si no tiene amigos
+            AvatarAmigo1.GetComponent<Image>().enabled = false;
+            BtnAmigossinfuncionalidad.gameObject.SetActive(false);
+            BtnA√±adirAmigos.gameObject.SetActive(true);
 
-
-        // Aplicar estilo especial para el mensaje "sin amigos"
-        nombreAmigo1.color = colorTextoSinAmigos;
-        rangoAmigo1.color = colorTextoSinAmigos;
+            AjustarPosicionPanelInferior(1);
+        
     }
 
     private string ObtenerAvatarPorRango(string rangos)
@@ -257,7 +312,7 @@ public class ListarAmigosManager : MonoBehaviour
             case "Experto Molecular": return "Avatares/Rango5";
             case "Maestro de Laboratorio": return "Avatares/Rango6";
             case "Sabio de la tabla": return "Avatares/Rango7";
-            case "Leyenda quÌmica": return "Avatares/Rango8";
+            case "Leyenda qu√≠mica": return "Avatares/Rango8";
             default: return "Avatares/Rango1";
         }
     }

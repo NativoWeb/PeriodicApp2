@@ -10,12 +10,11 @@ public class EncuestaData
     public List<Dictionary<string, object>> preguntas;
     public bool activo;
 
-    public EncuestaData(string id,string descripcion, string titulo, string codigoAcceso, List<Dictionary<string, object>> preguntas, bool activo)
+    public EncuestaData(string id,string descripcion, string titulo, List<Dictionary<string, object>> preguntas, bool activo)
     {
         this.id = id;
         this.titulo = titulo;
         this.descripcion = descripcion;
-        this.codigoAcceso = codigoAcceso;
         this.preguntas = preguntas;
         this.activo = activo;
     }

@@ -12,6 +12,18 @@ public class LoginController : MonoBehaviour
     public Button loginButton;
     public Toggle toggleRememberMe;
 
+
+    [Header("UI de Idiomas")]
+    public Image RawEspañol;
+    public Image RawIngles;
+    public GameObject contenedorIdiomas;
+    public Button btnIdiomas;
+    public Button btnEspañol;
+    public Button btnIngles;
+    public TMP_Text txtIdiomas;
+
+
+
     [Header("UI Recuperar Contraseña")]
     public Button btnResetPassword;
     public Button btnSendReset;
@@ -54,8 +66,42 @@ public class LoginController : MonoBehaviour
         btnSendReset.onClick.AddListener(OnSendResetPasswordClick);
         btnResetPassword.onClick.AddListener(MostrarPanelRestablecer);
 
+        //BOTON PARA ABRIR PANEL DE IDIOMAS :D
+        btnIdiomas.onClick.AddListener(abrirPanelIdiomas);
+        btnEspañol.onClick.AddListener(() => CambiarIdiomaY_CerrarPanel(0));
+        btnIngles.onClick.AddListener(() => CambiarIdiomaY_CerrarPanel(1));
     }
 
+    public void abrirPanelIdiomas()
+    {
+        // Esta función ahora solo muestra el panel.
+        contenedorIdiomas.SetActive(true);
+    }
+
+    private void CambiarIdiomaY_CerrarPanel(int id)
+    {
+        // Llama a la instancia del controlador de idioma
+        if (ControladorIdioma.instancia != null)
+        {
+            ControladorIdioma.instancia.ChangeLocale(id);
+        }
+        switch (id)
+        {
+            case 0: // ID para Español
+                txtIdiomas.text = "Español";
+                RawIngles.gameObject.SetActive(false);
+                RawEspañol.gameObject.SetActive(true);
+                break;
+            case 1: // ID para Inglés
+                txtIdiomas.text = "English";
+                RawEspañol.gameObject.SetActive(false);
+                RawIngles.gameObject.SetActive(true);
+                break;
+                // Podrías añadir más casos si tienes más idiomas
+        }
+        // Cierra el panel
+        contenedorIdiomas.SetActive(false);
+    }
     private async void OnLoginButtonClick()
     {
         if (Application.internetReachability == NetworkReachability.NotReachable)

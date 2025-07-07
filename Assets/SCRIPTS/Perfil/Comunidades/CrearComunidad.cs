@@ -19,6 +19,18 @@ public class CrearComunidad : MonoBehaviour
     public Button crearButton;
     public TMP_Text mensajeTexto;
 
+    [Header("Referencias para imagen de comunidad")]
+    public GameObject panelSelectorImagenes; // Panel que muestra las imágenes
+    public Image imagenSeleccionada; // Imagen que se muestra como seleccionada
+    private string rutaImagenSeleccionada = "";
+    public GameObject contenedorImagenes;
+    public GameObject prefabBotonImagen;
+    public Sprite spriteDefault;
+
+    [Header("Contadores de caracteres")]
+    public TMP_Text contadorNombre;
+    public TMP_Text contadorDescripcion;
+
     private string currentUserId;
     private string currentUsername;
 
@@ -29,11 +41,71 @@ public class CrearComunidad : MonoBehaviour
 
         // Cargar información del usuario
         await CargarDatosUsuario();
+        CargarImagenesDisponibles();
 
         // El botón siempre está habilitado
         crearButton.interactable = true;
+
+        nombreInput.onValueChanged.AddListener(ActualizarContadorNombre);
+        descripcionInput.onValueChanged.AddListener(ActualizarContadorDescripcion);
+
+        // Mostrar los valores iniciales también
+        ActualizarContadorNombre(nombreInput.text);
+        ActualizarContadorDescripcion(descripcionInput.text);
+
     }
 
+    private void ActualizarContadorNombre(string texto)
+    {
+        int cantidad = texto.Length;
+        contadorNombre.text = $"{cantidad}/50";
+    }
+
+    private void ActualizarContadorDescripcion(string texto)
+    {
+        int cantidad = texto.Length;
+        contadorDescripcion.text = $"{cantidad}/400";
+    }
+
+    public void AbrirSelectorImagenes()
+    {
+        CargarImagenesDisponibles();
+        panelSelectorImagenes.SetActive(true);
+    }
+    void CargarImagenesDisponibles()
+    {
+        foreach (Transform child in contenedorImagenes.transform)
+            Destroy(child.gameObject); // limpiar
+
+        Sprite[] imagenes = Resources.LoadAll<Sprite>("Comunidades/ImagenesComunidades");
+
+        foreach (var img in imagenes)
+        {
+            GameObject nuevoBoton = Instantiate(prefabBotonImagen, contenedorImagenes.transform);
+            nuevoBoton.transform.Find("Imagen").GetComponent<Image>().sprite = img;
+
+            string nombreImagen = img.name;
+
+            nuevoBoton.GetComponent<Button>().onClick.AddListener(() =>
+            {
+                SeleccionarImagen(nombreImagen, img);
+            });
+        }
+    }
+
+
+    void SeleccionarImagen(string nombreImagen, Sprite sprite)
+    {
+        imagenSeleccionada.sprite = sprite;
+        rutaImagenSeleccionada = "Comunidades/ImagenesComunidades/" + nombreImagen;
+        panelSelectorImagenes.SetActive(false); // Cierra el panel
+    }
+
+    public void CerrarPanelSelectorImagen ()
+    {
+        if (panelSelectorImagenes != null)
+        panelSelectorImagenes.SetActive(false);
+    }
     private async Task CargarDatosUsuario()
     {
         var user = FirebaseAuth.DefaultInstance.CurrentUser;
@@ -91,6 +163,11 @@ public class CrearComunidad : MonoBehaviour
             return false;
         }
 
+        if (string.IsNullOrEmpty(rutaImagenSeleccionada))
+        {
+            mensajeError = "Debes seleccionar una imagen para la comunidad.";
+            return false;
+        }
         return true;
     }
 
@@ -122,6 +199,7 @@ public class CrearComunidad : MonoBehaviour
                 Dictionary<string, object> comunidad = new Dictionary<string, object>
             {
                 { "nombre", nombre },
+                { "imagenRuta", rutaImagenSeleccionada }, // aquí guardas la ruta
                 { "descripcion", descripcion },
                 { "tipo", tipo },
                 { "fechaCreacion", Timestamp.GetCurrentTimestamp() },
@@ -134,6 +212,7 @@ public class CrearComunidad : MonoBehaviour
 
                 MostrarMensaje("Comunidad creada exitosamente!", false);
                 LimpiarFormulario();
+                Invoke("VolverAComunidad", 2f);
             }
             catch (Exception e)
             {
@@ -144,14 +223,14 @@ public class CrearComunidad : MonoBehaviour
         else
         {
             MostrarMensaje($"SIN CONEXION A INTERNET, esta operación no esta disponible por el momento, intente nuevamente más tarde", true);
-            Invoke("Volveralranking", 4f);
+            Invoke("VolverAComunidad", 4f);
         }
     }
 
     // función para volver al ranking si no tiene wifi
-    void Volveralranking()
+    void VolverAComunidad()
     {
-        SceneManager.LoadScene("ranking");
+        SceneManager.LoadScene("Comunidad");
     }
     private void MostrarMensaje(string mensaje, bool esError)
     {
@@ -165,11 +244,17 @@ public class CrearComunidad : MonoBehaviour
         mensajeTexto.text = "";
     }
 
-    private void LimpiarFormulario()
+    public void LimpiarFormulario()
     {
         nombreInput.text = "";
         descripcionInput.text = "";
         publicaToggle.isOn = false;
         privadaToggle.isOn = false;
+        rutaImagenSeleccionada = "";
+        imagenSeleccionada.sprite = null; // borra la imagen del botón
+        imagenSeleccionada.sprite = spriteDefault;
+        if (panelSelectorImagenes != null)
+            panelSelectorImagenes.SetActive(false); 
+               
     }
 }

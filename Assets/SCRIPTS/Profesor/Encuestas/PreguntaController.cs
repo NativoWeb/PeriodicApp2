@@ -1,230 +1,297 @@
 ﻿using UnityEngine;
 using TMPro;
-using System.Collections.Generic;
 using UnityEngine.UI;
-using static ControladorEncuesta;
-using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+
+
+// NOTA: Moví el enum fuera de la clase para que sea accesible globalmente de forma más limpia,
+// o puedes mantenerlo dentro si prefieres (PreguntaController.TipoPregunta).
+// He eliminado la copia duplicada que tenías al final del archivo.
+public enum TipoPregunta { VerdaderoFalso = 0, OpcionMultiple = 1 }
 
 public class PreguntaController : MonoBehaviour
 {
+    [Header("UI Pregunta")]
+    public TMP_Text Titulo;
     public TMP_InputField inputPregunta;
+    public TMP_Dropdown dropdownTipoPregunta;
+    public TMP_Dropdown dropdownTiempo;
+    public Button btnAgregarOpcion;
     public Transform contenedorOpciones;
     public GameObject opcionPrefab;
-    public Button btnAgregarOpcion;
-    private int maxOpciones = 4;
-    private List<Opcion> opciones = new List<Opcion>();
+    public Button btnGuardar;
+    public Button btnCerrar;
 
-    [Header("Referencias panel eliminar pregunta")]
-    public Button btnEliminar;
-    public GameObject panelConfirmacionPrefab;
+    [Header("Paneles de navegacion")]
+    public GameObject panelPregunta;
+    public GameObject panelEncuesta;
+    public EncuestasManager encuestasManager;
 
-    private void Start()
+    private List<OpcionUI> opcionesUI = new List<OpcionUI>();
+    private int tiempoRespuesta = 15;
+    private const int MIN_OPCIONES_MULTIPLE = 2;
+    private const int MAX_OPCIONES_MULTIPLE = 4;
+
+    void Awake()
     {
-        // Desactivar el botón inicialmente
-        btnAgregarOpcion.interactable = false;
-
-        // Agregar la primera opción al crear la pregunta
-        AgregarOpcion();
-
-        btnEliminar.onClick.AddListener(MostrarConfirmacion);
-    }
-    private void MostrarConfirmacion()
-    {
-        // Crea el panel de confirmación
-        GameObject panel = Instantiate(panelConfirmacionPrefab, FindFirstObjectByType<Canvas>().transform);
-        panel.SetActive(true);
-
-        // Configura botones TMP - Versión segura
-        Button btnSi = panel.transform.Find("BtnSi")?.GetComponent<Button>();
-        Button btnNo = panel.transform.Find("BtnNo")?.GetComponent<Button>();
-
-        if (btnSi != null)
+        if (encuestasManager == null)
         {
-            btnSi.onClick.AddListener(() => {
-                Destroy(panel);
-                EliminarPregunta();
+            encuestasManager = FindAnyObjectByType<EncuestasManager>();
+            if (encuestasManager == null)
+                Debug.LogError("¡No existe ningún EncuestasManager en la escena!");
+        }
+    }
+
+    public void InicializarParaCrear()
+    {
+        LimpiarCampos();
+        Titulo.text = "Crear Pregunta";
+    }
+
+    public void InicializarParaEditar(PreguntaModelo modelo)
+    {
+        PoblarUIDesdeModelo(modelo);
+        Titulo.text = "Editar Pregunta";
+    }
+
+    // He renombrado tu `Inicializar` original a `SetupListeners` para mayor claridad.
+    // Esto solo se debe llamar UNA VEZ, por ejemplo en Awake.
+    public void SetupListeners()
+    {
+        // 1. Configurar dropdown de tipo de pregunta
+        dropdownTipoPregunta.ClearOptions();
+        dropdownTipoPregunta.AddOptions(new List<string> { "Verdadero/Falso", "Opción Múltiple" });
+        dropdownTipoPregunta.onValueChanged.RemoveAllListeners();
+        dropdownTipoPregunta.onValueChanged.AddListener((i) => OnTipoPreguntaChanged(i, true));
+
+        // 2. Configurar dropdown de tiempo
+        dropdownTiempo.ClearOptions();
+        dropdownTiempo.AddOptions(new List<string> { "15", "30", "45", "60" });
+        dropdownTiempo.onValueChanged.RemoveAllListeners();
+        dropdownTiempo.onValueChanged.AddListener(OnTiempoChanged);
+
+        // 3. Configurar botones
+        btnAgregarOpcion.onClick.RemoveAllListeners();
+        btnAgregarOpcion.onClick.AddListener(() => AgregarOpcionUI("", false, true, true));
+        btnGuardar.onClick.RemoveAllListeners();
+        btnGuardar.onClick.AddListener(Guardar);
+        btnCerrar.onClick.RemoveAllListeners();
+        btnCerrar.onClick.AddListener(CerrarPanelPregunta);
+    }
+
+    private void OnTipoPreguntaChanged(int idx, bool generarOpcionesPorDefecto = true)
+    {
+        // Limpiar opciones actuales
+        foreach (Transform t in contenedorOpciones) Destroy(t.gameObject);
+        opcionesUI.Clear();
+
+        bool esVF = (idx == (int)TipoPregunta.VerdaderoFalso);
+        btnAgregarOpcion.interactable = !esVF;
+
+        if (generarOpcionesPorDefecto)
+        {
+            if (esVF)
+            {
+                AgregarOpcionUI("Verdadero", true, false, false); // Marcar una por defecto
+                AgregarOpcionUI("Falso", false, false, false);
+            }
+            else
+            {
+                for (int i = 0; i < MIN_OPCIONES_MULTIPLE; i++)
+                    AgregarOpcionUI("", i == 0, true, false); // Marcar la primera por defecto
+            }
+        }
+
+        ActualizarAgregarInteractivo();
+        ValidarGuardar();
+    }
+
+    private void OnTiempoChanged(int idx)
+    {
+        int[] tiempos = { 15, 30, 45, 60 };
+        tiempoRespuesta = (idx >= 0 && idx < tiempos.Length) ? tiempos[idx] : 15;
+    }
+
+    public void AgregarOpcionUI(string texto, bool esCorrecta, bool editable, bool eliminable, bool forzar = false)
+    {
+        if (!forzar && dropdownTipoPregunta.value == (int)TipoPregunta.OpcionMultiple && opcionesUI.Count >= MAX_OPCIONES_MULTIPLE) return;
+
+        GameObject go = Instantiate(opcionPrefab, contenedorOpciones);
+        OpcionUI ui = go.GetComponent<OpcionUI>();
+        opcionesUI.Add(ui);
+
+        ui.inputOpcion.text = texto;
+        ui.inputOpcion.interactable = editable;
+
+        // Primero, quita listeners para evitar eventos mientras se asignan valores
+        ui.toggleCorrecta.onValueChanged.RemoveAllListeners();
+        ui.inputOpcion.onValueChanged.RemoveAllListeners();
+        ui.BtnEliminar.onClick.RemoveAllListeners();
+
+        // Asigna el valor del toggle. Esto no disparará el evento.
+        ui.toggleCorrecta.isOn = esCorrecta;
+        ui.toggleCorrecta.interactable = editable ? !string.IsNullOrWhiteSpace(texto) : true;
+
+        // Ahora, añade los listeners
+        ui.toggleCorrecta.onValueChanged.AddListener(on => {
+            if (on) MarcarSoloEstaCorrecta(ui);
+            ValidarGuardar();
+        });
+
+        ui.BtnEliminar.gameObject.SetActive(eliminable);
+        if (eliminable)
+        {
+            ui.BtnEliminar.onClick.AddListener(() => {
+                opcionesUI.Remove(ui);
+                Destroy(go);
+                ActualizarAgregarInteractivo();
+                ValidarGuardar();
             });
         }
-        else
-        {
-            Debug.LogError("No se encontró el botón 'BtnSi'", panel);
-        }
 
-        if (btnNo != null)
+        if (editable)
         {
-            btnNo.onClick.AddListener(() => {
-                Destroy(panel);
+            ui.inputOpcion.onValueChanged.AddListener(nuevoTexto => {
+                ui.toggleCorrecta.interactable = !string.IsNullOrWhiteSpace(nuevoTexto);
+                if (string.IsNullOrWhiteSpace(nuevoTexto))
+                {
+                    ui.toggleCorrecta.isOn = false;
+                }
+                ActualizarAgregarInteractivo();
+                ValidarGuardar();
             });
         }
-        else
-        {
-            Debug.LogError("No se encontró el botón 'BtnNo'", panel);
-        }
+
+        ActualizarAgregarInteractivo();
+        ValidarGuardar();
     }
 
-    private void EliminarPregunta()
+    private void ValidarGuardar()
     {
-        // Notifica al EncuestaManager antes de destruir
-        EncuestaManager manager = FindFirstObjectByType<EncuestaManager>();
-        if (manager != null) manager.PreguntaEliminada(this);
+        bool preguntaValida = !string.IsNullOrWhiteSpace(inputPregunta.text);
+        bool todasOpcionesConTexto = opcionesUI.All(ui => !string.IsNullOrWhiteSpace(ui.inputOpcion.text));
+        bool algunaCorrecta = opcionesUI.Any(ui => ui.toggleCorrecta.isOn);
 
-        Destroy(gameObject);
+        btnGuardar.interactable = preguntaValida && todasOpcionesConTexto && algunaCorrecta;
     }
-    public void AgregarOpcion()
+
+    private void MarcarSoloEstaCorrecta(OpcionUI seleccionada)
     {
-        if (contenedorOpciones.childCount >= maxOpciones)
+        foreach (var ui in opcionesUI)
         {
-            Debug.LogWarning("⚠️ No puedes agregar más de 4 opciones.");
-            btnAgregarOpcion.interactable = false;
-            return;
-        }
-
-        // Instanciar una nueva opción
-        GameObject nuevaOpcion = Instantiate(opcionPrefab, contenedorOpciones);
-        OpcionUI opcionUI = nuevaOpcion.GetComponent<OpcionUI>();
-
-        if (opcionUI == null)
-        {
-            Debug.LogError("❌ ERROR: No se encontró el script OpcionUI en la opción instanciada.");
-            return;
-        }
-
-
-        // Crear una nueva opción y agregarla a la lista de opciones de esta pregunta
-        Opcion nuevaOpcionData = new Opcion("", false);
-        opciones.Add(nuevaOpcionData);
-
-        // Asociar eventos
-        opcionUI.inputOpcion.onEndEdit.AddListener(valor =>
-        {
-            nuevaOpcionData.textoOpcion = valor;
-            ValidarBotonAgregarOpcion(); // Validar cada vez que se edita el texto
-        });
-
-        opcionUI.toggleCorrecta.onValueChanged.AddListener(valor =>
-        {
-            if (valor)
+            if (ui != seleccionada)
             {
-                MarcarOpcionCorrecta(nuevaOpcionData);
-            }
-        });
-
-        // Si ya se alcanzaron las 4 opciones, desactivar el botón
-        if (contenedorOpciones.childCount >= maxOpciones)
-        {
-            btnAgregarOpcion.interactable = false;
-        }
-        else
-        {
-            // Desactivar el botón hasta que la última opción tenga texto
-            btnAgregarOpcion.interactable = false;
-        }
-    }
-    // Añade este método a tu clase PreguntaController
-    public void AgregarOpcionUI(string textoOpcion, bool esCorrecta)
-    {
-        if (contenedorOpciones.childCount >= maxOpciones)
-        {
-            Debug.LogWarning("No se pueden agregar más opciones, se alcanzó el límite");
-            return;
-        }
-
-        // Instanciar nueva opción
-        GameObject nuevaOpcion = Instantiate(opcionPrefab, contenedorOpciones);
-        OpcionUI opcionUI = nuevaOpcion.GetComponent<OpcionUI>();
-
-        if (opcionUI == null)
-        {
-            Debug.LogError("No se encontró el componente OpcionUI");
-            return;
-        }
-
-        // Configurar la opción
-        opcionUI.inputOpcion.text = textoOpcion;
-        opcionUI.toggleCorrecta.isOn = esCorrecta;
-
-        // Crear y agregar la nueva opción a la lista
-        Opcion nuevaOpcionData = new Opcion(textoOpcion, esCorrecta);
-        opciones.Add(nuevaOpcionData);
-
-        // Configurar eventos
-        opcionUI.inputOpcion.onEndEdit.AddListener(valor =>
-        {
-            nuevaOpcionData.textoOpcion = valor;
-            ValidarBotonAgregarOpcion();
-        });
-
-        opcionUI.toggleCorrecta.onValueChanged.AddListener(valor =>
-        {
-            if (valor)
-            {
-                MarcarOpcionCorrecta(nuevaOpcionData);
-            }
-        });
-
-        // Actualizar estado del botón de agregar
-        ValidarBotonAgregarOpcion();
-    }
-    // Corrutina para asegurar que la nueva opción sea visible
-
-
-    // ✅ Validar si la última opción tiene texto para habilitar el botón
-    private void ValidarBotonAgregarOpcion()
-    {
-        if (contenedorOpciones.childCount == 0)
-        {
-            btnAgregarOpcion.interactable = false;
-            return;
-        }
-
-        // Obtener la última opción
-        Transform ultimaOpcion = contenedorOpciones.GetChild(contenedorOpciones.childCount - 1);
-        TMP_InputField inputOpcion = ultimaOpcion.GetComponentInChildren<TMP_InputField>();
-
-        // Habilitar el botón solo si la última opción tiene texto y no se alcanzó el máximo
-        bool puedeAgregarMas = (contenedorOpciones.childCount < maxOpciones);
-        bool ultimaOpcionTieneTexto = !string.IsNullOrWhiteSpace(inputOpcion.text);
-
-        btnAgregarOpcion.interactable = (puedeAgregarMas && ultimaOpcionTieneTexto);
-    }
-
-    // 🔄 Asegurar que solo una opción sea correcta
-    public void MarcarOpcionCorrecta(Opcion opcionSeleccionada)
-    {
-        foreach (Opcion opcion in opciones)
-        {
-            opcion.esCorrecta = false;
-        }
-
-        opcionSeleccionada.esCorrecta = true;
-
-        // Actualizar la UI
-        foreach (Transform opcionTransform in contenedorOpciones)
-        {
-            OpcionUI opcionUI = opcionTransform.GetComponent<OpcionUI>();
-            if (opcionUI != null)
-            {
-                opcionUI.toggleCorrecta.isOn = (opcionUI.inputOpcion.text == opcionSeleccionada.textoOpcion);
+                // Usar SetIsOnWithoutNotify para evitar cascadas de eventos
+                ui.toggleCorrecta.SetIsOnWithoutNotify(false);
             }
         }
     }
 
-    public Preguntas ObtenerPregunta()
+    private void ActualizarAgregarInteractivo()
     {
-        return new Preguntas(inputPregunta.text, new List<Opcion>(opciones));
+        bool esMultiple = dropdownTipoPregunta.value == (int)TipoPregunta.OpcionMultiple;
+        bool puedeAgregar = opcionesUI.Count < MAX_OPCIONES_MULTIPLE;
+        btnAgregarOpcion.interactable = esMultiple && puedeAgregar;
     }
 
-    public List<string> ObtenerOpciones()
+    public void PoblarUIDesdeModelo(PreguntaModelo modelo)
     {
-        List<string> opcionesTexto = new List<string>();
-        foreach (Transform opcion in contenedorOpciones)
+        // Asegurarse de que los listeners estén listos
+        SetupListeners();
+
+        inputPregunta.text = modelo.TextoPregunta;
+
+        // **LA SOLUCIÓN CLAVE (1):** Usar SetValueWithoutNotify para evitar disparar el evento.
+        dropdownTipoPregunta.SetValueWithoutNotify((int)modelo.Tipo);
+
+        // Ahora llamamos manualmente a OnTipoPreguntaChanged pero sin generar opciones por defecto.
+        // Esto solo configura el estado del panel (ej. botón "agregar").
+        OnTipoPreguntaChanged(dropdownTipoPregunta.value, false);
+
+        // Limpiamos (aunque OnTipoPreguntaChanged ya lo hizo, es una doble seguridad)
+        foreach (Transform t in contenedorOpciones) Destroy(t.gameObject);
+        opcionesUI.Clear();
+
+        // Y ahora poblamos con las opciones del modelo
+        bool esVF = (modelo.Tipo == (int)TipoPregunta.VerdaderoFalso);
+        foreach (var opc in modelo.Opciones)
         {
-            TMP_InputField inputOpcion = opcion.GetComponentInChildren<TMP_InputField>();
-            if (inputOpcion != null && !string.IsNullOrEmpty(inputOpcion.text))
+            AgregarOpcionUI(opc.Texto, opc.EsCorrecta, !esVF, !esVF, forzar: true);
+        }
+
+        // Finalmente, ajustamos el tiempo
+        int tiempoIndex = System.Array.IndexOf(new int[] { 15, 30, 45, 60 }, modelo.TiempoSegundos);
+        dropdownTiempo.SetValueWithoutNotify(tiempoIndex > -1 ? tiempoIndex : 0);
+        tiempoRespuesta = modelo.TiempoSegundos;
+
+        ValidarGuardar();
+    }
+
+    private void Guardar()
+    {
+        // La validación ahora ocurre en ValidarGuardar(), que activa/desactiva el botón.
+        // Las validaciones aquí son una última barrera de seguridad.
+        if (string.IsNullOrWhiteSpace(inputPregunta.text))
+        {
+            Debug.LogWarning("La pregunta no puede estar vacía.");
+            return;
+        }
+
+        var modelo = new PreguntaModelo
+        {
+            TextoPregunta = inputPregunta.text,
+            Tipo = dropdownTipoPregunta.value,
+            TiempoSegundos = tiempoRespuesta,
+            Opciones = new List<OpcionModelo>()
+        };
+
+        foreach (var ui in opcionesUI)
+        {
+            if (!string.IsNullOrWhiteSpace(ui.inputOpcion.text))
             {
-                opcionesTexto.Add(inputOpcion.text);
+                modelo.Opciones.Add(new OpcionModelo
+                {
+                    Texto = ui.inputOpcion.text,
+                    EsCorrecta = ui.toggleCorrecta.isOn
+                });
             }
         }
-        return opcionesTexto;
+
+        if (modelo.Opciones.Count < 2)
+        {
+            Debug.LogWarning("Debes agregar al menos 2 opciones.");
+            return;
+        }
+        if (!modelo.Opciones.Any(o => o.EsCorrecta)) // Cambiado a Linq.Any para consistencia
+        {
+            Debug.LogWarning("Debes marcar al menos una opción como correcta.");
+            return;
+        }
+
+        encuestasManager.GuardarPregunta(modelo);
+        CerrarPanelPregunta(); // Generalmente después de guardar se cierra el panel
+    }
+
+    public void LimpiarCampos()
+    {
+        // Asegurarse de que los listeners estén listos
+        SetupListeners();
+
+        inputPregunta.text = "";
+
+        // **LA SOLUCIÓN CLAVE (2):** Usar SetValueWithoutNotify aquí también.
+        dropdownTipoPregunta.SetValueWithoutNotify(0);
+        dropdownTiempo.SetValueWithoutNotify(0);
+        tiempoRespuesta = 15;
+
+        // Limpia las opciones existentes y genera las de por defecto (V/F)
+        OnTipoPreguntaChanged(dropdownTipoPregunta.value, true);
+    }
+
+    void CerrarPanelPregunta()
+    {
+        panelPregunta.SetActive(false);
+        panelEncuesta.SetActive(true);
     }
 }

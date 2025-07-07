@@ -8,6 +8,8 @@ using UnityEngine.EventSystems;
 using System.Collections;
 using System;
 using UnityEngine.SceneManagement;
+using Unity.Barracuda;
+using static UnityEngine.GraphicsBuffer;
 
 public class ComunidadDetalleManager : MonoBehaviour
 {
@@ -19,6 +21,7 @@ public class ComunidadDetalleManager : MonoBehaviour
     public TMP_Text detalleMiembros;
     public GameObject PanelDetalleGrupo;
     public Button btnCerrarPanelDetalle;
+    public Image ImagenComunidad;
 
     [Header("Panel Detalle Miembros")]
     public GameObject panelMiembros;
@@ -90,19 +93,30 @@ public class ComunidadDetalleManager : MonoBehaviour
         usuarioActualId = usuarioId;
         datosComunidadActual = new Dictionary<string, object>(dataComunidad);
         LimpiarYCerrarPaneles();
-        
+
         if (!gameObject.activeSelf) gameObject.SetActive(true);
 
         comunidadActualId = dataComunidad["documentId"].ToString();
+        string creadorId = dataComunidad.GetValueOrDefault("creadorId", "").ToString();
 
         ActualizarInterfazConDatos(dataComunidad);
 
-        // notificaciones
-        CheckPendingRequests(comunidadActualId);
-        SetupRealTimeListener(comunidadActualId);
+        // notificaciones - solo si es creador
+        if (usuarioId == creadorId)
+        {
+            CheckPendingRequests(comunidadActualId);
+            SetupRealTimeListener(comunidadActualId);
+        }
+        else
+        {
+            // Asegurarse de ocultar las notificaciones si no es el creador
+            if (notificationPanel != null)
+            {
+                notificationPanel.SetActive(false);
+            }
+        }
 
         PanelDetalleGrupo.SetActive(true);
-
         ConfigurarBotones(dataComunidad);
         MostrarMiembros();
         ActualizarEstadoBotones(true, false);
@@ -111,13 +125,12 @@ public class ComunidadDetalleManager : MonoBehaviour
         {
             EventSystem.current.SetSelectedGameObject(btnVerMiembros.gameObject);
         }
-
     }
+
     // ----------------------------------NOTIFICACIONES DE SOLICITUDES A COMUNIDAD-----------------------------------
+
     public void CheckPendingRequests(string comunidadActualId)
     {
-
-
         db.Collection("solicitudes_comunidad")
           .WhereEqualTo("idComunidad", comunidadActualId)
           .WhereEqualTo("estado", "pendiente")
@@ -137,12 +150,22 @@ public class ComunidadDetalleManager : MonoBehaviour
 
     void UpdateNotificationUI(int count)
     {
-        if (notificationPanel == null || notificationCountText == null) return; // ❗ Seguridad
+        if (notificationPanel == null || notificationCountText == null) return;
 
-        if (count > 0)
+        // Verificar si el usuario actual es el creador
+        if (datosComunidadActual != null &&
+            datosComunidadActual.TryGetValue("creadorId", out object creadorIdObj) &&
+            creadorIdObj.ToString() == usuarioActualId)
         {
-            notificationPanel.SetActive(true);
-            notificationCountText.text = count.ToString();
+            if (count > 0)
+            {
+                notificationPanel.SetActive(true);
+                notificationCountText.text = count.ToString();
+            }
+            else
+            {
+                notificationPanel.SetActive(false);
+            }
         }
         else
         {
@@ -169,15 +192,15 @@ public class ComunidadDetalleManager : MonoBehaviour
     }
 
     // ----------------------------------NOTIFICACIONES DE SOLICITUDES A COMUNIDAD-----------------------------------
-
-   
-
     private void ActualizarInterfazConDatos(Dictionary<string, object> dataComunidad)
     {
         string nombre = dataComunidad.GetValueOrDefault("nombre", "Sin nombre").ToString();
         string descripcion = dataComunidad.GetValueOrDefault("descripcion", "Sin descripción").ToString();
         string creador = dataComunidad.GetValueOrDefault("creadorUsername", "Sin creador").ToString();
         string creadorId = dataComunidad.GetValueOrDefault("creadorId", "").ToString();
+        string comunidadPath = dataComunidad.GetValueOrDefault("imagenRuta", "").ToString();
+
+        Sprite Comunidadsprite = Resources.Load<Sprite>(comunidadPath) ?? Resources.Load<Sprite>("Comunidades/ImagenesComunidades/default");
 
         // Manejo de la fecha
         string fechaFormateada = "Fecha desconocida";
@@ -194,6 +217,25 @@ public class ComunidadDetalleManager : MonoBehaviour
             }
         }
 
+        // obtener información del creador desde sus datos directamente
+        db.Collection("users").Document(creadorId).GetSnapshotAsync().ContinueWithOnMainThread(Task =>
+        {
+            if (Task.IsFaulted)
+            {
+                Debug.Log("falló traer nombre de creador desde sus datos" + Task.Exception);
+                return;
+            }
+
+            DocumentSnapshot snapshot = Task.Result;
+
+            if (snapshot.Exists)
+            {
+                string CreadorNombre = snapshot.GetValue<string>("DisplayName");
+                detalleCreador.text = $"Creada por {CreadorNombre}";
+            }
+
+        });
+
         // Obtener cantidad de miembros
         int cantidadMiembros = 0;
         if (dataComunidad.TryGetValue("miembros", out object miembrosObj) && miembrosObj is List<object> miembros)
@@ -205,8 +247,8 @@ public class ComunidadDetalleManager : MonoBehaviour
         detalleNombre.text = nombre;
         detalleDescripcion.text = descripcion;
         detalleFecha.text = fechaFormateada;
-        detalleCreador.text = $"Creada por {creador}";
         detalleMiembros.text = $"{cantidadMiembros} miembros";
+        ImagenComunidad.sprite = Comunidadsprite;
     }
 
     private void ConfigurarBotones(Dictionary<string, object> dataComunidad)
@@ -248,6 +290,7 @@ public class ComunidadDetalleManager : MonoBehaviour
             btnAbandonarComunidad.onClick.RemoveAllListeners();
             btnAbandonarComunidad.onClick.AddListener(() => MostrarConfirmacionAbandonar(dataComunidad));
             btnAbandonarComunidad.gameObject.SetActive(usuarioActualId != creadorId);
+          
         }
         // acá ponemos el activar el btn si es creador para que elimine la comunidad y mostrar el panel de confirmación y hacer la función para eliminar la comunidad ----------------------------------------------------------
         if (BtnEliminarComunidad != null)
@@ -255,6 +298,7 @@ public class ComunidadDetalleManager : MonoBehaviour
             BtnEliminarComunidad.onClick.RemoveAllListeners();
             BtnEliminarComunidad.onClick.AddListener(() => MostrarConfirmacionEliminar(dataComunidad));
             BtnEliminarComunidad.gameObject.SetActive(usuarioActualId == creadorId);
+           
         }
     }
 
@@ -566,12 +610,18 @@ public class ComunidadDetalleManager : MonoBehaviour
         {
             item.transform.Find("Nombretxt").GetComponent<TMP_Text>().text = dataSolicitud["nombreUsuario"].ToString();
         }
+        if (dataSolicitud.ContainsKey("idUsuario"))
+        {
+            string idusuario = dataSolicitud["idUsuario"].ToString();
+            ConseguirAvatar(idusuario, item);
+        }
+
 
         if (dataSolicitud.ContainsKey("fechaSolicitud"))
         {
             Timestamp timestamp = (Timestamp)dataSolicitud["fechaSolicitud"];
             DateTime fecha = timestamp.ToDateTime().ToLocalTime();
-            item.transform.Find("Fechatxt").GetComponent<TMP_Text>().text = fecha.ToString("dd/MM/yyyy HH:mm");
+            item.transform.Find("Fechatxt").GetComponent<TMP_Text>().text = fecha.ToString("dd/MM/yyyy");
         }
 
         Button btnAceptar = item.transform.Find("AceptarBtn").GetComponent<Button>();
@@ -581,6 +631,33 @@ public class ComunidadDetalleManager : MonoBehaviour
         btnRechazar.onClick.AddListener(() => ProcesarSolicitud(item, comunidadId, solicitudId, dataSolicitud["idUsuario"].ToString(), false));
     }
 
+    private void ConseguirAvatar(string idUsuario, GameObject item)
+    {
+        if (idUsuario != null)
+        {
+            db.Collection("users").Document(idUsuario).GetSnapshotAsync().ContinueWithOnMainThread(task =>
+            {
+                if (task.IsFaulted)
+                {
+                    Debug.LogError("Error al cargar datos del solicitante: " + task.Exception);
+                    return;
+                }
+
+                DocumentSnapshot snapshot = task.Result;
+
+                if (snapshot.Exists)
+                {
+                    string rango = snapshot.GetValue<string>("Rango");
+                    string avatarPath =ObtenerAvatarPorRango(rango);
+                    Sprite avatarSprite = Resources.Load<Sprite>(avatarPath)?? Resources.Load<Sprite>("Avatares/Rango1");
+
+                    Image ImageComunidad = FindChildByName(item, "ImageComunidad")?.GetComponent<Image>();
+                    if (ImageComunidad != null)
+                    ImageComunidad.sprite = avatarSprite;
+                }
+            });
+        }
+    }
     void ProcesarSolicitud(GameObject itemSolicitud, string comunidadId, string solicitudId, string usuarioId, bool aceptar)
     {
         Destroy(itemSolicitud);
@@ -730,5 +807,19 @@ public class ComunidadDetalleManager : MonoBehaviour
             ActualizarDatosComunidad();
             
         }
+    }
+    // Método auxiliar para encontrar hijos por nombre
+    GameObject FindChildByName(GameObject parent, string name)
+    {
+        foreach (Transform child in parent.transform)
+        {
+            if (child.name == name)
+                return child.gameObject;
+
+            GameObject found = FindChildByName(child.gameObject, name);
+            if (found != null)
+                return found;
+        }
+        return null;
     }
 }
