@@ -12,12 +12,15 @@ public class AlienSwipeController : MonoBehaviour,
     [Header("Cámaras (opcional)")]
     public Camera[] alienCams;             // Desactiva la que no uses para ahorrar
 
-    public Material defaultMaterial;   // material normal con textura
+   
     private bool[] puedeUsar;          // guardamos la máscara
 
     private int indiceActual = 0;
     private Vector2 startTouch;
     public float distanciaMinimaSwipe = 50f;
+
+    [Header("Candado único para avatares bloqueados")]
+    [SerializeField] private GameObject candadoIcon;
 
     void Start() => ActualizarVista();
 
@@ -44,8 +47,8 @@ public class AlienSwipeController : MonoBehaviour,
         {
             bool esActivo = (i == indiceActual);
 
-            rawImages[i].gameObject.SetActive(esActivo);           // Muestra solo su imagen
-            alienRotators[i].enabled = true;                       // Por si estaba disabled
+            rawImages[i].gameObject.SetActive(esActivo);
+            alienRotators[i].enabled = true;
             if (esActivo) alienRotators[i].ComenzarRotacion();
             else alienRotators[i].DetenerRotacion();
 
@@ -53,7 +56,28 @@ public class AlienSwipeController : MonoBehaviour,
             if (alienCams != null && alienCams.Length > i && alienCams[i] != null)
                 alienCams[i].enabled = esActivo;
         }
+
+        // ─── Mostrar candado si el actual está bloqueado ───
+        if (puedeUsar != null && indiceActual < puedeUsar.Length)
+        {
+            bool bloqueado = !puedeUsar[indiceActual];
+
+            if (bloqueado)
+            {
+                candadoIcon.SetActive(true);
+
+                // Reposiciona el candado sobre el RawImage activo
+                RectTransform rawRect = rawImages[indiceActual].GetComponent<RectTransform>();
+                RectTransform candadoRect = candadoIcon.GetComponent<RectTransform>();
+
+            }
+            else
+            {
+                candadoIcon.SetActive(false);
+            }
+        }
     }
+
     public void SetUnlockMask(bool[] mask, Material lockedMat)
     {
         puedeUsar = mask;
@@ -65,10 +89,15 @@ public class AlienSwipeController : MonoBehaviour,
             // Cambia material según esté desbloqueado
             if (mask != null && i < mask.Length && !mask[i])
                 r.material = lockedMat;        // bloqueado → gris
-            else
-                r.material = defaultMaterial;  // desbloqueado → normal
+            
         }
 
         ActualizarVista();   // refresca lo que se muestra
     }
+    public void IrAlAlien(int indice)// Empezar con el alien de su rango
+    {
+        indiceActual = Mathf.Clamp(indice, 0, rawImages.Length - 1);
+        ActualizarVista();
+    }
+
 }

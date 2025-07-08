@@ -20,7 +20,8 @@ public class AlienDataManager : MonoBehaviour
 
 
     [SerializeField] private AlienSwipeController swipeController;
-    [SerializeField] private Material lockedMaterial;          // gris, sin textura
+
+    [SerializeField] private Material lockedMaterial;    // gris, sin textura
 
     private readonly string[] ordenRangos = {
     "Novato de laboratorio",
@@ -96,6 +97,9 @@ public class AlienDataManager : MonoBehaviour
 
                 // 4. Pasar la máscara al SwipeController
                 swipeController.SetUnlockMask(desbloqueado, lockedMaterial);
+
+                // 5. Mostrar directamente el alien correspondiente al rango
+                swipeController.IrAlAlien(indiceRango);
             }
             else
             {
@@ -112,6 +116,7 @@ public class AlienDataManager : MonoBehaviour
     private void ModoSinInternet()
     {
         Debug.Log("no tienes conexión a internet");
+        swipeController.IrAlAlien(0);
         return;
     }
 
