@@ -55,8 +55,11 @@ public class EncuestaConocimientoController : MonoBehaviour
     private float dificultadTotalPreguntas = 0f;
     private int cantidadPreguntasRespondidas = 0;
     private List<Categoria> categorias;
-    private List<Categoria> categorias_en;
+    private List<Categoria> categorias_en; 
+    private IServicioLocalStorage localStorage;
 
+
+    private SubirDatosJSON subirDatosJSONUseCase;
 
     [System.Serializable]
     public class Categoria
@@ -106,6 +109,10 @@ public class EncuestaConocimientoController : MonoBehaviour
             sliderProgreso.maxValue = preguntasFirebase.Count;
             sliderProgreso.value = 0f;
         }
+
+        localStorage = new LocalStorageService();
+        var firestore = new FirestoreService(FirebaseServiceLocator.Firestore);
+        subirDatosJSONUseCase = new SubirDatosJSON(firestore, localStorage);
 
         categorias = new List<Categoria>
 {
@@ -454,6 +461,7 @@ public class EncuestaConocimientoController : MonoBehaviour
                 string rutaArchivo_en = Path.Combine(Application.persistentDataPath, "categorias_encuesta_firebase_en.json");
                 File.WriteAllText(rutaArchivo, json);
                 File.WriteAllText(rutaArchivo_en, json_en);
+
                 Debug.Log("✅ Categorías ordenadas guardadas en archivo: " + rutaArchivo);
             }
             else
@@ -508,9 +516,13 @@ public class EncuestaConocimientoController : MonoBehaviour
                     Debug.LogError($"❌ (Auxiliar) No se encontró {nombreArchivo} en Resources/Plantillas_Json.");
                 }
             }
-
             // Pausar un frame entre cada archivo por seguridad
             yield return null;
+        }
+
+        if (Application.internetReachability != NetworkReachability.NotReachable)
+        {
+            yield return subirDatosJSONUseCase.Ejecutar();
         }
     }
 }
