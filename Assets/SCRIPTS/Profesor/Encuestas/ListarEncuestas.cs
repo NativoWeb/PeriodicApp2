@@ -29,6 +29,8 @@ public class ListarEncuestas : MonoBehaviour
     public TMP_Text txtNumeroComunidades;
     public Button btnEditarEncuesta;
     public Button btnEliminarEncuesta;
+    public Button btnAsignarEncuesta;
+    public GestorAsignacionEncuesta gestorAsignacion; // Referencia al nuevo script
 
     [Header("Panel Confirmar Eliminacion")]
     public GameObject panelConfirmacionEliminar;
@@ -277,14 +279,25 @@ public class ListarEncuestas : MonoBehaviour
         encuestaActualID = id;
         txtTituloEncuesta.text = titulo;
         txtNumeroPreguntas.text = numPreguntas.ToString() + " pregunta(s)";
+
+        // NOTA: Este texto parece un error, probablemente querías mostrar las comunidades asignadas.
+        // Lo dejo como estaba pero considera cambiarlo para que muestre datos reales.
         txtNumeroComunidades.text = "Asignada a " + numPreguntas + " comunidad(es)";
+
         panelDetallesEncuesta.SetActive(true);
 
+        // Limpiamos listeners para evitar llamadas múltiples
         btnEditarEncuesta.onClick.RemoveAllListeners();
         btnEliminarEncuesta.onClick.RemoveAllListeners();
+        btnAsignarEncuesta.onClick.RemoveAllListeners(); // ¡Importante limpiar este también!
 
+        // Añadimos los listeners
         btnEditarEncuesta.onClick.AddListener(() => AbrirPanelEncuesta(id));
         btnEliminarEncuesta.onClick.AddListener(MostrarPanelConfirmacionEliminar);
+
+        // --- NUEVO LISTENER ---
+        // Llama al método público del nuevo script para abrir y configurar el panel de asignación
+        btnAsignarEncuesta.onClick.AddListener(() => gestorAsignacion.AbrirPanelDeAsignacion(id, titulo, numPreguntas));
     }
 
     private void MostrarPanelConfirmacionEliminar()

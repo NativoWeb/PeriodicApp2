@@ -46,13 +46,12 @@ public class PreguntaController : MonoBehaviour
     public void InicializarParaCrear()
     {
         LimpiarCampos();
-        Titulo.text = "Crear Pregunta";
+        Titulo.text = "Nueva Pregunta";
     }
 
     public void InicializarParaEditar(PreguntaModelo modelo)
     {
         PoblarUIDesdeModelo(modelo);
-        Titulo.text = "Editar Pregunta";
     }
 
     // He renombrado tu `Inicializar` original a `SetupListeners` para mayor claridad.
@@ -200,6 +199,7 @@ public class PreguntaController : MonoBehaviour
         // Asegurarse de que los listeners estén listos
         SetupListeners();
 
+        Titulo.text = "Editando Pregunta";
         inputPregunta.text = modelo.TextoPregunta;
 
         // **LA SOLUCIÓN CLAVE (1):** Usar SetValueWithoutNotify para evitar disparar el evento.
@@ -278,6 +278,7 @@ public class PreguntaController : MonoBehaviour
         // Asegurarse de que los listeners estén listos
         SetupListeners();
 
+        Titulo.text = "";
         inputPregunta.text = "";
 
         // **LA SOLUCIÓN CLAVE (2):** Usar SetValueWithoutNotify aquí también.

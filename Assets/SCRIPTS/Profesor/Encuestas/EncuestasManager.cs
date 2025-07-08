@@ -6,16 +6,16 @@ using System.Collections.Generic;
 using Firebase.Auth;
 using Firebase.Firestore;
 using System.Net;
-using System.Linq;
 using Firebase.Extensions;
 using System.IO;
 using System;
-using UnityEngine.SceneManagement;
+
 
 public class EncuestasManager : MonoBehaviour
 {
     #region Referencias Inspector
     [Header("Creación de Encuestas")]
+    public TMP_Text TextoTituloEncuesta;
     public TMP_InputField inputTituloEncuesta;
     public TMP_InputField inputDescripcion;
     public Transform contenedorPreguntas;
@@ -37,6 +37,7 @@ public class EncuestasManager : MonoBehaviour
     public Button BtnCancelar;
     public Button btnSalirCreacionE;
     public Button btnPermanecerE;
+    public ListarEncuestas listarencuestas;
     #endregion
 
     #region Variables Privadas
@@ -55,6 +56,16 @@ public class EncuestasManager : MonoBehaviour
     #endregion
 
     #region Unity Methods
+
+    void Awake()
+    {
+        if (listarencuestas == null)
+        {
+            listarencuestas = FindAnyObjectByType<ListarEncuestas>();
+            if (listarencuestas == null)
+                Debug.LogError("¡No existe ningún EncuestasManager en la escena!");
+        }
+    }
 
     public void InicializarEncuesta()
     {
@@ -81,6 +92,7 @@ public class EncuestasManager : MonoBehaviour
         }
         else
         {
+            TextoTituloEncuesta.text = "Nueva Encuesta";
             LimpiarCampos();
             btnGuardarEncuesta.gameObject.SetActive(true);
             btnActualizarEncuesta.gameObject.SetActive(false);
@@ -308,6 +320,7 @@ public class EncuestasManager : MonoBehaviour
     #region Edición y Limpieza
     private void IniciarEdicionEncuesta(string id)
     {
+        TextoTituloEncuesta.text = "Editando encuesta";
         IdEncuestaEditando = id;
         btnGuardarEncuesta.gameObject.SetActive(false);
         btnActualizarEncuesta.gameObject.SetActive(true);
@@ -375,12 +388,14 @@ public class EncuestasManager : MonoBehaviour
         PanelCancelarEncuesta.SetActive(true);
         btnSalirCreacionE.onClick.AddListener(() =>
         {
+            listarencuestas.CargarEncuestas();
             LimpiarCampos();
             PanelCancelarEncuesta.SetActive(false);
             PanelListar.SetActive(true);
             PanelEncuesta.SetActive(false);
         });
         btnPermanecerE.onClick.AddListener(() => { PanelCancelarEncuesta.SetActive(false); });
+        listarencuestas.CargarEncuestas();
     }
 
     private void LimpiarPreguntasUI()
@@ -409,7 +424,7 @@ public class EncuestasManager : MonoBehaviour
 
         // Asegúrate de limpiar el formulario
         controladorPregunta = panelFormularioPregunta.GetComponent<PreguntaController>();
-        controladorPregunta.LimpiarCampos();
+        controladorPregunta.InicializarParaCrear();
     }
 
     // === LLAMADO DESDE PreguntaItemUI PARA EDITAR ===
