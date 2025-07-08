@@ -32,7 +32,7 @@ public class FirestoreService :IServicioFirestore
         Debug.Log("Datos del usuario guardados correctamente");
     }
 
-    public async Task SubirJson(string userId, string misionesJson, string logrosJson, string categoriasJson)
+    public async Task SubirJson(string userId, string misionesJson, string categoriasJson, string logrosJson)
     {
         if (string.IsNullOrEmpty(userId))
         {

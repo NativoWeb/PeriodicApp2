@@ -67,6 +67,23 @@ public class LoginController : MonoBehaviour
         btnResetPassword.onClick.AddListener(MostrarPanelRestablecer);
 
         //BOTON PARA ABRIR PANEL DE IDIOMAS :D
+
+        int locale = PlayerPrefs.GetInt("LocaleKey", 0);
+        switch (locale)
+        {
+            case 0: // ID para Español
+                txtIdiomas.text = "Español";
+                RawIngles.gameObject.SetActive(false);
+                RawEspañol.gameObject.SetActive(true);
+                break;
+            case 1: // ID para Inglés
+                txtIdiomas.text = "English";
+                RawEspañol.gameObject.SetActive(false);
+                RawIngles.gameObject.SetActive(true);
+                break;
+                // Podrías añadir más casos si tienes más idiomas
+        }
+
         btnIdiomas.onClick.AddListener(abrirPanelIdiomas);
         btnEspañol.onClick.AddListener(() => CambiarIdiomaY_CerrarPanel(0));
         btnIngles.onClick.AddListener(() => CambiarIdiomaY_CerrarPanel(1));
