@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.UI;
 
 public class NavegacionCuenta : MonoBehaviour
 {
@@ -10,8 +11,17 @@ public class NavegacionCuenta : MonoBehaviour
     [SerializeField] public GameObject panelPoliticas;
     [SerializeField] public GameObject panelDatosPersonales;
     [SerializeField] public GameObject panelCerrarSesion;
-    
-    
+    [SerializeField] public GameObject PanelIdiomas;
+    public Button btnIdiomas;
+    public Button btnEspañol;
+    public Button btnIngles;
+
+    private void Start()
+    {
+        btnIdiomas.onClick.AddListener(cambiarIdioma);
+        btnEspañol.onClick.AddListener(() => CambiarIdiomaY_CerrarPanel(0));
+        btnIngles.onClick.AddListener(() => CambiarIdiomaY_CerrarPanel(1));
+    }
 
     public void verMenuCuenta()
     {
@@ -40,7 +50,23 @@ public class NavegacionCuenta : MonoBehaviour
         panelPoliticas.SetActive(false);
         panelTerminos_Condiciones.SetActive(false);
         panelMenuCuenta.SetActive(false);
-        
+    }
+    public void cambiarIdioma()
+    {
+        PanelIdiomas.SetActive(true);
+        panelDatosPersonales.SetActive(false);
+        panelPoliticas.SetActive(false);
+        panelTerminos_Condiciones.SetActive(false);
+    }
+    private void CambiarIdiomaY_CerrarPanel(int id)
+    {
+        // Llama a la instancia del controlador de idioma
+        if (ControladorIdioma.instancia != null)
+        {
+            ControladorIdioma.instancia.ChangeLocale(id);
+        }
+        // Cierra el panel
+        PanelIdiomas.SetActive(false);
     }
     public void ActivarPaneCerrarSesion()
     {
