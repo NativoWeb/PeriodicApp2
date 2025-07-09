@@ -79,4 +79,5 @@ public class DeslizarParaCerrarManager : MonoBehaviour, IPointerDownHandler, IDr
         panel.sizeDelta = new Vector2(panel.sizeDelta.x, alturaInicial); // Restaurar para próxima vez
         cerrando = false;
     }
+
 }
