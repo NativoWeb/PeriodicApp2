@@ -251,7 +251,7 @@ public class EncuestasManager : MonoBehaviour
     private void GuardarEnFirebase(string encuestaID, Dictionary<string, object> data)
     {
         data["fechaCreacion"] = FieldValue.ServerTimestamp;
-        db.Collection("users").Document(userId).Collection("encuestas").Document(encuestaID)
+        db.Collection("Encuestas").Document(encuestaID)
           .SetAsync(data)
           .ContinueWithOnMainThread(task =>
           {
@@ -289,7 +289,7 @@ public class EncuestasManager : MonoBehaviour
     private void ActualizarEncuestaEnFirebase(string encuestaID, Dictionary<string, object> data)
     {
         data["fechaActualizacion"] = FieldValue.ServerTimestamp;
-        db.Collection("users").Document(userId).Collection("encuestas").Document(encuestaID)
+        db.Collection("Encuestas").Document(encuestaID)
           .UpdateAsync(data)
           .ContinueWithOnMainThread(task =>
           {

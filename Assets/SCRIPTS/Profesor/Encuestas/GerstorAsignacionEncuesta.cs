@@ -107,36 +107,57 @@ public class GestorAsignacionEncuesta : MonoBehaviour
         }
 
         string userId = auth.CurrentUser.UserId;
-
-        // --- CAMBIO PRINCIPAL AQUÍ ---
-        // En lugar de buscar por "creadorId", buscamos si el "userId" está en el array "miembros".
         Query query = db.Collection("comunidades").WhereArrayContains("miembros", userId);
-
         Debug.Log($"Buscando comunidades para el usuario {userId} donde sea miembro...");
 
         QuerySnapshot snapshot = await query.GetSnapshotAsync();
-
         Debug.Log($"Se encontraron {snapshot.Documents.Count()} comunidades.");
 
         foreach (DocumentSnapshot doc in snapshot.Documents)
         {
-            // El resto de la lógica es la misma
-            string nombreComunidad = doc.GetValue<string>("nombre");
             string idComunidad = doc.Id;
-
-            // Evitar duplicados si el método se llama accidentalmente de nuevo
             if (togglesDeComunidades.ContainsKey(idComunidad)) continue;
+
+            // --- PASO 1: VERIFICAR LOS DATOS ---
+            // ¿Estamos obteniendo el nombre correctamente desde Firebase?
+            string nombreComunidad = doc.GetValue<string>("nombre");
+            Debug.Log($"Procesando comunidad ID: {idComunidad}, Nombre: '{nombreComunidad}'");
+
+            if (string.IsNullOrEmpty(nombreComunidad))
+            {
+                Debug.LogWarning($"El nombre para la comunidad {idComunidad} está vacío o no existe en Firestore.");
+            }
 
             GameObject toggleObj = Instantiate(comunidadTogglePrefab, contenedorComunidadesScroll);
             Toggle toggle = toggleObj.GetComponent<Toggle>();
-            TMP_Text label = toggleObj.GetComponentInChildren<TMP_Text>();
 
-            if (label != null)
+            // --- PASO 2: VERIFICAR EL COMPONENTE DE TEXTO ---
+            // Intentamos obtener el componente TextMeshPro
+            TMP_Text labelTMP = toggleObj.GetComponentInChildren<TMP_Text>(true); // Usamos (true) para incluir inactivos
+
+            if (labelTMP != null)
             {
-                label.text = nombreComunidad;
+                Debug.Log($"Componente TMP_Text encontrado para {idComunidad}. Asignando texto.");
+                labelTMP.text = nombreComunidad;
+            }
+            else
+            {
+                // Si no se encontró, probamos con el componente de Texto antiguo
+                Debug.LogWarning($"No se encontró TMP_Text para {idComunidad}. Intentando buscar UnityEngine.UI.Text...");
+                Text labelLegacy = toggleObj.GetComponentInChildren<Text>(true);
+
+                if (labelLegacy != null)
+                {
+                    Debug.Log($"Componente UnityEngine.UI.Text encontrado para {idComunidad}. Asignando texto.");
+                    labelLegacy.text = nombreComunidad;
+                }
+                else
+                {
+                    // Si ninguno de los dos se encontró, el problema está en el prefab.
+                    Debug.LogError($"¡ERROR GRAVE! No se encontró NINGÚN componente de texto (ni TMP_Text ni Text) en el prefab instanciado para la comunidad {idComunidad}. Revisa la estructura del prefab '{comunidadTogglePrefab.name}'.");
+                }
             }
 
-            // Guardamos el toggle con el ID de la comunidad para encontrarlo fácilmente después
             togglesDeComunidades.Add(idComunidad, toggle);
         }
     }

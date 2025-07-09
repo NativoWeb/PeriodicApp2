@@ -139,7 +139,7 @@ public class ListarEncuestas : MonoBehaviour
             return;
         }
 
-        encuestasListener = db.Collection("users").Document(userId).Collection("encuestas")
+        encuestasListener = db.Collection("Encuestas")
             .Listen(snapshot => UnityMainThreadDispatcher.Instance().Enqueue(CargarEncuestas));
     }
 
@@ -167,7 +167,7 @@ public class ListarEncuestas : MonoBehaviour
         {
             try
             {
-                var docRef = db.Collection("users").Document(userId).Collection("encuestas").Document(id);
+                var docRef = db.Collection("Encuestas").Document(id);
                 var snapshot = await docRef.GetSnapshotAsync();
 
                 if (snapshot.Exists)
@@ -230,7 +230,7 @@ public class ListarEncuestas : MonoBehaviour
 
     private void CargarDesdeFirebase()
     {
-        db.Collection("users").Document(userId).Collection("encuestas").GetSnapshotAsync()
+        db.Collection("Encuestas").GetSnapshotAsync()
             .ContinueWithOnMainThread(task =>
             {
                 if (task.IsFaulted)
@@ -319,7 +319,7 @@ public class ListarEncuestas : MonoBehaviour
         // Intentar eliminar desde Firebase si hay Internet
         if (HayInternet())
         {
-            db.Collection("users").Document(userId).Collection("encuestas").Document(encuestaActualID).DeleteAsync()
+            db.Collection("Encuestas").Document(encuestaActualID).DeleteAsync()
                 .ContinueWithOnMainThread(task =>
                 {
                     if (task.IsCompletedSuccessfully)
@@ -541,9 +541,7 @@ public class ListarEncuestas : MonoBehaviour
                     continue;
 
                 var docRef = db
-                    .Collection("users")
-                    .Document(userId)
-                    .Collection("encuestas")
+                    .Collection("Encuestas")
                     .Document(encuestaLocal.Id);
 
                 var snapshot = await docRef.GetSnapshotAsync();
@@ -561,9 +559,7 @@ public class ListarEncuestas : MonoBehaviour
         try
         {
             remotoSnap = await db
-                .Collection("users")
-                .Document(userId)
-                .Collection("encuestas")
+                .Collection("Encuestas")
                 .GetSnapshotAsync();
         }
         catch (Exception e)
