@@ -154,12 +154,12 @@ public class GestorElementos : MonoBehaviour
         
         // 1) Título de categoría
         string cat = PlayerPrefs.GetString("CategoriaSeleccionada", "");
-        txtTitulo.text = cat;
 
         // 2) Descripción
 
         if (appIdioma == "español")
         {
+            txtTitulo.text = cat;
             cat = devolverCatTrad(cat);
             var lista = ObtenerCategoriasPorDefecto();
             var match = lista.Find(c => c.Titulo == cat);
@@ -169,6 +169,8 @@ public class GestorElementos : MonoBehaviour
         }
         else
         {
+            cat = DevolverCategoriaEnIngles(cat);
+            txtTitulo.text = cat;
             var lista = ObtenerCategoriasPorDefecto_en();
             var match = lista.Find(c => c.Titulo == cat);
             txtDescripcionCategoria.text = match != null
@@ -185,6 +187,56 @@ public class GestorElementos : MonoBehaviour
 
         botonMisionFinal.onClick.AddListener(IrAMisionFinal);
         BtnCategorias.onClick.AddListener(RegresaraCategorias);
+    }
+
+    public string DevolverCategoriaEnIngles(string nombreCategoriaEnEspanol)
+    {
+        switch (nombreCategoriaEnEspanol)
+        {
+            case "Metales Alcalinos":
+            case "Alkali Metals": // Por si ya está en inglés
+                return "Alkali Metals";
+
+            case "Metales Alcalinotérreos":
+            case "Alkaline Earth Metals":
+                return "Alkaline Earth Metals";
+
+            case "Metales de Transición":
+            case "Transition Metals":
+                return "Transition Metals";
+
+            case "Metales postransicionales":
+            case "Post-transition Metals":
+                return "Post-transition Metals";
+
+            case "Metaloides":
+            case "Metalloids":
+                return "Metalloids";
+
+            case "No Metales":
+            case "Nonmetals":
+                return "Nonmetals";
+
+            case "Gases Nobles":
+            case "Noble Gases":
+                return "Noble Gases";
+
+            case "Lantánidos":
+            case "Lanthanides":
+                return "Lanthanides";
+
+            case "Actinoides":
+            case "Actinides":
+                return "Actinides";
+
+            case "Propiedades desconocidas":
+            case "Unknown Properties":
+                return "Unknown Properties";
+
+            default:
+                // Si la categoría no se encuentra, devuelve el nombre original.
+                return nombreCategoriaEnEspanol;
+        }
     }
 
     IEnumerator CargarJSON()
