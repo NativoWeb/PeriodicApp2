@@ -55,7 +55,6 @@ public class EncuestaConocimientoController : MonoBehaviour
     private float dificultadTotalPreguntas = 0f;
     private int cantidadPreguntasRespondidas = 0;
     private List<Categoria> categorias;
-    private List<Categoria> categorias_en; 
     private IServicioLocalStorage localStorage;
 
 
@@ -65,13 +64,17 @@ public class EncuestaConocimientoController : MonoBehaviour
     public class Categoria
     {
         public string Titulo;
+        public string Titulo_en;
         public string Descripcion;
+        public string Descripcion_en;
         public float Porcentaje;
 
-        public Categoria(string nombre, string descripcion)
+        public Categoria(string titulo, string titulo_en, string descripcion, string descripcion_en)
         {
-            Titulo = nombre;
+            Titulo = titulo;
+            Titulo_en = titulo_en;
             Descripcion = descripcion;
+            Descripcion_en = descripcion_en;
             Porcentaje = 0f;
         }
     }
@@ -116,68 +119,115 @@ public class EncuestaConocimientoController : MonoBehaviour
 
         categorias = new List<Categoria>
 {
-    new Categoria("Metales Alcalinos",
-        "¡Explora a los más reactivos de la tabla! Los metales alcalinos son tan activos que necesitan estar bajo aceite para no reaccionar con el aire. Livianos, brillantes y explosivos con el agua: ¡una aventura química garantizada!"),
+    new Categoria(
+        // Español
+        "Metales Alcalinos",
+        // Inglés
+        "Alkali Metals",
+        // Descripción Español
+        "¡Explora a los más reactivos de la tabla! Los metales alcalinos son tan activos que necesitan estar bajo aceite para no reaccionar con el aire. Livianos, brillantes y explosivos con el agua: ¡una aventura química garantizada!",
+        // Descripción Inglés
+        "Explore the most reactive on the table! Alkali metals are so active they need to be stored under oil to avoid reacting with the air. Lightweight, shiny, and explosive with water: a chemical adventure is guaranteed!"
+    ),
 
-    new Categoria("Metales Alcalinotérreos",
-        "¡Estables pero sorprendentes! Estos metales no son tan impulsivos como los alcalinos, pero también saben cómo llamar la atención. Presentes en nuestros huesos, fuegos artificiales y más, ¡prepárate para descubrir su versatilidad!"),
+    new Categoria(
+        // Español
+        "Metales Alcalinotérreos",
+        // Inglés
+        "Alkaline Earth Metals",
+        // Descripción Español
+        "¡Estables pero sorprendentes! Estos metales no son tan impulsivos como los alcalinos, pero también saben cómo llamar la atención. Presentes en nuestros huesos, fuegos artificiales y más, ¡prepárate para descubrir su versatilidad!",
+        // Descripción Inglés
+        "Stable but surprising! These metals aren't as impulsive as the alkali metals, but they also know how to grab attention. Found in our bones, fireworks, and more, get ready to discover their versatility!"
+    ),
 
-    new Categoria("Metales de Transición",
-        "¡Los verdaderos camaleones de la química! Dominan el arte de formar compuestos coloridos, catalizar reacciones y construir estructuras resistentes. Si te gustan los desafíos y los cambios, esta es tu categoría."),
+    new Categoria(
+        // Español
+        "Metales de Transición",
+        // Inglés
+        "Transition Metals",
+        // Descripción Español
+        "¡Los verdaderos camaleones de la química! Dominan el arte de formar compuestos coloridos, catalizar reacciones y construir estructuras resistentes. Si te gustan los desafíos y los cambios, esta es tu categoría.",
+        // Descripción Inglés
+        "The true chameleons of chemistry! They master the art of forming colorful compounds, catalyzing reactions, and building strong structures. If you like challenges and change, this is your category."
+    ),
 
-    new Categoria("Metales postransicionales",
-        "¡No subestimes a los discretos! Aunque menos conocidos, estos elementos son vitales para la tecnología moderna. Suavemente maleables, conductores y con usos cotidianos, ¡descubre su impacto silencioso!"),
+    new Categoria(
+        // Español
+        "Metales postransicionales",
+        // Inglés
+        "Post-transition Metals",
+        // Descripción Español
+        "¡No subestimes a los discretos! Aunque menos conocidos, estos elementos son vitales para la tecnología moderna. Suavemente maleables, conductores y con usos cotidianos, ¡descubre su impacto silencioso!",
+        // Descripción Inglés
+        "Don't underestimate the discreet ones! Although less known, these elements are vital for modern technology. Softly malleable, conductive, and with everyday uses, discover their silent impact!"
+    ),
 
-    new Categoria("Metaloides",
-        "¡En el límite entre dos mundos! Los metaloides tienen propiedades tanto de metales como de no metales. Impredecibles, interesantes y esenciales en la electrónica, ¡perfectos para quienes aman lo inesperado!"),
+    new Categoria(
+        // Español
+        "Metaloides",
+        // Inglés
+        "Metalloids",
+        // Descripción Español
+        "¡En el límite entre dos mundos! Los metaloides tienen propiedades tanto de metales como de no metales. Impredecibles, interesantes y esenciales en la electrónica, ¡perfectos para quienes aman lo inesperado!",
+        // Descripción Inglés
+        "On the edge between two worlds! Metalloids have properties of both metals and non-metals. Unpredictable, interesting, and essential in electronics, perfect for those who love the unexpected!"
+    ),
 
-    new Categoria("No Metales",
-        "¡Los pilares de la vida y la química orgánica! Desde el oxígeno que respiras hasta el carbono de tu ADN, los no metales son esenciales para todo lo que vive. ¡Investiga su papel crucial en el universo!"),
+    new Categoria(
+        // Español
+        "No Metales",
+        // Inglés
+        "Nonmetals",
+        // Descripción Español
+        "¡Los pilares de la vida y la química orgánica! Desde el oxígeno que respiras hasta el carbono de tu ADN, los no metales son esenciales para todo lo que vive. ¡Investiga su papel crucial en el universo!",
+        // Descripción Inglés
+        "The pillars of life and organic chemistry! From the oxygen you breathe to the carbon in your DNA, nonmetals are essential for everything that lives. Investigate their crucial role in the universe!"
+    ),
 
-    new Categoria("Gases Nobles",
-        "¡Silenciosos, invisibles e invaluables! Estos elementos no reaccionan fácilmente, pero están presentes en luces, atmósferas protectoras y experimentos científicos. ¡Su estabilidad es su superpoder!"),
+    new Categoria(
+        // Español
+        "Gases Nobles",
+        // Inglés
+        "Noble Gases",
+        // Descripción Español
+        "¡Silenciosos, invisibles e invaluables! Estos elementos no reaccionan fácilmente, pero están presentes en luces, atmósferas protectoras y experimentos científicos. ¡Su estabilidad es su superpoder!",
+        // Descripción Inglés
+        "Silent, invisible, and invaluable! These elements don't react easily, but they are present in lights, protective atmospheres, and scientific experiments. Their stability is their superpower!"
+    ),
 
-    new Categoria("Lantánidos",
-        "¡Los metales raros que mueven el mundo moderno! Utilizados en imanes potentes, láseres y pantallas de alta tecnología. Aunque raros, su presencia es fundamental en nuestra vida diaria. ¡Descúbrelos!"),
+    new Categoria(
+        // Español
+        "Lantánidos",
+        // Inglés
+        "Lanthanides",
+        // Descripción Español
+        "¡Los metales raros que mueven el mundo moderno! Utilizados en imanes potentes, láseres y pantallas de alta tecnología. Aunque raros, su presencia es fundamental en nuestra vida diaria. ¡Descúbrelos!",
+        // Descripción Inglés
+        "The rare metals that move the modern world! Used in powerful magnets, lasers, and high-tech screens. Although rare, their presence is fundamental in our daily lives. Discover them!"
+    ),
 
-    new Categoria("Actinoides",
-        "¡La energía más poderosa de la tabla! Radiactivos, misteriosos y con potencial para revolucionar el mundo, estos elementos están ligados a la energía nuclear y la exploración científica del futuro."),
+    new Categoria(
+        // Español
+        "Actinoides",
+        // Inglés
+        "Actinides",
+        // Descripción Español
+        "¡La energía más poderosa de la tabla! Radiactivos, misteriosos y con potencial para revolucionar el mundo, estos elementos están ligados a la energía nuclear y la exploración científica del futuro.",
+        // Descripción Inglés
+        "The most powerful energy on the table! Radioactive, mysterious, and with the potential to revolutionize the world, these elements are linked to nuclear energy and the scientific exploration of the future."
+    ),
 
-    new Categoria("Propiedades desconocidas",
-        "¡Bienvenido al territorio inexplorado! Estos elementos están en los límites de lo conocido. Sus propiedades aún se investigan, y cada descubrimiento puede cambiar lo que sabemos. ¿Te atreves a descubrir lo desconocido?")
-};
-
-        categorias_en = new List<Categoria>
-{
-    new Categoria("Alkali Metals",
-        "Explore the most reactive on the table! Alkali metals are so active they need to be stored under oil to avoid reacting with the air. Lightweight, shiny, and explosive with water: a chemical adventure is guaranteed!"),
-
-    new Categoria("Alkaline Earth Metals",
-        "Stable but surprising! These metals aren't as impulsive as the alkali metals, but they also know how to grab attention. Found in our bones, fireworks, and more, get ready to discover their versatility!"),
-
-    new Categoria("Transition Metals",
-        "The true chameleons of chemistry! They master the art of forming colorful compounds, catalyzing reactions, and building strong structures. If you like challenges and change, this is your category."),
-
-    new Categoria("Post-transition Metals",
-        "Don't underestimate the discreet ones! Although less known, these elements are vital for modern technology. Softly malleable, conductive, and with everyday uses, discover their silent impact!"),
-
-    new Categoria("Metalloids",
-        "On the edge between two worlds! Metalloids have properties of both metals and non-metals. Unpredictable, interesting, and essential in electronics, perfect for those who love the unexpected!"),
-
-    new Categoria("Nonmetals",
-        "The pillars of life and organic chemistry! From the oxygen you breathe to the carbon in your DNA, nonmetals are essential for everything that lives. Investigate their crucial role in the universe!"),
-
-    new Categoria("Noble Gases",
-        "Silent, invisible, and invaluable! These elements don't react easily, but they are present in lights, protective atmospheres, and scientific experiments. Their stability is their superpower!"),
-
-    new Categoria("Lanthanides",
-        "The rare metals that move the modern world! Used in powerful magnets, lasers, and high-tech screens. Although rare, their presence is fundamental in our daily lives. Discover them!"),
-
-    new Categoria("Actinides",
-        "The most powerful energy on the table! Radioactive, mysterious, and with the potential to revolutionize the world, these elements are linked to nuclear energy and the scientific exploration of the future."),
-
-    new Categoria("Unknown Properties",
-        "Welcome to unexplored territory! These elements are at the limits of what is known. Their properties are still being investigated, and each discovery can change what we know. Do you dare to discover the unknown?")
+    new Categoria(
+        // Español
+        "Propiedades desconocidas",
+        // Inglés
+        "Unknown Properties",
+        // Descripción Español
+        "¡Bienvenido al territorio inexplorado! Estos elementos están en los límites de lo conocido. Sus propiedades aún se investigan, y cada descubrimiento puede cambiar lo que sabemos. ¿Te atreves a descubrir lo desconocido?",
+        // Descripción Inglés
+        "Welcome to unexplored territory! These elements are at the limits of what is known. Their properties are still being investigated, and each discovery can change what we know. Do you dare to discover the unknown?"
+    )
 };
 
 
@@ -446,21 +496,16 @@ public class EncuestaConocimientoController : MonoBehaviour
             // Ordenar las categorías por porcentaje
             categorias = categorias.OrderBy(c => c.Porcentaje).ToList();
 
-            categorias_en = categorias_en.OrderBy(c => c.Porcentaje).ToList();
             // Crear el objeto de datos para la serialización
             CategoriasData data = new CategoriasData { categorias = categorias };
-            CategoriasData data_en = new CategoriasData { categorias = categorias_en };
             // Serializar a JSON
             string json = JsonUtility.ToJson(data, true);
-            string json_en = JsonUtility.ToJson(data_en, true);
 
             if (Application.internetReachability != NetworkReachability.NotReachable)
             {
                 // Hay conexión a internet: guardar en archivo
                 string rutaArchivo = Path.Combine(Application.persistentDataPath, "categorias_encuesta_firebase.json");
-                string rutaArchivo_en = Path.Combine(Application.persistentDataPath, "categorias_encuesta_firebase_en.json");
                 File.WriteAllText(rutaArchivo, json);
-                File.WriteAllText(rutaArchivo_en, json_en);
 
                 Debug.Log("✅ Categorías ordenadas guardadas en archivo: " + rutaArchivo);
             }
@@ -468,7 +513,6 @@ public class EncuestaConocimientoController : MonoBehaviour
             {
                 // No hay conexión a internet: guardar en PlayerPrefs
                 PlayerPrefs.SetString("categorias_encuesta_firebase_json", json);
-                PlayerPrefs.SetString("categorias_encuesta_firebase_json_en", json);
                 PlayerPrefs.Save();
                 Debug.Log("✅ Categorías ordenadas guardadas en PlayerPrefs.");
             }

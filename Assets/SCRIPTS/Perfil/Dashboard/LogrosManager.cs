@@ -6,6 +6,7 @@ using System.IO;
 using System.Collections;
 using TMPro;
 
+
 public class LogrosManager : MonoBehaviour
 {
     [Header("Prefabs y contenedores")]
@@ -13,7 +14,7 @@ public class LogrosManager : MonoBehaviour
     public GameObject categoriaPrefab;
     public GameObject elementoPrefab;
     public Transform elementoPanel;
-    public GameObject categoriaPanel;
+    public Transform categoriaPanel; 
 
     [Header("Paneles y Botones")]
     public GameObject PanelLogrosCat;
@@ -21,39 +22,152 @@ public class LogrosManager : MonoBehaviour
     public Button BtnDatos;
 
     private Dictionary<string, Elemento> elementos;
-
     private JSONNode jsonData;
+    private bool isLoading = false;
 
     private void Awake()
     {
         BtnDatos.onClick.AddListener(AbrirPanelDatos);
-        // Arrancamos la secuencia de carga + inicialización
-        StartCoroutine(LoadJsonThenInit());
     }
 
-    private IEnumerator LoadJsonThenInit()
-    {
-        // 1) Carga el JSON
-        yield return StartCoroutine(CargarJSON());
-
-        // 2) Comprueba que vino bien
-        if (jsonData == null ||
-            !jsonData.HasKey("Logros") ||
-            !jsonData["Logros"].HasKey("Categorias"))
-        {
-            Debug.LogError("❌ Error: Estructura del JSON no válida después de cargar.");
-            yield break;
-        }
-    }
     private void OnEnable()
     {
-        InicializarLogros();
+        if (isLoading) return;
+
+        // Iniciar la secuencia completa de inicialización.
+        StartCoroutine(InitializeSequence());
     }
 
+    // Esta corrutina gestiona todo el proceso en el orden correcto.
+    // EN: LogrosManager.cs
+
+    // ... (El resto de tu código, variables, Awake, OnEnable, etc. se queda igual) ...
+    // ... (La estructura con Contenedor_Header y las asignaciones del Inspector son correctas) ...
+
+    // --- LA CORRUTINA DEFINITIVA PARA EL LAYOUT ---
+    private IEnumerator InitializeSequence()
+    {
+        isLoading = true;
+
+        // 1. Limpiar la UI y esperar un frame para que los Destroy() se procesen.
+        LimpiarLogros();
+        yield return null;
+
+        // 2. Cargar datos del JSON.
+        if (jsonData == null)
+        {
+            yield return StartCoroutine(CargarJSON());
+        }
+
+        if (jsonData == null)
+        {
+            Debug.LogError("❌ No se pudo inicializar la UI porque el JSON no está disponible.");
+            isLoading = false;
+            yield break;
+        }
+
+        // 3. Poblar la UI con los nuevos prefabs. En este momento, el layout está roto.
+        PopulateUI();
+
+
+        if (elementoPanel != null)
+        {
+            LayoutRebuilder.ForceRebuildLayoutImmediate(elementoPanel.GetComponent<RectTransform>());
+        }
+
+
+        yield return new WaitForEndOfFrame();
+
+
+        if (categoriaPanel != null && categoriaPanel.parent != null)
+        {
+            LayoutRebuilder.ForceRebuildLayoutImmediate(categoriaPanel.parent.GetComponent<RectTransform>());
+        }
+
+        Debug.Log("Layout reconstruido correctamente con el método de doble pasada.");
+
+        isLoading = false;
+    }
+
+    private void PopulateUI()
+    {
+        string catSeleccionada = PlayerPrefs.GetString("CatSeleccionada", "");
+        if (string.IsNullOrEmpty(catSeleccionada))
+        {
+            Debug.LogError("No hay categoría seleccionada.");
+            return;
+        }
+
+        NombreCategoria.text = catSeleccionada;
+
+        var categoriasJson = jsonData["Logros"]["Categorias"];
+        if (!categoriasJson.HasKey(catSeleccionada))
+        {
+            Debug.LogError($"La categoría '{catSeleccionada}' no existe en el JSON.");
+            return;
+        }
+
+        var categoriaJson = categoriasJson[catSeleccionada];
+
+        // Crear datos de categoría
+        var categoriaInfo = new CategoriaData
+        {
+            nombre = categoriaJson["logro_categoria"]["nombre"],
+            desbloqueado = categoriaJson["logro_categoria"]["desbloqueado"].AsBool,
+            Elementos = new Dictionary<string, ElementoData>()
+        };
+
+        var elementosJson = categoriaJson["logros_elementos"].AsObject;
+        foreach (var kvp in elementosJson)
+        {
+            JSONNode nodoElem = kvp.Value;
+            categoriaInfo.Elementos[kvp.Key] = new ElementoData
+            {
+                nombre = nodoElem["nombre"],
+                simbolo = nodoElem["simbolo"],
+                desbloqueado = nodoElem["desbloqueado"].AsBool
+            };
+        }
+
+        // Crear la UI
+        var categoriaUI = new UI.Categoria(catSeleccionada, categoriaInfo, categoriaInfo.desbloqueado);
+        CreateCategoriaLogro(categoriaUI);
+
+        elementos = new Dictionary<string, Elemento>();
+        foreach (var elemPair in categoriaInfo.Elementos)
+        {
+            var nuevoElem = new Elemento(elemPair.Value);
+            elementos.Add(elemPair.Value.simbolo, nuevoElem);
+            CreateElementoLogro(categoriaUI, nuevoElem);
+        }
+    }
+
+    // Ya no necesita forzar reconstrucciones, solo limpiar.
+    public void LimpiarLogros()
+    {
+        // 'categoriaPanel' es ahora 'Contenedor_Header'
+        if (categoriaPanel != null)
+        {
+            // Esto buscará hijos DENTRO de 'Contenedor_Header' (el prefab que instancraste)
+            // y los destruirá, pero dejará 'Contenedor_Header' intacto.
+            foreach (Transform child in categoriaPanel.transform)
+                Destroy(child.gameObject);
+        }
+
+        // ...lo mismo para elementoPanel...
+        if (elementoPanel != null)
+        {
+            foreach (Transform child in elementoPanel.transform)
+                Destroy(child.gameObject);
+        }
+
+        elementos?.Clear();
+    }
+
+    #region Métodos sin cambios
     private IEnumerator CargarJSON()
     {
         string filePath = Path.Combine(Application.persistentDataPath, "Json_Logros.json");
-
         if (File.Exists(filePath))
         {
             string jsonString = File.ReadAllText(filePath);
@@ -62,37 +176,31 @@ public class LogrosManager : MonoBehaviour
         }
         else
         {
-            Debug.LogWarning("⚠️ Json_Logros.json no encontrado en persistentDataPath, buscando en StreamingAssets...");
-
+            Debug.LogWarning("⚠️ Json_Logros.json no encontrado en persistentDataPath, buscando en Resources...");
             bool completado = false;
-
             yield return StartCoroutine(CargarDesdeResources("Json_Logros.json", (json) =>
             {
-                jsonData = JSON.Parse(json);
-                Debug.Log("📄 Json_Logros.json cargado temporalmente desde StreamingAssets.");
+                if (json != null)
+                {
+                    jsonData = JSON.Parse(json);
+                    Debug.Log("📄 Json_Logros.json cargado temporalmente desde Resources.");
+                }
                 completado = true;
             }));
-
-            if (!completado)
+            if (!completado || jsonData == null)
             {
-                Debug.LogError("❌ Falló la carga del JSON desde StreamingAssets.");
+                Debug.LogError("❌ Falló la carga del JSON desde Resources.");
             }
         }
     }
+
     private IEnumerator CargarDesdeResources(string nombreArchivo, System.Action<string> callback)
     {
         string ruta = $"Plantillas_Json/{Path.GetFileNameWithoutExtension(nombreArchivo)}";
-
         TextAsset archivo = Resources.Load<TextAsset>(ruta);
-
-        yield return null; // Necesario para que funcione como Coroutine
-
+        yield return null;
         if (archivo != null)
         {
-            if (string.IsNullOrEmpty(archivo.text))
-            {
-                Debug.LogWarning($"⚠️ El archivo {nombreArchivo} está vacío en Resources.");
-            }
             callback(archivo.text);
         }
         else
@@ -102,81 +210,21 @@ public class LogrosManager : MonoBehaviour
         }
     }
 
-    public void InicializarLogros()
-    {
-        LimpiarLogros();
-        // 1. Obtener nombre de categoría seleccionada
-        string catSeleccionada = PlayerPrefs.GetString("CatSeleccionada", "");
-
-        NombreCategoria.text = catSeleccionada;
-
-        if (string.IsNullOrEmpty(catSeleccionada))
-        {
-            Debug.LogError("No hay categoría seleccionada en PlayerPrefs (CatSeleccionada).");
-            return;
-        }
-
-        var categoriasJson = jsonData["Logros"]["Categorias"];
-        if (!categoriasJson.HasKey(catSeleccionada))
-        {
-            Debug.LogError($"La categoría '{catSeleccionada}' no existe en el JSON.");
-            return;
-        }
-
-        // 2. Tomar sólo el nodo de la categoría seleccionada
-        var categoriaJson = categoriasJson[catSeleccionada];
-
-        // 3. Construir CategoriaData
-        CategoriaData categoriaInfo = new CategoriaData
-        {
-            nombre = categoriaJson["logro_categoria"]["nombre"],
-            desbloqueado = categoriaJson["logro_categoria"]["desbloqueado"].AsBool,
-            Elementos = new Dictionary<string, ElementoData>()
-        };
-
-        // 4. Recorrer cada elemento del nodo "logros_elementos"
-        var elementosJson = categoriaJson["logros_elementos"].AsObject;
-        foreach (var kvp in elementosJson)
-        {
-            string claveElemento = kvp.Key;      // ej. "Litio"
-            JSONNode nodoElem = kvp.Value;
-
-            ElementoData elemInfo = new ElementoData
-            {
-                nombre = nodoElem["nombre"],
-                simbolo = nodoElem["simbolo"],
-                desbloqueado = nodoElem["desbloqueado"].AsBool
-            };
-
-            categoriaInfo.Elementos[claveElemento] = elemInfo;
-        }
-
-        // 5. Crear instancia de UI.Categoria y mostrarla
-        UI.Categoria categoriaUI = new UI.Categoria(catSeleccionada, categoriaInfo, categoriaInfo.desbloqueado);
-
-        CreateCategoriaLogro(categoriaUI);
-
-        // 6. Para cada elemento en esa categoría, crear el logro
-        elementos = new Dictionary<string, Elemento>();
-        foreach (var elemPair in categoriaInfo.Elementos)
-        {
-            ElementoData ed = elemPair.Value;
-            Elemento nuevoElem = new Elemento(ed);
-            elementos.Add(ed.simbolo, nuevoElem);
-            CreateElementoLogro(categoriaUI, nuevoElem);
-        }
-    }
+    // EN: LogrosManager.cs
 
     private void CreateCategoriaLogro(UI.Categoria categoriaUI)
     {
+        // Esta comprobación ahora se asegura de que el CONTENEDOR exista.
         if (categoriaPrefab == null || categoriaPanel == null)
         {
-            Debug.LogError("Prefab de categoría o panel de categoría no asignados.");
+            Debug.LogError("Prefab de categoría o panel CONTENEDOR de categoría no asignados.");
             return;
         }
 
-        // 1) Instancia el prefab correcto bajo el panel de categorías
-        GameObject go = Instantiate(categoriaPrefab, categoriaPanel.transform);
+        // --- CAMBIO CLAVE ---
+        // Instancia el prefab y lo haces hijo del contenedor 'categoriaPanel'.
+        GameObject go = Instantiate(categoriaPrefab, categoriaPanel.transform); // <-- El .transform es importante
+
         var view = go.GetComponent<LogroCategoria>();
         if (view == null)
         {
@@ -184,13 +232,12 @@ public class LogrosManager : MonoBehaviour
             return;
         }
 
-        // 2) Calcula totales
+        // El resto de la lógica sigue igual...
         int total = categoriaUI.ElementosData.Count;
         int completados = 0;
         foreach (var e in categoriaUI.ElementosData.Values)
             if (e.desbloqueado) completados++;
 
-        // 3) Llama al método correcto
         view.MostrarDesdeElemento(
             categoriaUI.Nombre,
             total,
@@ -201,30 +248,11 @@ public class LogrosManager : MonoBehaviour
 
     private void CreateElementoLogro(UI.Categoria categoriaUI, Elemento elemento)
     {
-        if (elementoPrefab == null || elementoPanel == null)
-        {
-            Debug.LogError("Prefab o panel de elemento no asignados.");
-            return;
-        }
-
-        // 1) Instancia el prefab de elemento bajo el panel de elementos
+        if (elementoPrefab == null || elementoPanel == null) return;
         GameObject go = Instantiate(elementoPrefab, elementoPanel);
-
-        // 2) Obtén el componente que pinta el elemento (tu script LogroElemento)
         var view = go.GetComponent<LogroElemento>();
-        if (view == null)
-        {
-            Debug.LogError("El prefab de elemento no tiene LogroElemento.");
-            return;
-        }
-
-        // 3) Pásale los datos adecuados
-        view.ActualizarLogro(
-            elemento.Nombre,         // nombre a mostrar
-            elemento.Simbolo,        // para texto secundario o ruta
-            categoriaUI.Nombre,      // carpeta de Resources
-            elemento.Desbloqueado    // estado
-        );
+        if (view == null) return;
+        view.ActualizarLogro(elemento.Nombre, elemento.Simbolo, categoriaUI.Nombre, elemento.Desbloqueado);
     }
 
     private void AbrirPanelDatos()
@@ -233,46 +261,7 @@ public class LogrosManager : MonoBehaviour
         PanelLogrosElementos.SetActive(false);
         PlayerPrefs.DeleteKey("CatSeleccionada");
     }
-
-    public void LimpiarLogros()
-    {
-        // 1) Destruye todos los hijos de categorías
-        if (categoriaPanel != null)
-        {
-            foreach (Transform child in categoriaPanel.transform)
-                Destroy(child.gameObject);
-        }
-
-        // 2) Destruye todos los hijos de elementos
-        if (elementoPanel != null)
-        {
-            foreach (Transform child in elementoPanel)
-                Destroy(child.gameObject);
-        }
-
-        // 3) Limpia tu diccionario de datos
-        elementos?.Clear();
-
-        // 4) Forzar que Unity recalcule inmediatamente el UI vacío
-        Canvas.ForceUpdateCanvases();
-
-        // 5) Resetear el RectTransform del panel de elementos
-        if (elementoPanel != null)
-        {
-            var rt = elementoPanel.GetComponent<RectTransform>();
-            // Pon altura a 0 para “vaciar” visualmente
-            rt.sizeDelta = new Vector2(rt.sizeDelta.x, 0);
-            rt.anchoredPosition = Vector2.zero;
-        }
-
-        // 6) Rebuild del layoutGroup para que ajuste a 0 hijos
-        var layout = elementoPanel.GetComponent<VerticalLayoutGroup>();
-        if (layout != null)
-            LayoutRebuilder.ForceRebuildLayoutImmediate((RectTransform)elementoPanel);
-
-        // 7) (Opcional) otra pasada de ForceUpdateCanvases
-        Canvas.ForceUpdateCanvases();
-    }
+    #endregion
 }
 
 [System.Serializable]

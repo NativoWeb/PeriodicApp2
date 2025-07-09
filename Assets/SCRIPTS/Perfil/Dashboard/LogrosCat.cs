@@ -21,23 +21,32 @@ public class LogrosManagarCat: MonoBehaviour
     public Button BtnVolver;
     private Dictionary<string, UI.Categoria> categorias;
     private JSONNode jsonData;
-
+    private bool isInitialized;
     private void Start()
     {
         BtnDatos.onClick.AddListener(AbrirPanelDatos);
+    }
+
+    private void OnEnable() 
+    {
+        // Si ya está inicializado, no hagas nada.
+        // Esto evita que se reconstruya todo si solo ocultas y muestras el panel.
+        if (isInitialized) return;
+
         // Arrancamos la secuencia de carga + inicialización
         StartCoroutine(LoadJsonThenInit());
     }
 
     private IEnumerator LoadJsonThenInit()
     {
-        // 1) Carga el JSON
-        yield return StartCoroutine(CargarJSON());
+        // 1) Carga el JSON (solo si no se ha cargado antes)
+        if (jsonData == null)
+        {
+            yield return StartCoroutine(CargarJSON());
+        }
 
         // 2) Comprueba que vino bien
-        if (jsonData == null ||
-            !jsonData.HasKey("Logros") ||
-            !jsonData["Logros"].HasKey("Categorias"))
+        if (jsonData == null || !jsonData.HasKey("Logros") || !jsonData["Logros"].HasKey("Categorias"))
         {
             Debug.LogError("❌ Error: Estructura del JSON no válida después de cargar.");
             yield break;
@@ -46,9 +55,20 @@ public class LogrosManagarCat: MonoBehaviour
         // 3) Limpiamos cualquier UI previa
         LimpiarCategoriasUI();
 
-        //InicializarLogros();
-    }
+        // 4) Inicializar
+        InicializarLogros();
 
+        // --- LA MAGIA ESTÁ AQUÍ ---
+        // Ahora que el panel está ACTIVO, forzamos la reconstrucción del layout
+        yield return new WaitForEndOfFrame();
+        if (categoriaPanel != null)
+        {
+            LayoutRebuilder.ForceRebuildLayoutImmediate(categoriaPanel.GetComponent<RectTransform>());
+            Debug.Log("Layout de categorías reconstruido al activar panel.");
+        }
+
+        isInitialized = true; // <-- Marcar como inicializado
+    }
 
     private IEnumerator CargarJSON()
     {
@@ -103,44 +123,35 @@ public class LogrosManagarCat: MonoBehaviour
     }
     public void InicializarLogros()
     {
-        LimpiarCategoriasUI();
+        // LimpiarCategoriasUI() se llama ahora en LoadJsonThenInit
 
         var categoriasJson = jsonData["Logros"]["Categorias"];
         categorias = new Dictionary<string, UI.Categoria>();
 
         foreach (var categoriaKey in categoriasJson.Keys)
         {
+            // ... (El resto de tu lógica para crear botones de categoría) ...
+            // ... es exactamente la misma que ya tenías ...
             var categoriaData = categoriasJson[categoriaKey];
             bool desbloqueado = categoriaData["logro_categoria"]["desbloqueado"];
-
-            // Nuevas variables para el conteo real
             int totalElementos = 0;
             int elementosCompletados = 0;
-
             if (categoriaData.HasKey("logros_elementos"))
             {
                 var elementosJson = categoriaData["logros_elementos"];
-
                 foreach (var elementoKey in elementosJson.Keys)
                 {
                     totalElementos++;
-
-                    var elemento = elementosJson[elementoKey];
-                    bool logroDesbloqueado = elemento["desbloqueado"].AsBool;
-
-                    if (logroDesbloqueado)
+                    if (elementosJson[elementoKey]["desbloqueado"].AsBool)
                         elementosCompletados++;
                 }
             }
-
             UI.Categoria categoria = new UI.Categoria(categoriaKey, new CategoriaData
             {
                 nombre = categoriaKey,
                 desbloqueado = desbloqueado
             }, desbloqueado);
-
             categorias.Add(categoriaKey, categoria);
-
             CreateCategoriaLogro(categoria, totalElementos, elementosCompletados);
         }
     }

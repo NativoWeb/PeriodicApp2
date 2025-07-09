@@ -11,7 +11,6 @@ GameObject:
   - component: {fileID: 7574963202893284690}
   - component: {fileID: 9110570572239033405}
   - component: {fileID: 8575905007121600781}
-  - component: {fileID: 5583331693414092337}
   m_Layer: 5
   m_Name: Rangotxt
   m_TagString: Untagged
@@ -137,19 +136,6 @@ MonoBehaviour:
   m_hasFontAssetChanged: 0
   m_baseMaterial: {fileID: 0}
   m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
---- !u!114 &5583331693414092337
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 20878655258648867}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 85c1164fcc3574741acc7d845736f5b0, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  localizationKey: PANELAMIGOSPREFAB_RANGOTXT
 --- !u!1 &140457253617937359
 GameObject:
   m_ObjectHideFlags: 0
@@ -236,7 +222,6 @@ GameObject:
   - component: {fileID: 3543081519628386488}
   - component: {fileID: 2376022871485518621}
   - component: {fileID: 7796077978867257571}
-  - component: {fileID: 1755969122670343930}
   m_Layer: 5
   m_Name: Nombretxt
   m_TagString: Untagged
@@ -362,19 +347,6 @@ MonoBehaviour:
   m_hasFontAssetChanged: 0
   m_baseMaterial: {fileID: 0}
   m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
---- !u!114 &1755969122670343930
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 955539833706816166}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 85c1164fcc3574741acc7d845736f5b0, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  localizationKey: PANELAMIGOSPREFAB_NOMBRETXT
 --- !u!1 &2419124892962790289
 GameObject:
   m_ObjectHideFlags: 0
@@ -386,7 +358,7 @@ GameObject:
   - component: {fileID: 995920951863985733}
   - component: {fileID: 8228827873445457950}
   - component: {fileID: 6234166074679024504}
-  - component: {fileID: 3597620274902557436}
+  - component: {fileID: 783978361316505313}
   m_Layer: 5
   m_Name: Estadotxt
   m_TagString: Untagged
@@ -512,7 +484,7 @@ MonoBehaviour:
   m_hasFontAssetChanged: 0
   m_baseMaterial: {fileID: 0}
   m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
---- !u!114 &3597620274902557436
+--- !u!114 &783978361316505313
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -521,10 +493,37 @@ MonoBehaviour:
   m_GameObject: {fileID: 2419124892962790289}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 85c1164fcc3574741acc7d845736f5b0, type: 3}
+  m_Script: {fileID: 11500000, guid: 56eb0353ae6e5124bb35b17aff880f16, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  localizationKey: PANELAMIGOSPREFAB_ESTADOTXT
+  m_StringReference:
+    m_TableReference:
+      m_TableCollectionName: GUID:f5902b699021e1f4fa4ceb7ee1bd382e
+    m_TableEntryReference:
+      m_KeyId: 1437800637104135
+      m_Key: 
+    m_FallbackState: 0
+    m_WaitForCompletion: 0
+    m_LocalVariables: []
+  m_FormatArguments: []
+  m_UpdateString:
+    m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 6234166074679024504}
+        m_TargetAssemblyTypeName: TMPro.TMP_Text, Unity.TextMeshPro
+        m_MethodName: set_text
+        m_Mode: 0
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: 
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 1
+  references:
+    version: 2
+    RefIds: []
 --- !u!1 &5795198760064051613
 GameObject:
   m_ObjectHideFlags: 0
@@ -536,7 +535,7 @@ GameObject:
   - component: {fileID: 3458471655684200652}
   - component: {fileID: 1404404695900379986}
   - component: {fileID: 1478267732669620431}
-  - component: {fileID: -2573448793212846544}
+  - component: {fileID: 911936676260988790}
   m_Layer: 5
   m_Name: Text (TMP)
   m_TagString: Untagged
@@ -662,7 +661,7 @@ MonoBehaviour:
   m_hasFontAssetChanged: 0
   m_baseMaterial: {fileID: 0}
   m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
---- !u!114 &-2573448793212846544
+--- !u!114 &911936676260988790
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -671,10 +670,37 @@ MonoBehaviour:
   m_GameObject: {fileID: 5795198760064051613}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 85c1164fcc3574741acc7d845736f5b0, type: 3}
+  m_Script: {fileID: 11500000, guid: 56eb0353ae6e5124bb35b17aff880f16, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  localizationKey: PANELAMIGOSPREFAB_BTNELIMINAR_TEXTTMP
+  m_StringReference:
+    m_TableReference:
+      m_TableCollectionName: GUID:f5902b699021e1f4fa4ceb7ee1bd382e
+    m_TableEntryReference:
+      m_KeyId: 1826042368720898
+      m_Key: 
+    m_FallbackState: 0
+    m_WaitForCompletion: 0
+    m_LocalVariables: []
+  m_FormatArguments: []
+  m_UpdateString:
+    m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 1478267732669620431}
+        m_TargetAssemblyTypeName: TMPro.TMP_Text, Unity.TextMeshPro
+        m_MethodName: set_text
+        m_Mode: 0
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: 
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 1
+  references:
+    version: 2
+    RefIds: []
 --- !u!1 &5977986715352366861
 GameObject:
   m_ObjectHideFlags: 0

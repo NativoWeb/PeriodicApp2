@@ -40,7 +40,7 @@ public class FirestoreBotones : MonoBehaviour
 
     void Start()
     {
-        Debug.Log("📌 Cargando categorías desde archivo local o PlayerPrefs...");
+        appIdioma = PlayerPrefs.GetString("appIdioma", "");
         CargarCategorias();
         botonSeleccionado.onClick.AddListener(OnClickContinuar);
     }
@@ -54,19 +54,13 @@ public class FirestoreBotones : MonoBehaviour
             Debug.LogWarning("⚠ No se encontraron categorías en archivo. Intentando cargar desde PlayerPrefs...");
 
 
-            string jsonDesdePrefs_en = PlayerPrefs.GetString("categorias_encuesta_firebase_json_en", "");
             string jsonDesdePrefs = PlayerPrefs.GetString("categorias_encuesta_firebase_json", "");
             if (!string.IsNullOrEmpty(jsonDesdePrefs))
             {
                 try
                 {
                     CategoriasData data = JsonUtility.FromJson<CategoriasData>(jsonDesdePrefs);
-                    CategoriasData data_en = JsonUtility.FromJson<CategoriasData>(jsonDesdePrefs_en);
-                    if (data_en != null && data_en.categorias != null)
-                    {
-                        categorias = data_en.categorias;
-                    }
-                    else if (data != null && data.categorias != null)
+                    if (data != null && data.categorias != null)
                     {
                         categorias = data.categorias;
                         Debug.Log("✅ Categorías cargadas desde PlayerPrefs.");
@@ -106,19 +100,8 @@ public class FirestoreBotones : MonoBehaviour
 
     List<Categoria> CargarCategoriasDesdeArchivo()
     {
-        string rutaArchivo;
-        appIdioma = PlayerPrefs.GetString("appIdioma", "español");
-        Debug.Log(appIdioma);
-        if (appIdioma == "español")
-        {
-            rutaArchivo = Path.Combine(Application.persistentDataPath, "categorias_encuesta_firebase.json");
-        }
-        else
-        {
-            rutaArchivo = Path.Combine(Application.persistentDataPath, "categorias_encuesta_firebase_en.json");
-        }
-
-
+        string rutaArchivo = Path.Combine(Application.persistentDataPath, "categorias_encuesta_firebase.json");
+       
         if (File.Exists(rutaArchivo))
         {
             try
@@ -198,9 +181,19 @@ public class FirestoreBotones : MonoBehaviour
     void SeleccionarNivel(Button boton, Categoria categoria)
     {
         // 1) Actualiza la UI de texto
-        nombreTMP.text = categoria.Titulo;
-        descripcionTMP.text = categoria.Descripcion;
-        categoriaSeleccionada = categoria;
+        if (appIdioma == "español")
+        {
+            nombreTMP.text = categoria.Titulo;
+            descripcionTMP.text = categoria.Descripcion;
+            categoriaSeleccionada = categoria;
+        }
+        else
+        {
+            nombreTMP.text = categoria.Titulo_en;
+            descripcionTMP.text = categoria.Descripcion_en;
+            categoriaSeleccionada = categoria;
+        }
+
 
         // 2) Marca visualmente el botón
         MarcarBoton(boton);
@@ -390,7 +383,11 @@ public class CategoriasData
 public class Categoria
 {
     public string Titulo;
+    public string Titulo_en; // Añadimos el campo para inglés
     public string Descripcion;
+    public string Descripcion_en; // Añadimos el campo para inglés
+
+    public Categoria() { }
 
     public Categoria(string titulo, string descripcion)
     {

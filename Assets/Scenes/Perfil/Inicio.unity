@@ -2782,7 +2782,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3245ec927659c4140ac4f8d17403cc18, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_HorizontalFit: 0
+  m_HorizontalFit: 2
   m_VerticalFit: 2
 --- !u!114 &588948325
 MonoBehaviour:
@@ -3204,7 +3204,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
   m_AnchoredPosition: {x: 542.39575, y: -207.7517}
-  m_SizeDelta: {x: 1040, y: 40}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &650814797
 MonoBehaviour:
@@ -3280,7 +3280,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3245ec927659c4140ac4f8d17403cc18, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_HorizontalFit: 0
+  m_HorizontalFit: 2
   m_VerticalFit: 2
 --- !u!1 &653769502
 GameObject:
@@ -3869,6 +3869,7 @@ GameObject:
   - component: {fileID: 806493105}
   - component: {fileID: 806493104}
   - component: {fileID: 806493103}
+  - component: {fileID: 806493106}
   m_Layer: 5
   m_Name: PanelLogrosCat
   m_TagString: Untagged
@@ -3934,6 +3935,26 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 106.69971}
   m_SizeDelta: {x: 0, y: -213.4}
   m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &806493106
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 806493102}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3ebca60ed8a46b44e8df5265d8a70643, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  categoriaPrefab: {fileID: 1307705842295024215, guid: 2a203b916f19ad140b9bf00aeb820f2f, type: 3}
+  categoriaPanel: {fileID: 650814796}
+  PanelLogrosCat: {fileID: 806493102}
+  PanelDatos: {fileID: 353543615}
+  PanelLogrosElementos: {fileID: 1723041262}
+  BtnDatos: {fileID: 2469820}
+  BtnLogros: {fileID: 1204980870}
+  BtnVolver: {fileID: 2469820}
 --- !u!1 &824451991
 GameObject:
   m_ObjectHideFlags: 0
@@ -3988,7 +4009,7 @@ MonoBehaviour:
   m_Content: {fileID: 1789437955}
   m_Horizontal: 0
   m_Vertical: 1
-  m_MovementType: 1
+  m_MovementType: 2
   m_Elasticity: 0.1
   m_Inertia: 1
   m_DecelerationRate: 0.135
@@ -4315,7 +4336,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 901789924}
-  - component: {fileID: 901789925}
   m_Layer: 0
   m_Name: CargarLogros
   m_TagString: Untagged
@@ -4338,26 +4358,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &901789925
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 901789923}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3ebca60ed8a46b44e8df5265d8a70643, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  categoriaPrefab: {fileID: 1307705842295024215, guid: 2a203b916f19ad140b9bf00aeb820f2f, type: 3}
-  categoriaPanel: {fileID: 650814796}
-  PanelLogrosCat: {fileID: 806493102}
-  PanelDatos: {fileID: 353543615}
-  PanelLogrosElementos: {fileID: 1723041262}
-  BtnDatos: {fileID: 2469820}
-  BtnLogros: {fileID: 1204980870}
-  BtnVolver: {fileID: 2469820}
 --- !u!1 &919252846
 GameObject:
   m_ObjectHideFlags: 0
@@ -6373,19 +6373,7 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 1204980871}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls:
-      - m_Target: {fileID: 901789925}
-        m_TargetAssemblyTypeName: LogrosManagarCat, Assembly-CSharp
-        m_MethodName: InicializarLogros
-        m_Mode: 1
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
+      m_Calls: []
 --- !u!114 &1204980871
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -7858,7 +7846,7 @@ MonoBehaviour:
   m_Content: {fileID: 1467967591}
   m_Horizontal: 0
   m_Vertical: 1
-  m_MovementType: 1
+  m_MovementType: 2
   m_Elasticity: 0.1
   m_Inertia: 1
   m_DecelerationRate: 0.135
