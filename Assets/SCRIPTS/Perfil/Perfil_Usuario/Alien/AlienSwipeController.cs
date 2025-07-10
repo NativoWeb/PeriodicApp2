@@ -5,6 +5,10 @@ using UnityEngine.EventSystems;
 public class AlienSwipeController : MonoBehaviour,
                                     IBeginDragHandler, IDragHandler, IEndDragHandler
 {
+    [Header("Botones Atrás/Siguiente")]
+    public Button BtnSiguiente;
+    public Button BtnAtras;
+
     [Header("IU — mismo orden que los aliens")]
     public RawImage[] rawImages;           // RawImages dentro del Canvas
     [Header("Modelos")]
@@ -24,6 +28,7 @@ public class AlienSwipeController : MonoBehaviour,
 
     void Start() => ActualizarVista();
 
+   
     /* ───────── Gestión de Swipe ───────── */
     public void OnBeginDrag(PointerEventData e) => startTouch = e.position;
 
@@ -43,6 +48,9 @@ public class AlienSwipeController : MonoBehaviour,
     /* ───────── Muestra/oculta y enciende/apaga lo necesario ───────── */
     void ActualizarVista()
     {
+        BtnSiguiente.onClick.AddListener(MostrarAlienSiguiente);
+        BtnAtras.onClick.AddListener(MostrarAlienAnterior);
+
         for (int i = 0; i < rawImages.Length; i++)
         {
             bool esActivo = (i == indiceActual);
@@ -77,6 +85,27 @@ public class AlienSwipeController : MonoBehaviour,
             }
         }
     }
+
+    /* ───────── Uso de botones para pasar de alien ───────── */
+    public void MostrarAlienAnterior()
+    {
+        if (indiceActual > 0)
+        {
+            indiceActual--;
+            ActualizarVista();
+        }
+    }
+
+    public void MostrarAlienSiguiente()
+    {
+        if (indiceActual < rawImages.Length - 1)
+        {
+            indiceActual++;
+            ActualizarVista();
+        }
+    }
+
+    /* ─────────────────────────────────────────────────── */
 
     public void SetUnlockMask(bool[] mask, Material lockedMat)
     {

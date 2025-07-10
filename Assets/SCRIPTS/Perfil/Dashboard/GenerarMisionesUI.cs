@@ -346,14 +346,14 @@ public class GeneradorElementosUI : MonoBehaviour
 
     private string ObtenerRangoSegunXP(int xp)
     {
-        if (xp >= 10000) return "Leyenda química";
-        if (xp >= 6000) return "Sabio de la tabla";
-        if (xp >= 3500) return "Maestro de Laboratorio";
-        if (xp >= 2300) return "Experto Molecular";
-        if (xp >= 1200) return "Cientifico en Formacion";
-        if (xp >= 600) return "Promesa quimica";
-        if (xp >= 200) return "Aprendiz Atomico";
-        return "Novato de laboratorio";
+        if (xp >= 25000) return "Alquimista Supremo";
+        if (xp >= 13000) return "Leyenda química";
+        if (xp >= 7500) return "Sabio de la tabla";
+        if (xp >= 4000) return "Maestro de Laboratorio";
+        if (xp >= 2000) return "Experto Molecular";
+        if (xp >= 900) return "Científico en Formación";
+        if (xp >= 300) return "Explorador de Elementos";
+        return "Aprendiz Atomico";
     }
 
     // ✅ Avatar según rango

@@ -13,18 +13,25 @@ public class DeslizarParaCerrarManager : MonoBehaviour, IPointerDownHandler, IDr
     private bool cerrando = false;
     private float alturaInicial;
 
+    
+    
+
     private AlienRotator alienRotator;
+    private PortalRotator portalRotator;
+
     private void Start()
     {
         if (panel != null)
             alturaInicial = panel.sizeDelta.y;
 
         alienRotator = FindAnyObjectByType<AlienRotator>();
+        portalRotator = FindAnyObjectByType<PortalRotator>(); 
     }
 
     public void AbrirPanelAlien()
     {
-        panel.gameObject.SetActive(true); 
+        panel.gameObject.SetActive(true);
+        //portalRotator.IniciarRotacion();
     }
     public void OnPointerDown(PointerEventData eventData)
     {
