@@ -32,6 +32,21 @@ public class GestorPreguntas : MonoBehaviour
     private string simboloSeleccionado;
     private string elementoCompleto;
     private string categoriaSeleccionada;
+    private List<string> categoriasFalladas;
+
+    [Header("Referencias para Animación de Misión")]
+    public TMP_Text txtMision;
+    public TMP_Text txtXp;
+    public TMP_Text txtPuntuacion;
+    public TMP_Text txtMotivacion;
+    public TMP_Text txtRefuerzo1;
+    public TMP_Text txtRefuerzo2;
+
+    public GameObject panelAnimacionMision;
+    public GameObject imagenAnimacionMision;
+    public AudioSource audioMisionCompletada;
+
+
 
     [System.Serializable]
     public class Pregunta
@@ -39,6 +54,9 @@ public class GestorPreguntas : MonoBehaviour
         public string textoPregunta;
         public List<string> opcionesRespuesta;
         public int indiceRespuestaCorrecta;
+        public string tema;
+        public string categoriaTema;
+
     }
 
     void Start()
@@ -46,6 +64,8 @@ public class GestorPreguntas : MonoBehaviour
         // FIREBASE
         db = FirebaseFirestore.DefaultInstance;
         auth = FirebaseAuth.DefaultInstance;
+
+        categoriasFalladas = new List<string>();
 
         // Configurar el slider de progreso
         barraProgresoSlider.minValue = 0;
@@ -63,8 +83,12 @@ public class GestorPreguntas : MonoBehaviour
         preguntaActual = PlayerPrefs.GetInt($"Progreso_{elementoCompleto}", 0);
 
         CargarPreguntasDesdeJSON(categoriaSeleccionada, elementoCompleto);
-        MostrarPregunta();
-        StartCoroutine(Temporizador());
+        if (preguntasFiltradas.Count > 0)
+        {
+            MostrarPregunta();
+            StartCoroutine(Temporizador());
+        }
+
         SistemaXP.CrearInstancia();
     }
     public string devolverCatTrad(string categoriaSeleccionada)
@@ -140,10 +164,12 @@ public class GestorPreguntas : MonoBehaviour
 
         bool categoriaEncontrada = json["grupo"].Value == categoriaSeleccionada;
         bool elementoEncontrado = false;
+
         foreach (JSONNode elementoJson in json["elementos"].AsArray)
         {
             if (elementoJson.HasKey("elemento") && elementoJson["elemento"].Value == elementoSeleccionado)
             {
+
                 elementoEncontrado = true;
                 if (elementoJson.HasKey("preguntas") && elementoJson["preguntas"].IsArray)
                 {
@@ -165,7 +191,9 @@ public class GestorPreguntas : MonoBehaviour
                         {
                             textoPregunta = preguntaJson["textoPregunta"].Value,
                             opcionesRespuesta = opciones,
-                            indiceRespuestaCorrecta = preguntaJson["indiceRespuestaCorrecta"].AsInt
+                            indiceRespuestaCorrecta = preguntaJson["indiceRespuestaCorrecta"].AsInt,
+                            tema = preguntaJson.HasKey("tema") ? preguntaJson["tema"].Value : "General",
+                            categoriaTema = preguntaJson.HasKey("categoriaTema") ? preguntaJson["categoriaTema"].Value : "Conceptos Generales"
                         };
                         preguntasFiltradas.Add(pregunta);
                     }
@@ -193,7 +221,6 @@ public class GestorPreguntas : MonoBehaviour
         //valor maximo del slider de progreso
         barraProgresoSlider.maxValue = preguntasFiltradas.Count;
     }
-
 
     public void MostrarPregunta()
     {
@@ -263,6 +290,10 @@ public class GestorPreguntas : MonoBehaviour
         else
         {
             rachaActual = 0;
+            if (!categoriasFalladas.Contains(pregunta.categoriaTema))
+            {
+                categoriasFalladas.Add(pregunta.categoriaTema);
+            }
         }
 
         txtRacha.text = "" + rachaActual;
@@ -283,6 +314,11 @@ public class GestorPreguntas : MonoBehaviour
         preguntaEnCurso = false;
         rachaActual = 0;
         txtRacha.text = "" + rachaActual;
+
+        if (!categoriasFalladas.Contains(preguntasFiltradas[preguntaActual].tema))
+        {
+            categoriasFalladas.Add(preguntasFiltradas[preguntaActual].tema);
+        }
         StartCoroutine(EsperarYSiguientePregunta());
     }
 
@@ -301,25 +337,159 @@ public class GestorPreguntas : MonoBehaviour
 
     void MostrarResultadosFinales()
     {
+        // 1. Asegurarse de que el panel de resultados esté activo
         PanelContinuar.SetActive(true);
 
-        int experiencia = (respuestasCorrectas * 100) / preguntasFiltradas.Count;
-        txtResultado.text = $"Bonificación de racha: {rachaActual * 3}";
+        // 2. Definir el umbral de victoria y calcular resultados
+        float umbralVictoria = 70.0f;
+        float porcentajeAciertos = (preguntasFiltradas.Count > 0) ? (float)respuestasCorrectas / preguntasFiltradas.Count * 100f : 0f;
+        bool ganoElQuiz = porcentajeAciertos >= umbralVictoria;
 
-        if (Application.internetReachability != NetworkReachability.NotReachable)
+        int xpGanado = 0;
+
+        // --- Lógica de la UI del Panel de Resultados ---
+        if (ganoElQuiz)
         {
-            SumarXPFirebase(rachaActual);
+            // --- LÓGICA DE VICTORIA ---
+            int xpBase = respuestasCorrectas * 10;
+            int bonoRacha = rachaActual * 5;
+            xpGanado = xpBase + bonoRacha;
+
+            txtMision.text = "¡QUIZ SUPERADO!";
+            txtXp.text = $"+{xpGanado} XP";
+            txtPuntuacion.text = $"{respuestasCorrectas}/{preguntasFiltradas.Count}";
+            txtMotivacion.text = "¡Excelente trabajo! Has demostrado un gran dominio del tema.";
+
+            // Ocultamos los paneles de refuerzo
+            if (txtRefuerzo1 != null) txtRefuerzo1.transform.parent.gameObject.SetActive(false);
+            if (txtRefuerzo2 != null) txtRefuerzo2.transform.parent.gameObject.SetActive(false);
         }
         else
         {
-            SumarXPTemporario(rachaActual);
+            // --- LÓGICA DE DERROTA ---
+            xpGanado = respuestasCorrectas * 5; // XP de consolación
+
+            txtMision.text = "¡CASI LO LOGRAS!";
+            txtXp.text = $"+{xpGanado} XP";
+            txtPuntuacion.text = $"{respuestasCorrectas}/{preguntasFiltradas.Count}";
+            txtMotivacion.text = "Sigue estudiando. Para mejorar, te recomendamos reforzar:";
+
+            // Mostramos los paneles de refuerzo
+            if (txtRefuerzo1 != null) txtRefuerzo1.transform.parent.gameObject.SetActive(true);
+            if (txtRefuerzo2 != null) txtRefuerzo2.transform.parent.gameObject.SetActive(true);
+
+            // Asignamos las categorías a los textos de refuerzo
+            if (categoriasFalladas.Count > 0)
+            {
+                txtRefuerzo1.text = "- " + categoriasFalladas[0];
+            }
+            else
+            {
+                txtRefuerzo1.transform.parent.gameObject.SetActive(false); // Ocultar si no hay nada que mostrar
+            }
+
+            if (categoriasFalladas.Count > 1)
+            {
+                txtRefuerzo2.text = "- " + categoriasFalladas[1];
+            }
+            else
+            {
+                txtRefuerzo2.transform.parent.gameObject.SetActive(false); // Ocultar si no hay una segunda recomendación
+            }
         }
 
-        // Guardar que el elemento ha sido completado
-        PlayerPrefs.SetInt($"Progreso_{elementoCompleto}", preguntasFiltradas.Count);
+        // 4. --- COMUNICACIÓN ENTRE SCRIPTS ---
+        PlayerPrefs.SetInt("UltimoQuizGanado", ganoElQuiz ? 1 : 0);
+        PlayerPrefs.SetInt("xp_mision", xpGanado);
         PlayerPrefs.Save();
 
-        SistemaXP.Instance?.AgregarXP(experiencia);
+        // 5. Configurar el botón "Continuar" para que llame al gestor de misiones
+        Button botonContinuar = PanelContinuar.GetComponentInChildren<Button>();
+        if (botonContinuar != null)
+        {
+            botonContinuar.onClick.RemoveAllListeners();
+            botonContinuar.onClick.AddListener(() =>
+            {
+                PanelContinuar.SetActive(false);
+                if (GuardarMisionCompletada.instancia != null)
+                {
+                    GuardarMisionCompletada.instancia.IniciarProcesoMisionCompletada(
+                        panelAnimacionMision,
+                        imagenAnimacionMision,
+                        audioMisionCompletada
+                    );
+                }
+                else
+                {
+                    Debug.LogError("No se encontró la instancia de GuardarMisionCompletada. Cambiando de escena directamente.");
+                    SceneManager.LoadScene("Categorías");
+                }
+            });
+        }
+
+        // 6. Guardar progreso en Firebase y XP local
+        if (Application.internetReachability != NetworkReachability.NotReachable)
+        {
+            GuardarResultadosEnFirebase(xpGanado, porcentajeAciertos, ganoElQuiz);
+        }
+        else
+        {
+            SumarXPTemporario(xpGanado);
+        }
+
+        if (SistemaXP.Instance != null)
+        {
+            SistemaXP.Instance.AgregarXP(xpGanado);
+        }
+
+        // 7. Limpiar progreso del quiz
+        PlayerPrefs.DeleteKey($"Progreso_{elementoCompleto}");
+        PlayerPrefs.Save();
+    }
+
+    private IEnumerator EsperarYCambiarDeEscena(float tiempoDeEspera)
+    {
+        // Espera el tiempo especificado
+        yield return new WaitForSeconds(tiempoDeEspera);
+
+        // Luego, carga la siguiente escena
+        SceneManager.LoadScene("Categorías");
+    }
+
+    async void GuardarResultadosEnFirebase(int xp, float puntaje, bool completado)
+    {
+        var user = auth.CurrentUser;
+        if (user == null) return;
+
+        DocumentReference userRef = db.Collection("users").Document(user.UserId);
+
+        string claveMision = elementoCompleto.Replace("(", "").Replace(")", "").Replace(".", "");
+
+        var datosMision = new Dictionary<string, object>
+        {
+            { "mejorPuntaje", puntaje },
+            { "completado", completado },
+            { "ultimoIntento", Timestamp.GetCurrentTimestamp() },
+        };
+
+        var updates = new Dictionary<string, object>
+        {
+            //incrementa el xp total del usuario
+            {"xp", FieldValue.Increment(xp) },
+            //Guarda/actualiza los datos de esta mision en un mapa "misionesCompletadas"
+            {$"misionesCompletadas.{claveMision}", datosMision }
+        };
+
+        try
+        {
+            await userRef.UpdateAsync(updates);
+            Debug.Log($"Resultados guardados en Firebase. XP: +{xp}, Misión: {claveMision}");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"Error al guardar resultados en Firebase: {e.Message}");
+            SumarXPTemporario(xp);
+        }
     }
 
     public void GuardarYSalir()
@@ -340,38 +510,7 @@ public class GestorPreguntas : MonoBehaviour
         Debug.Log($"🔄 No hay conexión. XP {xp} guardado en TempXP. Total: {xpTemporal}");
     }
 
-    async void SumarXPFirebase(int xp)
-    {
-        var user = auth.CurrentUser;
-        if (user == null)
-        {
-            Debug.LogError("❌ No hay usuario autenticado.");
-            return;
-        }
 
-        DocumentReference userRef = db.Collection("users").Document(user.UserId);
-
-        try
-        {
-            DocumentSnapshot snapshot = await userRef.GetSnapshotAsync();
-            int xpActual = 0;
-
-            if (snapshot.Exists && snapshot.TryGetValue<int>("xp", out int valorXP))
-            {
-                xpActual = valorXP;
-            }
-
-            int xpNuevo = xpActual + xp;
-
-
-            await userRef.UpdateAsync("xp", xpNuevo);
-            Debug.Log($"✅ XP actualizado en Firebase: {xpNuevo}");
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"❌ Error al actualizar XP en Firebase: {e.Message}");
-        }
-    }
 }
 
 

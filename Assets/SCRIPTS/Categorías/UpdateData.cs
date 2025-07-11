@@ -251,7 +251,6 @@ private async void ActualizarEstadoEncuestaEnFirebase(string userId,string encue
                         
                     }
                 }
-
             }
             catch (Exception ex)
             {

@@ -43,6 +43,8 @@ public class ListarAmigosManager : MonoBehaviour
     private FirebaseFirestore db;
     private string userId;
 
+    private string appIdioma;
+
     [Header("Referencias a paneles debajo de amigos, para poder moverlos")]
     [SerializeField] private RectTransform panelesInferiores;
 
@@ -51,7 +53,7 @@ public class ListarAmigosManager : MonoBehaviour
 
     public void OnEnable()
     {
-
+        appIdioma = PlayerPrefs.GetString("appIdioma", "español");
         InitializeUIComponents();
         auth = FirebaseAuth.DefaultInstance;
         db = FirebaseFirestore.DefaultInstance;
@@ -289,8 +291,11 @@ public class ListarAmigosManager : MonoBehaviour
             panelAmigo2.SetActive(false);
             panelAmigo3.SetActive(false);
 
-            // Configurar el panel 1 con el mensaje
+        if (appIdioma == "español")
             nombreAmigo1.text = "Sin amigos, amplia tu circulo cientifico!!!";
+        else
+            nombreAmigo1.text = "Without friends, expand your scientific circle!!";
+
 
             // desactivar componenetes no necesarios si no tiene amigos
             AvatarAmigo1.GetComponent<Image>().enabled = false;
