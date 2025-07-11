@@ -19,6 +19,7 @@ public class Logout : MonoBehaviour
     public void logout() // ################################################################ Método para cerrar sesión
     {
        // await SubirMisionesJSON(); ponerlo apenas se pueda URGENTE
+       
         auth.SignOut(); // Cierra la sesión en Firebase
         PlayerPrefs.DeleteAll(); // Elimina el ID del usuario guardado
         PlayerPrefs.Save(); // Guarda los cambios

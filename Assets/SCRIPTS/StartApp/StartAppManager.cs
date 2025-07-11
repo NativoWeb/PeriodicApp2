@@ -66,8 +66,6 @@ public class StartAppManager : MonoBehaviour
 
         string estadoUsuario = PlayerPrefs.GetString("Estadouser", "");
         
-
-
         // ---------------------------------------------- VALIDACIONES --------------------------------------------------------------------------
 
         if (estadoUsuario == "nube") 

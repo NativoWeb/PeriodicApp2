@@ -1,6 +1,10 @@
 ﻿using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
+using static AlienDataManager;
+using System.Xml.Linq;
+using TMPro.EditorUtilities;
+using TMPro;
 
 public class AlienSwipeController : MonoBehaviour,
                                     IBeginDragHandler, IDragHandler, IEndDragHandler
@@ -26,6 +30,14 @@ public class AlienSwipeController : MonoBehaviour,
     [Header("Candado único para avatares bloqueados")]
     [SerializeField] private GameObject candadoIcon;
 
+    private int usuarioXP;
+    private RangoXP[] rangos;
+
+    [Header("XP")]
+    [SerializeField] private Slider xpSlider;
+    [SerializeField] private TMP_Text xpTexto; // opcional para mostrar "1234 / 2000"
+
+
     void Start() => ActualizarVista();
 
    
@@ -48,6 +60,9 @@ public class AlienSwipeController : MonoBehaviour,
     /* ───────── Muestra/oculta y enciende/apaga lo necesario ───────── */
     void ActualizarVista()
     {
+        BtnSiguiente.onClick.RemoveAllListeners();
+        BtnAtras.onClick.RemoveAllListeners();
+
         BtnSiguiente.onClick.AddListener(MostrarAlienSiguiente);
         BtnAtras.onClick.AddListener(MostrarAlienAnterior);
 
@@ -57,34 +72,56 @@ public class AlienSwipeController : MonoBehaviour,
 
             rawImages[i].gameObject.SetActive(esActivo);
             alienRotators[i].enabled = true;
+
             if (esActivo) alienRotators[i].ComenzarRotacion();
             else alienRotators[i].DetenerRotacion();
 
-            // Opcional: encender solo la cámara activa
+            // Encender solo la cámara activa
             if (alienCams != null && alienCams.Length > i && alienCams[i] != null)
                 alienCams[i].enabled = esActivo;
         }
 
-        // ─── Mostrar candado si el actual está bloqueado ───
+        // Mostrar candado si está bloqueado
         if (puedeUsar != null && indiceActual < puedeUsar.Length)
         {
             bool bloqueado = !puedeUsar[indiceActual];
+            candadoIcon.SetActive(bloqueado);
 
             if (bloqueado)
             {
-                candadoIcon.SetActive(true);
-
-                // Reposiciona el candado sobre el RawImage activo
+                // Reposicionar candado si es necesario
                 RectTransform rawRect = rawImages[indiceActual].GetComponent<RectTransform>();
                 RectTransform candadoRect = candadoIcon.GetComponent<RectTransform>();
-
+                // Aquí podrías ajustar la posición del candado si lo deseas
             }
-            else
+
+            // Actualizar el Slider solo si se tiene la info
+            if (rangos != null && indiceActual < rangos.Length && xpSlider != null)
             {
-                candadoIcon.SetActive(false);
+                if (!bloqueado)
+                {
+                    RangoXP rango = rangos[indiceActual];
+                    float xpRelativo = Mathf.Clamp(usuarioXP - rango.xpMinimo, 0, rango.xpMaximo - rango.xpMinimo);
+                    float xpTotal = rango.xpMaximo - rango.xpMinimo;
+
+                    float porcentaje = (xpRelativo / xpTotal) * 100f;
+                    xpSlider.value = xpRelativo / xpTotal;
+
+                    if (xpTexto != null)
+                        xpTexto.text = $"{porcentaje:F0}%";  // F0 = sin decimales
+                }
+
+                else
+                {
+                    xpSlider.value = 0f;
+
+                    if (xpTexto != null)
+                        xpTexto.text = "0%";
+                }
             }
         }
     }
+
 
     /* ───────── Uso de botones para pasar de alien ───────── */
     public void MostrarAlienAnterior()
@@ -106,6 +143,14 @@ public class AlienSwipeController : MonoBehaviour,
     }
 
     /* ─────────────────────────────────────────────────── */
+  
+
+    public void ActualizarSliderXP(int xp, RangoXP[] dataRangos)
+    {
+        usuarioXP = xp;
+        rangos = dataRangos;
+        ActualizarVista(); // refresca el slider también
+    }
 
     public void SetUnlockMask(bool[] mask, Material lockedMat)
     {

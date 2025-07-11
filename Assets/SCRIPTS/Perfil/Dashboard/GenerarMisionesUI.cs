@@ -361,14 +361,14 @@ public class GeneradorElementosUI : MonoBehaviour
     {
         switch (rangos)
         {
-            case "Novato de laboratorio": return "Avatares/Rango1";
-            case "Aprendiz Atomico": return "Avatares/Rango2";
-            case "Promesa quimica": return "Avatares/Rango3";
-            case "Cientifico en Formacion": return "Avatares/Rango4";
-            case "Experto Molecular": return "Avatares/Rango5";
-            case "Maestro de Laboratorio": return "Avatares/Rango6";
-            case "Sabio de la tabla": return "Avatares/Rango7";
-            case "Leyenda química": return "Avatares/Rango8";
+            case "Aprendiz Atomico": return "Avatares/Rango1";
+            case "Explorador de Elementos": return "Avatares/Rango2";
+            case "Científico en Formación": return "Avatares/Rango3";
+            case "Experto Molecular": return "Avatares/Rango4";
+            case "Maestro de Laboratorio": return "Avatares/Rango5";
+            case "Sabio de la tabla": return "Avatares/Rango6";
+            case "Leyenda química": return "Avatares/Rango7";
+            case "Alquimista Supremo": return "Avatares/Rango8";
             default: return "Avatares/Rango1";
         }
     }
