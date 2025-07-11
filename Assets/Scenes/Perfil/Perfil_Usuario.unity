@@ -2400,7 +2400,7 @@ MonoBehaviour:
     m_PressedTrigger: Pressed
     m_SelectedTrigger: Selected
     m_DisabledTrigger: Disabled
-  m_Interactable: 1
+  m_Interactable: 0
   m_TargetGraphic: {fileID: 0}
   m_FillRect: {fileID: 192983727}
   m_HandleRect: {fileID: 0}
@@ -2469,7 +2469,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 200%
+  m_text: 
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -2864,8 +2864,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 3.936615, y: 0}
-  m_SizeDelta: {x: 10, y: 0}
+  m_AnchoredPosition: {x: 1.936615, y: 0}
+  m_SizeDelta: {x: 6, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &192983728
 MonoBehaviour:
@@ -3386,6 +3386,8 @@ MonoBehaviour:
   candadoIcon: {fileID: 1371503108}
   xpSlider: {fileID: 162077937}
   xpTexto: {fileID: 167193718}
+  rangoNombreTexto: {fileID: 1011482543}
+  textoDesbloqueoSiguiente: {fileID: 700245967}
 --- !u!1 &227714827
 GameObject:
   m_ObjectHideFlags: 0
@@ -6928,7 +6930,7 @@ GameObject:
   - component: {fileID: 700245968}
   - component: {fileID: 700245967}
   m_Layer: 5
-  m_Name: Text (TMP) (2)
+  m_Name: PuntosParaSiguienteTxt
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -6950,8 +6952,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 8.920013, y: 422.15738}
-  m_SizeDelta: {x: 712.29, y: 94.855}
+  m_AnchoredPosition: {x: 8.920013, y: 412.76535}
+  m_SizeDelta: {x: 712.29, y: 76.071}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &700245967
 MonoBehaviour:
@@ -6973,7 +6975,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "507 puntos para desbloquear aprendiz at\xF3mico"
+  m_text: 
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -9744,7 +9746,7 @@ GameObject:
   - component: {fileID: 1011482544}
   - component: {fileID: 1011482543}
   m_Layer: 5
-  m_Name: Text (TMP)
+  m_Name: AvatartRangoTxt
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -9789,7 +9791,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Novato de laboratorio
+  m_text: 
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}

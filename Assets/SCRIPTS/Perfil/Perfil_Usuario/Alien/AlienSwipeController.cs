@@ -3,7 +3,6 @@ using UnityEngine.UI;
 using UnityEngine.EventSystems;
 using static AlienDataManager;
 using System.Xml.Linq;
-using TMPro.EditorUtilities;
 using TMPro;
 
 public class AlienSwipeController : MonoBehaviour,
@@ -36,7 +35,8 @@ public class AlienSwipeController : MonoBehaviour,
     [Header("XP")]
     [SerializeField] private Slider xpSlider;
     [SerializeField] private TMP_Text xpTexto; // opcional para mostrar "1234 / 2000"
-
+    [SerializeField] private TMP_Text rangoNombreTexto;
+    [SerializeField] private TMP_Text textoDesbloqueoSiguiente;
 
     void Start() => ActualizarVista();
 
@@ -76,7 +76,6 @@ public class AlienSwipeController : MonoBehaviour,
             if (esActivo) alienRotators[i].ComenzarRotacion();
             else alienRotators[i].DetenerRotacion();
 
-            // Encender solo la cámara activa
             if (alienCams != null && alienCams.Length > i && alienCams[i] != null)
                 alienCams[i].enabled = esActivo;
         }
@@ -89,18 +88,29 @@ public class AlienSwipeController : MonoBehaviour,
 
             if (bloqueado)
             {
-                // Reposicionar candado si es necesario
                 RectTransform rawRect = rawImages[indiceActual].GetComponent<RectTransform>();
                 RectTransform candadoRect = candadoIcon.GetComponent<RectTransform>();
-                // Aquí podrías ajustar la posición del candado si lo deseas
-            }
-
-            // Actualizar el Slider solo si se tiene la info
-            if (rangos != null && indiceActual < rangos.Length && xpSlider != null)
-            {
-                if (!bloqueado)
+                // Mostrar cuántos puntos faltan para desbloquear el siguiente rango
+                if (textoDesbloqueoSiguiente != null && indiceActual < rangos.Length)
                 {
                     RangoXP rango = rangos[indiceActual];
+                    int puntosFaltantes = Mathf.Max(rango.xpMinimo - usuarioXP, 0);
+
+                    textoDesbloqueoSiguiente.text = $"{puntosFaltantes} puntos para desbloquear {rango.nombre.ToUpper()}";
+                }
+            }
+
+            // Actualizar Slider y nombre del rango
+            if (rangos != null && indiceActual < rangos.Length)
+            {
+                RangoXP rango = rangos[indiceActual];
+
+                // Mostrar el nombre del rango
+                if (rangoNombreTexto != null)
+                    rangoNombreTexto.text = rango.nombre;
+
+                if (!bloqueado && xpSlider != null)
+                {
                     float xpRelativo = Mathf.Clamp(usuarioXP - rango.xpMinimo, 0, rango.xpMaximo - rango.xpMinimo);
                     float xpTotal = rango.xpMaximo - rango.xpMinimo;
 
@@ -108,19 +118,24 @@ public class AlienSwipeController : MonoBehaviour,
                     xpSlider.value = xpRelativo / xpTotal;
 
                     if (xpTexto != null)
-                        xpTexto.text = $"{porcentaje:F0}%";  // F0 = sin decimales
-                }
+                        xpTexto.text = $"{porcentaje:F0}%";
 
-                else
+                    if (textoDesbloqueoSiguiente != null)
+                        textoDesbloqueoSiguiente.text = ""; // Limpia el texto si no está bloqueado
+                }
+                else if (xpSlider != null)
                 {
                     xpSlider.value = 0f;
 
                     if (xpTexto != null)
                         xpTexto.text = "0%";
                 }
+                
+
             }
         }
     }
+
 
 
     /* ───────── Uso de botones para pasar de alien ───────── */
