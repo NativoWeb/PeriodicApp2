@@ -1,13 +1,13 @@
-ï»¿using Firebase.Auth;
+using Firebase.Auth;
 using Firebase.Firestore;
 using UnityEngine;
 using UnityEngine.SceneManagement;
-using System.IO; // Necesario para manejar archivos
 
 public class Logout : MonoBehaviour
 {
+
     private FirebaseAuth auth;
-    public FirebaseFirestore db;
+    public FirebaseFirestore db;// instanciamos db
     private string userId;
 
     private void Start()
@@ -16,59 +16,16 @@ public class Logout : MonoBehaviour
         db = FirebaseFirestore.DefaultInstance;
         userId = PlayerPrefs.GetString("userId", "").Trim();
     }
-
-    public void logout()
+    public void logout() // ################################################################ Método para cerrar sesión
     {
-        // await SubirMisionesJSON(); // URGENTE, pendiente de activar cuando se pueda
-
-        // Eliminar archivos locales
-        EliminarArchivosLocales();
-
-        // Cerrar sesiÃ³n
-        auth.SignOut();
-        PlayerPrefs.DeleteAll();
-        PlayerPrefs.Save();
-
-        Debug.Log("SesiÃ³n cerrada correctamente");
-
-        // Redirigir a la escena de login
+       // await SubirMisionesJSON(); ponerlo apenas se pueda URGENTE
+       
+        PlayerPrefs.DeleteAll(); // Elimina el ID del usuario guardado
+        PlayerPrefs.Save(); // Guarda los cambios
+        auth.SignOut(); // Cierra la sesión en Firebase
+        Debug.Log("Sesión cerrada correctamente");
+        // Opcional: Redirigir a la escena de login
         SceneManager.LoadScene("Start");
     }
 
-    private void EliminarArchivosLocales()
-    {
-        string rutaMisiones = Path.Combine(Application.persistentDataPath, "Json_Misiones.json");
-        string rutaLogros = Path.Combine(Application.persistentDataPath, "Json_Logros.json");
-        string rutaCategorias = Path.Combine(Application.persistentDataPath, "categorias_encuesta_firebase.json");
-
-        if (File.Exists(rutaMisiones))
-        {
-            File.Delete(rutaMisiones);
-            Debug.Log("Json_misiones.json eliminado");
-        }
-        else
-        {
-            Debug.Log("Json_misiones.json no existe");
-        }
-
-        if (File.Exists(rutaLogros))
-        {
-            File.Delete(rutaLogros);
-            Debug.Log("Json_logros.json eliminado");
-        }
-        else
-        {
-            Debug.Log("Json_logros.json no existe");
-        }
-
-        if (File.Exists(rutaCategorias))
-        {
-            File.Delete(rutaCategorias);
-            Debug.Log("categorias_encuesta_firebase.json eliminado");
-        }
-        else
-        {
-            Debug.Log("categorias_encuesta_firebase.json no existe");
-        }
-    }
 }
