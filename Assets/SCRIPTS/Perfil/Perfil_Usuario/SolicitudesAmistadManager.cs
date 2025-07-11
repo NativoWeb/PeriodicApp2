@@ -15,7 +15,7 @@ public class SolicitudesAmistadManager : MonoBehaviour
     private FirebaseFirestore db;
     private FirebaseAuth auth;
     private string currentUserId;
-
+    
    
     private class FriendRequest
     {
@@ -38,10 +38,11 @@ public class SolicitudesAmistadManager : MonoBehaviour
     [SerializeField] private GameObject panelgeneralSolicitudes;
 
     private Vector2 posicionBaseInferiorSolicitudes;
-
+    private string appIdioma;
     
     public void OnEnable()
     {
+        appIdioma = PlayerPrefs.GetString("appIdioma", "español");
         auth = FirebaseAuth.DefaultInstance;
         db = FirebaseFirestore.DefaultInstance;
 
@@ -142,8 +143,18 @@ public class SolicitudesAmistadManager : MonoBehaviour
             if (solicitudPanels.Length > 0)
             {
                 solicitudPanels[0].SetActive(true);
-                solicitudPanels[0].transform.Find("NombreText").GetComponent<TMP_Text>().text = "Sin solicitudes";
-                solicitudPanels[0].transform.Find("RangoText").GetComponent<TMP_Text>().text = "Invita a tus amigos";
+
+                if (appIdioma == "español")
+                {
+                    solicitudPanels[0].transform.Find("NombreText").GetComponent<TMP_Text>().text = "Sin solicitudes";
+                    solicitudPanels[0].transform.Find("RangoText").GetComponent<TMP_Text>().text = "Invita a tus amigos";
+                }
+                else
+                {
+                    solicitudPanels[0].transform.Find("NombreText").GetComponent<TMP_Text>().text = "No requests";
+                    solicitudPanels[0].transform.Find("RangoText").GetComponent<TMP_Text>().text = "Invite your friends";
+                }
+                
                 BtnAñadirAmigos.gameObject.SetActive(true);
                     
                 solicitudPanels[0].transform.Find("AvatarImage").gameObject.SetActive(false);
