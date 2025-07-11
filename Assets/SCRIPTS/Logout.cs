@@ -20,12 +20,10 @@ public class Logout : MonoBehaviour
     {
        // await SubirMisionesJSON(); ponerlo apenas se pueda URGENTE
        
-        auth.SignOut(); // Cierra la sesión en Firebase
         PlayerPrefs.DeleteAll(); // Elimina el ID del usuario guardado
         PlayerPrefs.Save(); // Guarda los cambios
-
+        auth.SignOut(); // Cierra la sesión en Firebase
         Debug.Log("Sesión cerrada correctamente");
-
         // Opcional: Redirigir a la escena de login
         SceneManager.LoadScene("Start");
     }
