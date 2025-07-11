@@ -15,7 +15,7 @@ using System;
 public class GuardarMisionCompletada : MonoBehaviour
 {
     public static GuardarMisionCompletada instancia;
-    public Button botonCompletarMision; // Asigna el botón desde el Inspector
+    //public Button botonCompletarMision; // Asigna el botón desde el Inspector
     public GameObject imagenMision; // Asigna el objeto desde el Inspector
     public GameObject panel;
     public AudioSource audioSource;
@@ -53,16 +53,29 @@ public class GuardarMisionCompletada : MonoBehaviour
             Debug.LogError("❌ No hay usuario autenticado en Start.");
         }
 
-        if (botonCompletarMision != null)
-        {
-            botonCompletarMision.onClick.AddListener(MarcarMisionComoCompletada);
-            botonCompletarMision.onClick.AddListener(AnimacionMisionCompletada);
-        }
-        else
-        {
-            Debug.LogError("❌ botonCompletarMision no está asignado en el Inspector.");
-        }
+        //if (botonCompletarMision != null)
+        //{
+        //    botonCompletarMision.onClick.AddListener(MarcarMisionComoCompletada);
+        //    botonCompletarMision.onClick.AddListener(AnimacionMisionCompletada);
+        //}
+        //else
+        //{
+        //    Debug.LogError("❌ botonCompletarMision no está asignado en el Inspector.");
+        //}
     }
+
+    public void IniciarProcesoMisionCompletada(GameObject panelAnim, GameObject imagenAnim, AudioSource audio)
+    {
+        Debug.Log("<color=yellow>Recibiendo nuevas referencias de animación...</color>");
+        this.panel = panelAnim;
+        this.imagenMision = imagenAnim;
+        this.audioSource = audio;
+        
+
+        MarcarMisionComoCompletada();
+        AnimacionMisionCompletada();
+    }
+
 
     public void MarcarMisionComoCompletada()
     {
@@ -82,12 +95,18 @@ public class GuardarMisionCompletada : MonoBehaviour
 
     public void AnimacionMisionCompletada()
     {
-        if (panel == null || imagenMision == null) return;
+        if (panel == null || imagenMision == null)
+        {
+            Debug.LogError("Referencias de animacion no validas. Abortando animacion");
+            //CambiarEscena();
+            return;
+        };
 
         panel.SetActive(true);
         imagenMision.SetActive(true);
         imagenMision.transform.localScale = Vector3.zero;
-        audioSource.Play(); // 🔊 Reproduce el sonido
+        if (audioSource != null) audioSource.Play();
+
 
         // 🟢 Activar y reproducir el efecto de partículas
         if (particulasMision != null)
@@ -102,19 +121,19 @@ public class GuardarMisionCompletada : MonoBehaviour
             .Append(imagenMision.transform.DORotate(new Vector3(0, 0, -10f), 0.3f).SetEase(Ease.InOutSine))
             .Append(imagenMision.transform.DORotate(Vector3.zero, 0.3f).SetEase(Ease.InOutSine))
             .Append(imagenMision.transform.DOMoveY(imagenMision.transform.position.y + 50, 1f).SetEase(Ease.OutQuad))
-            .OnComplete(() => {
-                if (particulasMision != null)
-                {
-                    particulasMision.gameObject.SetActive(false);
-                }
-                CambiarEscena();
+            .OnComplete(() =>
+            {
+                Debug.Log("Animación de misión completada finalizada.");
             });
     }
 
-    void CambiarEscena()
-    {
-        SceneManager.LoadScene("Categorías"); 
-    }
+
+
+    //void CambiarEscena()
+    //{
+    //    CancelInvoke("CambiarEscena");
+    //    SceneManager.LoadScene("Categorías");
+    //}
 
     private async void ActualizarMisionEnJSON(string elemento, int idMision)
     {
@@ -122,6 +141,7 @@ public class GuardarMisionCompletada : MonoBehaviour
         string jsonString;
         string fileName = "Json_Misiones.json";
         string filePath = Path.Combine(Application.persistentDataPath, fileName);
+        bool ganoElUltimoQuiz = PlayerPrefs.GetInt("UltimoQuizGanado", 0) == 1;
 
         if (File.Exists(filePath))
         {
@@ -210,29 +230,50 @@ public class GuardarMisionCompletada : MonoBehaviour
                     return;
                 }
 
-                // Marcar completada
-                mision["completada"] = true;
-                cambioRealizado = true;
-
-                // Guardar cambios físico y en PlayerPrefs
-                GuardarJsonActualizado(filePath, json.ToString());
-
-                Debug.Log("✅ Misión completada por primera vez. Sumando XP.");
-                int xp = PlayerPrefs.GetInt("xp_mision", 0);
-                TxtXp.text = xp.ToString();
-                await ProcesarXP(xp);
-
-                // Si es la última pendiente, gestionar logro de elemento
-                if (esUltimaMisionPendiente)
+                if (ganoElUltimoQuiz)
                 {
-                    Debug.Log("🎉 ¡Última misión del elemento completada!");
-                    await ProcesarXP(15);
+                    Debug.Log("Quiz superado. Marcando mision como completada");
+                    mision["completada"] = true;
+                    cambioRealizado = true;
 
-                    MarcarLogroElementoComoDesbloqueado(json, categoriaSeleccionada, elemento);
-                    GuardarJsonActualizado(filePath, json.ToString());
-                    Debug.Log("💾 JSON actualizado con logro desbloqueado.");
+                    //Sumamos el xp que gano del quiz
+                    int xp = PlayerPrefs.GetInt("xp_mision", 0);
+                    TxtXp.text = xp.ToString();
+                    await ProcesarXP(xp);
+
+                    // Si es la última pendiente, gestionar logro de elemento
+                    if (esUltimaMisionPendiente)
+                    {
+                        Debug.Log("🎉 ¡Última misión del elemento completada!");
+                        await ProcesarXP(15);
+
+                        MarcarLogroElementoComoDesbloqueado(json, categoriaSeleccionada, elemento);
+                        GuardarJsonActualizado(filePath, json.ToString());
+                        Debug.Log("💾 JSON actualizado con logro desbloqueado.");
+                    }
+
                 }
+                else
+                {
+                    // EL JUGADOR PERDIÓ, NO MARCAMOS LA MISIÓN
+                    Debug.Log("❌ Quiz no superado (menos del 70%). La misión NO se marca como completada.");
+
+                    int xpConsolacion = PlayerPrefs.GetInt("xp_mision", 0);
+                    TxtXp.text = xpConsolacion.ToString();
+                    await ProcesarXP(xpConsolacion);
+                    return;
+
+                }
+
+                if (cambioRealizado)
+                {
+                    // Guardar cambios físico y en PlayerPrefs
+                    GuardarJsonActualizado(filePath, json.ToString());
+
+                }
+
                 return;
+
             }
         }
 
