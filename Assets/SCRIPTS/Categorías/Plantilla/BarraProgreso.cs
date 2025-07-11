@@ -15,7 +15,11 @@ public class BarraProgreso : MonoBehaviour
         totalPreguntas = total;
         slider.maxValue = totalPreguntas;
         slider.value = 0;
-        AvanzarPregunta();
+        if(progresoTexto != null)
+        {
+            progresoTexto.text = $"0 / {totalPreguntas}";
+        }
+        //AvanzarPregunta();
     }
 
     public void AvanzarPregunta()
@@ -24,6 +28,15 @@ public class BarraProgreso : MonoBehaviour
         {
             preguntaActual++;
             slider.value = preguntaActual;
+        }
+    }
+
+    public void ActualizarProgreso(int preguntaNumero, int totalPreguntas)
+    {
+        slider.value = preguntaNumero;
+        if (progresoTexto != null)
+        {
+            progresoTexto.text = $"{preguntaNumero} / {totalPreguntas}";
         }
     }
 }

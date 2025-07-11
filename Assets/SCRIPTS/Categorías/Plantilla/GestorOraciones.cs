@@ -110,8 +110,8 @@ public class GestorOraciones : MonoBehaviour
         {
             preguntasActuales = preguntasJSON[elemento];
             BarajarPreguntas();
-            indicePreguntaActual = 0;
             if (barraProgreso != null) barraProgreso.InicializarBarra(preguntasActuales.Count);
+            indicePreguntaActual = 0;
             MostrarPregunta();
         }
         else
@@ -158,17 +158,22 @@ public class GestorOraciones : MonoBehaviour
 
     void MostrarPregunta()
     {
-
-        if(barraProgreso != null)
-        {
-            barraProgreso.AvanzarPregunta();
-        }
-
         if (indicePreguntaActual >= preguntasActuales.Count)
         {
+            if (barraProgreso != null)
+            {
+                barraProgreso.ActualizarProgreso(preguntasActuales.Count, preguntasActuales.Count);
+            }
             MostrarResultadosFinales();
             return;
         }
+
+        if (barraProgreso != null)
+        {
+            barraProgreso.ActualizarProgreso(indicePreguntaActual + 1, preguntasActuales.Count);
+        }
+
+
 
         Pregunta preguntaActual = preguntasActuales[indicePreguntaActual];
         txtOracion.text = preguntaActual.oracion;
@@ -235,25 +240,6 @@ public class GestorOraciones : MonoBehaviour
         }
         txtRacha.text = racha.ToString();
         StartCoroutine(EsperarYSiguientePregunta());
-    }
-
-    string[] BarajarOpciones(string[] opciones)
-    {
-        // Barajar las opciones de respuesta
-        System.Random rng = new System.Random();
-        string[] opcionesBarajadas = (string[])opciones.Clone();
-
-        int n = opcionesBarajadas.Length;
-        while (n > 1)
-        {
-            n--;
-            int k = rng.Next(n + 1);
-            string value = opcionesBarajadas[k];
-            opcionesBarajadas[k] = opcionesBarajadas[n];
-            opcionesBarajadas[n] = value;
-        }
-
-        return opcionesBarajadas;
     }
 
     //void SeleccionarPalabra(int indiceSeleccionado, GameObject boton, int indiceCorrecto)
@@ -324,7 +310,7 @@ public class GestorOraciones : MonoBehaviour
     {
         yield return new WaitForSeconds(2.0f);
         indicePreguntaActual++;
-        barraProgreso.InicializarBarra(preguntasActuales.Count);
+        //barraProgreso.InicializarBarra(preguntasActuales.Count);
         MostrarPregunta();
     }
 
@@ -333,7 +319,7 @@ public class GestorOraciones : MonoBehaviour
         panelFinal.SetActive(true);
 
         float umbralVictoria = 70.0f;
-        float porcentajeAciertos = (preguntasActuales.Count > 0) ? (float)respuestasCorrectas / preguntasActuales.Count * 100 : 0;
+        float porcentajeAciertos = (preguntasActuales.Count > 0) ? (float)respuestasCorrectas / preguntasActuales.Count * 100f : 0f;
         bool ganoLaMision = porcentajeAciertos >= umbralVictoria;
         int xpGanado = 15;
 
@@ -379,8 +365,8 @@ public class GestorOraciones : MonoBehaviour
                     {
                         GuardarMisionCompletada.instancia.IniciarProcesoMisionCompletada(
                          panelAnimacionMision,
-                        imagenAnimacionMision,
-                        audioMisionCompletada
+                         imagenAnimacionMision,
+                         audioMisionCompletada
                      );
                     }
                 }
