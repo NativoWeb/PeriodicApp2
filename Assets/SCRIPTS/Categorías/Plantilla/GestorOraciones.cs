@@ -45,6 +45,7 @@ public class GestorOraciones : MonoBehaviour
     public TextMeshProUGUI TxtMotivacionResultado;
     public TextMeshProUGUI TxtRefuerzo1;
     public TextMeshProUGUI TxtRefuerzo2;
+    public Button continuarCompletado;
 
 
     [Header("Referencias para Animación")]
@@ -88,6 +89,12 @@ public class GestorOraciones : MonoBehaviour
         respuestasCorrectas = 0;
         categoriasFalladas.Clear();
 
+
+        continuarCompletado.onClick.AddListener(() =>
+        {
+            // Aquí puedes cargar la siguiente escena o realizar otra acción
+            SceneManager.LoadScene("Categorías");
+        });
         // Cargar preguntas desde JSON
         //CargarPreguntasDesdeJSON();
 
@@ -318,9 +325,9 @@ public class GestorOraciones : MonoBehaviour
     {
         panelFinal.SetActive(true);
 
-        float umbralVictoria = 70.0f;
+        float umbralVictoria = 69.0f;
         float porcentajeAciertos = (preguntasActuales.Count > 0) ? (float)respuestasCorrectas / preguntasActuales.Count * 100f : 0f;
-        bool ganoLaMision = porcentajeAciertos >= umbralVictoria;
+        bool ganoLaMision = porcentajeAciertos > umbralVictoria;
         int xpGanado = 15;
 
         if (ganoLaMision)
@@ -372,7 +379,15 @@ public class GestorOraciones : MonoBehaviour
                 }
                 else
                 {
-                    SceneManager.LoadScene("Categorías");
+                    panelFinal.SetActive(false);
+                    if (GuardarMisionCompletada.instancia != null)
+                    {
+                        GuardarMisionCompletada.instancia.IniciarProcesoMisionCompletada(
+                         panelAnimacionMision,
+                         imagenAnimacionMision,
+                         audioMisionCompletada
+                     );
+                    }
                 }
             });
         }
