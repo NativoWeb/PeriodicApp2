@@ -332,7 +332,7 @@ public class EncuestasManager : MonoBehaviour
     {
         if (HayInternet())
         {
-            db.Collection("users").Document(userId).Collection("encuestas").Document(id).GetSnapshotAsync()
+            db.Collection("Encuestas").Document(id).GetSnapshotAsync()
                 .ContinueWithOnMainThread(task =>
                 {
                     if (task.IsCompletedSuccessfully && task.Result.Exists)
@@ -382,20 +382,42 @@ public class EncuestasManager : MonoBehaviour
         }
     }
 
+    // --- Reemplaza tu método FinalizarEdicion con este ---
+
     public void FinalizarEdicion()
     {
+        // 1. Resetea el estado si es necesario
         IdEncuestaEditando = null;
+
+        // 2. Muestra el panel de confirmación
         PanelCancelarEncuesta.SetActive(true);
+
+        // 3. ¡IMPORTANTE! Limpia los listeners anteriores para evitar acciones duplicadas
+        btnSalirCreacionE.onClick.RemoveAllListeners();
+        btnPermanecerE.onClick.RemoveAllListeners();
+
+        // 4. Configura el botón de "Confirmar Salida"
         btnSalirCreacionE.onClick.AddListener(() =>
         {
-            listarencuestas.CargarEncuestas();
+            // Esta lógica SÓLO se ejecuta cuando el usuario hace clic
+
+            // a. Llama al nuevo método seguro para refrescar la lista
+            listarencuestas.RefrescarListaDesdeCache();
+
+            // b. Limpia los campos del panel de edición
             LimpiarCampos();
+
+            // c. Gestiona la visibilidad de los paneles
             PanelCancelarEncuesta.SetActive(false);
             PanelListar.SetActive(true);
             PanelEncuesta.SetActive(false);
         });
-        btnPermanecerE.onClick.AddListener(() => { PanelCancelarEncuesta.SetActive(false); });
-        listarencuestas.CargarEncuestas();
+
+        // 5. Configura el botón de "Permanecer"
+        btnPermanecerE.onClick.AddListener(() =>
+        {
+            PanelCancelarEncuesta.SetActive(false);
+        });
     }
 
     private void LimpiarPreguntasUI()
@@ -528,7 +550,7 @@ public class EncuestasManager : MonoBehaviour
 
         List<PreguntaModelo> preguntas = new(listaPreguntas);
 
-        return new EncuestaModelo(encuestaID, titulo, descripcion, preguntas, false, tipoEncuesta, categoriaMision, elementoMision);
+        return new EncuestaModelo(encuestaID, userId, titulo, descripcion, preguntas, false, tipoEncuesta, categoriaMision, elementoMision);
     }
     #endregion
 

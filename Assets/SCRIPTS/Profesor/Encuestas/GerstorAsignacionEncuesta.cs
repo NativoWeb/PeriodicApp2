@@ -58,30 +58,25 @@ public class GestorAsignacionEncuesta : MonoBehaviour
         encuestaIdActual = idEncuesta;
         numTotalPreguntas = totalPreguntas;
 
-        // Limpiar estado anterior
         LimpiarPanel();
 
-        // Configurar UI básica
         txtTituloEncuestaAsignar.text = titulo;
         PoblarDropdownPreguntas(totalPreguntas);
         panelDetalles.SetActive(false);
         panelAsignacion.SetActive(true);
 
-        // Cargar datos de forma asíncrona
-        await CargarComunidadesDelUsuario();
-        await CargarConfiguracionExistente();
+        // Cargar datos de forma asíncrona. Ahora el proceso es combinado.
+        await CargarDatosEncuestaYComunidades();
     }
 
     private void LimpiarPanel()
     {
-        // Limpiar toggles antiguos
         foreach (Transform child in contenedorComunidadesScroll)
         {
             Destroy(child.gameObject);
         }
         togglesDeComunidades.Clear();
 
-        // Resetear controles a su estado por defecto
         dropdownMinimoPreguntas.ClearOptions();
         toggleAleatorizarPreguntas.isOn = false;
         toggleAleatorizarRespuestas.isOn = false;
@@ -98,8 +93,40 @@ public class GestorAsignacionEncuesta : MonoBehaviour
         dropdownMinimoPreguntas.AddOptions(opciones);
     }
 
-    private async Task CargarComunidadesDelUsuario()
+    /// <summary>
+    /// Carga la configuración de la propia encuesta y las comunidades del usuario,
+    /// marcando aquellas que ya tienen esta encuesta asignada.
+    /// </summary>
+    private async Task CargarDatosEncuestaYComunidades()
     {
+        // --- PASO 1: Cargar la configuración guardada en la propia encuesta ---
+        DocumentReference encuestaRef = db.Collection("Encuestas").Document(encuestaIdActual);
+        DocumentSnapshot encuestaSnapshot = await encuestaRef.GetSnapshotAsync();
+
+        if (encuestaSnapshot.Exists)
+        {
+            Debug.Log("Cargando configuración desde el documento de la encuesta...");
+            Dictionary<string, object> data = encuestaSnapshot.ToDictionary();
+
+            if (data.TryGetValue("minimoPreguntasAprobar", out object minPreguntas))
+            {
+                dropdownMinimoPreguntas.value = System.Convert.ToInt32(minPreguntas) - 1;
+            }
+            if (data.TryGetValue("aleatorizarPreguntas", out object aleatorizarP))
+            {
+                toggleAleatorizarPreguntas.isOn = (bool)aleatorizarP;
+            }
+            if (data.TryGetValue("aleatorizarRespuestas", out object aleatorizarR))
+            {
+                toggleAleatorizarRespuestas.isOn = (bool)aleatorizarR;
+            }
+            if (data.TryGetValue("intentosMaximos", out object intentos))
+            {
+                inputIntentos.text = intentos.ToString();
+            }
+        }
+
+        // --- PASO 2: Cargar las comunidades del usuario y marcar las ya asignadas ---
         if (auth.CurrentUser == null)
         {
             Debug.LogError("Usuario no autenticado.");
@@ -162,96 +189,72 @@ public class GestorAsignacionEncuesta : MonoBehaviour
         }
     }
 
-    private async Task CargarConfiguracionExistente()
-    {
-        DocumentReference docRef = db.Collection("asignacionesEncuestas").Document(encuestaIdActual);
-        DocumentSnapshot snapshot = await docRef.GetSnapshotAsync();
 
-        if (snapshot.Exists)
-        {
-            Debug.Log("Cargando asignación existente...");
-            Dictionary<string, object> data = snapshot.ToDictionary();
-
-            // Cargar configuración guardada
-            if (data.TryGetValue("minimoPreguntasAprobar", out object minPreguntas))
-            {
-                // El dropdown se basa en índice (0, 1, 2...) y el valor es (1, 2, 3...)
-                dropdownMinimoPreguntas.value = System.Convert.ToInt32(minPreguntas) - 1;
-            }
-            if (data.TryGetValue("aleatorizarPreguntas", out object aleatorizarP))
-            {
-                toggleAleatorizarPreguntas.isOn = (bool)aleatorizarP;
-            }
-            if (data.TryGetValue("aleatorizarRespuestas", out object aleatorizarR))
-            {
-                toggleAleatorizarRespuestas.isOn = (bool)aleatorizarR;
-            }
-            if (data.TryGetValue("intentosMaximos", out object intentos))
-            {
-                inputIntentos.text = intentos.ToString();
-            }
-
-            // Seleccionar los toggles de las comunidades ya asignadas
-            if (data.TryGetValue("comunidadesAsignadas", out object comunidades))
-            {
-                List<object> listaComunidades = comunidades as List<object>;
-                foreach (object idComunidadObj in listaComunidades)
-                {
-                    string idComunidad = idComunidadObj.ToString();
-                    if (togglesDeComunidades.ContainsKey(idComunidad))
-                    {
-                        togglesDeComunidades[idComunidad].isOn = true;
-                    }
-                }
-            }
-        }
-    }
-
+    /// <summary>
+    /// Guarda la configuración en el documento de la encuesta y actualiza el mapa
+    /// de 'encuestasAsignadas' en cada documento de comunidad afectado.
+    /// </summary>
     private async void GuardarConfiguracionAsignacion()
     {
-        Debug.Log("Guardando asignación...");
+        btnGuardarAsignacion.interactable = false; // Deshabilitar para evitar doble click
+        Debug.Log("Guardando asignación con la nueva estructura...");
 
-        // 1. Recolectar IDs de comunidades seleccionadas
-        List<string> comunidadesSeleccionadas = new List<string>();
-        foreach (var par in togglesDeComunidades)
+        // --- PASO 1: Guardar la configuración general en el documento de la encuesta ---
+        Dictionary<string, object> configData = new Dictionary<string, object>
         {
-            if (par.Value.isOn)
-            {
-                comunidadesSeleccionadas.Add(par.Key);
-            }
-        }
-
-        // 2. Crear el objeto de datos para guardar en Firebase
-        Dictionary<string, object> asignacionData = new Dictionary<string, object>
-        {
-            { "comunidadesAsignadas", comunidadesSeleccionadas },
-            { "minimoPreguntasAprobar", dropdownMinimoPreguntas.value + 1 }, // El valor del dropdown es el índice
+            { "minimoPreguntasAprobar", dropdownMinimoPreguntas.value + 1 },
             { "aleatorizarPreguntas", toggleAleatorizarPreguntas.isOn },
             { "aleatorizarRespuestas", toggleAleatorizarRespuestas.isOn },
             { "intentosMaximos", int.Parse(inputIntentos.text) },
-            { "estaActiva", true } // Asumimos que al guardar, se activa
+            { "estaActiva", true }
         };
 
-        // 3. Guardar en Firestore
-        DocumentReference docRef = db.Collection("asignacionesEncuestas").Document(encuestaIdActual);
-        await docRef.SetAsync(asignacionData, SetOptions.MergeAll);
+        DocumentReference encuestaRef = db.Collection("Encuestas").Document(encuestaIdActual);
+        // Usamos SetAsync con MergeAll para crear o actualizar los campos sin borrar los existentes (como las preguntas)
+        await encuestaRef.SetAsync(configData, SetOptions.MergeAll);
+        Debug.Log($"Configuración guardada en la encuesta '{encuestaIdActual}'.");
 
-        Debug.Log("¡Asignación guardada con éxito!");
-        panelAsignacion.SetActive(false); // Cerrar el panel después de guardar
+
+        // --- PASO 2: Actualizar las comunidades usando un WriteBatch para eficiencia y atomicidad ---
+        WriteBatch batch = db.StartBatch();
+
+        foreach (var par in togglesDeComunidades)
+        {
+            string comunidadId = par.Key;
+            bool estaAsignada = par.Value.isOn;
+            DocumentReference comunidadRef = db.Collection("comunidades").Document(comunidadId);
+
+            // Usamos la notación de punto para modificar un campo dentro de un mapa.
+            // Esto es mucho más eficiente que leer, modificar y reescribir todo el mapa.
+            string campoEncuestaEnMapa = $"encuestasAsignadas.{encuestaIdActual}";
+
+            if (estaAsignada)
+            {
+                // Si el toggle está activo, añadimos o actualizamos la entrada en el mapa.
+                // Firestore creará el mapa 'encuestasAsignadas' si no existe.
+                batch.Update(comunidadRef, campoEncuestaEnMapa, true);
+            }
+            else
+            {
+                // Si el toggle está inactivo, eliminamos la entrada del mapa.
+                batch.Update(comunidadRef, campoEncuestaEnMapa, FieldValue.Delete);
+            }
+        }
+
+        // Ejecutar todas las operaciones de actualización de comunidades en un solo viaje de red.
+        await batch.CommitAsync();
+
+        Debug.Log("¡Asignación a comunidades actualizada con éxito!");
+        panelAsignacion.SetActive(false);
+        btnGuardarAsignacion.interactable = true; // Rehabilitar el botón
     }
 
     private void ValidarIntentos(string valor)
     {
         if (int.TryParse(valor, out int numIntentos))
         {
-            if (numIntentos > 10)
-            {
-                inputIntentos.text = "10";
-            }
-            else if (numIntentos < 1)
-            {
-                inputIntentos.text = "1";
-            }
+            if (numIntentos > 10) inputIntentos.text = "10";
+            else if (numIntentos < 1) inputIntentos.text = "1";
         }
     }
 }

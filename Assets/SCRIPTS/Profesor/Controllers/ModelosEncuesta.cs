@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using Firebase.Firestore;
+using Unity.Android.Gradle.Manifest;
 using UnityEngine;
 
 // --- MODELO PARA LAS OPCIONES ---
@@ -68,24 +69,21 @@ public class EncuestaModelo
 {
     // --- CAMPOS PRIVADOS PARA JsonUtility (GUARDADO LOCAL) ---
     [SerializeField] private string id;
+    [SerializeField] private string idcreador;
     [SerializeField] private string titulo;
     [SerializeField] private string descripcion;
-    [SerializeField] private bool publicada;
+    [SerializeField] private bool activa;
     [SerializeField] private List<PreguntaModelo> preguntas = new List<PreguntaModelo>();
     [SerializeField] private string tipoEncuesta;
     [SerializeField] private string categoriaMision;
-    [SerializeField] private string elementoMision; 
-    [SerializeField] private string codigoUnion;
-    [SerializeField] private int tipopregunta;             // e.g. 0 = VF, 1 = Múltiple
-    [SerializeField] private int tiempoSegundos;
+    [SerializeField] private string elementoMision;
 
-    
     // --- PROPIEDADES PÚBLICAS PARA FIREBASE (Y PARA EL RESTO DEL CÓDIGO) ---
     [FirestoreProperty("id")]
     public string Id { get { return id; } set { id = value; } }
 
-    [FirestoreProperty("codigoUnion")]
-    public string CodigoUnion { get { return codigoUnion; } set { codigoUnion = value; } }
+    [FirestoreProperty("idcreador")]
+    public string IdCreador { get { return idcreador; } set { idcreador = value; } }
 
     [FirestoreProperty("titulo")]
     public string Titulo { get { return titulo; } set { titulo = value; } }
@@ -93,8 +91,8 @@ public class EncuestaModelo
     [FirestoreProperty("descripcion")]
     public string Descripcion { get { return descripcion; } set { descripcion = value; } }
 
-    [FirestoreProperty("publicada")]
-    public bool Publicada { get { return publicada; } set { publicada = value; } }
+    [FirestoreProperty("activa")]
+    public bool Activa { get { return activa; } set { activa = value; } }
 
     [FirestoreProperty("preguntas")]
     public List<PreguntaModelo> Preguntas { get { return preguntas; } set { preguntas = value; } }
@@ -108,11 +106,6 @@ public class EncuestaModelo
     [FirestoreProperty("elementoMision")]
     public string ElementoMision { get { return elementoMision; } set { elementoMision = value; } }
 
-    [FirestoreProperty("tipoPregunta")]
-    public int Tipo { get { return tipopregunta; } set { tipopregunta = value; } }
-
-    [FirestoreProperty("tiempoSegundos")]
-    public int TiempoSegundos { get { return tiempoSegundos; } set { tiempoSegundos = value; } }
 
     // Constructor vacío
     public EncuestaModelo()
@@ -121,13 +114,14 @@ public class EncuestaModelo
     }
 
     // Constructor completo
-    public EncuestaModelo(string id, string titulo, string desc, List<PreguntaModelo> preguntas, bool pub, string tipo, string cat, string elem)
+    public EncuestaModelo(string id, string IdCreador, string titulo, string desc, List<PreguntaModelo> preguntas, bool pub, string tipo, string cat, string elem)
     {
         this.Id = id;
+        this.IdCreador = IdCreador;
         this.Titulo = titulo;
         this.Descripcion = desc;
         this.Preguntas = preguntas;
-        this.Publicada = pub;
+        this.Activa = pub;
         this.TipoEncuesta = tipo;
         this.CategoriaMision = (tipo == "Mision") ? cat : null;
         this.ElementoMision = (tipo == "Mision") ? elem : null;
@@ -161,9 +155,10 @@ public class EncuestaModelo
         var dict = new Dictionary<string, object>
     {
         { "id", Id },
+        {"idcreador", IdCreador },
         { "titulo", Titulo },
         { "descripcion", Descripcion },
-        { "publicada", Publicada },
+        { "publicada", Activa },
         { "preguntas", preguntasList },
         { "tipoEncuesta", TipoEncuesta },
         { "categoriaMision", CategoriaMision },
