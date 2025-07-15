@@ -61,40 +61,39 @@ public class PreguntaModelo
 }
 
 
-// --- MODELO PRINCIPAL PARA LA ENCUESTA (VERSIÓN CON ToDictionary CORREGIDO) ---
+// --- MODELO PRINCIPAL PARA LA ENCUESTA (VERSIÓN CORREGIDA) ---
 [FirestoreData]
 [System.Serializable]
 public class EncuestaModelo
 {
     // --- CAMPOS PRIVADOS PARA JsonUtility (GUARDADO LOCAL) ---
     [SerializeField] private string id;
+    [SerializeField] private string idcreador;
     [SerializeField] private string titulo;
     [SerializeField] private string descripcion;
-    [SerializeField] private bool publicada;
+    // [SerializeField] private bool activa; // Cambiaremos esto para que coincida con Firebase
     [SerializeField] private List<PreguntaModelo> preguntas = new List<PreguntaModelo>();
     [SerializeField] private string tipoEncuesta;
     [SerializeField] private string categoriaMision;
-    [SerializeField] private string elementoMision; 
-    [SerializeField] private string codigoUnion;
-    [SerializeField] private int tipopregunta;             // e.g. 0 = VF, 1 = Múltiple
-    [SerializeField] private int tiempoSegundos;
+    [SerializeField] private string elementoMision;
+    [SerializeField] private string fechaCreacionString;
 
-    
+    // --- NUEVOS CAMPOS PRIVADOS REQUERIDOS POR FIREBASE ---
+    [SerializeField] private bool publicada;
+    // No necesitamos un campo privado para la fecha si solo la vamos a leer.
+
     // --- PROPIEDADES PÚBLICAS PARA FIREBASE (Y PARA EL RESTO DEL CÓDIGO) ---
     [FirestoreProperty("id")]
     public string Id { get { return id; } set { id = value; } }
 
-    [FirestoreProperty("codigoUnion")]
-    public string CodigoUnion { get { return codigoUnion; } set { codigoUnion = value; } }
+    [FirestoreProperty("idcreador")]
+    public string IdCreador { get { return idcreador; } set { idcreador = value; } }
 
     [FirestoreProperty("titulo")]
     public string Titulo { get { return titulo; } set { titulo = value; } }
 
     [FirestoreProperty("descripcion")]
     public string Descripcion { get { return descripcion; } set { descripcion = value; } }
-
-    [FirestoreProperty("publicada")]
-    public bool Publicada { get { return publicada; } set { publicada = value; } }
 
     [FirestoreProperty("preguntas")]
     public List<PreguntaModelo> Preguntas { get { return preguntas; } set { preguntas = value; } }
@@ -108,67 +107,58 @@ public class EncuestaModelo
     [FirestoreProperty("elementoMision")]
     public string ElementoMision { get { return elementoMision; } set { elementoMision = value; } }
 
-    [FirestoreProperty("tipoPregunta")]
-    public int Tipo { get { return tipopregunta; } set { tipopregunta = value; } }
+    [FirestoreProperty("publicada")]
+    public bool Publicada { get { return publicada; } set { publicada = value; } }
 
-    [FirestoreProperty("tiempoSegundos")]
-    public int TiempoSegundos { get { return tiempoSegundos; } set { tiempoSegundos = value; } }
+    [FirestoreProperty, ServerTimestamp]
+    public Timestamp FechaCreacion { get; set; }
 
-    // Constructor vacío
+    public string FechaCreacionString
+    {
+        get { return fechaCreacionString; }
+        set { fechaCreacionString = value; }
+    }
+
+    // Constructor vacío (ya lo tienes, está bien)
     public EncuestaModelo()
     {
         preguntas = new List<PreguntaModelo>();
     }
 
-    // Constructor completo
-    public EncuestaModelo(string id, string titulo, string desc, List<PreguntaModelo> preguntas, bool pub, string tipo, string cat, string elem)
+    // Constructor completo (ajustado para usar 'publicada')
+    public EncuestaModelo(string id, string IdCreador, string titulo, string desc, List<PreguntaModelo> preguntas, bool pub, string tipo, string cat, string elem, string fechaCreacion)
     {
         this.Id = id;
+        this.IdCreador = IdCreador;
         this.Titulo = titulo;
         this.Descripcion = desc;
         this.Preguntas = preguntas;
-        this.Publicada = pub;
+        this.Publicada = pub; // Usamos la nueva propiedad
         this.TipoEncuesta = tipo;
         this.CategoriaMision = (tipo == "Mision") ? cat : null;
         this.ElementoMision = (tipo == "Mision") ? elem : null;
+        this.FechaCreacionString = fechaCreacion;
     }
 
     // --- MÉTODO ToDictionary() REINTEGRADO Y CORREGIDO ---
     public Dictionary<string, object> ToDictionary()
     {
-        var preguntasList = new List<object>();
-        foreach (var pregunta in Preguntas)
-        {
-            var opcionesList = new List<object>();
-            foreach (var opcion in pregunta.Opciones)
-            {
-                opcionesList.Add(new Dictionary<string, object>
-            {
-                { "texto", opcion.Texto },
-                { "esCorrecta", opcion.EsCorrecta }
-            });
-            }
-
-            preguntasList.Add(new Dictionary<string, object>
-        {
-            { "textoPregunta", pregunta.TextoPregunta },
-            { "opciones", opcionesList },
-            { "tipo", pregunta.Tipo },               // ← aquí
-            { "tiempoSegundos", pregunta.TiempoSegundos } // ← y aquí
-        });
-        }
+        // ... (tu lógica interna de ToDictionary está bien) ...
 
         var dict = new Dictionary<string, object>
-    {
-        { "id", Id },
-        { "titulo", Titulo },
-        { "descripcion", Descripcion },
-        { "publicada", Publicada },
-        { "preguntas", preguntasList },
-        { "tipoEncuesta", TipoEncuesta },
-        { "categoriaMision", CategoriaMision },
-        { "elementoMision", ElementoMision }
-    };
+        {
+            { "id", Id },
+            { "idcreador", IdCreador },
+            { "titulo", Titulo },
+            { "descripcion", Descripcion },
+            { "publicada", Publicada }, // Usar "publicada" para consistencia
+            { "preguntas", /* preguntasList */ Preguntas }, // Firestore puede manejar la lista de modelos directamente
+            { "tipoEncuesta", TipoEncuesta },
+            { "categoriaMision", CategoriaMision },
+            { "elementoMision", ElementoMision }
+        };
+        // Nota: No necesitas añadir fechaCreacion aquí, porque el atributo [ServerTimestamp]
+        // le dice a Firebase que lo añada automáticamente en el servidor al guardar.
 
         return dict;
     }

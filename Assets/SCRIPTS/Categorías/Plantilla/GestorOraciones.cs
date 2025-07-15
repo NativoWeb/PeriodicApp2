@@ -13,50 +13,58 @@ using SimpleJSON;
 
 public class GestorOraciones : MonoBehaviour
 {
-    // Clase para deserializar desde el JSON
     [System.Serializable]
     public class Pregunta
     {
         public string oracion;
-        public string oracion_en; // Campo para la oración en inglés
         public List<string> opciones;
-        public List<string> opciones_en; // Campo para las opciones en inglés
         public int respuesta_correcta;
+        public string categoriaTema;
     }
 
-    // Clase para manejar las preguntas en tiempo de ejecución
     [System.Serializable]
-    public class OracionConPalabras
+    public class PreguntasPorElemento
     {
-        public string oracion;
-        public string oracion_en;
-        public string[] opciones;
-        public string[] opciones_en;
-        public int indiceCorrecto;
-
-        public OracionConPalabras(string oracion, string oracion_en, string[] opciones, string[] opciones_en, int indiceCorrecto)
-        {
-            this.oracion = oracion;
-            this.oracion_en = oracion_en;
-            this.opciones = opciones;
-            this.opciones_en = opciones_en;
-            this.indiceCorrecto = indiceCorrecto;
-        }
+        // Usamos un diccionario para manejar dinámicamente los 118 elementos
+        public Dictionary<string, List<Pregunta>> elementos;
     }
 
-    // Diccionario principal que contiene las preguntas ya procesadas
-    private Dictionary<string, List<OracionConPalabras>> preguntasPorElemento = new Dictionary<string, List<OracionConPalabras>>();
-    private List<OracionConPalabras> preguntas = new List<OracionConPalabras>();
-
+    [Header("Componentes del Juego")]
     public TextMeshProUGUI txtOracion;
     public Transform contenedorOpciones;
     public GameObject botonPrefab;
     public Text txtTiempo;
     public Text txtRacha;
-    public GameObject panelFinal;
-    public TextMeshProUGUI txtResultado;
     public BarraProgreso barraProgreso;
 
+    [Header("Panel de Resultados")]
+    public GameObject panelFinal;
+    public TextMeshProUGUI TxtMisionResultado;
+    public TextMeshProUGUI TxtXpResultado;
+    public TextMeshProUGUI TxtPuntuacionResultado;
+    public TextMeshProUGUI TxtMotivacionResultado;
+    public TextMeshProUGUI TxtRefuerzo1;
+    public TextMeshProUGUI TxtRefuerzo2;
+    public Button continuarCompletado;
+
+
+    [Header("Referencias para Animación")]
+    public GameObject panelAnimacionMision;
+    public GameObject imagenAnimacionMision;
+    public AudioSource audioMisionCompletada;
+
+    //public TextMeshProUGUI txtOracion;
+    //public Transform contenedorOpciones;
+    //public GameObject botonPrefab;
+    //public Text txtTiempo;
+    //public Text txtRacha;
+    //public GameObject panelFinal;
+    //public TextMeshProUGUI txtResultado;
+    //public BarraProgreso barraProgreso;
+
+
+    private List<Pregunta> preguntasActuales = new List<Pregunta>();
+    private List<string> categoriasFalladas = new List<string>();
     private int indicePreguntaActual = 0;
     private int racha = 0;
     private int respuestasCorrectas = 0;
@@ -65,141 +73,136 @@ public class GestorOraciones : MonoBehaviour
     private bool preguntaEnCurso = true;
     private FirebaseFirestore db;
     private FirebaseAuth auth;
-
     private string elementoSeleccionado;
-    private string appIdioma; // Variable para almacenar el idioma
 
     void Start()
     {
         db = FirebaseFirestore.DefaultInstance;
         auth = FirebaseAuth.DefaultInstance;
 
-        // Obtener el idioma de la aplicación (p. ej., "es" o "en")
-        appIdioma = PlayerPrefs.GetString("appIdioma", "español"); // Default a español si no hay valor
-
         // Obtener el elemento seleccionado de PlayerPrefs
         elementoSeleccionado = PlayerPrefs.GetString("SimboloElemento", "H"); // Default a Hidrógeno si no hay valor
 
+        // Inicializar estado del juego
+        panelFinal.SetActive(false);
+        racha = 0;
+        respuestasCorrectas = 0;
+        categoriasFalladas.Clear();
+
+
+        continuarCompletado.onClick.AddListener(() =>
+        {
+            // Aquí puedes cargar la siguiente escena o realizar otra acción
+            SceneManager.LoadScene("Categorías");
+        });
         // Cargar preguntas desde JSON
-        CargarPreguntasDesdeJSON();
+        //CargarPreguntasDesdeJSON();
 
         // Cargar preguntas para el elemento seleccionado
-        CargarPreguntasElemento(elementoSeleccionado);
+        CargarPreguntasParaElemento(elementoSeleccionado);
     }
 
-    void CargarPreguntasDesdeJSON()
+    void CargarPreguntasParaElemento(string elemento)
     {
-        // Cargar el archivo JSON desde Resources
-        TextAsset jsonFile = Resources.Load<TextAsset>("Oraciones");
+        TextAsset jsonFile = Resources.Load<TextAsset>("Oraciones_con_categoriaTema");
         if (jsonFile == null)
         {
-            Debug.LogError("No se encontró el archivo JSON de preguntas 'Oraciones.json'");
+            Debug.LogError("No se encontró el archivo JSON 'Oraciones.json'");
             return;
         }
 
-        // Deserializar el JSON a un diccionario que usa nuestra clase Pregunta actualizada
         var preguntasJSON = JsonConvert.DeserializeObject<Dictionary<string, List<Pregunta>>>(jsonFile.text);
 
-        // Procesar todas las preguntas para cada elemento
-        foreach (var elemento in preguntasJSON)
+        if (preguntasJSON.ContainsKey(elemento))
         {
-            preguntasPorElemento[elemento.Key] = ConvertirPreguntas(elemento.Value);
-        }
-    }
-
-    List<OracionConPalabras> ConvertirPreguntas(List<Pregunta> preguntasJSON)
-    {
-        List<OracionConPalabras> resultado = new List<OracionConPalabras>();
-
-        foreach (Pregunta pregunta in preguntasJSON)
-        {
-            resultado.Add(new OracionConPalabras(
-                pregunta.oracion,
-                pregunta.oracion_en,
-                pregunta.opciones.ToArray(),
-                pregunta.opciones_en.ToArray(),
-                pregunta.respuesta_correcta
-            ));
-        }
-
-        return resultado;
-    }
-
-    void CargarPreguntasElemento(string elemento)
-    {
-        if (preguntasPorElemento.ContainsKey(elemento))
-        {
-            preguntas = preguntasPorElemento[elemento];
-
-            // Barajar las preguntas para orden aleatorio
+            preguntasActuales = preguntasJSON[elemento];
             BarajarPreguntas();
-
+            if (barraProgreso != null) barraProgreso.InicializarBarra(preguntasActuales.Count);
             indicePreguntaActual = 0;
-            respuestasCorrectas = 0;
-            racha = 0;
-            barraProgreso.InicializarBarra(preguntas.Count);
             MostrarPregunta();
         }
         else
         {
             Debug.LogWarning($"No hay preguntas definidas para el elemento {elemento}.");
-            txtOracion.text = "No questions available for this element.";
-            // Considerar mostrar un panel de error o volver a una escena anterior
+            // Aquí puedes mostrar un panel de error y regresar.
         }
     }
+
+
+
+    //List<OracionConPalabras> ConvertirPreguntas(List<Pregunta> preguntasJSON)
+    //{
+    //    List<OracionConPalabras> resultado = new List<OracionConPalabras>();
+
+    //    foreach (Pregunta pregunta in preguntasJSON)
+    //    {
+    //        resultado.Add(new OracionConPalabras(
+    //            pregunta.oracion,
+    //            pregunta.opciones.ToArray(),
+    //            pregunta.respuesta_correcta
+    //        ));
+    //    }
+
+    //    return resultado;
+    //}
+
+
 
     void BarajarPreguntas()
     {
         // Algoritmo de Fisher-Yates para barajar las preguntas
         System.Random rng = new System.Random();
-        int n = preguntas.Count;
+        int n = preguntasActuales.Count;
         while (n > 1)
         {
             n--;
             int k = rng.Next(n + 1);
-            OracionConPalabras value = preguntas[k];
-            preguntas[k] = preguntas[n];
-            preguntas[n] = value;
+            Pregunta value = preguntasActuales[k];
+            preguntasActuales[k] = preguntasActuales[n];
+            preguntasActuales[n] = value;
         }
     }
 
     void MostrarPregunta()
     {
-        if (indicePreguntaActual >= preguntas.Count)
+        if (indicePreguntaActual >= preguntasActuales.Count)
         {
+            if (barraProgreso != null)
+            {
+                barraProgreso.ActualizarProgreso(preguntasActuales.Count, preguntasActuales.Count);
+            }
             MostrarResultadosFinales();
             return;
         }
 
-        OracionConPalabras preguntaActual = preguntas[indicePreguntaActual];
+        if (barraProgreso != null)
+        {
+            barraProgreso.ActualizarProgreso(indicePreguntaActual + 1, preguntasActuales.Count);
+        }
 
-        // Seleccionar el texto de la oración según el idioma
-        txtOracion.text = (appIdioma == "ingles") ? preguntaActual.oracion_en : preguntaActual.oracion;
+
+
+        Pregunta preguntaActual = preguntasActuales[indicePreguntaActual];
+        txtOracion.text = preguntaActual.oracion;
 
         // Limpiar opciones anteriores
         foreach (Transform child in contenedorOpciones)
-        {
             Destroy(child.gameObject);
-        }
 
-        // Seleccionar las opciones según el idioma
-        string[] opcionesParaMostrar = (appIdioma == "ingles") ? preguntaActual.opciones_en : preguntaActual.opciones;
-        string[] opcionesBarajadas = BarajarOpciones(opcionesParaMostrar);
-
-        // Encontrar la palabra correcta en el idioma actual para obtener su índice barajado
-        string palabraCorrecta = (appIdioma == "ingles")
-            ? preguntaActual.opciones_en[preguntaActual.indiceCorrecto]
-            : preguntaActual.opciones[preguntaActual.indiceCorrecto];
-        int indiceCorrectoBarajado = System.Array.IndexOf(opcionesBarajadas, palabraCorrecta);
+        // Barajar las opciones de respuesta
+        //string[] opcionesBarajadas = BarajarOpciones(preguntaActual.opciones);
+        //int indiceCorrectoBarajado = System.Array.IndexOf(opcionesBarajadas,
+        //    preguntaActual.opciones[preguntaActual.indiceCorrecto]);
 
         // Crear botones para cada opción
-        for (int i = 0; i < opcionesBarajadas.Length; i++)
+        for (int i = 0; i < preguntaActual.opciones.Count; i++)
         {
-            GameObject btn = Instantiate(botonPrefab, contenedorOpciones);
-            TextMeshProUGUI txtBtn = btn.GetComponentInChildren<TextMeshProUGUI>();
-            txtBtn.text = opcionesBarajadas[i];
-            int index = i;
-            btn.GetComponent<Button>().onClick.AddListener(() => SeleccionarPalabra(index, btn, indiceCorrectoBarajado));
+            GameObject btnObj = Instantiate(botonPrefab, contenedorOpciones);
+            //TextMeshProUGUI txtBtn = btn.GetComponentInChildren<TextMeshProUGUI>();
+            btnObj.GetComponentInChildren<TextMeshProUGUI>().text = preguntaActual.opciones[i];
+            //txtBtn.text = opcionesBarajadas[i];
+            int opcionIndex = i; // Capturar el índice para el listener
+            btnObj.GetComponent<Button>().onClick.AddListener(() => SeleccionarPalabra(opcionIndex, btnObj));
         }
 
         preguntaEnCurso = true;
@@ -207,41 +210,26 @@ public class GestorOraciones : MonoBehaviour
         StartCoroutine("Temporizador");
     }
 
-    string[] BarajarOpciones(string[] opciones)
-    {
-        System.Random rng = new System.Random();
-        string[] opcionesBarajadas = (string[])opciones.Clone();
-        int n = opcionesBarajadas.Length;
-        while (n > 1)
-        {
-            n--;
-            int k = rng.Next(n + 1);
-            string value = opcionesBarajadas[k];
-            opcionesBarajadas[k] = opcionesBarajadas[n];
-            opcionesBarajadas[n] = value;
-        }
-        return opcionesBarajadas;
-    }
-
-    void SeleccionarPalabra(int indiceSeleccionado, GameObject boton, int indiceCorrecto)
+    void SeleccionarPalabra(int indiceSeleccionado, GameObject boton)
     {
         if (!preguntaEnCurso) return;
         preguntaEnCurso = false;
         StopCoroutine("Temporizador");
 
-        OracionConPalabras preguntaActual = preguntas[indicePreguntaActual];
-        string oracionBase = (appIdioma == "ingles") ? preguntaActual.oracion_en : preguntaActual.oracion;
+        Pregunta preguntaActual = preguntasActuales[indicePreguntaActual];
+        bool esCorrecto = (indiceSeleccionado == preguntaActual.respuesta_correcta);
 
-        bool esCorrecto = (indiceSeleccionado == indiceCorrecto);
-        string colorCorrecto = "<color=#A2C94D>";
-        string colorIncorrecto = "<color=#C43E3B>";
-        string colorFin = "</color>";
+        string palabraSeleccionada = preguntaActual.opciones[indiceSeleccionado];
+        string colorHex = esCorrecto ? "#AED581" : "#E57373"; // Verde o Rojo
+        string palabraColoreada = $"<color={colorHex}>{palabraSeleccionada}</color>";
 
-        string palabraSeleccionada = boton.GetComponentInChildren<TextMeshProUGUI>().text;
-        string palabraColoreada = esCorrecto ? $"{colorCorrecto}{palabraSeleccionada}{colorFin}" : $"{colorIncorrecto}{palabraSeleccionada}{colorFin}";
+        txtOracion.text = preguntaActual.oracion.Replace("___", palabraColoreada);
 
-        txtOracion.text = oracionBase.Replace("___", palabraColoreada);
-        boton.GetComponent<Image>().color = esCorrecto ? new Color(0.64f, 0.79f, 0.30f) : new Color(0.77f, 0.24f, 0.23f);
+        // Desactivar todos los botones para evitar más clics
+        foreach (Transform child in contenedorOpciones)
+        {
+            child.GetComponent<Button>().interactable = false;
+        }
 
         if (esCorrecto)
         {
@@ -251,26 +239,61 @@ public class GestorOraciones : MonoBehaviour
         else
         {
             racha = 0;
+            // Guardar la categoría de la pregunta fallada
+            if (!categoriasFalladas.Contains(preguntaActual.categoriaTema))
+            {
+                categoriasFalladas.Add(preguntaActual.categoriaTema);
+            }
         }
-
         txtRacha.text = racha.ToString();
-        barraProgreso.AvanzarPregunta();
         StartCoroutine(EsperarYSiguientePregunta());
     }
 
-    bool EsMisionAprobada()
-    {
-        if (preguntas.Count == 0) return false;
-        float porcentaje = (float)respuestasCorrectas / preguntas.Count;
-        return porcentaje >= 0.7f;
-    }
+    //void SeleccionarPalabra(int indiceSeleccionado, GameObject boton, int indiceCorrecto)
+    //{
+    //    if (!preguntaEnCurso) return;
+    //    preguntaEnCurso = false;
+    //    StopCoroutine("Temporizador");
+
+    //    OracionConPalabras preguntaActual = preguntas[indicePreguntaActual];
+
+    //    bool esCorrecto = (indiceSeleccionado == indiceCorrecto);
+    //    string colorCorrecto = "<color=#A2C94D>";
+    //    string colorIncorrecto = "<color=#C43E3B>";
+    //    string colorFin = "</color>";
+
+    //    string palabraSeleccionada = ((TextMeshProUGUI)boton.GetComponentInChildren<TextMeshProUGUI>()).text;
+    //    string palabraColoreada = esCorrecto ? $"{colorCorrecto}{palabraSeleccionada}{colorFin}" : $"{colorIncorrecto}{palabraSeleccionada}{colorFin}";
+
+    //    txtOracion.text = preguntaActual.oracion.Replace("___", palabraColoreada);
+    //    boton.GetComponent<Image>().color = esCorrecto ? new Color(0.64f, 0.79f, 0.30f) : new Color(0.77f, 0.24f, 0.23f);
+
+    //    if (esCorrecto)
+    //    {
+    //        racha++;
+    //        respuestasCorrectas++;
+    //    }
+    //    else
+    //    {
+    //        racha = 0;
+    //    }
+
+    //    txtRacha.text = racha.ToString();
+    //    StartCoroutine(EsperarYSiguientePregunta());
+    //}
+
+    //bool EsMisionAprobada()
+    //{
+    //    float porcentaje = (float)respuestasCorrectas / preguntas.Count;
+    //    return porcentaje >= 0.7f; 
+    //}
+
 
     IEnumerator Temporizador()
     {
         tiempoRestante = tiempoPorPregunta;
-        while (tiempoRestante > 0)
+        while (tiempoRestante > 0 && preguntaEnCurso)
         {
-            if (!preguntaEnCurso) yield break;
             tiempoRestante -= Time.deltaTime;
             txtTiempo.text = tiempoRestante.ToString("F1");
             yield return null;
@@ -280,172 +303,150 @@ public class GestorOraciones : MonoBehaviour
             preguntaEnCurso = false;
             racha = 0;
             txtRacha.text = racha.ToString();
+            yield return new WaitForSeconds(1.5f);
+            // Guardar la categoría de la pregunta no respondida
+            if (!categoriasFalladas.Contains(preguntasActuales[indicePreguntaActual].categoriaTema))
+            {
+                categoriasFalladas.Add(preguntasActuales[indicePreguntaActual].categoriaTema);
+            }
             StartCoroutine(EsperarYSiguientePregunta());
         }
     }
 
     IEnumerator EsperarYSiguientePregunta()
     {
-        yield return new WaitForSeconds(1.5f);
+        yield return new WaitForSeconds(2.0f);
         indicePreguntaActual++;
-        if (indicePreguntaActual < preguntas.Count)
-        {
-            MostrarPregunta();
-        }
-        else
-        {
-            MostrarResultadosFinales();
-        }
+        //barraProgreso.InicializarBarra(preguntasActuales.Count);
+        MostrarPregunta();
     }
 
     void MostrarResultadosFinales()
     {
         panelFinal.SetActive(true);
-        int experiencia = (preguntas.Count > 0) ? (respuestasCorrectas * 100) / preguntas.Count : 0;
 
-        // Mensajes localizados para el panel final
-        if (appIdioma == "ingles")
+        float umbralVictoria = 69.0f;
+        float porcentajeAciertos = (preguntasActuales.Count > 0) ? (float)respuestasCorrectas / preguntasActuales.Count * 100f : 0f;
+        bool ganoLaMision = porcentajeAciertos > umbralVictoria;
+        int xpGanado = 15;
+
+        if (ganoLaMision)
         {
-            txtResultado.text = $"You got {respuestasCorrectas} out of {preguntas.Count} answers correct. Streak bonus: {racha * 10}";
+            TxtMisionResultado.text = "¡MISIÓN COMPLETADA!";
+            TxtXpResultado.text = $"+{xpGanado} XP";
+            TxtPuntuacionResultado.text = $"{respuestasCorrectas}/{preguntasActuales.Count}";
+            TxtMotivacionResultado.text = "¡Tu conocimiento de la química está tomando forma!";
+
+            if (TxtRefuerzo1 != null) TxtRefuerzo1.transform.parent.gameObject.SetActive(false);
+            if (TxtRefuerzo2 != null) TxtRefuerzo2.transform.parent.gameObject.SetActive(false);
         }
         else
         {
-            txtResultado.text = $"Tuviste {respuestasCorrectas} de {preguntas.Count} respuestas correctas. Bonificación de racha: {racha * 10}";
+            xpGanado = 0; // No se gana XP si no se supera el umbral
+            TxtMisionResultado.text = "¡CASI LO LOGRAS!";
+            TxtXpResultado.text = "+0 XP";
+            TxtPuntuacionResultado.text = $"{respuestasCorrectas}/{preguntasActuales.Count}";
+            TxtMotivacionResultado.text = "¡Un esfuerzo más! Te recomendamos reforzar:";
+
+            if (TxtRefuerzo1 != null) TxtRefuerzo1.transform.parent.gameObject.SetActive(true);
+            if (TxtRefuerzo2 != null) TxtRefuerzo2.transform.parent.gameObject.SetActive(true);
+
+            TxtRefuerzo1.text = (categoriasFalladas.Count > 0) ? "- " + categoriasFalladas[0] : "";
+            TxtRefuerzo2.text = (categoriasFalladas.Count > 1) ? "- " + categoriasFalladas[1] : "";
         }
 
+        PlayerPrefs.SetInt("UltimoQuizGanado", ganoLaMision ? 1 : 0);
+        PlayerPrefs.SetInt("xpGanado", xpGanado);
+        PlayerPrefs.Save();
 
-        if (EsMisionAprobada())
+        Button botonContinuar = panelFinal.GetComponentInChildren<Button>();
+        if (botonContinuar != null)
         {
-            Debug.Log("✅ Misión completada con éxito.");
-            if (GameObject.Find("IAController") != null)
+            botonContinuar.onClick.RemoveAllListeners();
+            botonContinuar.onClick.AddListener(() =>
             {
-                GameObject.Find("IAController").GetComponent<AiTutor>().gestorMisiones.MarcarMisionComoCompletada();
-            }
+                if (ganoLaMision)
+                {
+                    panelFinal.SetActive(false);
+                    if (GuardarMisionCompletada.instancia != null)
+                    {
+                        GuardarMisionCompletada.instancia.IniciarProcesoMisionCompletada(
+                         panelAnimacionMision,
+                         imagenAnimacionMision,
+                         audioMisionCompletada
+                     );
+                    }
+                }
+                else
+                {
+                    panelFinal.SetActive(false);
+                    if (GuardarMisionCompletada.instancia != null)
+                    {
+                        GuardarMisionCompletada.instancia.IniciarProcesoMisionCompletada(
+                         panelAnimacionMision,
+                         imagenAnimacionMision,
+                         audioMisionCompletada
+                     );
+                    }
+                }
+            });
         }
-        else
-        {
-            Debug.Log("❌ Misión fallida, activando retroalimentación.");
-            string categoria = PlayerPrefs.GetString("CategoriaSeleccionada", "");
-            categoria = devolverCatTrad(categoria);
-            string elemento = PlayerPrefs.GetString("ElementoSeleccionado", "");
-            int idMision = PlayerPrefs.GetInt("MisionActual", -1);
 
-            DarRecomendacion(categoria, elemento, idMision);
-        }
     }
 
-    public string devolverCatTrad(string categoriaSeleccionada)
-    {
-        // Esta función podría necesitar ser ajustada si la categoría también necesita traducción
-        switch (categoriaSeleccionada)
-        {
-            case "Alkali Metals": return "Metales Alcalinos";
-            case "Alkaline Earth Metals": return "Metales Alcalinotérreos";
-            case "Transition Metals": return "Metales de Transición";
-            case "Post-transition Metals": return "Metales postransicionales";
-            case "Metalloids": return "Metaloides";
-            case "Nonmetals": return "No Metales";
-            case "Noble Gases": return "Gases Nobles";
-            case "Lanthanides": return "Lantánidos";
-            case "Actinides": return "Actinoides";
-            case "Unknown Properties": return "Propiedades desconocidas";
-            default: return categoriaSeleccionada;
-        }
-    }
+    //public void DarRecomendacion(string categoria, string elemento, int idMision)
+    //{
+    //    string jsonString = PlayerPrefs.GetString("misionesCategoriasJSON", "");
+    //    var json = JSON.Parse(jsonString);
+    //    var categorias = json["Misiones_Categorias"]["Categorias"].AsObject;
+    //    var elementoJson = categorias[categoria]["Elementos"][elemento];
+    //    var misiones = elementoJson["misiones"].AsArray;
 
-    public void DarRecomendacion(string categoria, string elemento, int idMision)
-    {
-        string jsonString = PlayerPrefs.GetString("misionesCategoriasJSON", "");
-        if (string.IsNullOrEmpty(jsonString))
-        {
-            txtResultado.text = (appIdioma == "ingles") ? "😕 Could not find mission data to help you." : "😕 No encontré información de la misión para ayudarte.";
-            return;
-        }
+    //    JSONNode misionFallida = null;
+    //    foreach (var m in misiones)
+    //    {
+    //        if (m.Value["id"].AsInt == idMision)
+    //        {
+    //            misionFallida = m.Value;
+    //            break;
+    //        }
+    //    }
 
-        var json = JSON.Parse(jsonString);
-        var categorias = json["Misiones_Categorias"]["Categorias"].AsObject;
 
-        if (!categorias.HasKey(categoria) || !categorias[categoria]["Elementos"].HasKey(elemento))
-        {
-            txtResultado.text = (appIdioma == "ingles") ? "😕 I could not find enough information to help you." : "😕 No encontré información suficiente para ayudarte.";
-            return;
-        }
+    //    if (misionFallida == null)
+    //    {
+    //        txtResultado.text = "😕 No encontré información suficiente para ayudarte.";
+    //        return;
+    //    }
 
-        var elementoJson = categorias[categoria]["Elementos"][elemento];
-        var misiones = elementoJson["misiones"].AsArray;
+    //    string tipo = misionFallida["tipo"];
+    //    string descripcionElemento = elementoJson["descripcion"];
+    //    string mensaje = "";
 
-        JSONNode misionFallida = null;
-        foreach (var m in misiones)
-        {
-            if (m.Value["id"].AsInt == idMision)
-            {
-                misionFallida = m.Value;
-                break;
-            }
-        }
+    //    switch (tipo)
+    //    {
+    //        case "QR":
+    //            mensaje = $"📲 ¡Intenta escanear el código QR del elemento {elemento} nuevamente! Asegúrate de tener buena luz y enfocar correctamente. ¿Sabías esto?: {descripcionElemento}";
+    //            break;
+    //        case "AR":
+    //            mensaje = $"🔍 ¿Ya exploraste el modelo 3D de {elemento}? Acércate y rota el objeto en realidad aumentada para ver detalles clave. Esto te ayudará a entender mejor la misión. 🧪\nDato: {descripcionElemento}";
+    //            break;
+    //        case "Juego":
+    //            mensaje = $"🎮 ¡Reintenta el mini juego del elemento {elemento}! Concéntrate en las pistas y recuerda que puedes repetirlo las veces que necesites. ¿Sabías que: {descripcionElemento}";
+    //            break;
+    //        case "Quiz":
+    //            mensaje = $"🧠 Si fallaste el quiz sobre {elemento}, revisa sus propiedades como número atómico, masa y electronegatividad. Aquí un dato útil: {descripcionElemento}";
+    //            break;
+    //        case "Evaluacion":
+    //            mensaje = $"📋 La evaluación final requiere que recuerdes todo sobre {elemento}. Repasa las otras misiones y lee bien las preguntas. Aquí va un dato importante: {descripcionElemento}";
+    //            break;
+    //        default:
+    //            mensaje = $"💡 ¿Sabías esto sobre {elemento}?: {descripcionElemento}";
+    //            break;
+    //    }
 
-        if (misionFallida == null)
-        {
-            txtResultado.text = (appIdioma == "ingles") ? "😕 I could not find enough information to help you." : "😕 No encontré información suficiente para ayudarte.";
-            return;
-        }
+    //    txtResultado.text = mensaje;
+    //}
 
-        string tipo = misionFallida["tipo"];
-        // Obtener descripción en el idioma correcto
-        string descripcionElemento = (appIdioma == "ingles") ? elementoJson["descripcion_en"] : elementoJson["descripcion"];
-        string mensaje = "";
 
-        // Mensajes de retroalimentación localizados
-        if (appIdioma == "ingles")
-        {
-            switch (tipo)
-            {
-                case "QR":
-                    mensaje = $"📲 Try scanning the QR code for {elemento} again! Make sure you have good lighting and focus correctly. Did you know this?: {descripcionElemento}";
-                    break;
-                case "AR":
-                    mensaje = $"🔍 Have you explored the 3D model of {elemento}? Zoom in and rotate the object in augmented reality to see key details. This will help you better understand the mission. 🧪\nFact: {descripcionElemento}";
-                    break;
-                case "Juego":
-                    mensaje = $"🎮 Retry the mini-game for {elemento}! Focus on the clues and remember you can repeat it as many times as you need. Did you know: {descripcionElemento}";
-                    break;
-                case "Quiz":
-                    mensaje = $"🧠 If you failed the quiz on {elemento}, review its properties like atomic number, mass, and electronegativity. Here's a useful fact: {descripcionElemento}";
-                    break;
-                case "Evaluacion":
-                    mensaje = $"📋 The final evaluation requires you to remember everything about {elemento}. Review the other missions and read the questions carefully. Here's an important fact: {descripcionElemento}";
-                    break;
-                default:
-                    mensaje = $"💡 Did you know this about {elemento}?: {descripcionElemento}";
-                    break;
-            }
-        }
-        else // Español
-        {
-            switch (tipo)
-            {
-                case "QR":
-                    mensaje = $"📲 ¡Intenta escanear el código QR del elemento {elemento} nuevamente! Asegúrate de tener buena luz y enfocar correctamente. ¿Sabías esto?: {descripcionElemento}";
-                    break;
-                case "AR":
-                    mensaje = $"🔍 ¿Ya exploraste el modelo 3D de {elemento}? Acércate y rota el objeto en realidad aumentada para ver detalles clave. Esto te ayudará a entender mejor la misión. 🧪\nDato: {descripcionElemento}";
-                    break;
-                case "Juego":
-                    mensaje = $"🎮 ¡Reintenta el mini juego del elemento {elemento}! Concéntrate en las pistas y recuerda que puedes repetirlo las veces que necesites. ¿Sabías que: {descripcionElemento}";
-                    break;
-                case "Quiz":
-                    mensaje = $"🧠 Si fallaste el quiz sobre {elemento}, revisa sus propiedades como número atómico, masa y electronegatividad. Aquí un dato útil: {descripcionElemento}";
-                    break;
-                case "Evaluacion":
-                    mensaje = $"📋 La evaluación final requiere que recuerdes todo sobre {elemento}. Repasa las otras misiones y lee bien las preguntas. Aquí va un dato importante: {descripcionElemento}";
-                    break;
-                default:
-                    mensaje = $"💡 ¿Sabías esto sobre {elemento}?: {descripcionElemento}";
-                    break;
-            }
-        }
-        // Asignar el mensaje al texto de resultado, que ahora está fuera del bloque if/else principal
-        // y se actualiza con el mensaje de retroalimentación en lugar del de éxito.
-        txtResultado.text = mensaje;
-    }
 }

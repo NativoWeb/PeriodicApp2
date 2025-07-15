@@ -14,7 +14,7 @@ public class LogrosManager : MonoBehaviour
     public GameObject categoriaPrefab;
     public GameObject elementoPrefab;
     public Transform elementoPanel;
-    public Transform categoriaPanel; 
+    public Transform categoriaPanel;
 
     [Header("Paneles y Botones")]
     public GameObject PanelLogrosCat;

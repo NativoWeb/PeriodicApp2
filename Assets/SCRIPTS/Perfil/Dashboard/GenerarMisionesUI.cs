@@ -346,14 +346,14 @@ public class GeneradorElementosUI : MonoBehaviour
 
     private string ObtenerRangoSegunXP(int xp)
     {
-        if (xp >= 10000) return "Leyenda química";
-        if (xp >= 6000) return "Sabio de la tabla";
-        if (xp >= 3500) return "Maestro de Laboratorio";
-        if (xp >= 2300) return "Experto Molecular";
-        if (xp >= 1200) return "Cientifico en Formacion";
-        if (xp >= 600) return "Promesa quimica";
-        if (xp >= 200) return "Aprendiz Atomico";
-        return "Novato de laboratorio";
+        if (xp >= 25000) return "Alquimista Supremo";
+        if (xp >= 13000) return "Leyenda química";
+        if (xp >= 7500) return "Sabio de la tabla";
+        if (xp >= 4000) return "Maestro de Laboratorio";
+        if (xp >= 2000) return "Experto Molecular";
+        if (xp >= 900) return "Científico en Formación";
+        if (xp >= 300) return "Explorador de Elementos";
+        return "Aprendiz Atomico";
     }
 
     // ✅ Avatar según rango
@@ -361,14 +361,14 @@ public class GeneradorElementosUI : MonoBehaviour
     {
         switch (rangos)
         {
-            case "Novato de laboratorio": return "Avatares/Rango1";
-            case "Aprendiz Atomico": return "Avatares/Rango2";
-            case "Promesa quimica": return "Avatares/Rango3";
-            case "Cientifico en Formacion": return "Avatares/Rango4";
-            case "Experto Molecular": return "Avatares/Rango5";
-            case "Maestro de Laboratorio": return "Avatares/Rango6";
-            case "Sabio de la tabla": return "Avatares/Rango7";
-            case "Leyenda química": return "Avatares/Rango8";
+            case "Aprendiz Atomico": return "Avatares/Rango1";
+            case "Explorador de Elementos": return "Avatares/Rango2";
+            case "Científico en Formación": return "Avatares/Rango3";
+            case "Experto Molecular": return "Avatares/Rango4";
+            case "Maestro de Laboratorio": return "Avatares/Rango5";
+            case "Sabio de la tabla": return "Avatares/Rango6";
+            case "Leyenda química": return "Avatares/Rango7";
+            case "Alquimista Supremo": return "Avatares/Rango8";
             default: return "Avatares/Rango1";
         }
     }
