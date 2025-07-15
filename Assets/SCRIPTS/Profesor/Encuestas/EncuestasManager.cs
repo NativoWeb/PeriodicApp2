@@ -24,6 +24,11 @@ public class EncuestasManager : MonoBehaviour
     public Button btnActualizarEncuesta;
     public Button btnAñadirPregunta;
 
+    [Header("Eliminar Pregunta")]
+    public GameObject panelConfirmarEliminarPregunta; 
+    public Button btnConfirmarEliminarPregunta;
+    public Button btnCancelarEliminarPregunta;
+
     [Header("Mensajes")]
     public TMP_Text messageText;
     public float messageDuration = 3f;
@@ -32,27 +37,24 @@ public class EncuestasManager : MonoBehaviour
     public GameObject PanelEncuesta;
     public GameObject PanelCancelarEncuesta;
     public GameObject PanelListar;
-    public GameObject panelFormularioPregunta; // Panel que contiene el PreguntaController (desactivado por defecto)
     public Button BtnSalir;
-    public Button BtnCancelar;
     public Button btnSalirCreacionE;
     public Button btnPermanecerE;
     public ListarEncuestas listarencuestas;
+    
     #endregion
 
     #region Variables Privadas
     // --- CAMBIO CLAVE: Nombre y tipo de la variable corregidos ---
 
-    private List<PreguntaModelo> listaPreguntas = new();          // Datos
-    private List<PreguntaController> listaPreguntasUI = new();    // Controladores de la UI
-
+    private List<PreguntaModelo> listaPreguntas = new();
     private int indiceEdicion = -1;
-    private PreguntaController controladorPregunta;
     private FirebaseFirestore db;
     private FirebaseAuth auth;
     private FirebaseUser currentUser;
     private string userId;
     private string IdEncuestaEditando;
+    private int indicePreguntaAEliminar = -1;
     #endregion
 
     #region Unity Methods
@@ -67,19 +69,25 @@ public class EncuestasManager : MonoBehaviour
         }
     }
 
+    void OnEnable()
+    {
+        InicializarEncuesta();
+    }
+
     public void InicializarEncuesta()
     {
         InicializarFirebase();
 
-        panelFormularioPregunta.SetActive(false);
+        if (btnAñadirPregunta != null && btnAñadirPregunta.transform.parent != contenedorPreguntas)
+        {
+            btnAñadirPregunta.transform.SetParent(contenedorPreguntas);
+        }
 
         btnGuardarEncuesta.onClick.RemoveAllListeners();
         btnActualizarEncuesta.onClick.RemoveAllListeners();
         btnAñadirPregunta.onClick.RemoveAllListeners();
-        BtnCancelar.onClick.RemoveAllListeners();
         BtnSalir.onClick.RemoveAllListeners();
 
-        BtnCancelar.onClick.AddListener(FinalizarEdicion);
         BtnSalir.onClick.AddListener(FinalizarEdicion);
         btnAñadirPregunta.onClick.AddListener(AbrirPanelCrearPregunta);
 
@@ -360,26 +368,19 @@ public class EncuestasManager : MonoBehaviour
     {
         inputTituloEncuesta.text = encuesta.Titulo;
         inputDescripcion.text = encuesta.Descripcion;
-        listaPreguntasUI.Clear();
 
-        // Limpia primero
-        foreach (Transform t in contenedorPreguntas)
-            Destroy(t.gameObject);
-        listaPreguntas.Clear();
+        // Llama a la nueva función de limpieza simplificada
+        LimpiarPreguntasUI();
 
-        // Carga cada pregunta como ítem visual
-        for (int i = 0; i < encuesta.Preguntas.Count; i++)
+        // Carga los nuevos datos en la lista
+        foreach (var preguntaModelo in encuesta.Preguntas)
         {
-            var preguntaModelo = encuesta.Preguntas[i];
-
-            GameObject nuevaPreguntaGO = Instantiate(itemPreguntaPrefab, contenedorPreguntas);
-            PreguntaItemUI itemUI = nuevaPreguntaGO.GetComponent<PreguntaItemUI>();
-
-            if (itemUI != null)
-                itemUI.Configurar(preguntaModelo, i, this);
-
             listaPreguntas.Add(preguntaModelo);
         }
+
+        // Dibuja la UI actualizada. ActualizarListado se encargará de
+        // volver a poner el botón al final.
+        ActualizarListado(true);
     }
 
     // --- Reemplaza tu método FinalizarEdicion con este ---
@@ -422,10 +423,17 @@ public class EncuestasManager : MonoBehaviour
 
     private void LimpiarPreguntasUI()
     {
-        foreach (Transform child in contenedorPreguntas)
+        // Limpia solo los ítems, respetando el botón.
+        for (int i = contenedorPreguntas.childCount - 1; i >= 0; i--)
         {
-            Destroy(child.gameObject);
+            Transform child = contenedorPreguntas.GetChild(i);
+            // La condición clave: si el hijo NO es el GameObject del botón, lo destruimos.
+            if (child.gameObject != btnAñadirPregunta.gameObject) // <-- ¡CORREGIDO!
+            {
+                Destroy(child.gameObject);
+            }
         }
+        // Limpia la lista de datos.
         listaPreguntas.Clear();
     }
 
@@ -433,7 +441,13 @@ public class EncuestasManager : MonoBehaviour
     {
         inputTituloEncuesta.text = "";
         inputDescripcion.text = "";
+
+        // Llama a la función de limpieza de UI.
         LimpiarPreguntasUI();
+
+        // Llama a ActualizarListado para asegurarse de que el botón se coloque al final.
+        ActualizarListado(true);
+
         IdEncuestaEditando = null;
         PlayerPrefs.DeleteKey("ModoEditar");
         PlayerPrefs.DeleteKey("IdEncuesta");
@@ -441,12 +455,12 @@ public class EncuestasManager : MonoBehaviour
 
     public void AbrirPanelCrearPregunta()
     {
+        // Reseteamos el índice de edición, por si acaso.
         indiceEdicion = -1;
-        panelFormularioPregunta.SetActive(true);
 
-        // Asegúrate de limpiar el formulario
-        controladorPregunta = panelFormularioPregunta.GetComponent<PreguntaController>();
-        controladorPregunta.InicializarParaCrear();
+        // YA NO desactivamos el PanelEncuesta.
+        // Simplemente le decimos al editor de preguntas que se inicie.
+        EditorPreguntaManager.Instance.IniciarCreacionPregunta();
     }
 
     // === LLAMADO DESDE PreguntaItemUI PARA EDITAR ===
@@ -454,60 +468,53 @@ public class EncuestasManager : MonoBehaviour
     {
         if (indice < 0 || indice >= listaPreguntas.Count) return;
 
-        panelFormularioPregunta.SetActive(true);
+        // Guardamos el índice que estamos editando.
         indiceEdicion = indice;
+        PreguntaModelo modeloAEditar = listaPreguntas[indice];
 
-        controladorPregunta = panelFormularioPregunta.GetComponent<PreguntaController>();
-        controladorPregunta.encuestasManager = this;
-        controladorPregunta.PoblarUIDesdeModelo(listaPreguntas[indice]);
+        // YA NO desactivamos el PanelEncuesta.
+        // Delegamos la lógica de edición al nuevo manager.
+        EditorPreguntaManager.Instance.IniciarEdicionPregunta(modeloAEditar);
     }
 
     // === LLAMADO DESDE PreguntaController AL GUARDAR ===
     public void GuardarPregunta(PreguntaModelo nuevaPregunta)
     {
-
         if (indiceEdicion >= 0 && indiceEdicion < listaPreguntas.Count)
         {
+            // Es una edición: reemplazamos la pregunta en el índice guardado.
             listaPreguntas[indiceEdicion] = nuevaPregunta;
         }
         else
         {
+            // Es una pregunta nueva: la añadimos al final.
             listaPreguntas.Add(nuevaPregunta);
         }
-        indiceEdicion = -1; // resetea después
 
-        ActualizarListado();
-        controladorPregunta = panelFormularioPregunta.GetComponent<PreguntaController>();
-        controladorPregunta.LimpiarCampos();
-        panelFormularioPregunta.SetActive(false);
+        // Reseteamos el índice para la próxima operación.
+        indiceEdicion = -1;
+
+        // Actualizamos la lista visual de preguntas en el panel de la encuesta.
+        ActualizarListado(true);
     }
 
     // === LLAMADO DESDE PreguntaItemUI AL CONFIRMAR ELIMINAR ===
     public void EliminarPregunta(int indice)
     {
-        if (indice < 0 || indice >= listaPreguntas.Count) return;
-        listaPreguntas.RemoveAt(indice);
-        ActualizarListado();
-    }
-
-    public void PreguntaEliminada(PreguntaController pregunta)
-    {
-        listaPreguntasUI.Remove(pregunta); // Asegúrate que esta lista sea List<PreguntaController>
-        ActualizarListado();             // O actualiza visualmente si usas un método diferente
-        Debug.Log("Pregunta eliminada correctamente.");
-    }
-
-    private void ActualizarListado()
-    {
-        foreach (Transform t in contenedorPreguntas)
-            Destroy(t.gameObject);
-
-        for (int i = 0; i < listaPreguntas.Count; i++)
+        // 1. Validar que el índice sea correcto.
+        if (indice < 0 || indice >= listaPreguntas.Count)
         {
-            var go = Instantiate(itemPreguntaPrefab, contenedorPreguntas);
-            var ui = go.GetComponent<PreguntaItemUI>();
-            ui.Configurar(listaPreguntas[i], i, this);
+            Debug.LogError($"Índice de pregunta a eliminar ({indice}) está fuera de rango.");
+            return;
         }
+
+        // 2. Eliminar el *modelo de datos* de la lista.
+        listaPreguntas.RemoveAt(indice);
+
+        // 3. Re-dibujar la lista de ítems en la UI para que refleje el cambio.
+        ActualizarListado(true);
+
+        Debug.Log($"Pregunta en el índice {indice} eliminada correctamente.");
     }
 
     public List<PreguntaModelo> ObtenerPreguntas()
@@ -550,7 +557,71 @@ public class EncuestasManager : MonoBehaviour
 
         List<PreguntaModelo> preguntas = new(listaPreguntas);
 
-        return new EncuestaModelo(encuestaID, userId, titulo, descripcion, preguntas, false, tipoEncuesta, categoriaMision, elementoMision);
+        string fechaActual = DateTime.UtcNow.ToString("o"); 
+        string fechaDeCreacionParaElModelo;
+        if (esEdicion)
+        {
+            
+            fechaDeCreacionParaElModelo = ""; 
+        }
+        else
+        {
+            fechaDeCreacionParaElModelo = fechaActual;
+        }
+
+        // Llamamos al nuevo constructor con la fecha.
+        return new EncuestaModelo(encuestaID, userId, titulo, descripcion, preguntas, false, tipoEncuesta, categoriaMision, elementoMision, fechaDeCreacionParaElModelo);
+    }
+
+    // --- Nuevo Método Público ---
+    public void MostrarConfirmacionEliminarPregunta(int indice)
+    {
+        indicePreguntaAEliminar = indice;
+        panelConfirmarEliminarPregunta.SetActive(true);
+
+        // Configurar listeners
+        btnConfirmarEliminarPregunta.onClick.RemoveAllListeners();
+        btnCancelarEliminarPregunta.onClick.RemoveAllListeners();
+
+        btnConfirmarEliminarPregunta.onClick.AddListener(ConfirmarEliminacionPregunta);
+        btnCancelarEliminarPregunta.onClick.AddListener(OcultarConfirmacionEliminarPregunta);
+    }
+
+    private void ConfirmarEliminacionPregunta()
+    {
+        EliminarPregunta(indicePreguntaAEliminar);
+        OcultarConfirmacionEliminarPregunta();
+    }
+
+    private void OcultarConfirmacionEliminarPregunta()
+    {
+        panelConfirmarEliminarPregunta.SetActive(false);
+        indicePreguntaAEliminar = -1;
+    }
+
+    // Y tu función ActualizarListado ahora debe pasar el booleano 'esEditable'
+    private void ActualizarListado(bool esEditable)
+    {
+        foreach (Transform t in contenedorPreguntas)
+        {
+            if (t.gameObject != btnAñadirPregunta.gameObject) // Si respetas el botón
+            {
+                Destroy(t.gameObject);
+            }
+        }
+
+        for (int i = 0; i < listaPreguntas.Count; i++)
+        {
+            var go = Instantiate(itemPreguntaPrefab, contenedorPreguntas);
+            var ui = go.GetComponent<PreguntaItemUI>();
+            // Le pasamos el modo al item de la pregunta
+            ui.Configurar(listaPreguntas[i], i, esEditable);
+        }
+
+        if (esEditable)
+        {
+            btnAñadirPregunta.transform.SetAsLastSibling();
+        }
     }
     #endregion
 

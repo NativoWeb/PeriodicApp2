@@ -12,7 +12,6 @@ public class GestorAsignacionEncuesta : MonoBehaviour
     [Header("Referencias del Panel")]
     [SerializeField] private GameObject panelDetalles;
     [SerializeField] private GameObject panelAsignacion;
-    [SerializeField] private TMP_Text txtTituloEncuestaAsignar;
 
     [Header("Comunidades")]
     [SerializeField] private GameObject comunidadTogglePrefab;
@@ -26,6 +25,7 @@ public class GestorAsignacionEncuesta : MonoBehaviour
 
     [Header("Botones")]
     [SerializeField] private Button btnGuardarAsignacion; // Botón para "Activar" o guardar
+    [SerializeField] private Button btnDesactivarEncuesta; // Botón para "Activar" o guardar
     [SerializeField] private Button btnCerrarPanel; // Botón para "Desactivar" o cancelar
 
     // Variables internas
@@ -44,6 +44,7 @@ public class GestorAsignacionEncuesta : MonoBehaviour
         // Configurar listeners de los botones del panel
         btnGuardarAsignacion.onClick.AddListener(GuardarConfiguracionAsignacion);
         btnCerrarPanel.onClick.AddListener(() => panelAsignacion.SetActive(false));
+        btnDesactivarEncuesta.onClick.AddListener(DesactivarEncuesta); 
 
         // Configurar restricciones del InputField de intentos
         inputIntentos.contentType = TMP_InputField.ContentType.IntegerNumber;
@@ -60,7 +61,6 @@ public class GestorAsignacionEncuesta : MonoBehaviour
 
         LimpiarPanel();
 
-        txtTituloEncuestaAsignar.text = titulo;
         PoblarDropdownPreguntas(totalPreguntas);
         panelDetalles.SetActive(false);
         panelAsignacion.SetActive(true);
@@ -256,5 +256,58 @@ public class GestorAsignacionEncuesta : MonoBehaviour
             if (numIntentos > 10) inputIntentos.text = "10";
             else if (numIntentos < 1) inputIntentos.text = "1";
         }
+    }
+
+    public async void DesactivarEncuesta()
+    {
+        // Deshabilitar botones para evitar acciones múltiples
+        btnDesactivarEncuesta.interactable = false;
+        btnGuardarAsignacion.interactable = false;
+
+        Debug.Log($"Iniciando desactivación para la encuesta: {encuestaIdActual}");
+
+        // --- PASO 1: Marcar la encuesta como inactiva en su propio documento ---
+        DocumentReference encuestaRef = db.Collection("Encuestas").Document(encuestaIdActual);
+        Dictionary<string, object> desactivarData = new Dictionary<string, object>
+    {
+        { "estaActiva", false }
+    };
+        // Usamos Merge para solo actualizar este campo sin tocar el resto.
+        await encuestaRef.SetAsync(desactivarData, SetOptions.MergeAll);
+        Debug.Log($"Encuesta '{encuestaIdActual}' marcada como inactiva.");
+
+
+        // --- PASO 2: Encontrar TODAS las comunidades que tienen esta encuesta asignada ---
+        // Creamos la clave para buscar dentro del mapa 'encuestasAsignadas'
+        string campoEncuestaEnMapa = $"encuestasAsignadas.{encuestaIdActual}";
+
+        // La consulta busca cualquier documento en 'comunidades' donde el campo anidado exista.
+        // Usamos '>' a un valor imposible para filtrar por existencia del campo.
+        Query comunidadesConEncuestaQuery = db.Collection("comunidades").WhereGreaterThan(campoEncuestaEnMapa, false);
+
+        QuerySnapshot comunidadesSnapshot = await comunidadesConEncuestaQuery.GetSnapshotAsync();
+        Debug.Log($"Se encontraron {comunidadesSnapshot.Documents.Count()} comunidades con la encuesta asignada. Eliminando...");
+
+
+        // --- PASO 3: Eliminar la encuesta de cada comunidad usando un WriteBatch ---
+        if (comunidadesSnapshot.Documents.Any())
+        {
+            WriteBatch batch = db.StartBatch();
+            foreach (var comunidadDoc in comunidadesSnapshot.Documents)
+            {
+                DocumentReference comunidadRef = comunidadDoc.Reference;
+                // Usamos FieldValue.Delete para eliminar la clave del mapa.
+                batch.Update(comunidadRef, campoEncuestaEnMapa, FieldValue.Delete);
+            }
+            // Ejecutamos todas las eliminaciones en una sola operación.
+            await batch.CommitAsync();
+        }
+
+        Debug.Log("¡Desactivación completada! La encuesta ha sido eliminada de todas las comunidades.");
+
+        // Cerrar el panel y rehabilitar los botones
+        panelAsignacion.SetActive(false);
+        btnDesactivarEncuesta.interactable = true;
+        btnGuardarAsignacion.interactable = true;
     }
 }

@@ -21,13 +21,14 @@ public class ListarEncuestas : MonoBehaviour
 
     [Header("Detalles y Edición")]
     public GameObject panelDetallesEncuesta;
-    public TMP_Text txtTituloEncuesta;
-    public TMP_Text txtNumeroPreguntas;
-    public TMP_Text txtNumeroComunidades;
     public Button btnEditarEncuesta;
     public Button btnEliminarEncuesta;
     public Button btnAsignarEncuesta;
     public GestorAsignacionEncuesta gestorAsignacion;
+    public Transform contenedorPreguntasDetalles;
+    public GameObject preguntaDetalleItemPrefab;
+    public TMP_Text txtDescripcionDetalles;
+    public TMP_Text txtTituloDetalles;
 
     [Header("Panel Confirmar Eliminacion")]
     public GameObject panelConfirmacionEliminar;
@@ -127,23 +128,20 @@ public class ListarEncuestas : MonoBehaviour
 
         foreach (var doc in snapshot.Documents)
         {
-            if (!doc.Exists) continue;
-
             try
             {
-                EncuestaModelo encuesta = doc.ConvertTo<EncuestaModelo>();
-                encuesta.Id = doc.Id;
+                // --- USAMOS NUESTRA FUNCIÓN SEGURA ---
+                EncuestaModelo encuesta = ConvertirDocumentoAEncuesta(doc);
 
-                // Puedes filtrar aquí si lo necesitas, ej. por 'publicada'
-                // if (encuesta.Publicada)
-                // {
-                CrearTarjetaEncuesta(encuesta.Titulo, encuesta.Preguntas.Count, encuesta.Id);
-                encuestasCargadas.Add(encuesta.Id);
-                // }
+                if (encuesta != null)
+                {
+                    CrearTarjetaEncuesta(encuesta.Titulo, encuesta.Preguntas.Count, encuesta.Id);
+                    encuestasCargadas.Add(encuesta.Id);
+                }
             }
             catch (Exception e)
             {
-                Debug.LogError($"Error al procesar documento {doc.Id} desde el listener: {e.Message}");
+                Debug.LogError($"Error fatal al procesar documento {doc.Id} desde el listener: {e.Message}");
             }
         }
 
@@ -255,7 +253,7 @@ public class ListarEncuestas : MonoBehaviour
         GameObject tarjeta = Instantiate(tarjetaEncuestaPrefab, contenedorEncuestas);
         if (tarjeta.TryGetComponent<TarjetaEncuestaUI>(out var tarjetaUI))
         {
-            tarjetaUI.Configurar(titulo, numPreguntas, () => MostrarDetallesEncuesta(titulo, numPreguntas, id));
+            tarjetaUI.Configurar(titulo, numPreguntas, () => MostrarDetallesEncuesta(id));
         }
         else // Fallback si no tienes un script específico en la tarjeta
         {
@@ -267,24 +265,118 @@ public class ListarEncuestas : MonoBehaviour
             }
             var boton = tarjeta.GetComponent<Button>();
             if (boton != null)
-                boton.onClick.AddListener(() => MostrarDetallesEncuesta(titulo, numPreguntas, id));
+                boton.onClick.AddListener(() => MostrarDetallesEncuesta(id));
         }
     }
 
-    private void MostrarDetallesEncuesta(string titulo, int numPreguntas, string id)
+    private async void MostrarDetallesEncuesta(string id)
     {
         encuestaActualID = id;
-        txtTituloEncuesta.text = titulo;
-        txtNumeroPreguntas.text = $"{numPreguntas} pregunta(s)";
-        panelDetallesEncuesta.SetActive(true);
 
+        // Muestra el panel inmediatamente para que el usuario vea que algo pasa.
+        panelDetallesEncuesta.SetActive(true);
+        // Limpiamos la información anterior mientras carga la nueva.
+        LimpiarPanelDetalles();
+
+        // --- Carga de datos de la encuesta ---
+        EncuestaModelo encuesta = await CargarEncuestaPorId(id);
+
+        if (encuesta == null)
+        {
+            Debug.LogError($"No se pudo cargar la encuesta con ID: {id}");
+            // Opcional: muestra un mensaje de error en la UI.
+            panelDetallesEncuesta.SetActive(false); // Oculta el panel si falla.
+            return;
+        }
+
+        // --- Poblado de la UI con los datos cargados ---
+        txtTituloDetalles.text = encuesta.Titulo; // Ya tenías esto, pero lo dejamos.
+        txtDescripcionDetalles.text = encuesta.Descripcion;
+
+        // Poblamos la lista de preguntas
+        PoblarListaPreguntasDetalles(encuesta.Preguntas);
+
+        // Configurar los botones de acción como ya lo haces
         btnEditarEncuesta.onClick.RemoveAllListeners();
         btnEliminarEncuesta.onClick.RemoveAllListeners();
         btnAsignarEncuesta.onClick.RemoveAllListeners();
 
         btnEditarEncuesta.onClick.AddListener(() => AbrirPanelEncuesta(id));
         btnEliminarEncuesta.onClick.AddListener(MostrarPanelConfirmacionEliminar);
-        btnAsignarEncuesta.onClick.AddListener(() => gestorAsignacion.AbrirPanelDeAsignacion(id, titulo, numPreguntas));
+        btnAsignarEncuesta.onClick.AddListener(() => gestorAsignacion.AbrirPanelDeAsignacion(id, encuesta.Titulo, encuesta.Preguntas.Count));
+    }
+
+    private async Task<EncuestaModelo> CargarEncuestaPorId(string id)
+    {
+        if (HayInternet())
+        {
+            try
+            {
+                var docRef = db.Collection("Encuestas").Document(id);
+                var snapshot = await docRef.GetSnapshotAsync();
+
+                // --- USAMOS NUESTRA FUNCIÓN SEGURA ---
+                return ConvertirDocumentoAEncuesta(snapshot);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"Error cargando encuesta desde Firebase: {e.Message}");
+            }
+        }
+
+        // La lógica local no necesita cambios, ya que JsonUtility no tiene este problema.
+        string rutaArchivo = Path.Combine(Application.persistentDataPath, "Encuestas", $"{id}.json");
+        if (File.Exists(rutaArchivo))
+        {
+            try
+            {
+                string json = File.ReadAllText(rutaArchivo);
+                var encuestaLocal = JsonUtility.FromJson<EncuestaModelo>(json);
+                // Si el string de la fecha local es válido, podemos convertirlo a Timestamp para la UI si es necesario
+                if (DateTime.TryParse(encuestaLocal.FechaCreacionString, out DateTime fechaLocal))
+                {
+                    encuestaLocal.FechaCreacion = Timestamp.FromDateTime(fechaLocal);
+                }
+                return encuestaLocal;
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"Error cargando encuesta desde local: {e.Message}");
+            }
+        }
+
+        return null;
+    }
+
+    private void PoblarListaPreguntasDetalles(List<PreguntaModelo> preguntas)
+    {
+        for (int i = 0; i < preguntas.Count; i++)
+        {
+            var pregunta = preguntas[i];
+            GameObject itemGO = Instantiate(preguntaDetalleItemPrefab, contenedorPreguntasDetalles);
+
+            // ¡CORRECCIÓN! Usamos el script simple.
+            var itemUI = itemGO.GetComponent<PreguntaItemUI>();
+            if (itemUI != null)
+            {
+                itemUI.Configurar(pregunta, i, false);
+            }
+            else
+            {
+                Debug.LogError("El prefab 'preguntaDetalleItemPrefab' debe tener el script 'PreguntaDetalleItemUI'.");
+            }
+        }
+    }
+
+    private void LimpiarPanelDetalles()
+    {
+        // Limpia el título, descripción y la lista de preguntas.
+        txtTituloDetalles.text = "";
+        txtDescripcionDetalles.text = "";
+        foreach (Transform child in contenedorPreguntasDetalles)
+        {
+            Destroy(child.gameObject);
+        }
     }
 
     private void EliminarEncuestaConfirmada()
@@ -482,6 +574,89 @@ public class ListarEncuestas : MonoBehaviour
         });
         panelDetallesEncuesta.SetActive(false);
     }
-    #endregion
 
+    private EncuestaModelo ConvertirDocumentoAEncuesta(DocumentSnapshot doc)
+    {
+        if (doc == null || !doc.Exists)
+        {
+            return null;
+        }
+
+        // Creamos una instancia vacía del modelo.
+        var encuesta = new EncuestaModelo();
+        encuesta.Id = doc.Id;
+
+        // Leemos cada campo simple de forma segura.
+        if (doc.TryGetValue("titulo", out string titulo)) encuesta.Titulo = titulo;
+        if (doc.TryGetValue("descripcion", out string descripcion)) encuesta.Descripcion = descripcion;
+        if (doc.TryGetValue("publicada", out bool publicada)) encuesta.Publicada = publicada;
+        if (doc.TryGetValue("idcreador", out string idCreador)) encuesta.IdCreador = idCreador;
+        if (doc.TryGetValue("tipoEncuesta", out string tipoEncuesta)) encuesta.TipoEncuesta = tipoEncuesta;
+        if (doc.TryGetValue("categoriaMision", out string categoriaMision)) encuesta.CategoriaMision = categoriaMision;
+        if (doc.TryGetValue("elementoMision", out string elementoMision)) encuesta.ElementoMision = elementoMision;
+
+        // Para la fecha (Timestamp):
+        if (doc.TryGetValue("fechaCreacion", out Timestamp fecha))
+        {
+            encuesta.FechaCreacion = fecha;
+            encuesta.FechaCreacionString = fecha.ToDateTime().ToString("o");
+        }
+
+        // --- NUEVA LÓGICA MANUAL PARA LA LISTA DE PREGUNTAS ---
+        if (doc.TryGetValue("preguntas", out object preguntasData) && preguntasData is List<object> preguntasList)
+        {
+            var listaDePreguntasModelo = new List<PreguntaModelo>();
+
+            // Iteramos sobre cada elemento de la lista de preguntas
+            foreach (var preguntaObj in preguntasList)
+            {
+                if (preguntaObj is Dictionary<string, object> preguntaMap)
+                {
+                    var nuevaPregunta = new PreguntaModelo();
+
+                    if (preguntaMap.TryGetValue("textoPregunta", out object textoPreguntaObj) && textoPreguntaObj is string textoPregunta)
+                    {
+                        nuevaPregunta.TextoPregunta = textoPregunta;
+                    }
+                    if (preguntaMap.TryGetValue("tipo", out object tipoObj) && tipoObj is long tipoInt) // Firestore a menudo usa long para números
+                    {
+                        nuevaPregunta.Tipo = (int)tipoInt;
+                    }
+                    if (preguntaMap.TryGetValue("tiempoSegundos", out object tiempoObj) && tiempoObj is long tiempoInt)
+                    {
+                        nuevaPregunta.TiempoSegundos = (int)tiempoInt;
+                    }
+
+                    // Ahora, deserializamos la lista de opciones dentro de la pregunta
+                    if (preguntaMap.TryGetValue("opciones", out object opcionesData) && opcionesData is List<object> opcionesList)
+                    {
+                        var listaDeOpcionesModelo = new List<OpcionModelo>();
+                        foreach (var opcionObj in opcionesList)
+                        {
+                            if (opcionObj is Dictionary<string, object> opcionMap)
+                            {
+                                var nuevaOpcion = new OpcionModelo();
+                                if (opcionMap.TryGetValue("texto", out object textoOpcionObj) && textoOpcionObj is string textoOpcion)
+                                {
+                                    nuevaOpcion.Texto = textoOpcion;
+                                }
+                                if (opcionMap.TryGetValue("esCorrecta", out object esCorrectaObj) && esCorrectaObj is bool esCorrecta)
+                                {
+                                    nuevaOpcion.EsCorrecta = esCorrecta;
+                                }
+                                listaDeOpcionesModelo.Add(nuevaOpcion);
+                            }
+                        }
+                        nuevaPregunta.Opciones = listaDeOpcionesModelo;
+                    }
+                    listaDePreguntasModelo.Add(nuevaPregunta);
+                }
+            }
+            encuesta.Preguntas = listaDePreguntasModelo;
+        }
+        // Si no hay campo de preguntas o está mal formado, la lista se quedará vacía (lo cual es seguro).
+
+        return encuesta;
+    }
+    #endregion
 }
