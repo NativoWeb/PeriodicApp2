@@ -6,11 +6,9 @@ using UnityEngine.UI;
 using TMPro;
 using Firebase.Firestore;
 using Firebase.Auth;
-using static ControladorEncuesta;
 using System.Threading.Tasks;
 using UnityEngine.SceneManagement;
 using Firebase.Extensions;
-using DG.Tweening.Core.Easing;
 
 // Usa un namespace para evitar colisiones de nombres
 namespace QuizGame
@@ -28,6 +26,7 @@ namespace QuizGame
     public class CategoriaData
     {
         public string nombre;
+        public string elemento;
         public List<PreguntaData> preguntas;
     }
 
@@ -35,14 +34,16 @@ namespace QuizGame
     public class PreguntaData
     {
         public string pregunta;
+        public string pregunta_en; // Campo para la pregunta en inglés
         public List<string> opciones;
+        public List<string> opciones_en; // Campo para las opciones en inglés
         public int respuestaCorrecta;
     }
 
     public class PreguntasQuimicados : MonoBehaviour
     {
         [Header("UI")]
-        public Text TextTimer;  // Referencia al componente Text de la UI
+        public Text TextTimer;
         public TextMeshProUGUI txtPregunta;
         public TextMeshProUGUI txtFeedBack;
         public GameObject panelFeedBack;
@@ -51,29 +52,27 @@ namespace QuizGame
         [Header("Colores de Respuesta")]
         public Color colorCorrecto = Color.green;
         public Color colorIncorrecto = Color.red;
-        public Color colorNormal = Color.white; // Color por defecto
-        public Color colorFondoCorrecto = new Color(0.66f, 0.81f, 0.30f); // Verde claro
-        public Color colorFondoIncorrecto = new Color(0.89f, 0.31f, 0.31f); // Rojo claro
+        public Color colorNormal = Color.white;
+        public Color colorFondoCorrecto = new Color(0.66f, 0.81f, 0.30f);
+        public Color colorFondoIncorrecto = new Color(0.89f, 0.31f, 0.31f);
 
         [Header("JSON")]
         public string nombreArchivoResources = "Quimicados";
-        private List<Pregunta> preguntasFiltradas;
 
-        // Temporizador variables
-        public float tiempoRestante;  // Tiempo inicial del temporizador en segundos (10 segundos)
-        private bool preguntaFinalizada = false;  // Flag para saber si la pregunta ha sido finalizada (cuando se pasa a la siguiente pregunta)
-
-        // Datos de la pregunta cargada
+        // Variables de estado del juego
         private PreguntaData preguntaCargada;
         private bool eventosToggleHabilitados = false;
-        // FIREBASE
+        public float tiempoRestante; // Hecho público para ajustar en el inspector si es necesario
+        private bool preguntaFinalizada = false;
+
+        // Firebase
         private FirebaseFirestore db;
         private FirebaseAuth auth;
 
+        // Datos de la partida
         private string categoriaSel;
-        private int preguntaActual = 0;
-
         private string partidaId;
+        private string appIdioma;
 
         void Start()
         {
@@ -81,17 +80,20 @@ namespace QuizGame
             db = FirebaseFirestore.DefaultInstance;
             auth = FirebaseAuth.DefaultInstance;
 
-            // Cargar preguntas
+            // Obtener el idioma de la aplicación desde PlayerPrefs.
+            // Si no está definido, se usará "es" (español) por defecto.
+            appIdioma = PlayerPrefs.GetString("appIdioma", "español");
+
+            // Cargar datos de la partida
+            partidaId = PlayerPrefs.GetString("partidaIdQuimicados");
+            categoriaSel = PlayerPrefs.GetString("CategoriaRuleta");
+
+            // Configurar e iniciar el juego
             CargarPreguntaDesdeJSON();
             MostrarPregunta();
-
             ActualizarTextoTiempo();
-            partidaId = PlayerPrefs.GetString("partidaIdQuimicados");
-            // Configurar progreso
-            if (preguntasFiltradas == null)
-                preguntasFiltradas = new List<Pregunta>();
         }
-        // M�todo para manejar el temporizador
+
         void Update()
         {
             ActualizarTextoTiempo();
@@ -99,91 +101,93 @@ namespace QuizGame
             // Solo actualizar el temporizador si la pregunta no ha sido finalizada
             if (!preguntaFinalizada)
             {
-
                 if (tiempoRestante > 0)
                 {
                     tiempoRestante -= Time.deltaTime; // Reduce el tiempo
                 }
-                else  // Verifica que la pregunta a�n no se ha respondido
+                else
                 {
-                    preguntaFinalizada = true; // Evita que el c�digo se ejecute varias veces en un solo frame
-                    RevealAnswers();
+                    preguntaFinalizada = true; // Evita que el código se ejecute varias veces
+                    RevealAnswers(); // Llama a revelar respuestas cuando el tiempo se agota
                 }
             }
-
         }
+
         void ActualizarTextoTiempo()
         {
-            TextTimer.text = tiempoRestante.ToString("00") + " Segundos";
+            TextTimer.text = tiempoRestante.ToString("00") + (appIdioma == "ingles" ? " Seconds" : " Segundos");
         }
+
         void CargarPreguntaDesdeJSON()
         {
-            // Cargar archivo JSON desde Resources
             TextAsset archivoJSON = Resources.Load<TextAsset>(nombreArchivoResources);
             if (archivoJSON == null)
             {
+                Debug.LogError($"Error: No se pudo encontrar el archivo JSON en Resources: {nombreArchivoResources}");
                 return;
             }
 
-            // Deserializar al objeto raíz
             CuestionarioRoot root = JsonUtility.FromJson<CuestionarioRoot>(archivoJSON.text);
             if (root == null || root.categorias == null)
             {
+                Debug.LogError("Error: El JSON está mal formado o no contiene la lista de categorías.");
                 return;
             }
 
-            // Obtener categoría seleccionada
-            categoriaSel = PlayerPrefs.GetString("CategoriaRuleta");
             CategoriaData categoria = root.categorias
                 .FirstOrDefault(c => c.nombre.Equals(categoriaSel, StringComparison.OrdinalIgnoreCase));
 
             if (categoria == null)
             {
+                Debug.LogError($"Error: No se encontró la categoría seleccionada: {categoriaSel}");
                 return;
             }
 
             if (categoria.preguntas == null || categoria.preguntas.Count == 0)
             {
+                Debug.LogError($"Error: La categoría '{categoriaSel}' no tiene preguntas.");
                 return;
             }
 
-            // Seleccionar una pregunta aleatoria
+            // Seleccionar una pregunta aleatoria de la categoría
             System.Random rnd = new System.Random();
             preguntaCargada = categoria.preguntas[rnd.Next(categoria.preguntas.Count)];
         }
 
         void MostrarPregunta()
         {
-            // 1) Limpio y configuro listeners
             ConfigurarToggleListeners();
-
-            // 2) Desmarco y habilito interacción
             desmarcarToggle();
-
-            // 3) Ya permito que los toggles disparen eventos
             eventosToggleHabilitados = true;
-
             ActivarInteractividadOpciones();
 
             if (preguntaCargada == null)
             {
+                Debug.LogError("Error: No hay ninguna pregunta cargada para mostrar.");
                 return;
             }
 
-            // Mostrar texto de la pregunta
-            txtPregunta.text = preguntaCargada.pregunta;
+            // 1. Seleccionar el texto de la pregunta según el idioma
+            txtPregunta.text = (appIdioma == "ingles" && !string.IsNullOrEmpty(preguntaCargada.pregunta_en))
+                ? preguntaCargada.pregunta_en
+                : preguntaCargada.pregunta;
 
-            // Preparar y mezclar opciones
-            var listaOpciones = preguntaCargada.opciones
-                .Select((texto, idx) => (texto, idx))
+            // 2. Seleccionar la lista de opciones correcta según el idioma
+            List<string> opcionesSource = (appIdioma == "ingles" && preguntaCargada.opciones_en != null && preguntaCargada.opciones_en.Count > 0)
+                ? preguntaCargada.opciones_en
+                : preguntaCargada.opciones;
+
+            // 3. Mezclar opciones para que no aparezcan siempre en el mismo orden
+            var listaOpciones = opcionesSource
+                .Select((texto, idx) => (texto, idx)) // Guarda el índice original
                 .OrderBy(_ => UnityEngine.Random.value)
                 .ToList();
 
-            // Calcular nuevo índice de la respuesta correcta
+            // 4. Actualizar el índice de la respuesta correcta después de mezclar
             int nuevoIndiceCorrecto = listaOpciones.FindIndex(x => x.idx == preguntaCargada.respuestaCorrecta);
             preguntaCargada.respuestaCorrecta = nuevoIndiceCorrecto;
 
-            // Asignar a toggles
+            // 5. Asignar textos a los toggles de la UI
             for (int i = 0; i < opciones.Length; i++)
             {
                 if (i < listaOpciones.Count)
@@ -198,165 +202,147 @@ namespace QuizGame
                 }
             }
         }
-        // Nuevo método para revelar respuestas
+
         async Task RevealAnswers()
         {
-            // deshabilita futuros eventos
             eventosToggleHabilitados = false;
 
-            // resalta la opción correcta en verde, las demás en rojo
+            // Resalta la opción correcta en verde y las demás en rojo
             for (int i = 0; i < opciones.Length; i++)
             {
-                var img = opciones[i].image;
-                if (i == preguntaCargada.respuestaCorrecta)
-                    img.color = colorCorrecto;
-                else
-                    img.color = colorIncorrecto;
-
-                // opcional: desactiva la interactividad
+                if (i < preguntaCargada.opciones.Count) // Evitar errores si hay más toggles que opciones
+                {
+                    var img = opciones[i].image;
+                    if (i == preguntaCargada.respuestaCorrecta)
+                        img.color = colorCorrecto;
+                    else
+                        img.color = colorIncorrecto;
+                }
                 opciones[i].interactable = false;
             }
 
-            // muestra el panel de feedback como “Tiempo agotado”
+            // Muestra el panel de feedback indicando que el tiempo se agotó
             if (panelFeedBack != null)
             {
                 panelFeedBack.SetActive(true);
                 panelFeedBack.GetComponent<Image>().color = colorFondoIncorrecto;
             }
             if (txtFeedBack != null)
-                txtFeedBack.text = "Tiempo agotado";
+                txtFeedBack.text = (appIdioma == "ingles") ? "Time's up!" : "¡Tiempo agotado!";
 
             CambiarTurno(partidaId);
-            await Task.Delay(2000);
+            await Task.Delay(2000); // Espera 2 segundos antes de cambiar de escena
             SceneManager.LoadScene("QuimicadosGame");
         }
 
         async Task ValidarRespuesta(int indiceSeleccionado)
         {
+            eventosToggleHabilitados = false; // Deshabilita futuros eventos de toggle
+            preguntaFinalizada = true; // Marca la pregunta como finalizada para detener el temporizador
             bool correcto = (indiceSeleccionado == preguntaCargada.respuestaCorrecta);
-            // Visual
+
+            // Visualización de la respuesta
             if (correcto)
             {
-                bool logro = PlayerPrefs.GetInt("CompletarLogro") == 1;
-
-                if (logro)
+                // Comprobar si se debe actualizar un logro
+                if (PlayerPrefs.GetInt("CompletarLogro") == 1)
                 {
                     PlayerPrefs.SetInt("CompletarLogro", 0);
                     cambiarLogro();
                 }
-                // Mostrar solo la correcta
-                for (int i = 0; i < opciones.Length; i++)
-                {
-                    if (i == preguntaCargada.respuestaCorrecta)
-                        opciones[i].image.color = colorCorrecto;
-                    else
-                        opciones[i].image.color = colorNormal;
-                }
 
-                // Activar feedback visual
+                // Resaltar solo la opción correcta
+                opciones[indiceSeleccionado].image.color = colorCorrecto;
+
+                // Activar feedback visual positivo
                 panelFeedBack.SetActive(true);
                 panelFeedBack.GetComponent<Image>().color = colorFondoCorrecto;
-                txtFeedBack.text = "Correcto";
+                txtFeedBack.text = (appIdioma == "ingles") ? "Correct!" : "¡Correcto!";
                 PlayerPrefs.SetInt("wasCorrect", 1);
             }
             else
             {
-                // Mostrar todas las opciones y resaltar correcta/incorrecta
+                // Resaltar la opción incorrecta seleccionada y la correcta
                 for (int i = 0; i < opciones.Length; i++)
                 {
-                    opciones[i].gameObject.SetActive(true);
-
-                    if (i == indiceSeleccionado)
-                        opciones[i].image.color = colorIncorrecto;
-                    else if (i == preguntaCargada.respuestaCorrecta)
-                        opciones[i].image.color = colorCorrecto;
-                    else
-                        opciones[i].image.color = colorNormal;
+                    if (i < preguntaCargada.opciones.Count)
+                    {
+                        if (i == indiceSeleccionado)
+                            opciones[i].image.color = colorIncorrecto;
+                        else if (i == preguntaCargada.respuestaCorrecta)
+                            opciones[i].image.color = colorCorrecto;
+                    }
                 }
 
-                // Activar feedback visual
+                // Activar feedback visual negativo
                 panelFeedBack.SetActive(true);
                 panelFeedBack.GetComponent<Image>().color = colorFondoIncorrecto;
-                txtFeedBack.text = "Incorrecto";
+                txtFeedBack.text = (appIdioma == "ingles") ? "Incorrect!" : "¡Incorrecto!";
                 PlayerPrefs.SetInt("wasIncorrect", 1);
                 CambiarTurno(partidaId);
             }
+
             DesactivarInteractividadOpciones();
             await Task.Delay(2000);
             SceneManager.LoadScene("QuimicadosGame");
         }
+
         void CambiarTurno(string partidaId)
         {
+            if (string.IsNullOrEmpty(partidaId)) return;
+
             var docRef = db.Collection("partidasQuimicados").Document(partidaId);
 
-            docRef.GetSnapshotAsync()
-                  .ContinueWithOnMainThread(task =>
-                  {
-                      if (task.IsFaulted)
-                      {
-                          Debug.LogError($"Error al leer partida: {task.Exception}");
-                          return;
-                      }
+            docRef.GetSnapshotAsync().ContinueWithOnMainThread(task =>
+            {
+                if (task.IsFaulted)
+                {
+                    Debug.LogError($"Error al leer partida: {task.Exception}");
+                    return;
+                }
 
-                      DocumentSnapshot snapshot = task.Result;
-                      if (!snapshot.Exists)
-                      {
-                          Debug.LogError("La partida no existe.");
-                          return;
-                      }
+                DocumentSnapshot snapshot = task.Result;
+                if (!snapshot.Exists)
+                {
+                    Debug.LogError("La partida no existe.");
+                    return;
+                }
 
-                      // Leer campos
-                      string jugadorA = snapshot.GetValue<string>("jugadorA");
-                      string jugadorB = snapshot.GetValue<string>("jugadorB");
-                      string turnoActual = snapshot.GetValue<string>("turnoActual");
+                string jugadorA = snapshot.GetValue<string>("jugadorA");
+                string jugadorB = snapshot.GetValue<string>("jugadorB");
+                string turnoActual = snapshot.GetValue<string>("turnoActual");
+                string yo = auth.CurrentUser.UserId;
 
-                      // Obtener UID del usuario conectado
-                      string yo = auth.CurrentUser.UserId;
+                string siguienteTurno = (yo == jugadorA) ? jugadorB : jugadorA;
 
-                      // Calcular siguiente turno
-                      string siguienteTurno;
-                      if (yo == jugadorA)
-                          siguienteTurno = jugadorB;
-                      else if (yo == jugadorB)
-                          siguienteTurno = jugadorA;
-                      else
-                      {
-                          Debug.LogWarning("Este usuario no es ni A ni B en la partida.");
-                          return;
-                      }
+                if (turnoActual == siguienteTurno)
+                {
+                    Debug.Log("El turno ya está asignado al otro jugador, no se requiere cambio.");
+                    return;
+                }
 
-                      // Si ya es el turno de ese mismo, no actualices
-                      if (turnoActual == siguienteTurno)
-                      {
-                          Debug.Log("El turno ya está asignado correctamente.");
-                          return;
-                      }
-
-                      // Actualizar campo "turno"
-                      docRef.UpdateAsync("turnoActual", siguienteTurno)
-                    .ContinueWithOnMainThread(updateTask =>
-                      {
-                          if (updateTask.IsFaulted)
-                              Debug.LogError($"Error al actualizar turno: {updateTask.Exception}");
-                          else
-                          {
-                              Debug.Log($"✅ Turno cambiado a {(siguienteTurno == jugadorA ? "JugadorA" : "JugadorB")}");
-                              //FindObjectOfType<NotificacionManager>().EnviarNotificacionTurno(siguienteTurno, auth.CurrentUser.UserId);
-                          }
-
-                      });
-                  });
+                docRef.UpdateAsync("turnoActual", siguienteTurno)
+                    .ContinueWithOnMainThread(updateTask => {
+                        if (updateTask.IsFaulted)
+                            Debug.LogError($"Error al actualizar turno: {updateTask.Exception}");
+                        else
+                            Debug.Log($"✅ Turno cambiado a: {siguienteTurno}");
+                    });
+            });
         }
+
         void cambiarLogro()
         {
+            if (string.IsNullOrEmpty(partidaId)) return;
+
             string miUid = auth.CurrentUser.UserId;
             string campoCategorias = (miUid == PlayerPrefs.GetString("uidJugadorAQuimicados") ? "CategoriasJugadorA" : "CategoriasJugadorB");
 
             db.Collection("partidasQuimicados").Document(partidaId).UpdateAsync($"{campoCategorias}.{categoriaSel}", true)
                 .ContinueWithOnMainThread(task =>
                 {
-                    if (task.IsCompleted)
-                        Debug.Log("✅ Categoría marcada como completada.");
+                    if (task.IsCompleted && !task.IsFaulted)
+                        Debug.Log("✅ Categoría marcada como completada en Firebase.");
                     else
                         Debug.LogError("❌ Error actualizando categoría: " + task.Exception);
                 });
@@ -374,8 +360,6 @@ namespace QuizGame
                 {
                     if (isOn && eventosToggleHabilitados)
                     {
-                        preguntaFinalizada = true;      // evita el timeout luego
-                        eventosToggleHabilitados = false;
                         ValidarRespuesta(idx);
                     }
                 });
@@ -387,14 +371,16 @@ namespace QuizGame
             foreach (Toggle toggle in opciones)
             {
                 toggle.isOn = false;
+                toggle.image.color = colorNormal; // Reinicia el color a normal
                 toggle.interactable = true;
             }
         }
+
         void ActivarInteractividadOpciones()
         {
             foreach (Toggle toggle in opciones)
             {
-                toggle.interactable = true; // Reactiva la interactividad de cada Toggle de opci�n
+                toggle.interactable = true;
             }
         }
 
@@ -402,8 +388,10 @@ namespace QuizGame
         {
             foreach (Toggle toggle in opciones)
             {
-                toggle.interactable = false; // Desactiva la interactividad de cada Toggle de opci�n
+                toggle.interactable = false;
             }
         }
+        
     }
+
 }

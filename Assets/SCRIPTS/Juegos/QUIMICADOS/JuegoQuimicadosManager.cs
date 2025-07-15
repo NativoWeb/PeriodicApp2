@@ -83,6 +83,8 @@ public class JuegoPreguntadosManager : MonoBehaviour
     private string uidJugadorA;
     private string uidJugadorB;
     private string turnoActual;
+
+    private string appIdioma;
     void Start()
     {
         auth = FirebaseAuth.DefaultInstance;
@@ -91,6 +93,8 @@ public class JuegoPreguntadosManager : MonoBehaviour
 
         partidaId = PlayerPrefs.GetString("partidaIdQuimicados");
         BtnActivarCategoria.interactable = false;
+
+        appIdioma = PlayerPrefs.GetString("appIdioma", "español");
 
         StartCoroutine(VerificarConexionPeriodicamente());
         CargarCategoriasCompletadas();
@@ -286,14 +290,6 @@ public class JuegoPreguntadosManager : MonoBehaviour
             TxtExp.text = "Exp Ganada \n 30 EXP";
             SumarXPFirebase(30);
         }
-        else
-        {
-            Debug.Log("😢 Perdiste la partida.");
-            TxtResultado.text = "¡PERDISTE :(!";
-            TxtExp.text = "Exp Ganada \n 5 EXP";
-            SumarXPFirebase(100);
-            // Mostrar mensaje de derrota si quieres.
-        }
     }
     public async void SumarXPFirebase(int xp)
     {
@@ -366,8 +362,14 @@ public class JuegoPreguntadosManager : MonoBehaviour
                             {
                                 if (task.IsCompletedSuccessfully)
                                 {
-                                    Debug.Log($"✅ Nueva ronda: {nuevaRonda} | Fallos reiniciados");
-                                    TxtRonda.text = "Ronda " + nuevaRonda.ToString();
+                                    if (appIdioma == "español")
+                                    {
+                                        TxtRonda.text = "Ronda " + nuevaRonda.ToString();
+                                    }
+                                    else
+                                    {
+                                        TxtRonda.text = "Round " + nuevaRonda.ToString();
+                                    }
                                 }
                                 else
                                 {
@@ -380,7 +382,14 @@ public class JuegoPreguntadosManager : MonoBehaviour
                 // Actualizar visual ronda siempre que cambie
                 if (datos.ContainsKey("rondaActual"))
                 {
-                    TxtRonda.text = "Ronda " + datos["rondaActual"].ToString();
+                    if (appIdioma == "español")
+                    {
+                        TxtRonda.text = "Ronda " + datos["rondaActual"].ToString();
+                    }
+                    else
+                    {
+                        TxtRonda.text = "Round " + datos["rondaActual"].ToString();
+                    }
                 }
 
                 // Actualizar nombres, progreso, turno, etc.
@@ -487,12 +496,26 @@ public class JuegoPreguntadosManager : MonoBehaviour
     {
         if (turnoActual == uidActual)
         {
-            txtTurno.text = "¡Es tu turno!";
+            if (appIdioma == "español")
+            {
+                txtTurno.text = "¡Es tu turno!";
+            }
+            else
+            {
+                txtTurno.text = "¡It's your turn!";
+            }
             BtnGirar.interactable = true;
         }
         else
         {
-            txtTurno.text = "Turno del oponente...";
+            if (appIdioma == "español")
+            {
+                txtTurno.text = "Turno del oponente...";
+            }
+            else
+            {
+                txtTurno.text = "¡Opponent's turn!";
+            }
             BtnGirar.interactable = false;
         }
     }

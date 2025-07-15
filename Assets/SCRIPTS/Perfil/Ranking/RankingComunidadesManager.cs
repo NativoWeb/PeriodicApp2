@@ -11,6 +11,8 @@ using UnityEngine.SceneManagement;
 
 public class RankingComunidadesManager : BaseRankingManager
 {
+    private string appIdioma;
+
     [Header("Communities Configuration")]
     [SerializeField] private TMP_Dropdown comunidadesDropdown;
     [SerializeField] private Image dropdownBackground;
@@ -36,6 +38,7 @@ public class RankingComunidadesManager : BaseRankingManager
     [SerializeField] public GameObject panelSinComunidades;
     protected override void Start()
     {
+        appIdioma = PlayerPrefs.GetString("appIdioma", "español");
         base.Start();
         scrollToUser = FindFirstObjectByType<ScrollToUser>();
 
@@ -184,8 +187,16 @@ public class RankingComunidadesManager : BaseRankingManager
     {
         comunidadesDropdown.ClearOptions();
         comunidadesDict.Clear();
-        List<string> opciones = new List<string> { "Selecciona una comunidad" };
-        comunidadesDropdown.AddOptions(opciones);
+        if (appIdioma == "español")
+        {
+            List<string> opciones = new List<string> { "Selecciona una comunidad" };
+            comunidadesDropdown.AddOptions(opciones);
+        }
+        else
+        {
+            List<string> opciones = new List<string> { "Select a community" };
+            comunidadesDropdown.AddOptions(opciones);
+        }
         CargarComunidades();
     }
 
@@ -216,7 +227,14 @@ public class RankingComunidadesManager : BaseRankingManager
                 else
                 {
                     comunidadesDropdown.ClearOptions();
-                    comunidadesDropdown.AddOptions(new List<string> { "No perteneces a ninguna comunidad" });
+                    if (appIdioma == "español")
+                    {
+                        comunidadesDropdown.AddOptions(new List<string> { "No perteneces a ninguna comunidad" });
+                    }
+                    else
+                    {
+                        comunidadesDropdown.AddOptions(new List<string> { "You don't belong to any community" });
+                    }
                     panelSinComunidades.SetActive(true); // activar panel sugerir unirse a comunidad
                 }
 
