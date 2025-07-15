@@ -6,7 +6,7 @@ public class DeslizarParaCerrarManager : MonoBehaviour, IPointerDownHandler, IDr
 {
     
     public RectTransform panel;           // El panel que se contrae
-    public float distanciaMinima = 300f;  // Mínimo de movimiento para cerrar
+    public float distanciaMinima = 900f;  // Mínimo de movimiento para cerrar
     public float velocidadCierre = 5000f; // Velocidad de contracción
 
     private Vector2 inicioTouch;
