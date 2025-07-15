@@ -359,7 +359,7 @@ public class ListarEncuestas : MonoBehaviour
             var itemUI = itemGO.GetComponent<PreguntaItemUI>();
             if (itemUI != null)
             {
-                itemUI.Configurar(pregunta, i, false);
+                itemUI.Configurar(pregunta, i, false, encuestasManager);
             }
             else
             {

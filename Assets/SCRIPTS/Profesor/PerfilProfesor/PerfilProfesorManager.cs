@@ -9,6 +9,7 @@ using Firebase.Database;
 using System;
 using System.Collections.Generic;
 using UnityEngine.SceneManagement;
+using System.IO;
 
 
 public class PerfilProfesorManager : MonoBehaviour
@@ -189,14 +190,37 @@ public class PerfilProfesorManager : MonoBehaviour
             panelLogout.SetActive(false);
         }
     }
-    public void logout() // ################################################################ Método para cerrar sesión
+    public void logout()
     {
-        // await SubirMisionesJSON(); ponerlo apenas se pueda URGENTE
-        auth.SignOut(); // Cierra la sesión en Firebase
-        PlayerPrefs.DeleteAll(); // Elimina el ID del usuario guardado
+
+        // 1. Construir la ruta completa a la carpeta "Encuestas"
+        string encuestasPath = Path.Combine(Application.persistentDataPath, "Encuestas");
+
+        // 2. Comprobar si la carpeta existe antes de intentar borrarla para evitar errores
+        if (Directory.Exists(encuestasPath))
+        {
+            try
+            {
+                // 3. Eliminar la carpeta y todo su contenido (archivos y subcarpetas)
+                Directory.Delete(encuestasPath, true);
+                Debug.Log($"Carpeta '{encuestasPath}' eliminada correctamente.");
+            }
+            catch (IOException e)
+            {
+                // Capturar posibles errores de acceso al archivo (p. ej. si un archivo está en uso)
+                Debug.LogError($"Error al eliminar la carpeta de encuestas: {e.Message}");
+            }
+        }
+        else
+        {
+            Debug.Log("La carpeta 'Encuestas' no existía, no se requiere eliminación.");
+        }
+
+        auth.SignOut(); // Cierra la sesión en Firebase -> Descomenta cuando tengas tu variable auth
+        PlayerPrefs.DeleteAll(); // Elimina toda la configuración guardada (incluyendo el ID de usuario)
         PlayerPrefs.Save(); // Guarda los cambios
 
-        Debug.Log("Sesión cerrada correctamente");
+        Debug.Log("Sesión cerrada correctamente. Todos los datos locales eliminados.");
 
         // Opcional: Redirigir a la escena de login
         SceneManager.LoadScene("Start");

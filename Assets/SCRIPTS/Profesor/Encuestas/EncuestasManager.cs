@@ -615,7 +615,7 @@ public class EncuestasManager : MonoBehaviour
             var go = Instantiate(itemPreguntaPrefab, contenedorPreguntas);
             var ui = go.GetComponent<PreguntaItemUI>();
             // Le pasamos el modo al item de la pregunta
-            ui.Configurar(listaPreguntas[i], i, esEditable);
+            ui.Configurar(listaPreguntas[i], i, esEditable, this);
         }
 
         if (esEditable)

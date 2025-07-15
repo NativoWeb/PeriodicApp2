@@ -8,8 +8,6 @@ using UnityEngine.EventSystems;
 using System.Collections;
 using System;
 using UnityEngine.SceneManagement;
-using Unity.Barracuda;
-using static UnityEngine.GraphicsBuffer;
 
 public class ComunidadDetalleManager : MonoBehaviour
 {

@@ -6,6 +6,7 @@ using System;
 using System.IO;
 using System.Collections;
 using UnityEngine.Networking;
+using Newtonsoft.Json;
 
 public class UpdateData : MonoBehaviour
 {
@@ -81,6 +82,8 @@ public class UpdateData : MonoBehaviour
             
             ActualizarXPEnFirebase(userId);
         }
+
+        DescargarEncuestasAsignadas();
 
     }
 
@@ -164,7 +167,6 @@ private async void ActualizarEstadoEncuestaEnFirebase(string userId,string encue
         DocumentReference userRef = db.Collection("users").Document(userId);
         await userRef.UpdateAsync(encuesta, estadoencuesta);
     }
-
 
     private async void ActualizarXPEnFirebase(string userId)
     {
@@ -259,6 +261,96 @@ private async void ActualizarEstadoEncuestaEnFirebase(string userId,string encue
         }
         else
         {
+        }
+    }
+
+    private async void DescargarEncuestasAsignadas()
+    {
+        if (string.IsNullOrEmpty(userId))
+        {
+            Debug.LogError("UserID es nulo o vacío. No se puede continuar con la descarga de encuestas.");
+            return;
+        }
+
+        Debug.Log("🔄 Iniciando proceso de descarga de encuestas asignadas...");
+
+        // Usamos un HashSet para evitar descargar la misma encuesta varias veces
+        // si el usuario está en múltiples comunidades que asignan la misma encuesta.
+        HashSet<string> idsDeEncuestasParaDescargar = new HashSet<string>();
+
+        try
+        {
+            // 1. BUSCAR TODAS LAS COMUNIDADES A LAS QUE PERTENECE EL USUARIO
+            // Asumimos que las comunidades tienen un array llamado 'miembros' con los user IDs.
+            // Si la estructura es diferente (ej: un mapa de miembros), esta consulta debe cambiar.
+            Query communityQuery = db.Collection("comunidades").WhereArrayContains("miembros", userId);
+            QuerySnapshot communityQuerySnapshot = await communityQuery.GetSnapshotAsync();
+
+            Debug.Log($"🔎 Encontradas {communityQuerySnapshot.Count} comunidades para el usuario {userId}.");
+
+            // 2. RECORRER CADA COMUNIDAD Y EXTRAER LOS IDs DE LAS ENCUESTAS
+            foreach (DocumentSnapshot communityDoc in communityQuerySnapshot.Documents)
+            {
+                Dictionary<string, object> data = communityDoc.ToDictionary();
+                if (data.ContainsKey("encuestasAsignadas") && data["encuestasAsignadas"] is Dictionary<string, object> encuestasMap)
+                {
+                    foreach (var encuestaAsignada in encuestasMap)
+                    {
+                        // Si el valor es 'true', añadimos el ID (la clave) a nuestra lista
+                        if (encuestaAsignada.Value is bool esAsignada && esAsignada)
+                        {
+                            idsDeEncuestasParaDescargar.Add(encuestaAsignada.Key);
+                        }
+                    }
+                }
+            }
+
+            if (idsDeEncuestasParaDescargar.Count == 0)
+            {
+                Debug.Log("✅ No hay nuevas encuestas asignadas para descargar.");
+                // Opcional: Podrías querer limpiar la carpeta local aquí si no hay nada asignado.
+                return;
+            }
+
+            Debug.Log($"📥 Se descargarán {idsDeEncuestasParaDescargar.Count} encuestas únicas.");
+
+            // 3. PREPARAR LA CARPETA DE DESTINO
+            string destinationFolderPath = Path.Combine(Application.persistentDataPath, "EncuestasAsignadas");
+            if (!Directory.Exists(destinationFolderPath))
+            {
+                Directory.CreateDirectory(destinationFolderPath);
+                Debug.Log($"📁 Carpeta creada en: {destinationFolderPath}");
+            }
+
+            // 4. DESCARGAR CADA ENCUESTA Y GUARDARLA COMO JSON
+            foreach (string encuestaId in idsDeEncuestasParaDescargar)
+            {
+                DocumentReference encuestaRef = db.Collection("Encuestas").Document(encuestaId);
+                DocumentSnapshot encuestaSnapshot = await encuestaRef.GetSnapshotAsync();
+
+                if (encuestaSnapshot.Exists)
+                {
+                    // Convertir el documento a un diccionario y luego a un string JSON
+                    Dictionary<string, object> encuestaData = encuestaSnapshot.ToDictionary();
+                    string jsonContent = JsonConvert.SerializeObject(encuestaData, Formatting.Indented);
+
+                    // Guardar el archivo
+                    string filePath = Path.Combine(destinationFolderPath, $"{encuestaId}.json");
+                    await File.WriteAllTextAsync(filePath, jsonContent);
+
+                    Debug.Log($"✅ Encuesta '{encuestaId}.json' guardada correctamente.");
+                }
+                else
+                {
+                    Debug.LogWarning($"⚠️ La encuesta con ID '{encuestaId}' fue asignada pero no se encontró en la colección 'Encuestas'.");
+                }
+            }
+
+            Debug.Log("🎉 Proceso de descarga de encuestas finalizado.");
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"❌ Ocurrió un error catastrófico durante la descarga de encuestas: {e.Message}\n{e.StackTrace}");
         }
     }
 }
