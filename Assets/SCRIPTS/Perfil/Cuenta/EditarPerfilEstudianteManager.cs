@@ -86,16 +86,17 @@ public class EditarPerfilEstudianteManager : MonoBehaviour
         DocumentReference userRef = db.Collection("users").Document(userId);
         DocumentSnapshot snapshot = await userRef.GetSnapshotAsync();
 
+
         if (snapshot.Exists)
         {
+            string username = snapshot.GetValue<string>("DisplayName");
+            usernameInput.text = username; 
             Dictionary<string, object> datos = snapshot.ToDictionary();
-
-            bool tieneUsername = datos.ContainsKey("DisplayName");
             bool tieneEdad = datos.ContainsKey("Edad");
             bool tieneDepartamento = datos.ContainsKey("Departamento");
             bool tieneCiudad = datos.ContainsKey("Ciudad");
 
-            if (tieneUsername && tieneEdad && tieneCiudad && tieneDepartamento)
+            if (tieneEdad && tieneCiudad && tieneDepartamento)
             {
                 GetuserData();
             }
@@ -244,6 +245,7 @@ public class EditarPerfilEstudianteManager : MonoBehaviour
 
     private void CargarTotalementeDropDowns()
     {
+       
         LlenarCiudadesPorDepartamento();
         LlenarDropdowns();
         departamentoDropdown.onValueChanged.AddListener(delegate { ActualizarCiudades(); });

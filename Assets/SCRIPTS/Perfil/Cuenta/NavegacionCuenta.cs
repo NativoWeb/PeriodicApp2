@@ -10,9 +10,15 @@ public class NavegacionCuenta : MonoBehaviour
     [SerializeField] public GameObject panelPoliticas;
     [SerializeField] public GameObject panelDatosPersonales;
     [SerializeField] public GameObject panelCerrarSesion;
-    
-    
-
+    private void Start()
+    {
+        // Verificar si tiene que llenar datos por primera vez 
+        if(PlayerPrefs.GetInt("llenardatos", 1) == 1)
+        {
+            verDatosPersonales();
+            PlayerPrefs.SetInt("llenardatos", 0); // Limpiamos el player
+        }
+    }
     public void verMenuCuenta()
     {
         panelMenuCuenta.SetActive(true);

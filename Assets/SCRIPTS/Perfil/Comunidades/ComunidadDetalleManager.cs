@@ -37,6 +37,13 @@ public class ComunidadDetalleManager : MonoBehaviour
     public GameObject prefabSolicitud;
     public Button btnVerSolicitudes;
 
+    [Header("Panel Detalle Encuestas")]
+    public GameObject panelEncuestas;
+    public GameObject panelSeñalarEncuestas;
+    public Transform contenedorEncuestas;
+    public GameObject prefabEncuesta;
+    public Button btnVerEncuesta;
+
     [Header("Confirmar Abandonar Comunidad")]
     public GameObject panelConfirmacionAbandonar;
     public Button btnAbandonarComunidad;
@@ -119,7 +126,7 @@ public class ComunidadDetalleManager : MonoBehaviour
         PanelDetalleGrupo.SetActive(true);
         ConfigurarBotones(dataComunidad);
         MostrarMiembros();
-        ActualizarEstadoBotones(true, false);
+        ActualizarEstadoBotones(true, false, false);
 
         if (btnVerMiembros != null)
         {
@@ -194,6 +201,7 @@ public class ComunidadDetalleManager : MonoBehaviour
     // ----------------------------------NOTIFICACIONES DE SOLICITUDES A COMUNIDAD-----------------------------------
     private void ActualizarInterfazConDatos(Dictionary<string, object> dataComunidad)
     {
+
         string nombre = dataComunidad.GetValueOrDefault("nombre", "Sin nombre").ToString();
         string descripcion = dataComunidad.GetValueOrDefault("descripcion", "Sin descripción").ToString();
         string creador = dataComunidad.GetValueOrDefault("creadorUsername", "Sin creador").ToString();
@@ -236,6 +244,8 @@ public class ComunidadDetalleManager : MonoBehaviour
 
         });
 
+        
+
         // Obtener cantidad de miembros
         int cantidadMiembros = 0;
         if (dataComunidad.TryGetValue("miembros", out object miembrosObj) && miembrosObj is List<object> miembros)
@@ -257,10 +267,11 @@ public class ComunidadDetalleManager : MonoBehaviour
         string tipocomunidad = dataComunidad.GetValueOrDefault("tipo", "publica").ToString().ToLower();
 
         btnVerMiembros.onClick.RemoveAllListeners();
-        btnVerMiembros.onClick.AddListener(() => {
+        btnVerMiembros.onClick.AddListener(() =>
+        {
             LimpiarYCerrarPaneles();
             MostrarMiembros();
-            ActualizarEstadoBotones(true, false);
+            ActualizarEstadoBotones(true, false, false);
         });
 
         if (btnVerSolicitudes != null)
@@ -276,141 +287,167 @@ public class ComunidadDetalleManager : MonoBehaviour
             if (esCreador)
             {
                 btnVerSolicitudes.onClick.RemoveAllListeners();
-                btnVerSolicitudes.onClick.AddListener(() => {
+                btnVerSolicitudes.onClick.AddListener(() =>
+                {
                     LimpiarYCerrarPaneles();
                     MostrarSolicitudes(dataComunidad);
-                    ActualizarEstadoBotones(false, true);
+                    ActualizarEstadoBotones(false, true, false);
                 });
             }
         }
-
-
-        if (btnAbandonarComunidad != null)
+        if (btnVerEncuesta != null)
         {
-            btnAbandonarComunidad.onClick.RemoveAllListeners();
-            btnAbandonarComunidad.onClick.AddListener(() => MostrarConfirmacionAbandonar(dataComunidad));
-            btnAbandonarComunidad.gameObject.SetActive(usuarioActualId != creadorId);
-          
-        }
-        // acá ponemos el activar el btn si es creador para que elimine la comunidad y mostrar el panel de confirmación y hacer la función para eliminar la comunidad ----------------------------------------------------------
-        if (BtnEliminarComunidad != null)
-        {
-            BtnEliminarComunidad.onClick.RemoveAllListeners();
-            BtnEliminarComunidad.onClick.AddListener(() => MostrarConfirmacionEliminar(dataComunidad));
-            BtnEliminarComunidad.gameObject.SetActive(usuarioActualId == creadorId);
-           
-        }
-    }
+            // acá tengo que verificar si es profesor-------------------------
+            //    //if(es profesor ){
+            //    btnVerEncuesta.gameObject.SetActive(false);
+            //}
 
-    void ActualizarEstadoBotones(bool miembrosSeleccionado, bool solicitudesSeleccionado)
-    {
-        Image imgBtnMiembros = btnVerMiembros.GetComponent<Image>();
-        Image imgBtnSolicitudes = btnVerSolicitudes ? btnVerSolicitudes.GetComponent<Image>() : null;
-
-        Color colorSeleccionado = new Color(55, 189, 247, 255);
-        Color colorNormal = Color.white;
-
-        if (imgBtnMiembros != null)
-        {
-            imgBtnMiembros.color = miembrosSeleccionado ? colorSeleccionado : colorNormal;
-        }
-
-        if (imgBtnSolicitudes != null)
-        {
-            imgBtnSolicitudes.color = solicitudesSeleccionado ? colorSeleccionado : colorNormal;
-        }
-
-        btnVerMiembros.interactable = !miembrosSeleccionado;
-        if (btnVerSolicitudes) btnVerSolicitudes.interactable = !solicitudesSeleccionado;
-    }
-
-    void MostrarConfirmacionAbandonar(Dictionary<string, object> dataComunidad)
-    {
-        if (panelConfirmacionAbandonar == null) return;
-
-        string nombreComunidad = dataComunidad.GetValueOrDefault("nombre", "esta comunidad").ToString();
-        textoConfirmacionAbandonar.text = $"¿Estás seguro que deseas abandonar {nombreComunidad}?";
-        panelConfirmacionAbandonar.SetActive(true);
-        EventSystem.current.SetSelectedGameObject(btnCancelarAbandonar.gameObject);
-    }
-    void MostrarConfirmacionEliminar(Dictionary<string, object> dataComunidad)
-    {
-        if (panelConfirmacionAbandonar == null) return;
-
-        string nombreComunidad = dataComunidad.GetValueOrDefault("nombre", "esta comunidad").ToString();
-        txtConfirmarEliminar.text = $"¿Estás seguro que deseas Eliminar {nombreComunidad}?";
-        panelConfirmarEliminarComunidad.SetActive(true);
-        EventSystem.current.SetSelectedGameObject(btnCancelarEliminar.gameObject);
-    }
-
-    void ConfirmarAbandonarComunidad()
-    {
-        bool hayConexion = Application.internetReachability != NetworkReachability.NotReachable;
-        if (hayConexion)
-        {
-
-
-            if (string.IsNullOrEmpty(comunidadActualId) || string.IsNullOrEmpty(usuarioActualId))
+            btnVerEncuesta.onClick.RemoveAllListeners();
+            btnVerEncuesta.onClick.AddListener(() =>
             {
-                Debug.LogError("Falta información para abandonar la comunidad");
-                return;
-            }
-
-            panelConfirmacionAbandonar.SetActive(false);
-            DocumentReference comunidadRef = db.Collection("comunidades").Document(comunidadActualId);
-
-            comunidadRef.UpdateAsync("miembros", FieldValue.ArrayRemove(usuarioActualId))
-                .ContinueWithOnMainThread(task =>
-                {
-                    if (task.IsFaulted || task.IsCanceled)
-                    {
-                        Debug.LogError("Error al abandonar comunidad: " + task.Exception);
-                        return;
-                    }
-
-                    SceneManager.LoadScene("Comunidad");
-                });
+                LimpiarYCerrarPaneles();
+                MostrarEncuestas(dataComunidad);
+                ActualizarEstadoBotones(false, false, true);
+            });
         }
-        else
-        {
-            textoConfirmacionAbandonar.text = ("SIN CONEXIÓN A INTERNET, NO ES POSIBLE REALIZAR ESTA OPERACIÓN EN ESTE MOMENTO, INTENTE MÁS TARDE");
-            Invoke("OcultarPanelConfirmarAbandonarComunidad", 4f);
-        }
-    }
-    void ConfirmarEliminarComunidad()
-    {
-        bool hayConexion = Application.internetReachability != NetworkReachability.NotReachable;
-        if (hayConexion)
-        {
 
-
-            if (string.IsNullOrEmpty(comunidadActualId) || string.IsNullOrEmpty(usuarioActualId))
+            if (btnAbandonarComunidad != null)
             {
-                Debug.LogError("Falta información para eliminar la comunidad");
-                return;
+                btnAbandonarComunidad.onClick.RemoveAllListeners();
+                btnAbandonarComunidad.onClick.AddListener(() => MostrarConfirmacionAbandonar(dataComunidad));
+                btnAbandonarComunidad.gameObject.SetActive(usuarioActualId != creadorId);
+
             }
+            // acá ponemos el activar el btn si es creador para que elimine la comunidad y mostrar el panel de confirmación y hacer la función para eliminar la comunidad ----------------------------------------------------------
+            if (BtnEliminarComunidad != null)
+            {
+                BtnEliminarComunidad.onClick.RemoveAllListeners();
+                BtnEliminarComunidad.onClick.AddListener(() => MostrarConfirmacionEliminar(dataComunidad));
+                BtnEliminarComunidad.gameObject.SetActive(usuarioActualId == creadorId);
 
-            panelConfirmacionAbandonar.SetActive(false);
-            DocumentReference comunidadRef = db.Collection("comunidades").Document(comunidadActualId);
-
-            comunidadRef.DeleteAsync()
-                .ContinueWithOnMainThread(task =>
-                {
-                    if (task.IsFaulted || task.IsCanceled)
-                    {
-                        Debug.LogError("Error al eliminar comunidad: " + task.Exception);
-                        return;
-                    }
-
-                    SceneManager.LoadScene("Comunidad");
-                });
-        }
-        else
-        {
-            textoConfirmacionAbandonar.text = ("SIN CONEXIÓN A INTERNET, NO ES POSIBLE REALIZAR ESTA OPERACIÓN EN ESTE MOMENTO, INTENTE MÁS TARDE");
-            Invoke("OcultarPanelConfirmarAbandonarComunidad", 4f);
-        }
+            }
     }
+    
+        void ActualizarEstadoBotones(bool miembrosSeleccionado, bool solicitudesSeleccionado, bool encuestasSeleccionado)
+        {
+            Image imgBtnMiembros = btnVerMiembros.GetComponent<Image>();
+            Image imgBtnSolicitudes = btnVerSolicitudes ? btnVerSolicitudes.GetComponent<Image>() : null;
+            Image imgBtnEncuestas = btnVerEncuesta ? btnVerEncuesta.GetComponent<Image>() : null;
+
+            Color colorSeleccionado = new Color(55, 189, 247, 255); // Usamos Color32 para RGBA 0-255
+            Color colorNormal = Color.white;
+
+            // Botón Miembros
+            if (imgBtnMiembros != null)
+            {
+                imgBtnMiembros.color = miembrosSeleccionado ? colorSeleccionado : colorNormal;
+            }
+            btnVerMiembros.interactable = !miembrosSeleccionado;
+
+            // Botón Solicitudes
+            if (imgBtnSolicitudes != null)
+            {
+                imgBtnSolicitudes.color = solicitudesSeleccionado ? colorSeleccionado : colorNormal;
+            }
+            if (btnVerSolicitudes) btnVerSolicitudes.interactable = !solicitudesSeleccionado;
+
+            // Botón Encuestas
+            if (imgBtnEncuestas != null)
+            {
+                imgBtnEncuestas.color = encuestasSeleccionado ? colorSeleccionado : colorNormal;
+            }
+            if (btnVerEncuesta) btnVerEncuesta.interactable = !encuestasSeleccionado;
+        }
+
+
+        void MostrarConfirmacionAbandonar(Dictionary<string, object> dataComunidad)
+        {
+            if (panelConfirmacionAbandonar == null) return;
+
+            string nombreComunidad = dataComunidad.GetValueOrDefault("nombre", "esta comunidad").ToString();
+            textoConfirmacionAbandonar.text = $"¿Estás seguro que deseas abandonar {nombreComunidad}?";
+            panelConfirmacionAbandonar.SetActive(true);
+            EventSystem.current.SetSelectedGameObject(btnCancelarAbandonar.gameObject);
+        }
+        void MostrarConfirmacionEliminar(Dictionary<string, object> dataComunidad)
+        {
+            if (panelConfirmacionAbandonar == null) return;
+
+            string nombreComunidad = dataComunidad.GetValueOrDefault("nombre", "esta comunidad").ToString();
+            txtConfirmarEliminar.text = $"¿Estás seguro que deseas Eliminar {nombreComunidad}?";
+            panelConfirmarEliminarComunidad.SetActive(true);
+            EventSystem.current.SetSelectedGameObject(btnCancelarEliminar.gameObject);
+        }
+
+        void ConfirmarAbandonarComunidad()
+        {
+            bool hayConexion = Application.internetReachability != NetworkReachability.NotReachable;
+            if (hayConexion)
+            {
+
+
+                if (string.IsNullOrEmpty(comunidadActualId) || string.IsNullOrEmpty(usuarioActualId))
+                {
+                    Debug.LogError("Falta información para abandonar la comunidad");
+                    return;
+                }
+
+                panelConfirmacionAbandonar.SetActive(false);
+                DocumentReference comunidadRef = db.Collection("comunidades").Document(comunidadActualId);
+
+                comunidadRef.UpdateAsync("miembros", FieldValue.ArrayRemove(usuarioActualId))
+                    .ContinueWithOnMainThread(task =>
+                    {
+                        if (task.IsFaulted || task.IsCanceled)
+                        {
+                            Debug.LogError("Error al abandonar comunidad: " + task.Exception);
+                            return;
+                        }
+
+                        SceneManager.LoadScene("Comunidad");
+                    });
+            }
+            else
+            {
+                textoConfirmacionAbandonar.text = ("SIN CONEXIÓN A INTERNET, NO ES POSIBLE REALIZAR ESTA OPERACIÓN EN ESTE MOMENTO, INTENTE MÁS TARDE");
+                Invoke("OcultarPanelConfirmarAbandonarComunidad", 4f);
+            }
+        }
+
+        void ConfirmarEliminarComunidad()
+        {
+            bool hayConexion = Application.internetReachability != NetworkReachability.NotReachable;
+            if (hayConexion)
+            {
+
+
+                if (string.IsNullOrEmpty(comunidadActualId) || string.IsNullOrEmpty(usuarioActualId))
+                {
+                    Debug.LogError("Falta información para eliminar la comunidad");
+                    return;
+                }
+
+                panelConfirmacionAbandonar.SetActive(false);
+                DocumentReference comunidadRef = db.Collection("comunidades").Document(comunidadActualId);
+
+                comunidadRef.DeleteAsync()
+                    .ContinueWithOnMainThread(task =>
+                    {
+                        if (task.IsFaulted || task.IsCanceled)
+                        {
+                            Debug.LogError("Error al eliminar comunidad: " + task.Exception);
+                            return;
+                        }
+
+                        SceneManager.LoadScene("Comunidad");
+                    });
+            }
+            else
+            {
+                textoConfirmacionAbandonar.text = ("SIN CONEXIÓN A INTERNET, NO ES POSIBLE REALIZAR ESTA OPERACIÓN EN ESTE MOMENTO, INTENTE MÁS TARDE");
+                Invoke("OcultarPanelConfirmarAbandonarComunidad", 4f);
+            }
+        }
 
 
     public void OcultarPanelConfirmarAbandonarComunidad()
@@ -422,37 +459,7 @@ public class ComunidadDetalleManager : MonoBehaviour
         }
     }
 
-    void MostrarMiembros(Dictionary<string, object> dataComunidad = null)
-    {
-        panelSeñalarMiembros.SetActive(true);
-        if( panelSeñalarSolicitudes != null)
-        {
-            panelSeñalarSolicitudes.SetActive(false);
-        }
-
-        var datosAMostrar = dataComunidad ?? datosComunidadActual;
-        if (datosAMostrar == null) return;
-
-        // Limpiar el contenedor
-        foreach (Transform child in contenedorMiembros)
-        {
-            Destroy(child.gameObject);
-        }
-
-        if (panelMiembros == null || contenedorMiembros == null || prefabMiembro == null) return;
-
-        if (!datosAMostrar.TryGetValue("miembros", out object miembrosObj) ||
-            !(miembrosObj is List<object> miembros) ||
-            miembros.Count == 0)
-        {
-            GameObject emptyItem = Instantiate(prefabMiembro, contenedorMiembros);
-            emptyItem.GetComponentInChildren<TMP_Text>().text = "No hay miembros en esta comunidad";
-            panelMiembros.SetActive(true);
-            return;
-        }
-
-        StartCoroutine(CargarMiembrosConInfo((List<object>)miembrosObj));
-    }
+   
 
     IEnumerator CargarMiembrosConInfo(List<object> miembros)
     {
@@ -539,13 +546,49 @@ public class ComunidadDetalleManager : MonoBehaviour
         panelMiembros.SetActive(true);
     }
 
+    // -- Lógica para mostrar ya sea miembros, solictudes, o encuestas
+    void MostrarMiembros(Dictionary<string, object> dataComunidad = null)
+    {
+        panelSeñalarMiembros.SetActive(true);
+        if (panelSeñalarSolicitudes != null)
+        {
+            panelSeñalarSolicitudes.SetActive(false);
+        }
+        if (panelSeñalarEncuestas != null)
+        {
+            panelSeñalarEncuestas.SetActive(false);
+        }
+
+        var datosAMostrar = dataComunidad ?? datosComunidadActual;
+        if (datosAMostrar == null) return;
+
+        // Limpiar el contenedor
+        foreach (Transform child in contenedorMiembros)
+        {
+            Destroy(child.gameObject);
+        }
+
+        if (panelMiembros == null || contenedorMiembros == null || prefabMiembro == null) return;
+
+        if (!datosAMostrar.TryGetValue("miembros", out object miembrosObj) ||
+            !(miembrosObj is List<object> miembros) ||
+            miembros.Count == 0)
+        {
+            GameObject emptyItem = Instantiate(prefabMiembro, contenedorMiembros);
+            emptyItem.GetComponentInChildren<TMP_Text>().text = "No hay miembros en esta comunidad";
+            panelMiembros.SetActive(true);
+            return;
+        }
+
+        StartCoroutine(CargarMiembrosConInfo((List<object>)miembrosObj));
+    }
+    
     void MostrarSolicitudes(Dictionary<string, object> dataComunidad)
     {
         panelSeñalarSolicitudes.SetActive(true);
-        if (panelSeñalarMiembros != null)
-        {
-            panelSeñalarMiembros.SetActive(false);
-        }
+        if (panelSeñalarMiembros != null) panelSeñalarMiembros.SetActive(false);
+        if (panelSeñalarEncuestas != null) panelSeñalarEncuestas.SetActive(false);
+        
 
         foreach (Transform child in contenedorSolicitudes)
         {
@@ -598,6 +641,85 @@ public class ComunidadDetalleManager : MonoBehaviour
 
               panelSolicitudes.SetActive(true);
           });
+    }
+    void MostrarEncuestas(Dictionary<string, object> dataComunidad)
+    {
+        panelSeñalarEncuestas.SetActive(true);
+        if (panelSeñalarMiembros != null) panelSeñalarMiembros.SetActive(false);
+        if (panelSeñalarSolicitudes != null) panelSeñalarSolicitudes.SetActive(false);
+
+        // Limpia el scroll antes de cargar
+        foreach (Transform child in contenedorEncuestas)
+        {
+            Destroy(child.gameObject);
+        }
+
+        // Verifica si hay encuestas asignadas
+        if (dataComunidad.TryGetValue("encuestasAsignadas", out object encuestasObj))
+        {
+            if (encuestasObj is Dictionary<string, object> encuestasDic)
+            {
+                foreach (var par in encuestasDic)
+                {
+                    string encuestaId = par.Key;
+                    bool asignada = Convert.ToBoolean(par.Value);
+                    if (asignada)
+                    {
+                        CargarEncuesta(encuestaId); // carga desde Firestore
+                    }
+                }
+            }
+            else
+            {
+                Debug.LogWarning("encuestasAsignadas no es un diccionario válido.");
+            }
+        }
+        else
+        {
+            Debug.Log("No hay encuestasAsignadas en este documento.");
+        }
+
+        panelEncuestas.SetActive(true); // activa el panel al final
+    }
+
+    public async void CargarEncuesta(string encuestaId)
+    {
+        if (string.IsNullOrEmpty(encuestaId))
+            return;
+
+        DocumentReference docRef = db.Collection("Encuestas").Document(encuestaId);
+        DocumentSnapshot snapshot = await docRef.GetSnapshotAsync();
+
+        if (snapshot.Exists)
+        {
+            string tituloEncuesta = snapshot.GetValue<string>("titulo");
+
+            // Instancia el prefab
+            GameObject nuevoItem = Instantiate(prefabEncuesta, contenedorEncuestas);
+
+            // Asigna el texto
+            TextMeshProUGUI textoTitulo = nuevoItem.GetComponentInChildren<TextMeshProUGUI>();
+            if (textoTitulo != null)
+            {
+                textoTitulo.text = tituloEncuesta;
+            }
+
+            // Si el prefab tiene botón y quieres que haga algo:
+            Button boton = nuevoItem.GetComponent<Button>();
+            if (boton != null)
+            {
+                boton.onClick.AddListener(() =>
+                {
+                    Debug.Log($"➡️ Encuesta {tituloEncuesta} seleccionada con ID {encuestaId}");
+                    // Aquí abre el otro panel donde se va a responder la encuesta y crea otro scripff y lo instancia y le manda un diccionario con los datos de la encuesta
+                    // aca crea el diccionario y lo llena y lo manda al controller de " presentar encuesta" o como sea
+                });
+            }
+        }
+        else
+        {
+            Debug.LogWarning($"⚠️ Encuesta con ID {encuestaId} no encontrada.");
+        }
     }
 
     void CrearItemSolicitud(Dictionary<string, object> dataSolicitud, string comunidadId, string solicitudId)
@@ -773,10 +895,17 @@ public class ComunidadDetalleManager : MonoBehaviour
         }
         panelSolicitudes.SetActive(false);
 
+        //foreach (Transform child in contenedorEncuestas) // esto para cuando agg el prefab y todo lo necesario 
+        //{
+        //    Destroy(child.gameObject);
+        //}
+        panelEncuestas.SetActive(false);
+
         if (btnVerMiembros != null && btnVerSolicitudes != null)
         {
-            ActualizarEstadoBotones(false, false);
+            ActualizarEstadoBotones(false, false, false);
         }
+
     }
 
     GameObject InstantiateErrorText(string message)
