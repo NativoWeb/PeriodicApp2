@@ -8831,9 +8831,11 @@ MonoBehaviour:
   panelDatosPersonales: {fileID: 1295005566}
   panelCerrarSesion: {fileID: 423560877}
   PanelIdiomas: {fileID: 394897480}
+  panelSuperior: {fileID: 2073610205}
   btnIdiomas: {fileID: 1987226248}
   "btnEspa\xF1ol": {fileID: 925825593}
   btnIngles: {fileID: 566731805}
+  btnDatos: {fileID: 132330109}
 --- !u!1 &1700022849
 GameObject:
   m_ObjectHideFlags: 0
@@ -9452,8 +9454,8 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 609386500}
         m_TargetAssemblyTypeName: cambiarescena, Assembly-CSharp
-        m_MethodName: siguienteEscena
-        m_Mode: 5
+        m_MethodName: volverEntrePerfiles
+        m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
           m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
@@ -10659,7 +10661,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0.2809, y: 471}
+  m_AnchoredPosition: {x: 0.2809, y: 495}
   m_SizeDelta: {x: 1181.4601, y: 99.4197}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1987226248
@@ -11513,7 +11515,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 10907, guid: 0000000000000000f000000000000000, type: 0}
+  m_Sprite: {fileID: 0}
   m_Type: 1
   m_PreserveAspect: 0
   m_FillCenter: 1

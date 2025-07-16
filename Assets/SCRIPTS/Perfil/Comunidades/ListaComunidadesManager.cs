@@ -33,14 +33,20 @@ public class ListaComunidadesManager : MonoBehaviour
     private FirebaseFirestore db;
     private FirebaseAuth auth;
     private List<DocumentSnapshot> todasComunidades = new List<DocumentSnapshot>();
-    private Dictionary<string, GameObject> tarjetasPorId = new Dictionary<string, GameObject>(); // Diccionario para rastrear tarjetas por ID
+    private Dictionary<string, GameObject> tarjetasPorId = new Dictionary<string, GameObject>();
+
+    // MODIFICADO: Variable para el idioma
+    private string appIdioma;
 
     void Start()
     {
         db = FirebaseFirestore.DefaultInstance;
         auth = FirebaseAuth.DefaultInstance;
 
-        // Inicializar panel de estado
+        // MODIFICADO: Obtener idioma y configurar textos
+        appIdioma = PlayerPrefs.GetString("appIdioma", "español");
+        InicializarTextosUI();
+
         if (panelEstado != null) panelEstado.SetActive(false);
 
         if (auth.CurrentUser != null)
@@ -49,27 +55,38 @@ public class ListaComunidadesManager : MonoBehaviour
             MostrarMensajeEstado(mensajeCargando, true);
             CargarComunidades();
 
-            // Podemos mantener el botón de búsqueda como alternativa
             if (botonBuscar != null)
             {
                 botonBuscar.onClick.AddListener(BuscarComunidades);
             }
 
-            // Configurar búsqueda en tiempo real mientras se escribe
             if (inputBusqueda != null)
             {
-                // Mantener onSubmit para compatibilidad
                 inputBusqueda.onSubmit.AddListener(delegate { BuscarComunidades(); });
-
-                // Agregar evento que se dispara con cada cambio del texto
                 inputBusqueda.onValueChanged.AddListener(delegate { BuscarComunidades(); });
             }
         }
         else
         {
-            MostrarMensajeEstado("No hay usuario autenticado", true);
-            Debug.LogWarning("No hay usuario autenticado");
+            // MODIFICADO: Texto de error traducido
+            string errorAuth = (appIdioma == "ingles") ? "No authenticated user" : "No hay usuario autenticado";
+            MostrarMensajeEstado(errorAuth, true);
+            Debug.LogWarning(errorAuth);
         }
+    }
+
+    // MODIFICADO: Nuevo método para centralizar la traducción de textos de la UI
+    void InicializarTextosUI()
+    {
+        if (appIdioma == "ingles")
+        {
+            mensajeCargando = "Loading communities...";
+            mensajeNoResultados = "No matches found";
+            mensajeError = "Error loading data";
+            mensajeListo = "{0} communities found";
+            formatoMiembros = "{0} Members";
+        }
+        // Si no es "en", se mantienen los valores por defecto en español del inspector.
     }
 
     void MostrarMensajeEstado(string mensaje, bool mostrar = true)
@@ -84,8 +101,7 @@ public class ListaComunidadesManager : MonoBehaviour
             panelEstado.SetActive(mostrar);
         }
 
-        // Oculta automáticamente mensajes de éxito después de 3 segundos
-        if (mostrar && mensaje == string.Format(mensajeListo, todasComunidades.Count))
+        if (mostrar && (mensaje == string.Format(mensajeListo, todasComunidades.Count) || mensaje.Contains("éxito") || mensaje.Contains("success")))
         {
             Invoke("OcultarPanelEstado", 3f);
         }
@@ -99,10 +115,8 @@ public class ListaComunidadesManager : MonoBehaviour
         }
     }
 
-    // Método simplificado para cargar las comunidades una sola vez
     public void CargarComunidades()
     {
-        // Limpiar la UI
         foreach (Transform child in contenedor)
         {
             Destroy(child.gameObject);
@@ -110,10 +124,8 @@ public class ListaComunidadesManager : MonoBehaviour
         tarjetasPorId.Clear();
         todasComunidades.Clear();
 
-        // Mostrar mensaje de carga
         MostrarMensajeEstado(mensajeCargando, true);
 
-        // Realizar consulta única a Firestore
         Query query = db.Collection("comunidades");
 
         query.GetSnapshotAsync().ContinueWithOnMainThread(task =>
@@ -125,34 +137,30 @@ public class ListaComunidadesManager : MonoBehaviour
                 return;
             }
 
-            // Almacenar los datos
             foreach (DocumentSnapshot doc in task.Result.Documents)
             {
                 todasComunidades.Add(doc);
                 CrearTarjetaComunidad(doc);
             }
 
-            // Mostrar mensaje de éxito
             MostrarMensajeEstado(string.Format(mensajeListo, todasComunidades.Count), true);
         });
     }
 
-    // Variables para optimizar la búsqueda en tiempo real
     private string ultimaBusqueda = "";
     private float tiempoEsperaFiltrado = 0.2f;
     private float ultimoTiempoFiltrado = 0;
 
-    // Método optimizado para búsqueda en tiempo real
     void BuscarComunidades()
     {
-        // Validar que haya comunidades cargadas
         if (todasComunidades.Count == 0)
         {
-            MostrarMensajeEstado("No hay comunidades cargadas", true);
+            // MODIFICADO: Texto traducido
+            string noComunidadesMsg = (appIdioma == "ingles") ? "No communities loaded yet" : "No hay comunidades cargadas";
+            MostrarMensajeEstado(noComunidadesMsg, true);
             return;
         }
 
-        // Evitar filtrados excesivos cuando se escribe rápido
         if (Time.time - ultimoTiempoFiltrado < tiempoEsperaFiltrado)
         {
             CancelInvoke("EjecutarBusqueda");
@@ -164,27 +172,19 @@ public class ListaComunidadesManager : MonoBehaviour
         EjecutarBusqueda();
     }
 
-    // Ejecuta la búsqueda efectiva
     void EjecutarBusqueda()
     {
-        // Obtener el término de búsqueda
         string terminoBusqueda = inputBusqueda?.text != null ? NormalizarTexto(inputBusqueda.text.Trim()) : "";
 
-        // Si el término de búsqueda no ha cambiado, no hacer nada
-        if (terminoBusqueda == ultimaBusqueda)
-        {
-            return;
-        }
+        if (terminoBusqueda == ultimaBusqueda) return;
 
         ultimaBusqueda = terminoBusqueda;
 
-        // Ocultar todas las tarjetas primero
         foreach (var tarjeta in tarjetasPorId.Values)
         {
             tarjeta.SetActive(false);
         }
 
-        // Si el campo está vacío, mostrar todas
         if (string.IsNullOrWhiteSpace(terminoBusqueda))
         {
             foreach (var tarjeta in tarjetasPorId.Values)
@@ -195,25 +195,17 @@ public class ListaComunidadesManager : MonoBehaviour
             return;
         }
 
-        // Buscar por coincidencia de texto
         int resultadosEncontrados = 0;
-
         foreach (DocumentSnapshot comunidad in todasComunidades)
         {
-            // Verificar que el documento existe y tiene campo nombre
-            if (!comunidad.Exists || !comunidad.ContainsField("nombre"))
-            {
-                continue;
-            }
+            if (!comunidad.Exists || !comunidad.ContainsField("nombre")) continue;
 
             string nombre = NormalizarTexto(comunidad.GetValue<string>("nombre"));
             string descripcion = comunidad.ContainsField("descripcion") ?
                 NormalizarTexto(comunidad.GetValue<string>("descripcion")) : "";
 
-            // Buscar por nombre o descripción
             if (nombre.Contains(terminoBusqueda) || descripcion.Contains(terminoBusqueda))
             {
-                // Mostrar la tarjeta si existe
                 if (tarjetasPorId.TryGetValue(comunidad.Id, out GameObject tarjeta))
                 {
                     tarjeta.SetActive(true);
@@ -222,23 +214,19 @@ public class ListaComunidadesManager : MonoBehaviour
             }
         }
 
-        // Mostrar mensaje de resultados
-        MostrarMensajeEstado(
-            resultadosEncontrados > 0
-                ? $"Se encontraron {resultadosEncontrados} comunidades"
-                : mensajeNoResultados,
-            true);
+        // MODIFICADO: Texto de resultados traducido
+        string msgResultados = (appIdioma == "ingles")
+            ? $"{resultadosEncontrados} communities found"
+            : $"Se encontraron {resultadosEncontrados} comunidades";
+
+        MostrarMensajeEstado(resultadosEncontrados > 0 ? msgResultados : mensajeNoResultados, true);
     }
 
-    // Método para normalizar texto (quitar acentos y convertir a minúsculas)
     string NormalizarTexto(string input)
     {
-        if (string.IsNullOrEmpty(input))
-            return input;
-
+        if (string.IsNullOrEmpty(input)) return input;
         var normalizedString = input.Normalize(NormalizationForm.FormD);
         var stringBuilder = new StringBuilder();
-
         foreach (char c in normalizedString)
         {
             var unicodeCategory = CharUnicodeInfo.GetUnicodeCategory(c);
@@ -247,71 +235,56 @@ public class ListaComunidadesManager : MonoBehaviour
                 stringBuilder.Append(c);
             }
         }
-
-        return stringBuilder.ToString()
-                           .Normalize(NormalizationForm.FormC)
-                           .ToLowerInvariant();
+        return stringBuilder.ToString().Normalize(NormalizationForm.FormC).ToLowerInvariant();
     }
 
     void CrearTarjetaComunidad(DocumentSnapshot snapshot)
     {
         Dictionary<string, object> dataComunidad = snapshot.ToDictionary();
-
         GameObject tarjeta = Instantiate(tarjetaPrefab, contenedor);
         tarjeta.name = snapshot.Id;
-
-        // Registrar la tarjeta en el diccionario
         tarjetasPorId[snapshot.Id] = tarjeta;
 
+        // Referencias a componentes de la tarjeta
         TMP_Text[] textos = tarjeta.GetComponentsInChildren<TMP_Text>();
         GameObject iconoPrivado = FindChildByName(tarjeta, "IconoPrivado");
         GameObject iconoPublico = FindChildByName(tarjeta, "IconoPublico");
         Image ImageComunidad = FindChildByName(tarjeta, "ImageComunidad")?.GetComponent<Image>();
+        Button botonSolicitar = FindChildByName(tarjeta, "BotonSolicitar")?.GetComponent<Button>();
+        TMP_Text textoBoton = botonSolicitar?.GetComponentInChildren<TMP_Text>();
 
-        string nombre = dataComunidad.GetValueOrDefault("nombre", "Sin nombre").ToString();
-        string descripcion = dataComunidad.GetValueOrDefault("descripcion", "Sin descripción").ToString();
+        // MODIFICADO: Textos por defecto traducidos
+        string nombre = dataComunidad.GetValueOrDefault("nombre", (appIdioma == "ingles") ? "No name" : "Sin nombre").ToString();
+        string descripcion = dataComunidad.GetValueOrDefault("descripcion", (appIdioma == "ingles") ? "No description" : "Sin descripción").ToString();
         string tipo = dataComunidad.GetValueOrDefault("tipo", "publica").ToString().ToLower();
         string idComunidad = snapshot.Id;
-        string ComunidadPath = dataComunidad.GetValueOrDefault("imagenRuta", "").ToString();// consigo la ruta de la imagen 
+        string ComunidadPath = dataComunidad.GetValueOrDefault("imagenRuta", "").ToString();
 
-        Sprite ComunidadSprite = Resources.Load<Sprite>(ComunidadPath) ?? Resources.Load<Sprite>("Comunidades/ImagenComunidades/default");// cargo la imagen desde resources
+        Sprite ComunidadSprite = Resources.Load<Sprite>(ComunidadPath) ?? Resources.Load<Sprite>("Comunidades/ImagenComunidades/default");
+        ImageComunidad.sprite = ComunidadSprite;
 
-        ImageComunidad.sprite = ComunidadSprite; // la pongo en la IU
-
-        string fechaFormateada = "Fecha desconocida";
-        if (dataComunidad.TryGetValue("fechaCreacion", out object fechaObj))
+        // MODIFICADO: Formato de fecha y texto por defecto traducidos
+        string fechaFormateada = (appIdioma == "ingles") ? "Unknown date" : "Fecha desconocida";
+        if (dataComunidad.TryGetValue("fechaCreacion", out object fechaObj) && fechaObj is Timestamp timestamp)
         {
-            if (fechaObj is Timestamp timestamp)
-                fechaFormateada = timestamp.ToDateTime().ToString("dd MMMM yyyy", new System.Globalization.CultureInfo("es-ES"));
-            else if (fechaObj is string fechaString)
-                fechaFormateada = fechaString;
+            CultureInfo culture = new CultureInfo(appIdioma == "ingles" ? "en-US" : "es-ES");
+            fechaFormateada = timestamp.ToDateTime().ToString("dd MMMM yyyy", culture);
         }
 
         int cantidadMiembros = 0;
-        List<object> miembros = new List<object>();
         if (dataComunidad.TryGetValue("miembros", out object miembrosObj) && miembrosObj is List<object> listaMiembros)
         {
-            miembros = listaMiembros;
-            cantidadMiembros = miembros.Count;
+            cantidadMiembros = listaMiembros.Count;
         }
 
         foreach (TMP_Text texto in textos)
         {
             switch (texto.gameObject.name)
             {
-                case "TextoNombre":
-                    texto.text = nombre;
-                    break;
-                case "TextoDescripcion":
-                    texto.text = descripcion;
-                    break;
-                case "TextoFecha":
-                    texto.text = fechaFormateada;
-                    break;
-                case "TextoMiembros":
-                    texto.text = string.Format(formatoMiembros, cantidadMiembros);
-                    break;
-                
+                case "TextoNombre": texto.text = nombre; break;
+                case "TextoDescripcion": texto.text = descripcion; break;
+                case "TextoFecha": texto.text = fechaFormateada; break;
+                case "TextoMiembros": texto.text = string.Format(formatoMiembros, cantidadMiembros); break;
             }
         }
 
@@ -321,37 +294,29 @@ public class ListaComunidadesManager : MonoBehaviour
             iconoPublico.SetActive(tipo != "privada");
         }
 
-        Button botonSolicitar = FindChildByName(tarjeta, "BotonSolicitar")?.GetComponent<Button>();
-        TMP_Text textoBoton = botonSolicitar?.GetComponentInChildren<TMP_Text>();
-
         if (botonSolicitar != null && auth.CurrentUser != null)
         {
             string uidUsuarioActual = auth.CurrentUser.UserId;
-            bool esMiembro = miembros.Contains(uidUsuarioActual);
+            bool esMiembro = (miembrosObj as List<object>)?.Contains(uidUsuarioActual) ?? false;
 
-            botonSolicitar.onClick.RemoveAllListeners(); // Limpiar listeners previos
+            botonSolicitar.onClick.RemoveAllListeners();
 
             if (esMiembro)
             {
-                // Configurar botón como "Miembro"
                 botonSolicitar.interactable = false;
-                if (textoBoton != null) textoBoton.text = "Miembro";
+                if (textoBoton != null) textoBoton.text = (appIdioma == "ingles") ? "Member" : "Miembro";
             }
             else if (tipo == "publica")
             {
-                // Lógica para comunidades públicas
                 botonSolicitar.interactable = true;
-                if (textoBoton != null) textoBoton.text = "Unirme";
-
+                if (textoBoton != null) textoBoton.text = (appIdioma == "ingles") ? "Join" : "Unirme";
                 botonSolicitar.onClick.AddListener(() => {
-                    botonSolicitar.interactable = false;
-                    if (textoBoton != null) textoBoton.text = "Uniendo...";
+                    if (textoBoton != null) textoBoton.text = (appIdioma == "ingles") ? "Joining..." : "Uniendo...";
                     UnirseAComunidadDirectamente(idComunidad, uidUsuarioActual, botonSolicitar, textoBoton);
                 });
             }
-            else
+            else // Comunidad privada
             {
-                // Buscar si ya envió solicitud
                 db.Collection("solicitudes_comunidad")
                     .WhereEqualTo("idUsuario", uidUsuarioActual)
                     .WhereEqualTo("idComunidad", idComunidad)
@@ -359,23 +324,20 @@ public class ListaComunidadesManager : MonoBehaviour
                     .GetSnapshotAsync()
                     .ContinueWithOnMainThread(task =>
                     {
-                        if (task.IsCompleted && task.Result.Count > 0)
+                        if (task.IsCompleted && !task.IsFaulted && task.Result.Count > 0)
                         {
-                            // Ya hay una solicitud enviada
                             botonSolicitar.interactable = false;
-                            if (textoBoton != null) textoBoton.text = "Solicitud enviada";
+                            if (textoBoton != null) textoBoton.text = (appIdioma == "ingles") ? "Request sent" : "Solicitud enviada";
                         }
                         else
                         {
-                            // No hay solicitud, permitir enviar
                             botonSolicitar.interactable = true;
-                            if (textoBoton != null) textoBoton.text = "Solicitar unirse";
-
+                            if (textoBoton != null) textoBoton.text = (appIdioma == "ingles") ? "Request to join" : "Solicitar unirse";
                             botonSolicitar.onClick.AddListener(() =>
                             {
                                 CrearSolicitudUnirse(nombre, idComunidad);
                                 botonSolicitar.interactable = false;
-                                if (textoBoton != null) textoBoton.text = "Esperando respuesta";
+                                if (textoBoton != null) textoBoton.text = (appIdioma == "ingles") ? "Waiting..." : "Esperando respuesta";
                             });
                         }
                     });
@@ -386,36 +348,29 @@ public class ListaComunidadesManager : MonoBehaviour
     void UnirseAComunidadDirectamente(string comunidadId, string usuarioId, Button boton, TMP_Text textoBoton)
     {
         DocumentReference comunidadRef = db.Collection("comunidades").Document(comunidadId);
-
-        // Usamos FieldValue.ArrayUnion para agregar el usuario sin duplicados
         comunidadRef.UpdateAsync("miembros", FieldValue.ArrayUnion(usuarioId))
             .ContinueWithOnMainThread(task =>
             {
                 if (task.IsCompleted && !task.IsFaulted)
                 {
-                    // Actualización UI inmediata
                     boton.interactable = false;
-                    if (textoBoton != null) textoBoton.text = "Miembro";
-
-                    MostrarMensajeEstado("¡Te has unido a la comunidad!", true);
-
-                    // Actualizar la lista local para reflejar el cambio
+                    if (textoBoton != null) textoBoton.text = (appIdioma == "ingles") ? "Member" : "Miembro";
+                    // MODIFICADO: Texto de éxito traducido
+                    MostrarMensajeEstado((appIdioma == "ingles") ? "You have joined the community!" : "¡Te has unido a la comunidad!", true);
+                    // Actualizar la lista local
                     comunidadRef.GetSnapshotAsync().ContinueWithOnMainThread(snapTask =>
                     {
                         if (snapTask.IsCompleted)
                         {
-                            // Actualizar la copia local
                             int index = todasComunidades.FindIndex(c => c.Id == comunidadId);
-                            if (index >= 0)
-                            {
-                                todasComunidades[index] = snapTask.Result;
-                            }
+                            if (index >= 0) todasComunidades[index] = snapTask.Result;
                         }
                     });
                 }
                 else
                 {
-                    MostrarMensajeEstado("Error al unirse", true);
+                    // MODIFICADO: Texto de error traducido
+                    MostrarMensajeEstado((appIdioma == "ingles") ? "Error joining" : "Error al unirse", true);
                     Debug.LogError("Error al unirse: " + task.Exception?.Message);
                 }
             });
@@ -425,12 +380,13 @@ public class ListaComunidadesManager : MonoBehaviour
     {
         if (auth.CurrentUser == null)
         {
-            MostrarMensajeEstado("Usuario no autenticado", true);
+            MostrarMensajeEstado((appIdioma == "ingles") ? "User not authenticated" : "Usuario no autenticado", true);
             return;
         }
 
         string usuarioId = auth.CurrentUser.UserId;
-        string usuarioNombre = auth.CurrentUser.DisplayName ?? "Anónimo";
+        // MODIFICADO: Texto por defecto traducido
+        string usuarioNombre = auth.CurrentUser.DisplayName ?? ((appIdioma == "ingles") ? "Anonymous" : "Anónimo");
 
         Dictionary<string, object> solicitud = new Dictionary<string, object>
         {
@@ -444,29 +400,27 @@ public class ListaComunidadesManager : MonoBehaviour
 
         db.Collection("solicitudes_comunidad").AddAsync(solicitud).ContinueWithOnMainThread(task =>
         {
-            if (task.IsCompleted && !task.IsFaulted && !task.IsCanceled)
+            if (task.IsCompleted && !task.IsFaulted)
             {
-                MostrarMensajeEstado("Solicitud enviada con éxito", true);
+                // MODIFICADO: Texto de éxito traducido
+                MostrarMensajeEstado((appIdioma == "ingles") ? "Request sent successfully" : "Solicitud enviada con éxito", true);
             }
             else
             {
-                MostrarMensajeEstado("Error al enviar la solicitud", true);
+                // MODIFICADO: Texto de error traducido
+                MostrarMensajeEstado((appIdioma == "ingles") ? "Error sending request" : "Error al enviar la solicitud", true);
                 Debug.LogError("Error al crear solicitud: " + task.Exception?.Message);
             }
         });
     }
 
-    // Método auxiliar para encontrar hijos por nombre
     GameObject FindChildByName(GameObject parent, string name)
     {
         foreach (Transform child in parent.transform)
         {
-            if (child.name == name)
-                return child.gameObject;
-
+            if (child.name == name) return child.gameObject;
             GameObject found = FindChildByName(child.gameObject, name);
-            if (found != null)
-                return found;
+            if (found != null) return found;
         }
         return null;
     }

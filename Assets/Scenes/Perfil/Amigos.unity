@@ -1005,13 +1005,13 @@ MonoBehaviour:
   botonBuscar: {fileID: 1830766619}
   messageText: {fileID: 1918200057}
   agregarAmigosButton: {fileID: 107563484}
-  liveSearchDelay: 0.3
-  m_AgregarAmigosUI: {fileID: 484528640}
-  m_SolicitudesUI: {fileID: 694660744}
   panelConfirmacionEliminar: {fileID: 1943160972}
   botonConfirmarEliminar: {fileID: 1472725873}
   botonCancelarEliminar: {fileID: 1595595087}
   textoConfirmacion: {fileID: 846994790}
+  m_AgregarAmigosUI: {fileID: 484528640}
+  m_SolicitudesUI: {fileID: 694660744}
+  liveSearchDelay: 0.3
 --- !u!1 &248540184
 GameObject:
   m_ObjectHideFlags: 0
@@ -1257,10 +1257,37 @@ MonoBehaviour:
   m_GameObject: {fileID: 408508041}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4cc2e8382e2a5014b8ad7eb45eb2be69, type: 3}
+  m_Script: {fileID: 11500000, guid: 56eb0353ae6e5124bb35b17aff880f16, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  localizationKey: amigos_canvas_panelamigos_panelbuscaramigos_buscaramigoinput_text_area_placeholder
+  m_StringReference:
+    m_TableReference:
+      m_TableCollectionName: GUID:f5902b699021e1f4fa4ceb7ee1bd382e
+    m_TableEntryReference:
+      m_KeyId: 1437800637104136
+      m_Key: 
+    m_FallbackState: 0
+    m_WaitForCompletion: 0
+    m_LocalVariables: []
+  m_FormatArguments: []
+  m_UpdateString:
+    m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 408508044}
+        m_TargetAssemblyTypeName: TMPro.TMP_Text, Unity.TextMeshPro
+        m_MethodName: set_text
+        m_Mode: 0
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: 
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 1
+  references:
+    version: 2
+    RefIds: []
 --- !u!1 &442044079
 GameObject:
   m_ObjectHideFlags: 0
@@ -5837,7 +5864,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: 4b7668ade8fd7bb4a8468848b3b3b13a, type: 3}
+  m_Sprite: {fileID: 8189374846288509362, guid: cc0adf91cfa933f4c914ee71ba66a9cb, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -6652,7 +6679,6 @@ GameObject:
   - component: {fileID: 1873424201}
   - component: {fileID: 1873424203}
   - component: {fileID: 1873424202}
-  - component: {fileID: 1873424204}
   m_Layer: 5
   m_Name: Text
   m_TagString: Untagged
@@ -6778,46 +6804,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1873424200}
   m_CullTransparentMesh: 1
---- !u!114 &1873424204
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1873424200}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 56eb0353ae6e5124bb35b17aff880f16, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  m_StringReference:
-    m_TableReference:
-      m_TableCollectionName: GUID:f5902b699021e1f4fa4ceb7ee1bd382e
-    m_TableEntryReference:
-      m_KeyId: 1437800637104136
-      m_Key: 
-    m_FallbackState: 0
-    m_WaitForCompletion: 0
-    m_LocalVariables: []
-  m_FormatArguments: []
-  m_UpdateString:
-    m_PersistentCalls:
-      m_Calls:
-      - m_Target: {fileID: 1873424202}
-        m_TargetAssemblyTypeName: TMPro.TMP_Text, Unity.TextMeshPro
-        m_MethodName: set_text
-        m_Mode: 0
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: 
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 1
-  references:
-    version: 2
-    RefIds: []
 --- !u!1 &1907725314
 GameObject:
   m_ObjectHideFlags: 0
@@ -7846,7 +7832,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: 4b7668ade8fd7bb4a8468848b3b3b13a, type: 3}
+  m_Sprite: {fileID: 8189374846288509362, guid: cc0adf91cfa933f4c914ee71ba66a9cb, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1

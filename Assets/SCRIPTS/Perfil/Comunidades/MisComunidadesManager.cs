@@ -6,10 +6,9 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine.UI;
 using System.Collections;
-using UnityEngine.SceneManagement;
 using System;
 
-public class MisComunidadesManager: MonoBehaviour
+public class MisComunidadesManager : MonoBehaviour
 {
     [Header("Referencias UI")]
     public GameObject tarjetaPrefab;
@@ -44,10 +43,17 @@ public class MisComunidadesManager: MonoBehaviour
     private FirebaseAuth auth;
     private List<Dictionary<string, object>> todasComunidades = new List<Dictionary<string, object>>();
 
+    // MODIFICADO: Variable para el idioma
+    private string appIdioma;
+
     void Start()
     {
         db = FirebaseFirestore.DefaultInstance;
         auth = FirebaseAuth.DefaultInstance;
+
+        // MODIFICADO: Obtener idioma y configurar textos de la UI
+        appIdioma = PlayerPrefs.GetString("appIdioma", "español");
+        InicializarTextosUI();
 
         if (panelEstado != null) panelEstado.SetActive(false);
 
@@ -56,7 +62,6 @@ public class MisComunidadesManager: MonoBehaviour
             usuarioActualId = auth.CurrentUser.UserId;
             MostrarMensajeEstado(mensajeCargando, true);
             CargarComunidadesDelUsuario();
-           
 
             if (botonBuscar != null)
             {
@@ -71,15 +76,40 @@ public class MisComunidadesManager: MonoBehaviour
         }
         else
         {
-            MostrarMensajeEstado("No hay usuario autenticado", true);
-            Debug.LogWarning("No hay usuario autenticado");
+            // MODIFICADO: Texto de error traducido
+            string errorAuth = (appIdioma == "ingles") ? "No authenticated user" : "No hay usuario autenticado";
+            MostrarMensajeEstado(errorAuth, true);
+            Debug.LogWarning(errorAuth);
         }
 
-        // Configurar referencia al detalle manager
         if (panelDetalleGrupo != null && detalleManager == null)
         {
             detalleManager = panelDetalleGrupo.GetComponent<ComunidadDetalleManager>();
         }
+    }
+
+    // MODIFICADO: Nuevo método para centralizar la traducción de textos de la UI
+    void InicializarTextosUI()
+    {
+        if (appIdioma == "ingles")
+        {
+            mensajeCargando = "Loading your communities...";
+            mensajeNoResultados = "No matches found";
+            mensajeError = "Error loading data";
+            mensajeListo = "{0} communities found";
+            formatoMiembros = "{0} Members";
+
+            // Traducir el texto del panel "Sin Comunidades"
+            if (panelSinComunidades != null)
+            {
+                TMP_Text textoPanel = panelSinComunidades.GetComponentInChildren<TMP_Text>();
+                if (textoPanel != null)
+                {
+                    textoPanel.text = "You are not a member of any community yet. Go and explore!";
+                }
+            }
+        }
+        // Si no es "en", se usan los valores por defecto en español del inspector.
     }
 
     void IniciarLiveSearch(string texto)
@@ -109,7 +139,8 @@ public class MisComunidadesManager: MonoBehaviour
             panelEstado.SetActive(mostrar);
         }
 
-        if (mostrar && mensaje == string.Format(mensajeListo, todasComunidades.Count))
+        // Ocultar mensajes de éxito automáticamente
+        if (mostrar && (mensaje.Contains("encontradas") || mensaje.Contains("found")))
         {
             Invoke("OcultarPanelEstado", 3f);
         }
@@ -133,7 +164,7 @@ public class MisComunidadesManager: MonoBehaviour
             if (task.IsFaulted || task.IsCanceled)
             {
                 MostrarMensajeEstado(mensajeError, true);
-                Debug.LogError("Error al cargar comunidades");
+                Debug.LogError("Error al cargar comunidades del usuario: " + task.Exception);
                 return;
             }
 
@@ -143,30 +174,20 @@ public class MisComunidadesManager: MonoBehaviour
             {
                 Dictionary<string, object> data = doc.ToDictionary();
                 data["documentId"] = doc.Id;
-
-                if (!data.ContainsKey("creadorId") && data.ContainsKey("creador"))
-                {
-                    data["creadorId"] = data["creador"];
-                }
-
                 todasComunidades.Add(data);
-
-               
             }
 
             if (todasComunidades.Count == 0)
             {
-                panelSinComunidades.SetActive(true);
+                if (panelSinComunidades != null) panelSinComunidades.SetActive(true);
             }
             else
             {
-                panelSinComunidades.SetActive(false);
+                if (panelSinComunidades != null) panelSinComunidades.SetActive(false);
             }
 
-                MostrarTodasComunidades();
+            MostrarTodasComunidades();
             MostrarMensajeEstado(string.Format(mensajeListo, todasComunidades.Count), true);
-
-            
         });
     }
 
@@ -196,7 +217,6 @@ public class MisComunidadesManager: MonoBehaviour
         foreach (var comunidad in todasComunidades)
         {
             string nombre = comunidad.GetValueOrDefault("nombre", "").ToString().ToLower();
-
             if (nombre.Contains(terminoBusqueda))
             {
                 CrearTarjetaComunidad(comunidad);
@@ -206,7 +226,11 @@ public class MisComunidadesManager: MonoBehaviour
 
         if (resultadosEncontrados > 0)
         {
-            MostrarMensajeEstado($"Se encontraron {resultadosEncontrados} resultados", true);
+            // MODIFICADO: Mensaje de resultados traducido
+            string msgResultados = (appIdioma == "ingles")
+                ? $"{resultadosEncontrados} results found"
+                : $"Se encontraron {resultadosEncontrados} resultados";
+            MostrarMensajeEstado(msgResultados, true);
         }
         else
         {
@@ -226,7 +250,10 @@ public class MisComunidadesManager: MonoBehaviour
             CrearTarjetaComunidad(comunidad);
         }
 
-        MostrarMensajeEstado(string.Format(mensajeListo, todasComunidades.Count), true);
+        if (todasComunidades.Count > 0)
+        {
+            MostrarMensajeEstado(string.Format(mensajeListo, todasComunidades.Count), true);
+        }
     }
 
     void CrearTarjetaComunidad(Dictionary<string, object> dataComunidad)
@@ -234,15 +261,13 @@ public class MisComunidadesManager: MonoBehaviour
         GameObject tarjeta = Instantiate(tarjetaPrefab, contenedor);
         TMP_Text[] textos = tarjeta.GetComponentsInChildren<TMP_Text>();
         Image imageComunidad = FindChildByName(tarjeta, "ImageComunidad")?.GetComponent<Image>();
-        
 
-        string nombre = dataComunidad.GetValueOrDefault("nombre", "Sin nombre").ToString();
-        string ComunidadPath = dataComunidad.GetValueOrDefault("imagenRuta", "").ToString(); // conseguimos la ruta de la imagen
+        // MODIFICADO: Texto por defecto traducido
+        string nombre = dataComunidad.GetValueOrDefault("nombre", (appIdioma == "ingles") ? "Unnamed" : "Sin nombre").ToString();
+        string ComunidadPath = dataComunidad.GetValueOrDefault("imagenRuta", "").ToString();
 
-       Sprite imageSprite = Resources.Load<Sprite>(ComunidadPath) ?? Resources.Load<Sprite>("Comunidades/ImagenesComunidades/default");
-
-       imageComunidad.sprite = imageSprite; // ponemos la imagem
-
+        Sprite imageSprite = Resources.Load<Sprite>(ComunidadPath) ?? Resources.Load<Sprite>("Comunidades/ImagenesComunidades/default");
+        if (imageComunidad != null) imageComunidad.sprite = imageSprite;
 
         int cantidadMiembros = 0;
         if (dataComunidad.TryGetValue("miembros", out object miembrosObj) && miembrosObj is List<object> miembros)
@@ -262,7 +287,7 @@ public class MisComunidadesManager: MonoBehaviour
                     break;
             }
         }
-        
+
         Button botonDetalle = FindChildByName(tarjeta, "BotonVerDetalle")?.GetComponent<Button>();
         if (botonDetalle != null)
         {
@@ -284,7 +309,6 @@ public class MisComunidadesManager: MonoBehaviour
         {
             if (child.name == name)
                 return child.gameObject;
-
             GameObject found = FindChildByName(child.gameObject, name);
             if (found != null)
                 return found;
@@ -297,7 +321,11 @@ public class MisComunidadesManager: MonoBehaviour
         bool hayConexion = Application.internetReachability != NetworkReachability.NotReachable;
         if (!hayConexion)
         {
-            MostrarMensajeEstado("No hay conexión a internet. Algunas funciones pueden no estar disponibles.", true);
+            // MODIFICADO: Mensaje de conexión traducido
+            string msgNoConexion = (appIdioma == "ingles")
+                ? "No internet connection. Some features may not be available."
+                : "No hay conexión a internet. Algunas funciones pueden no estar disponibles.";
+            MostrarMensajeEstado(msgNoConexion, true);
         }
         return hayConexion;
     }

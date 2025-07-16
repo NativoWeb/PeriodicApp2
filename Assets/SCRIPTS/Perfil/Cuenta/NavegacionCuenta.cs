@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.UI;
 
 public class NavegacionCuenta : MonoBehaviour
 {
@@ -10,15 +11,35 @@ public class NavegacionCuenta : MonoBehaviour
     [SerializeField] public GameObject panelPoliticas;
     [SerializeField] public GameObject panelDatosPersonales;
     [SerializeField] public GameObject panelCerrarSesion;
+    [SerializeField] public GameObject PanelIdiomas;
+    [SerializeField] public Image panelSuperior;
+    public Button btnIdiomas;
+    public Button btnEspañol;
+    public Button btnIngles;
+    public Button btnDatos;
+
     private void Start()
     {
-        // Verificar si tiene que llenar datos por primera vez 
-        if(PlayerPrefs.GetInt("llenardatos", 1) == 1)
+        string navegacionCuenta = PlayerPrefs.GetString("navegacionCuenta", "estudiante");
+
+        if (navegacionCuenta == "profesor")
         {
-            verDatosPersonales();
-            PlayerPrefs.SetInt("llenardatos", 0); // Limpiamos el player
+            btnDatos.gameObject.SetActive(false); 
+            Color customColor = new Color(80f / 255f, 178f / 255f, 125f / 255f, 1f);
+            panelSuperior.color = customColor;
         }
+        else
+        {
+            btnDatos.gameObject.SetActive(true);
+            Color customColor = new Color(59f / 255f, 53f / 255f, 139f / 255f, 1f);
+            panelSuperior.color = customColor;
+        }
+
+        btnIdiomas.onClick.AddListener(cambiarIdioma);
+        btnEspañol.onClick.AddListener(() => CambiarIdiomaY_CerrarPanel(0));
+        btnIngles.onClick.AddListener(() => CambiarIdiomaY_CerrarPanel(1));
     }
+
     public void verMenuCuenta()
     {
         panelMenuCuenta.SetActive(true);
@@ -46,7 +67,23 @@ public class NavegacionCuenta : MonoBehaviour
         panelPoliticas.SetActive(false);
         panelTerminos_Condiciones.SetActive(false);
         panelMenuCuenta.SetActive(false);
-        
+    }
+    public void cambiarIdioma()
+    {
+        PanelIdiomas.SetActive(true);
+        panelDatosPersonales.SetActive(false);
+        panelPoliticas.SetActive(false);
+        panelTerminos_Condiciones.SetActive(false);
+    }
+    private void CambiarIdiomaY_CerrarPanel(int id)
+    {
+        // Llama a la instancia del controlador de idioma
+        if (ControladorIdioma.instancia != null)
+        {
+            ControladorIdioma.instancia.ChangeLocale(id);
+        }
+        // Cierra el panel
+        PanelIdiomas.SetActive(false);
     }
     public void ActivarPaneCerrarSesion()
     {

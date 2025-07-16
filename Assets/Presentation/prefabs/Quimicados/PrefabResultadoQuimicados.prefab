@@ -166,7 +166,6 @@ GameObject:
   - component: {fileID: 6579114309836666291}
   - component: {fileID: 8056409834096324911}
   - component: {fileID: 41089923831675869}
-  - component: {fileID: -5855619331657314576}
   m_Layer: 5
   m_Name: TxtMarcador
   m_TagString: Untagged
@@ -292,19 +291,6 @@ MonoBehaviour:
   m_hasFontAssetChanged: 0
   m_baseMaterial: {fileID: 0}
   m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
---- !u!114 &-5855619331657314576
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3009813324764214266}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 85c1164fcc3574741acc7d845736f5b0, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  localizationKey: PREFABRESULTADOQUIMICADOS_PANELRESULTADO_TXTMARCADOR
 --- !u!1 &3428340632676721524
 GameObject:
   m_ObjectHideFlags: 0
@@ -316,7 +302,6 @@ GameObject:
   - component: {fileID: 5879336737145937217}
   - component: {fileID: 8400007852533886726}
   - component: {fileID: 7921847117562528721}
-  - component: {fileID: -6072968915654208502}
   m_Layer: 5
   m_Name: TxtNombre
   m_TagString: Untagged
@@ -442,19 +427,6 @@ MonoBehaviour:
   m_hasFontAssetChanged: 0
   m_baseMaterial: {fileID: 0}
   m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
---- !u!114 &-6072968915654208502
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3428340632676721524}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 85c1164fcc3574741acc7d845736f5b0, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  localizationKey: PREFABRESULTADOQUIMICADOS_TXTNOMBRE
 --- !u!1 &3867084672006548699
 GameObject:
   m_ObjectHideFlags: 0
@@ -466,7 +438,7 @@ GameObject:
   - component: {fileID: 6440334088203558863}
   - component: {fileID: 8814761637420748964}
   - component: {fileID: 7945785877843011592}
-  - component: {fileID: -5687594630373682469}
+  - component: {fileID: 203136695672819779}
   m_Layer: 5
   m_Name: Text (TMP)
   m_TagString: Untagged
@@ -521,7 +493,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Jugar
+  m_text: Play
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -592,7 +564,7 @@ MonoBehaviour:
   m_hasFontAssetChanged: 0
   m_baseMaterial: {fileID: 0}
   m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
---- !u!114 &-5687594630373682469
+--- !u!114 &203136695672819779
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -601,10 +573,37 @@ MonoBehaviour:
   m_GameObject: {fileID: 3867084672006548699}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 85c1164fcc3574741acc7d845736f5b0, type: 3}
+  m_Script: {fileID: 11500000, guid: 56eb0353ae6e5124bb35b17aff880f16, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  localizationKey: PREFABRESULTADOQUIMICADOS_BTNSELECCIONINVISIBLE_TEXTTMP
+  m_StringReference:
+    m_TableReference:
+      m_TableCollectionName: GUID:f5902b699021e1f4fa4ceb7ee1bd382e
+    m_TableEntryReference:
+      m_KeyId: 2156818037702656
+      m_Key: 
+    m_FallbackState: 0
+    m_WaitForCompletion: 0
+    m_LocalVariables: []
+  m_FormatArguments: []
+  m_UpdateString:
+    m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 7945785877843011592}
+        m_TargetAssemblyTypeName: TMPro.TMP_Text, Unity.TextMeshPro
+        m_MethodName: set_text
+        m_Mode: 0
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: 
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 1
+  references:
+    version: 2
+    RefIds: []
 --- !u!1 &4833984832066123167
 GameObject:
   m_ObjectHideFlags: 0

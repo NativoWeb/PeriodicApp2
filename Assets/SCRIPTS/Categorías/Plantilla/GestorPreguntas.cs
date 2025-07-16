@@ -11,28 +11,13 @@ using System.Linq;
 
 public class GestorPreguntas : MonoBehaviour
 {
+    // --- Referencias de la Interfaz de Usuario ---
     public TextMeshProUGUI txtPregunta;
     public Toggle[] opciones;
     public Text txtTiempo;
     public Text txtRacha;
-    public TextMeshProUGUI txtResultado;
     public GameObject PanelContinuar;
-
     public Slider barraProgresoSlider;
-    private List<Pregunta> preguntasFiltradas;
-    private int preguntaActual = 0;
-    private int rachaActual;
-    private int respuestasCorrectas = 0;
-    private float tiempoPorPregunta = 10f;
-    private float tiempoRestante;
-    private bool preguntaEnCurso = true;
-    private FirebaseFirestore db;
-    private FirebaseAuth auth;
-    private string elementoSeleccionado;
-    private string simboloSeleccionado;
-    private string elementoCompleto;
-    private string categoriaSeleccionada;
-    private List<string> categoriasFalladas;
 
     [Header("Referencias para Animación de Misión")]
     public TMP_Text txtMision;
@@ -41,23 +26,41 @@ public class GestorPreguntas : MonoBehaviour
     public TMP_Text txtMotivacion;
     public TMP_Text txtRefuerzo1;
     public TMP_Text txtRefuerzo2;
-
     public GameObject panelAnimacionMision;
     public GameObject imagenAnimacionMision;
     public AudioSource audioMisionCompletada;
 
-
-
+    // --- Clases de Datos ---
     [System.Serializable]
     public class Pregunta
     {
         public string textoPregunta;
+        public string textoPregunta_en; // Campo para inglés
         public List<string> opcionesRespuesta;
+        public List<string> opcionesRespuesta_en; // Campo para inglés
         public int indiceRespuestaCorrecta;
         public string tema;
         public string categoriaTema;
-
     }
+
+    // --- Variables de Estado del Juego ---
+    private List<Pregunta> preguntasFiltradas;
+    private int preguntaActual = 0;
+    private int rachaActual;
+    private int respuestasCorrectas = 0;
+    private float tiempoPorPregunta = 10f;
+    private float tiempoRestante;
+    private bool preguntaEnCurso = true;
+    private List<string> categoriasFalladas;
+
+    // --- Variables de Configuración y Firebase ---
+    private FirebaseFirestore db;
+    private FirebaseAuth auth;
+    private string elementoSeleccionado;
+    private string simboloSeleccionado;
+    private string elementoCompleto;
+    private string categoriaSeleccionada;
+    private string appIdioma; // Variable para el idioma
 
     void Start()
     {
@@ -65,220 +68,181 @@ public class GestorPreguntas : MonoBehaviour
         db = FirebaseFirestore.DefaultInstance;
         auth = FirebaseAuth.DefaultInstance;
 
+        // --- Inicialización ---
+        appIdioma = PlayerPrefs.GetString("appIdioma", "español"); // Default a español
         categoriasFalladas = new List<string>();
-
-        // Configurar el slider de progreso
         barraProgresoSlider.minValue = 0;
-        barraProgresoSlider.value = preguntaActual;
 
-        // Recuperar datos de PlayerPrefs
+        // --- Recuperar datos de PlayerPrefs ---
         elementoSeleccionado = PlayerPrefs.GetString("ElementoSeleccionado", "").Trim() + " ";
         simboloSeleccionado = "(" + PlayerPrefs.GetString("SimboloElemento", "").Trim() + ")";
         elementoCompleto = elementoSeleccionado + simboloSeleccionado;
         categoriaSeleccionada = PlayerPrefs.GetString("CategoriaSeleccionada", "").Trim();
-        categoriaSeleccionada = devolverCatTrad(categoriaSeleccionada);
-        rachaActual = PlayerPrefs.GetInt("RachaActual");
 
-        // Cargar progreso guardado para el elemento
-        preguntaActual = PlayerPrefs.GetInt($"Progreso_{elementoCompleto}", 0);
-
-        CargarPreguntasDesdeJSON(categoriaSeleccionada, elementoCompleto);
-        if (preguntasFiltradas.Count > 0)
+        // Si el idioma es español, traducimos el nombre de la categoría para buscar el archivo correcto.
+        if (appIdioma == "español")
         {
+            categoriaSeleccionada = devolverCatTrad(categoriaSeleccionada);
+        }
+
+        rachaActual = PlayerPrefs.GetInt("RachaActual");
+        preguntaActual = PlayerPrefs.GetInt($"Progreso_{elementoCompleto}", 0);
+        barraProgresoSlider.value = preguntaActual;
+
+        // --- Cargar y Mostrar Preguntas ---
+        CargarPreguntasDesdeJSON(categoriaSeleccionada, elementoCompleto);
+        if (preguntasFiltradas != null && preguntasFiltradas.Count > 0)
+        {
+            barraProgresoSlider.maxValue = preguntasFiltradas.Count;
             MostrarPregunta();
             StartCoroutine(Temporizador());
         }
-
-        SistemaXP.CrearInstancia();
     }
-    public string devolverCatTrad(string categoriaSeleccionada)
+
+    public string devolverCatTrad(string categoriaEnIngles)
     {
-        switch (categoriaSeleccionada)
+        switch (categoriaEnIngles)
         {
-            case "Alkali Metals":
-                return "Metales Alcalinos";
-
-            case "Alkaline Earth Metals":
-                return "Metales Alcalinotérreos";
-
-            case "Transition Metals":
-                return "Metales de Transición";
-
-            case "Post-transition Metals":
-                return "Metales postransicionales";
-
-            case "Metalloids":
-                return "Metaloides";
-
-            case "Nonmetals":
-                return "No Metales";
-
-            case "Noble Gases":
-                return "Gases Nobles";
-
-            case "Lanthanides":
-                return "Lantánidos";
-
-            case "Actinides":
-                return "Actinoides";
-
-            case "Unknown Properties":
-                return "Propiedades desconocidas";
-
-            default:
-                return categoriaSeleccionada;
+            case "Alkali Metals": return "Metales Alcalinos";
+            case "Alkaline Earth Metals": return "Metales Alcalinotérreos";
+            case "Transition Metals": return "Metales de Transición";
+            case "Post-transition Metals": return "Metales Postransicionales";
+            case "Metalloids": return "Metaloides";
+            case "Reactive Nonmetals": return "No Metales Reactivos";
+            case "Noble Gases": return "Gases Nobles";
+            case "Lanthanides": return "Lantánidos";
+            case "Actinides": return "Actinoides";
+            case "Unknown Properties": return "Propiedades Desconocidas";
+            default: return categoriaEnIngles; // Retorna el mismo si no hay traducción
         }
     }
 
-    void CargarPreguntasDesdeJSON(string categoriaSeleccionada, string elementoSeleccionado)
+    void CargarPreguntasDesdeJSON(string categoria, string elemento)
     {
-
-        string nombreArchivo = categoriaSeleccionada.ToLower().Replace(' ', '_');
-
+        string nombreArchivo = categoria.ToLower().Replace(' ', '_');
         string rutaCompleta = "Preguntas_misiones_json/" + nombreArchivo;
 
-        TextAsset jsonFile = Resources.Load<TextAsset>(rutaCompleta); // Cargar JSON desde Resources
+        TextAsset jsonFile = Resources.Load<TextAsset>(rutaCompleta);
         if (jsonFile == null)
         {
-            Debug.LogError($"No se encontró el archivo JSON en la ruta: '{rutaCompleta}'. " +
-                       $"Verifica que el nombre del archivo y la categoría seleccionada ('{categoriaSeleccionada}') coincidan.");
+            Debug.LogError($"No se encontró el archivo JSON en la ruta: '{rutaCompleta}'. Categoria: '{categoria}'");
             return;
         }
 
         var json = JSON.Parse(jsonFile.text);
-
-        if (json == null || !json.HasKey("grupo") || !json.HasKey("elementos") || !json["elementos"].IsArray)
+        if (json == null || !json.HasKey("elementos"))
         {
-            Debug.LogError("❌ El JSON no tiene la estructura esperada.");
+            Debug.LogError("El JSON no tiene la estructura esperada (falta 'elementos').");
             return;
         }
 
-        Debug.Log("JSON '{nombreArchivo}.json' cargado correctamente.");
-
-        // 💡 Verifica si preguntasFiltradas ha sido inicializada
-        if (preguntasFiltradas == null)
-        {
-            preguntasFiltradas = new List<Pregunta>();
-        }
-        preguntasFiltradas.Clear();
-
-        bool categoriaEncontrada = json["grupo"].Value == categoriaSeleccionada;
-        bool elementoEncontrado = false;
+        preguntasFiltradas = new List<Pregunta>();
 
         foreach (JSONNode elementoJson in json["elementos"].AsArray)
         {
-            if (elementoJson.HasKey("elemento") && elementoJson["elemento"].Value == elementoSeleccionado)
+            if (elementoJson["elemento"].Value == elemento)
             {
-
-                elementoEncontrado = true;
-                if (elementoJson.HasKey("preguntas") && elementoJson["preguntas"].IsArray)
+                foreach (JSONNode preguntaJson in elementoJson["preguntas"].AsArray)
                 {
-                    foreach (JSONNode preguntaJson in elementoJson["preguntas"].AsArray)
+                    List<string> opciones_es = new List<string>();
+                    foreach (JSONNode opcion in preguntaJson["opcionesRespuesta"].AsArray)
                     {
-                        if (!preguntaJson.HasKey("opcionesRespuesta") || !preguntaJson["opcionesRespuesta"].IsArray)
-                        {
-                            Debug.LogError("⚠ La pregunta no tiene opciones de respuesta.");
-                            continue;
-                        }
-
-                        List<string> opciones = new List<string>();
-                        foreach (JSONNode opcion in preguntaJson["opcionesRespuesta"].AsArray)
-                        {
-                            opciones.Add(opcion.Value);
-                        }
-
-                        Pregunta pregunta = new Pregunta
-                        {
-                            textoPregunta = preguntaJson["textoPregunta"].Value,
-                            opcionesRespuesta = opciones,
-                            indiceRespuestaCorrecta = preguntaJson["indiceRespuestaCorrecta"].AsInt,
-                            tema = preguntaJson.HasKey("tema") ? preguntaJson["tema"].Value : "General",
-                            categoriaTema = preguntaJson.HasKey("categoriaTema") ? preguntaJson["categoriaTema"].Value : "Conceptos Generales"
-                        };
-                        preguntasFiltradas.Add(pregunta);
+                        opciones_es.Add(opcion.Value);
                     }
-                }
-                else
-                {
-                    Debug.LogError("⚠ El elemento no tiene preguntas registradas.");
+
+                    List<string> opciones_en = new List<string>();
+                    // Validar si existe la clave en inglés antes de intentar acceder a ella
+                    if (preguntaJson.HasKey("opcionesRespuesta_en"))
+                    {
+                        foreach (JSONNode opcion_en in preguntaJson["opcionesRespuesta_en"].AsArray)
+                        {
+                            opciones_en.Add(opcion_en.Value);
+                        }
+                    }
+
+                    Pregunta p = new Pregunta
+                    {
+                        textoPregunta = preguntaJson["textoPregunta"].Value,
+                        textoPregunta_en = preguntaJson.HasKey("textoPregunta_en") ? preguntaJson["textoPregunta_en"].Value : preguntaJson["textoPregunta"].Value, // Fallback a español si no existe
+                        opcionesRespuesta = opciones_es,
+                        opcionesRespuesta_en = opciones_en,
+                        indiceRespuestaCorrecta = preguntaJson["indiceRespuestaCorrecta"].AsInt,
+                        tema = preguntaJson.HasKey("tema") ? preguntaJson["tema"].Value : "General",
+                        categoriaTema = preguntaJson.HasKey("categoriaTema") ? preguntaJson["categoriaTema"].Value : "Conceptos Generales"
+                    };
+                    preguntasFiltradas.Add(p);
                 }
                 break;
             }
         }
-
-
-        if (!elementoEncontrado)
-        {
-            Debug.LogError("⚠ No se encontró el elemento seleccionado en la categoría.");
-            return;
-        }
-
-        if (preguntasFiltradas.Count == 0)
-        {
-            Debug.LogError("⚠ No se encontraron preguntas para este elemento.");
-            return;
-        }
-        //valor maximo del slider de progreso
-        barraProgresoSlider.maxValue = preguntasFiltradas.Count;
     }
 
     public void MostrarPregunta()
     {
-        if (preguntasFiltradas == null || preguntasFiltradas.Count == 0)
+        if (preguntasFiltradas == null || preguntaActual >= preguntasFiltradas.Count)
         {
-            Debug.LogError("❌ Error: No hay preguntas disponibles.");
-            return;
-        }
-
-        if (preguntaActual >= preguntasFiltradas.Count)
-        {
-            Debug.Log("✅ Todas las preguntas han sido respondidas. Mostrando resultados finales...");
             MostrarResultadosFinales();
             return;
         }
 
         Pregunta pregunta = preguntasFiltradas[preguntaActual];
-        txtPregunta.text = pregunta.textoPregunta;
+        // Seleccionar texto de pregunta según idioma
+        txtPregunta.text = (appIdioma == "ingles") ? pregunta.textoPregunta_en : pregunta.textoPregunta;
 
-        // Actualizar el progreso en la barra
         barraProgresoSlider.value = preguntaActual + 1;
 
-        // Asignar opciones aleatorizadas
-        List<(string opcion, int indice)> opcionesIndexadas = new List<(string, int)>();
-        for (int i = 0; i < pregunta.opcionesRespuesta.Count; i++)
-            opcionesIndexadas.Add((pregunta.opcionesRespuesta[i], i));
+        // Seleccionar opciones según idioma y barajar
+        List<string> opcionesOriginales = (appIdioma == "ingles" && pregunta.opcionesRespuesta_en.Count > 0)
+            ? pregunta.opcionesRespuesta_en
+            : pregunta.opcionesRespuesta;
 
-        opcionesIndexadas = opcionesIndexadas.OrderBy(x => Random.value).ToList();
+        List<(string opcion, int indice)> opcionesIndexadas = opcionesOriginales
+            .Select((opcion, i) => (opcion, i)).ToList();
+
+        opcionesIndexadas.Shuffle();
+
         int nuevoIndiceCorrecto = opcionesIndexadas.FindIndex(x => x.indice == pregunta.indiceRespuestaCorrecta);
         pregunta.indiceRespuestaCorrecta = nuevoIndiceCorrecto;
 
         for (int i = 0; i < opciones.Length; i++)
         {
-            if (i >= opcionesIndexadas.Count) continue;
-            opciones[i].GetComponentInChildren<TextMeshProUGUI>().text = opcionesIndexadas[i].opcion;
-            opciones[i].isOn = false;
-            opciones[i].GetComponentInChildren<Image>().color = Color.white;
+            if (i < opcionesIndexadas.Count)
+            {
+                opciones[i].gameObject.SetActive(true);
+                opciones[i].GetComponentInChildren<TextMeshProUGUI>().text = opcionesIndexadas[i].opcion;
+                opciones[i].isOn = false;
+                opciones[i].GetComponentInChildren<Image>().color = Color.white;
 
-            int index = i;
-            opciones[i].onValueChanged.RemoveAllListeners();
-            opciones[i].onValueChanged.AddListener(delegate { ValidarRespuesta(index); });
+                int index = i;
+                opciones[i].onValueChanged.RemoveAllListeners();
+                opciones[i].onValueChanged.AddListener(delegate { if (opciones[index].isOn) ValidarRespuesta(index); });
+            }
+            else
+            {
+                opciones[i].gameObject.SetActive(false);
+            }
         }
 
-        Debug.Log($"✅ Pregunta {preguntaActual + 1} mostrada correctamente.");
         preguntaEnCurso = true;
-        StopCoroutine("ActualizarTimer");
-        StartCoroutine("Temporizador");
+        StopAllCoroutines(); // Detiene todas las corutinas, incluido el temporizador anterior
+        StartCoroutine(Temporizador());
     }
 
     public void ValidarRespuesta(int indiceSeleccionado)
     {
         if (!preguntaEnCurso) return;
         preguntaEnCurso = false;
-        StopCoroutine("ActualizarTimer");
 
         Pregunta pregunta = preguntasFiltradas[preguntaActual];
         Color verdeCorrecto = new Color(0xAA / 255f, 0xC4 / 255f, 0x3D / 255f);
         Color rojoIncorrecto = new Color(0xC4 / 255f, 0x3E / 255f, 0x3B / 255f);
+
+        // Desactivar todos los toggles para evitar más input
+        foreach (var opt in opciones)
+        {
+            opt.interactable = false;
+        }
+
         opciones[indiceSeleccionado].GetComponentInChildren<Image>().color =
             (indiceSeleccionado == pregunta.indiceRespuestaCorrecta) ? verdeCorrecto : rojoIncorrecto;
 
@@ -290,13 +254,16 @@ public class GestorPreguntas : MonoBehaviour
         else
         {
             rachaActual = 0;
+            // Marcar la opción correcta en verde si el usuario se equivocó
+            opciones[pregunta.indiceRespuestaCorrecta].GetComponentInChildren<Image>().color = verdeCorrecto;
+
             if (!categoriasFalladas.Contains(pregunta.categoriaTema))
             {
                 categoriasFalladas.Add(pregunta.categoriaTema);
             }
         }
 
-        txtRacha.text = "" + rachaActual;
+        txtRacha.text = rachaActual.ToString();
         StartCoroutine(EsperarYSiguientePregunta());
     }
 
@@ -311,99 +278,78 @@ public class GestorPreguntas : MonoBehaviour
             yield return null;
         }
 
-        preguntaEnCurso = false;
-        rachaActual = 0;
-        txtRacha.text = "" + rachaActual;
-
-        if (!categoriasFalladas.Contains(preguntasFiltradas[preguntaActual].tema))
+        if (preguntaEnCurso)
         {
-            categoriasFalladas.Add(preguntasFiltradas[preguntaActual].tema);
+            preguntaEnCurso = false;
+            rachaActual = 0;
+            txtRacha.text = rachaActual.ToString();
+
+            if (!categoriasFalladas.Contains(preguntasFiltradas[preguntaActual].categoriaTema))
+            {
+                categoriasFalladas.Add(preguntasFiltradas[preguntaActual].categoriaTema);
+            }
+            StartCoroutine(EsperarYSiguientePregunta());
         }
-        StartCoroutine(EsperarYSiguientePregunta());
     }
 
     IEnumerator EsperarYSiguientePregunta()
     {
         yield return new WaitForSeconds(1.5f);
         preguntaActual++;
-
-        // Guardar progreso por elemento
         PlayerPrefs.SetInt($"Progreso_{elementoCompleto}", preguntaActual);
         PlayerPrefs.Save();
 
-        barraProgresoSlider.value = preguntaActual + 1;
+        // Reactivar los toggles
+        foreach (var opt in opciones)
+        {
+            opt.interactable = true;
+        }
+
         MostrarPregunta();
     }
 
     void MostrarResultadosFinales()
     {
-        // 1. Asegurarse de que el panel de resultados esté activo
         PanelContinuar.SetActive(true);
-
-        // 2. Definir el umbral de victoria y calcular resultados
         float umbralVictoria = 70.0f;
         float porcentajeAciertos = (preguntasFiltradas.Count > 0) ? (float)respuestasCorrectas / preguntasFiltradas.Count * 100f : 0f;
         bool ganoElQuiz = porcentajeAciertos >= umbralVictoria;
-
         int xpGanado = 0;
 
-        // --- Lógica de la UI del Panel de Resultados ---
         if (ganoElQuiz)
         {
-            // --- LÓGICA DE VICTORIA ---
             int xpBase = respuestasCorrectas * 10;
             int bonoRacha = rachaActual * 5;
             xpGanado = xpBase + bonoRacha;
 
-            txtMision.text = "¡QUIZ SUPERADO!";
+            txtMision.text = (appIdioma == "ingles") ? "QUIZ PASSED!" : "¡QUIZ SUPERADO!";
             txtXp.text = $"+{xpGanado} XP";
             txtPuntuacion.text = $"{respuestasCorrectas}/{preguntasFiltradas.Count}";
-            txtMotivacion.text = "¡Excelente trabajo! Has demostrado un gran dominio del tema.";
+            txtMotivacion.text = (appIdioma == "ingles") ? "Excellent work! You've shown great mastery of the subject." : "¡Excelente trabajo! Has demostrado un gran dominio del tema.";
 
-            // Ocultamos los paneles de refuerzo
             if (txtRefuerzo1 != null) txtRefuerzo1.transform.parent.gameObject.SetActive(false);
             if (txtRefuerzo2 != null) txtRefuerzo2.transform.parent.gameObject.SetActive(false);
         }
         else
         {
-            // --- LÓGICA DE DERROTA ---
-            xpGanado = respuestasCorrectas * 5; // XP de consolación
+            xpGanado = respuestasCorrectas * 5;
 
-            txtMision.text = "¡CASI LO LOGRAS!";
+            txtMision.text = (appIdioma == "ingles") ? "ALMOST THERE!" : "¡CASI LO LOGRAS!";
             txtXp.text = $"+{xpGanado} XP";
             txtPuntuacion.text = $"{respuestasCorrectas}/{preguntasFiltradas.Count}";
-            txtMotivacion.text = "Sigue estudiando. Para mejorar, te recomendamos reforzar:";
+            txtMotivacion.text = (appIdioma == "ingles") ? "Keep studying. To improve, we recommend reinforcing:" : "Sigue estudiando. Para mejorar, te recomendamos reforzar:";
 
-            // Mostramos los paneles de refuerzo
-            if (txtRefuerzo1 != null) txtRefuerzo1.transform.parent.gameObject.SetActive(true);
-            if (txtRefuerzo2 != null) txtRefuerzo2.transform.parent.gameObject.SetActive(true);
+            if (txtRefuerzo1 != null) txtRefuerzo1.transform.parent.gameObject.SetActive(categoriasFalladas.Count > 0);
+            if (txtRefuerzo2 != null) txtRefuerzo2.transform.parent.gameObject.SetActive(categoriasFalladas.Count > 1);
 
-            // Asignamos las categorías a los textos de refuerzo
-            if (categoriasFalladas.Count > 0)
-            {
-                txtRefuerzo1.text = "- " + categoriasFalladas[0];
-            }
-            else
-            {
-                txtRefuerzo1.transform.parent.gameObject.SetActive(false); // Ocultar si no hay nada que mostrar
-            }
-
-            if (categoriasFalladas.Count > 1)
-            {
-                txtRefuerzo2.text = "- " + categoriasFalladas[1];
-            }
-            else
-            {
-                txtRefuerzo2.transform.parent.gameObject.SetActive(false); // Ocultar si no hay una segunda recomendación
-            }
+            if (categoriasFalladas.Count > 0) txtRefuerzo1.text = "- " + categoriasFalladas[0];
+            if (categoriasFalladas.Count > 1) txtRefuerzo2.text = "- " + categoriasFalladas[1];
         }
 
-        // 4. --- COMUNICACIÓN ENTRE SCRIPTS ---
         PlayerPrefs.SetInt("UltimoQuizGanado", ganoElQuiz ? 1 : 0);
         PlayerPrefs.SetInt("xp_mision", xpGanado);
         PlayerPrefs.Save();
 
-        // 5. Configurar el botón "Continuar" para que llame al gestor de misiones
         Button botonContinuar = PanelContinuar.GetComponentInChildren<Button>();
         if (botonContinuar != null)
         {
@@ -421,13 +367,11 @@ public class GestorPreguntas : MonoBehaviour
                 }
                 else
                 {
-                    Debug.LogError("No se encontró la instancia de GuardarMisionCompletada. Cambiando de escena directamente.");
                     SceneManager.LoadScene("Categorías");
                 }
             });
         }
 
-        // 6. Guardar progreso en Firebase y XP local
         if (Application.internetReachability != NetworkReachability.NotReachable)
         {
             GuardarResultadosEnFirebase(xpGanado, porcentajeAciertos, ganoElQuiz);
@@ -442,20 +386,12 @@ public class GestorPreguntas : MonoBehaviour
             SistemaXP.Instance.AgregarXP(xpGanado);
         }
 
-        // 7. Limpiar progreso del quiz
         PlayerPrefs.DeleteKey($"Progreso_{elementoCompleto}");
         PlayerPrefs.Save();
     }
 
-    private IEnumerator EsperarYCambiarDeEscena(float tiempoDeEspera)
-    {
-        // Espera el tiempo especificado
-        yield return new WaitForSeconds(tiempoDeEspera);
-
-        // Luego, carga la siguiente escena
-        SceneManager.LoadScene("Categorías");
-    }
-
+    // El resto de los métodos (GuardarYSalir, GuardarResultadosEnFirebase, SumarXPTemporario) permanecen igual.
+    // ...
     async void GuardarResultadosEnFirebase(int xp, float puntaje, bool completado)
     {
         var user = auth.CurrentUser;
@@ -474,9 +410,7 @@ public class GestorPreguntas : MonoBehaviour
 
         var updates = new Dictionary<string, object>
         {
-            //incrementa el xp total del usuario
             {"xp", FieldValue.Increment(xp) },
-            //Guarda/actualiza los datos de esta mision en un mapa "misionesCompletadas"
             {$"misionesCompletadas.{claveMision}", datosMision }
         };
 
@@ -509,19 +443,22 @@ public class GestorPreguntas : MonoBehaviour
         PlayerPrefs.Save();
         Debug.Log($"🔄 No hay conexión. XP {xp} guardado en TempXP. Total: {xpTemporal}");
     }
-
-
 }
-
 
 public static class ListExtensions
 {
-    public static void Shuffle<T>(this List<T> list)
+    private static System.Random rng = new System.Random();
+
+    public static void Shuffle<T>(this IList<T> list)
     {
-        for (int i = list.Count - 1; i > 0; i--)
+        int n = list.Count;
+        while (n > 1)
         {
-            int j = Random.Range(0, i + 1);
-            (list[i], list[j]) = (list[j], list[i]);
+            n--;
+            int k = rng.Next(n + 1);
+            T value = list[k];
+            list[k] = list[n];
+            list[n] = value;
         }
     }
 }

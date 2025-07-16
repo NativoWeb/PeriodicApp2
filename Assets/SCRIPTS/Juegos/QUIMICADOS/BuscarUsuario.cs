@@ -57,6 +57,7 @@ public class BuscarUsuario : MonoBehaviour
     private string lastSearchText = "";
     private float lastSearchTime;
     private bool searchScheduled = false;
+    private string appIdioma;
 
     void Start()
     {
@@ -64,6 +65,8 @@ public class BuscarUsuario : MonoBehaviour
         currentUser = auth.CurrentUser;
         currentUserId = currentUser?.UserId;
         db = FirebaseFirestore.DefaultInstance;
+
+        appIdioma = PlayerPrefs.GetString("appIdioma", "español");
 
         StartCoroutine(VerificarConexionPeriodicamente());
 
@@ -150,26 +153,46 @@ public class BuscarUsuario : MonoBehaviour
 
         if (input.Length < minSearchChars)
         {
-            ShowMessage($"Escribe al menos {minSearchChars} caracteres para buscar");
+            if (appIdioma == "ingles")
+                ShowMessage($"Enter at least {minSearchChars} characters to search");
+            else
+                ShowMessage($"Escribe al menos {minSearchChars} caracteres para buscar");
             return;
         }
 
         lastSearchTime = Time.time;
         searchScheduled = true;
-        ShowMessage("Escribiendo...");
+        if (appIdioma == "ingles")
+            ShowMessage($"Writing");
+        else
+            ShowMessage("Escribiendo...");
     }
 
     void ShowRandomUsers()
     {
         LimpiarResultadosNuevos();
-        ShowMessage("Cargando usuarios...");
+        if (appIdioma == "español")
+        {
+            ShowMessage("Cargando usuarios...");
+        }
+        else
+        {
+            ShowMessage("Loading users...");
+        }
 
         db.Collection("users").GetSnapshotAsync().ContinueWithOnMainThread(task =>
         {
             if (task.IsFaulted || task.IsCanceled)
             {
                 Debug.LogError("Error cargando usuarios: " + task.Exception);
-                ShowMessage("Hubo un error al cargar usuarios.");
+                if (appIdioma == "español")
+                {
+                    ShowMessage("Hubo un error al cargar usuarios.");
+                }
+                else
+                {
+                    ShowMessage("There was an error loading users...");
+                }
                 return;
             }
 
@@ -177,7 +200,14 @@ public class BuscarUsuario : MonoBehaviour
 
             if (users.Count == 0)
             {
-                ShowMessage("No hay otros usuarios registrados.");
+                if (appIdioma == "español")
+                {
+                    ShowMessage("No hay otros usuarios registrados.");
+                }
+                else
+                {
+                    ShowMessage("There are no other registered users.");
+                }
                 return;
             }
 
@@ -196,12 +226,18 @@ public class BuscarUsuario : MonoBehaviour
 
         if (username.Length < minSearchChars)
         {
-            ShowMessage($"Escribe al menos {minSearchChars} caracteres para buscar");
+            if (appIdioma == "ingles")
+                ShowMessage($"Enter at least {minSearchChars} characters to search");
+            else
+                ShowMessage($"Escribe al menos {minSearchChars} caracteres para buscar");
             return;
         }
 
         LimpiarResultadosNuevos();
-        ShowMessage("Buscando...");
+        if (appIdioma == "ingles")
+            ShowMessage($"Searching...");
+        else
+            ShowMessage("Buscando...");
 
         db.Collection("users")
             .WhereGreaterThanOrEqualTo("DisplayName", username)
@@ -213,7 +249,10 @@ public class BuscarUsuario : MonoBehaviour
 
                 if (task.IsFaulted || task.IsCanceled)
                 {
-                    ShowMessage("Hubo un error al buscar.");
+                    if (appIdioma == "ingles")
+                        ShowMessage($"There was an error while searching.");
+                    else
+                        ShowMessage("Hubo un error al buscar.");
                     return;
                 }
 
@@ -227,13 +266,22 @@ public class BuscarUsuario : MonoBehaviour
                     found = true;
                 }
 
-                if (!found) ShowMessage("No se encontraron usuarios.");
+                if (!found)
+                {
+                    if (appIdioma == "ingles")
+                        ShowMessage($"No users found.");
+                    else
+                        ShowMessage("No se encontraron usuarios.");
+                }
             });
     }
     void ShowPartidasMiTurno()
     {
         LimpiarResultadosActivos();
-        ShowMessage("Cargando partidas en tu turno...");
+        if (appIdioma == "ingles")
+            ShowMessage($"Loading games on your turn...");
+        else
+            ShowMessage("Cargando partidas en tu turno...");
 
         string miUid = auth.CurrentUser.UserId;
         var partidasRef = db.Collection("partidasQuimicados");
@@ -259,7 +307,10 @@ public class BuscarUsuario : MonoBehaviour
 
             if (docs.Count == 0)
             {
-                ShowMessage("No tienes partidas donde sea tu turno.");
+                if (appIdioma == "ingles")
+                    ShowMessage($"You don't have any games where it's your turn.");
+                else
+                    ShowMessage("No tienes partidas donde sea tu turno.");
                 return;
             }
 
@@ -272,7 +323,10 @@ public class BuscarUsuario : MonoBehaviour
     void ShowPartidasTurnoOponente()
     {
         LimpiarResultadosActivos();
-        ShowMessage("Cargando partidas en turno del oponente...");
+        if (appIdioma == "ingles")
+            ShowMessage($"Loading games on opponent's turn...");
+        else
+            ShowMessage("Cargando partidas en turno del oponente...");
 
         string miUid = auth.CurrentUser.UserId;
         var partidasRef = db.Collection("partidasQuimicados");
@@ -285,7 +339,14 @@ public class BuscarUsuario : MonoBehaviour
             if (tasks.IsFaulted)
             {
                 Debug.LogError("Error cargando partidas: " + tasks.Exception);
-                ShowMessage("Error al cargar partidas.");
+                if (appIdioma == "español")
+                {
+                    ShowMessage("Hubo un error al cargar la partida.");
+                }
+                else
+                {
+                    ShowMessage("There was an error loading games...");
+                }
                 return;
             }
 
@@ -298,7 +359,10 @@ public class BuscarUsuario : MonoBehaviour
 
             if (docs.Count == 0)
             {
-                ShowMessage("No hay partidas esperando al oponente.");
+                if (appIdioma == "ingles")
+                    ShowMessage($"There are no games waiting for the opponent.");
+                else
+                    ShowMessage("No hay partidas esperando al oponente.");
                 return;
             }
 

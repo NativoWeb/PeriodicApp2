@@ -6,34 +6,40 @@ using System.Collections.Generic;
 using Firebase.Extensions;
 using TMPro;
 using System.Threading.Tasks;
+using System;
+using System.Linq;
 
 public class SolicitudesManager : MonoBehaviour
 {
+    [Header("UI References")]
     public GameObject requestPrefab;
     public Transform requestContainer;
     public TMP_InputField searchInput;
     public Button searchButton;
-    public TMP_Text messageText; // Texto para mostrar mensajes de estado
+    public TMP_Text messageText;
 
     [Header("Live Search Settings")]
-    public float searchDelay = 0.3f; // Retraso en segundos antes de ejecutar la búsqueda
-    public int minSearchChars = 2; // Mínimo de caracteres para iniciar búsqueda
+    public float searchDelay = 0.3f;
+    public int minSearchChars = 2;
 
     private FirebaseFirestore db;
     private FirebaseAuth auth;
     private string currentUserId;
     private List<FriendRequest> allRequests = new List<FriendRequest>();
 
-    // Variables para live search
     private string lastSearchText = "";
     private float lastSearchTime;
     private bool searchScheduled = false;
+
+    // MODIFICADO: Variables de localización
+    private string appIdioma;
+    private Dictionary<string, string> localizedTexts = new Dictionary<string, string>();
 
     private class FriendRequest
     {
         public string fromUserId;
         public string fromUserName;
-        public string fromUserRank; // Nuevo campo para el rango
+        public string fromUserRank;
         public string documentId;
     }
 
@@ -42,27 +48,78 @@ public class SolicitudesManager : MonoBehaviour
         auth = FirebaseAuth.DefaultInstance;
         db = FirebaseFirestore.DefaultInstance;
 
+        // MODIFICADO: Inicializar idioma y textos
+        appIdioma = PlayerPrefs.GetString("appIdioma", "español");
+        InitializeLocalizedTexts();
+
         if (auth.CurrentUser == null)
         {
-            Debug.LogError("Usuario no autenticado.");
+            Debug.LogError(localizedTexts["noAuthUser"]);
+            ShowMessage(localizedTexts["noAuthUser"]);
             return;
         }
 
         currentUserId = auth.CurrentUser.UserId;
-        Debug.Log("Usuario actual: " + currentUserId);
 
-        // Configurar el listener para el campo de búsqueda
         searchInput.onValueChanged.AddListener(OnSearchInputChanged);
-
-        // Mantener el botón de búsqueda tradicional también
         searchButton.onClick.AddListener(() => FilterRequests(searchInput.text));
 
         LoadPendingRequests();
     }
 
+    // MODIFICADO: Nuevo método para centralizar las traducciones
+    void InitializeLocalizedTexts()
+    {
+        if (appIdioma == "ingles")
+        {
+            localizedTexts["loading"] = "Loading requests...";
+            localizedTexts["loadError"] = "Error loading requests: ";
+            localizedTexts["noPending"] = "You have no pending requests";
+            localizedTexts["requestsFound"] = "{0} requests found";
+            localizedTexts["noRequestsToShow"] = "No requests to display";
+            localizedTexts["noMatches"] = "No matches found";
+            localizedTexts["matchesFound"] = "{0} requests match your search";
+            localizedTexts["showingRequests"] = "Showing {0} requests";
+            localizedTexts["processing"] = "Processing request...";
+            localizedTexts["getRequestError"] = "Error getting request data";
+            localizedTexts["updateRequestError"] = "Error updating request status";
+            localizedTexts["requestAccepted"] = "Request accepted and friend added successfully";
+            localizedTexts["addFriendError"] = "Error adding friend";
+            localizedTexts["requestRejected"] = "Request rejected";
+            localizedTexts["rejectRequestError"] = "Error rejecting request";
+            localizedTexts["unknownUser"] = "Unknown";
+            localizedTexts["unnamedUser"] = "Unnamed User";
+            localizedTexts["defaultRank"] = "Lab Newbie"; // Aunque la lógica se basa en español, el default en UI puede cambiar
+            localizedTexts["noAuthUser"] = "User not authenticated.";
+            localizedTexts["rankLabel"] = "Rank: {0}";
+        }
+        else // Español (por defecto)
+        {
+            localizedTexts["loading"] = "Cargando solicitudes...";
+            localizedTexts["loadError"] = "Error al obtener solicitudes: ";
+            localizedTexts["noPending"] = "No tienes solicitudes pendientes";
+            localizedTexts["requestsFound"] = "{0} solicitudes encontradas";
+            localizedTexts["noRequestsToShow"] = "No hay solicitudes para mostrar";
+            localizedTexts["noMatches"] = "No se encontraron coincidencias";
+            localizedTexts["matchesFound"] = "{0} solicitudes coinciden con tu búsqueda";
+            localizedTexts["showingRequests"] = "Mostrando {0} solicitudes";
+            localizedTexts["processing"] = "Procesando solicitud...";
+            localizedTexts["getRequestError"] = "Error al obtener datos de la solicitud";
+            localizedTexts["updateRequestError"] = "Error al actualizar estado de solicitud";
+            localizedTexts["requestAccepted"] = "Solicitud aceptada y amigo agregado con éxito";
+            localizedTexts["addFriendError"] = "Error al agregar amigo";
+            localizedTexts["requestRejected"] = "Solicitud rechazada";
+            localizedTexts["rejectRequestError"] = "Error al rechazar solicitud";
+            localizedTexts["unknownUser"] = "Desconocido";
+            localizedTexts["unnamedUser"] = "Usuario sin nombre";
+            localizedTexts["defaultRank"] = "Novato de laboratorio";
+            localizedTexts["noAuthUser"] = "Usuario no autenticado.";
+            localizedTexts["rankLabel"] = "Rango: {0}";
+        }
+    }
+
     void Update()
     {
-        // Ejecutar la búsqueda programada cuando pase el tiempo de retraso
         if (searchScheduled && Time.time >= lastSearchTime + searchDelay)
         {
             searchScheduled = false;
@@ -73,125 +130,101 @@ public class SolicitudesManager : MonoBehaviour
     void OnSearchInputChanged(string text)
     {
         lastSearchText = text;
-
-        // Si está vacío, mostrar todas las solicitudes
         if (string.IsNullOrEmpty(text))
         {
             FilterRequests("");
             return;
         }
+        if (text.Length < minSearchChars) return;
 
-        // Si no tiene suficientes caracteres, no hacer nada todavía
-        if (text.Length < minSearchChars)
-        {
-            return;
-        }
-
-        // Programar la búsqueda después del retraso
         lastSearchTime = Time.time;
         searchScheduled = true;
     }
 
-    void LoadPendingRequests()
+    async void LoadPendingRequests()
     {
-        ShowMessage("Cargando solicitudes...");
-        Debug.Log("Cargando solicitudes pendientes...");
-        db.Collection("SolicitudesAmistad")
-          .WhereEqualTo("idDestinatario", currentUserId)
-          .WhereEqualTo("estado", "pendiente")
-          .GetSnapshotAsync()
-          .ContinueWithOnMainThread(task =>
-          {
-              if (!task.IsCompleted || task.Result == null)
-              {
-                  string errorMsg = "Error al obtener solicitudes: " + (task.Exception?.Message ?? "Sin resultados");
-                  ShowMessage(errorMsg, true);
-                  Debug.LogError(errorMsg);
-                  return;
-              }
+        ShowMessage(localizedTexts["loading"]);
 
-              allRequests.Clear();
-              var userFetchTasks = new List<Task>();
+        var query = db.Collection("SolicitudesAmistad")
+                      .WhereEqualTo("idDestinatario", currentUserId)
+                      .WhereEqualTo("estado", "pendiente");
 
-              foreach (DocumentSnapshot document in task.Result.Documents)
-              {
-                  string fromUserId = document.GetValue<string>("idRemitente");
-                 
+        var snapshot = await query.GetSnapshotAsync();
 
-                  // Crear tarea para obtener el rango del usuario
-                  var fetchTask = db.Collection("users").Document(fromUserId).GetSnapshotAsync()
-                      .ContinueWithOnMainThread(userTask =>
-                      {
-                          if (userTask.IsCompleted && userTask.Result.Exists)
-                          {
-                              string rank = userTask.Result.ContainsField("Rango") ?
-                              userTask.Result.GetValue<string>("Rango") : "Novato de laboratorio";
+        allRequests.Clear();
+        var userFetchTasks = new List<Task<DocumentSnapshot>>();
 
-                              string fromUserName = userTask.Result.ContainsField("DisplayName") ?
-                              userTask.Result.GetValue<string>("DisplayName") : "Desconocido";
+        foreach (var doc in snapshot.Documents)
+        {
+            string fromUserId = doc.GetValue<string>("idRemitente");
+            userFetchTasks.Add(db.Collection("users").Document(fromUserId).GetSnapshotAsync());
+        }
 
-                              allRequests.Add(new FriendRequest
-                              {
-                                  fromUserId = fromUserId,
-                                  fromUserName = fromUserName,
-                                  fromUserRank = rank,
-                                  documentId = document.Id
-                              });
-                          }
-                      });
+        var userSnapshots = await Task.WhenAll(userFetchTasks);
 
-                  userFetchTasks.Add(fetchTask);
-              }
+        for (int i = 0; i < userSnapshots.Length; i++)
+        {
+            var userDoc = userSnapshots[i];
+            var requestDoc = snapshot.Documents.ElementAt(i);
 
-              // Esperar a que todas las tareas de obtención de rango terminen
-              Task.WhenAll(userFetchTasks).ContinueWithOnMainThread(finalTask =>
-              {
-                  if (allRequests.Count == 0)
-                  {
-                      ShowMessage("No tienes solicitudes pendientes");
-                  }
-                  else
-                  {
-                      ShowMessage($"{allRequests.Count} solicitudes encontradas");
-                  }
-                  FilterRequests("");
-              });
-          });
+            if (userDoc.Exists)
+            {
+                allRequests.Add(new FriendRequest
+                {
+                    fromUserId = userDoc.Id,
+                    fromUserName = userDoc.GetValue<string>("DisplayName") ?? localizedTexts["unknownUser"],
+                    fromUserRank = userDoc.GetValue<string>("Rango") ?? localizedTexts["defaultRank"],
+                    documentId = requestDoc.Id
+                });
+            }
+        }
+
+        if (allRequests.Count == 0)
+        {
+            ShowMessage(localizedTexts["noPending"]);
+        }
+        else
+        {
+            ShowMessage(string.Format(localizedTexts["requestsFound"], allRequests.Count));
+        }
+
+        FilterRequests("");
     }
+
 
     void FilterRequests(string searchText)
     {
-        // Limpiar el contenedor
         foreach (Transform child in requestContainer) Destroy(child.gameObject);
 
         if (allRequests.Count == 0)
         {
-            ShowMessage("No hay solicitudes para mostrar");
+            ShowMessage(localizedTexts["noRequestsToShow"]);
             return;
         }
 
         int matches = 0;
+        string lowerSearchText = searchText.ToLower();
+
         foreach (var request in allRequests)
         {
-            if (string.IsNullOrEmpty(searchText) ||
-                request.fromUserName.ToLower().Contains(searchText.ToLower()))
+            if (string.IsNullOrEmpty(lowerSearchText) || request.fromUserName.ToLower().Contains(lowerSearchText))
             {
                 CreateRequestUI(request.fromUserId, request.fromUserName, request.fromUserRank, request.documentId);
                 matches++;
             }
         }
 
-        if (matches == 0)
+        if (matches == 0 && !string.IsNullOrEmpty(searchText))
         {
-            ShowMessage("No se encontraron coincidencias");
+            ShowMessage(localizedTexts["noMatches"]);
         }
-        else if (!string.IsNullOrEmpty(searchText))
+        else if (matches > 0 && !string.IsNullOrEmpty(searchText))
         {
-            ShowMessage($"{matches} solicitudes coinciden con tu búsqueda");
+            ShowMessage(string.Format(localizedTexts["matchesFound"], matches));
         }
-        else
+        else if (matches > 0 && string.IsNullOrEmpty(searchText))
         {
-            ShowMessage($"Mostrando {matches} solicitudes");
+            ShowMessage(string.Format(localizedTexts["showingRequests"], matches));
         }
     }
 
@@ -199,38 +232,93 @@ public class SolicitudesManager : MonoBehaviour
     {
         GameObject requestItem = Instantiate(requestPrefab, requestContainer);
 
-        // Configurar los textos
         requestItem.transform.Find("NombreText").GetComponent<TMP_Text>().text = fromUserName;
-
-        // Buscar y configurar el texto del rango
-        TMP_Text rankText = requestItem.transform.Find("RangoText")?.GetComponent<TMP_Text>();
-        if (rankText != null)
-        {
-            rankText.text = userRank;
-        }
-        else
-        {
-            Debug.LogWarning("No se encontró el componente RangoText en el prefab");
-        }
-
-        // buscamos y configuramos la imagen del avatar
-        Image avatarImage = requestItem.transform.Find("AvatarImage")?.GetComponent<Image>();
+        requestItem.transform.Find("RangoText").GetComponent<TMP_Text>().text = string.Format(localizedTexts["rankLabel"], userRank);
 
         string avatarPath = ObtenerAvatarPorRango(userRank);
-        Debug.Log($"Intentando cargar avatar: {avatarPath}");
-
-        // 1. Cargar sprite
         Sprite avatarSprite = Resources.Load<Sprite>(avatarPath);
+        requestItem.transform.Find("AvatarImage").GetComponent<Image>().sprite = avatarSprite;
 
-        // cargamos la imagen al prefab
-        avatarImage.sprite = avatarSprite;
-
-        // Configurar botones
         requestItem.transform.Find("AceptarBtn").GetComponent<Button>().onClick.AddListener(() => AcceptRequest(documentId));
         requestItem.transform.Find("RechazarBtn").GetComponent<Button>().onClick.AddListener(() => RejectRequest(documentId));
     }
+
+    async void AcceptRequest(string documentId)
+    {
+        ShowMessage(localizedTexts["processing"]);
+
+        DocumentReference requestDocRef = db.Collection("SolicitudesAmistad").Document(documentId);
+        var requestSnapshot = await requestDocRef.GetSnapshotAsync();
+
+        if (!requestSnapshot.Exists)
+        {
+            ShowMessage(localizedTexts["getRequestError"]);
+            return;
+        }
+
+        string fromUserId = requestSnapshot.GetValue<string>("idRemitente");
+        string fromUserName = requestSnapshot.GetValue<string>("nombreRemitente");
+
+        var friendDataForCurrentUser = new Dictionary<string, object>
+        {
+            { "userId", fromUserId },
+            { "DisplayName", fromUserName },
+            { "fechaAmistad", Timestamp.GetCurrentTimestamp() }
+        };
+
+        var currentUserDataForFriend = new Dictionary<string, object>
+        {
+            { "userId", currentUserId },
+            { "DisplayName", auth.CurrentUser.DisplayName ?? localizedTexts["unnamedUser"] },
+            { "fechaAmistad", Timestamp.GetCurrentTimestamp() }
+        };
+
+        var batch = db.StartBatch();
+        batch.Update(requestDocRef, "estado", "aceptada");
+        batch.Set(db.Collection("users").Document(currentUserId).Collection("amigos").Document(fromUserId), friendDataForCurrentUser);
+        batch.Set(db.Collection("users").Document(fromUserId).Collection("amigos").Document(currentUserId), currentUserDataForFriend);
+
+        try
+        {
+            await batch.CommitAsync();
+            ShowMessage(localizedTexts["requestAccepted"]);
+            LoadPendingRequests();
+        }
+        catch (Exception e)
+        {
+            ShowMessage(localizedTexts["addFriendError"]);
+            Debug.LogError("Error en batch de aceptación: " + e.Message);
+        }
+    }
+
+    async void RejectRequest(string documentId)
+    {
+        ShowMessage(localizedTexts["processing"]);
+        try
+        {
+            await db.Collection("SolicitudesAmistad").Document(documentId).DeleteAsync();
+            ShowMessage(localizedTexts["requestRejected"]);
+            LoadPendingRequests();
+        }
+        catch (Exception e)
+        {
+            ShowMessage(localizedTexts["rejectRequestError"]);
+            Debug.LogError("Error al rechazar solicitud: " + e.Message);
+        }
+    }
+
+    void ShowMessage(string message)
+    {
+        if (messageText != null)
+        {
+            messageText.text = message;
+        }
+    }
+
     private string ObtenerAvatarPorRango(string rango)
     {
+        // Esta función depende de los valores en español de la base de datos.
+        // La traducción se maneja en la etiqueta de la UI, no aquí.
         switch (rango)
         {
             case "Novato de laboratorio": return "Avatares/Rango1";
@@ -244,112 +332,4 @@ public class SolicitudesManager : MonoBehaviour
             default: return "Avatares/Rango1";
         }
     }
-
-    void AcceptRequest(string documentId)
-    {
-        ShowMessage("Procesando solicitud...");
-
-        // Primero obtenemos la información de la solicitud
-        var requestDoc = db.Collection("SolicitudesAmistad").Document(documentId);
-        requestDoc.GetSnapshotAsync().ContinueWithOnMainThread(getTask =>
-        {
-            if (!getTask.IsCompleted || !getTask.Result.Exists)
-            {
-                ShowMessage("Error al obtener datos de la solicitud", true);
-                Debug.LogError("Error al obtener solicitud: " + getTask.Exception);
-                return;
-            }
-
-            // Obtenemos los datos de la solicitud
-            string fromUserId = getTask.Result.GetValue<string>("idRemitente");
-            string fromUserName = getTask.Result.GetValue<string>("nombreRemitente");
-
-            // Actualizamos el estado de la solicitud
-            requestDoc.UpdateAsync("estado", "aceptada").ContinueWithOnMainThread(updateTask =>
-            {
-                if (!updateTask.IsCompleted)
-                {
-                    ShowMessage("Error al actualizar estado de solicitud", true);
-                    Debug.LogError("Error al actualizar solicitud: " + updateTask.Exception);
-                    return;
-                }
-
-                // Creamos la referencia a la subcolección de amigos del usuario actual
-                var currentUserFriendsRef = db.Collection("users").Document(currentUserId).Collection("amigos");
-
-                // Creamos la referencia a la subcolección de amigos del otro usuario
-                var otherUserFriendsRef = db.Collection("users").Document(fromUserId).Collection("amigos");
-
-                // Creamos un diccionario con los datos del amigo a agregar
-                var friendData = new Dictionary<string, object>
-            {
-                { "userId", fromUserId },
-                { "DisplayName", fromUserName },
-                { "fechaAmistad", FieldValue.ServerTimestamp }
-            };
-
-                // Creamos un diccionario con los datos del usuario actual para el otro usuario
-                var currentUserData = new Dictionary<string, object>
-            {
-                { "userId", currentUserId },
-                { "DisplayName", auth.CurrentUser.DisplayName ?? "Usuario sin nombre" },
-                { "fechaAmistad", FieldValue.ServerTimestamp }
-            };
-
-                // Batch para ejecutar ambas operaciones atómicamente
-                var batch = db.StartBatch();
-
-                // Agregamos el amigo al usuario actual
-                batch.Set(currentUserFriendsRef.Document(fromUserId), friendData);
-
-                // Agregamos el usuario actual como amigo del otro usuario
-                batch.Set(otherUserFriendsRef.Document(currentUserId), currentUserData);
-
-                // Ejecutamos el batch
-                batch.CommitAsync().ContinueWithOnMainThread(batchTask =>
-                {
-                    if (batchTask.IsCompleted)
-                    {
-                        ShowMessage("Solicitud aceptada y amigo agregado con éxito");
-                        LoadPendingRequests();
-                    }
-                    else
-                    {
-                        ShowMessage("Error al agregar amigo", true);
-                        Debug.LogError("Error en batch: " + batchTask.Exception);
-                    }
-                });
-            });
-        });
-    }
-
-    void RejectRequest(string documentId)
-    {
-        ShowMessage("Procesando solicitud...");
-        db.Collection("SolicitudesAmistad").Document(documentId)
-          .DeleteAsync()
-          .ContinueWithOnMainThread(updateTask =>
-          {
-              if (updateTask.IsCompleted)
-              {
-                  ShowMessage("Solicitud rechazada");
-                  LoadPendingRequests();
-              }
-              else
-              {
-                  ShowMessage("Error al rechazar solicitud", true);
-                  Debug.LogError("Error al rechazar solicitud: " + updateTask.Exception);
-              }
-          });
-    }
-
-    // Método para mostrar mensajes de estado
-    void ShowMessage(string message, bool isError = false)
-    {
-        if (messageText != null)
-        {
-            messageText.text = message;
-
-        }
-    }
-}   
+}

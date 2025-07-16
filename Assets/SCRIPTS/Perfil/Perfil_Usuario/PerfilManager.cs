@@ -1,94 +1,132 @@
-﻿using Firebase.Firestore; // Importa la librería para interactuar con Firebase Firestore
-using System.Collections.Generic; // Importa las colecciones genéricas 
-using UnityEngine; // Importa las funcionalidades de Unity
-using TMPro; // Importa TextMesh Pro para trabajar con texto
-using Firebase.Extensions; // Importa extensiones específicas de Firebase
-using System.Threading.Tasks; // Importa para trabajar con tareas asíncronas
-using UnityEngine.UI; // Importa las funcionalidades de UI (interfaz de usuario) de Unity
-using System.Collections; // Importa para trabajar con corutinas (funciones asíncronas dentro de Unity)
+﻿using Firebase.Firestore;
+using System.Collections.Generic;
+using UnityEngine;
+using TMPro;
+using Firebase.Extensions;
+using System.Threading.Tasks;
+using UnityEngine.UI;
+using System.Collections;
 using UnityEngine.SceneManagement;
 using Firebase.Auth;
-using Unity;
+
 public class PerfilManager : MonoBehaviour
 {
-    private FirebaseFirestore db; // Base de datos de Firebase
+    private FirebaseFirestore db;
     private FirebaseAuth auth;
-    private string userId; // ID del usuario actual (almacenado en PlayerPrefs)
+    private string userId;
 
-    // Referencias a los elementos de la interfaz
-    public TMP_Text posicionText; // Texto que muestra la posición en el ranking
-    public TMP_Text Xptext; // Texto que muestra los puntos de experiencia (XP) del usuario
-    public TMP_Text UserName; // Texto que muestra el nombre del usuario
-    public Image avatarimage; // Imagen que muestra el avatar del usuario
-    public TMP_Text rangotext; // Texto que muestra el rango del usuario
+    [Header("UI References")]
+    public TMP_Text posicionText;
+    public TMP_Text Xptext;
+    public TMP_Text UserName;
+    public Image avatarimage;
+    public TMP_Text rangotext;
 
-  
-
-    // instanciamos panel 
+    [Header("Panel References")]
     [SerializeField] public GameObject m_logoutUI = null;
-    // internet
+
     private bool hayInternet = false;
 
+    // MODIFICADO: Variables de localización
+    private string appIdioma;
+    private Dictionary<string, string> localizedTexts = new Dictionary<string, string>();
 
     void Start()
     {
-        db = FirebaseFirestore.DefaultInstance; // Conecta con la base de datos de Firebase
+        db = FirebaseFirestore.DefaultInstance;
         auth = FirebaseAuth.DefaultInstance;
-        userId = PlayerPrefs.GetString("userId", "").Trim(); // Obtiene el ID del usuario guardado en PlayerPrefs
+        userId = PlayerPrefs.GetString("userId", "").Trim();
 
-        // Verificar conexión a internet
+        // MODIFICADO: Inicializar idioma y textos
+        appIdioma = PlayerPrefs.GetString("appIdioma", "español");
+        InitializeLocalizedTexts();
+
         hayInternet = Application.internetReachability != NetworkReachability.NotReachable;
         if (hayInternet)
         {
-            Debug.Log("Conexion a internet exitosa... Desde rankingcontroller");
-            // Si el ID no está vacío, obtenemos la posición y los datos del usuario
             if (!string.IsNullOrEmpty(userId))
             {
-                ObtenerPosicionUsuario(); // Llama a la función para obtener la posición del usuario en el ranking
-                StartCoroutine(LoadUserData(userId)); // Llama a la función para cargar los datos del usuario (en corutina para esperar la respuesta de Firebase)
+                ObtenerPosicionUsuario();
+                StartCoroutine(LoadUserData(userId));
             }
             else
             {
-                Debug.Log("Usuario no autenticado, mostrando datos offline");
+                Debug.Log(localizedTexts["offlineData"]);
                 MostrarDatosOffline();
             }
-
         }
         else
         {
-            Debug.Log("Sin conexion a internet, mostrando datos offline");
+            Debug.Log(localizedTexts["offlineData"]);
             MostrarDatosOffline();
         }
     }
+
+    // MODIFICADO: Nuevo método para centralizar las traducciones
+    void InitializeLocalizedTexts()
+    {
+        if (appIdioma == "ingles")
+        {
+            localizedTexts["greeting"] = "Hello, {0}!";
+            localizedTexts["position"] = "Rank: #{0}";
+            localizedTexts["positionUnavailable"] = "Position: N/A";
+            localizedTexts["positionNotFound"] = "Position: Not Found";
+            localizedTexts["noRank"] = "No Rank";
+            localizedTexts["noXp"] = "No XP";
+            localizedTexts["userNotFound"] = "User not found!";
+            localizedTexts["defaultRank"] = "Lab Newbie";
+            localizedTexts["offlineData"] = "No internet connection, showing offline data.";
+            localizedTexts["logoutPanelError"] = "Logout panel is not assigned.";
+            localizedTexts["logoutSuccess"] = "Logged out successfully.";
+            localizedTexts["noUserToUpload"] = "No authenticated user to upload data.";
+            localizedTexts["noDataToUpload"] = "No mission or category data to upload.";
+            localizedTexts["uploadSuccess"] = "Mission and category data uploaded.";
+        }
+        else // Español por defecto
+        {
+            localizedTexts["greeting"] = "¡Hola, {0}!";
+            localizedTexts["position"] = "Posición: #{0}";
+            localizedTexts["positionUnavailable"] = "Posición: No disponible";
+            localizedTexts["positionNotFound"] = "Posición: No encontrada";
+            localizedTexts["noRank"] = "Sin rango";
+            localizedTexts["noXp"] = "Sin XP";
+            localizedTexts["userNotFound"] = "¡Usuario no encontrado!";
+            localizedTexts["defaultRank"] = "Novato de laboratorio";
+            localizedTexts["offlineData"] = "Sin conexión a internet, mostrando datos offline.";
+            localizedTexts["logoutPanelError"] = "El panel de logout no está asignado.";
+            localizedTexts["logoutSuccess"] = "✅ Sesión cerrada correctamente.";
+            localizedTexts["noUserToUpload"] = "❌ No hay usuario autenticado.";
+            localizedTexts["noDataToUpload"] = "⚠️ No hay datos de misiones ni categorías para subir.";
+            localizedTexts["uploadSuccess"] = "✅ Datos de misiones y categorías subidos.";
+        }
+    }
+
     private void MostrarDatosOffline()
     {
         string username = PlayerPrefs.GetString("DisplayName", "");
-        string rangos = PlayerPrefs.GetString("Rango", "Novato de laboratorio");
+        string rangos = PlayerPrefs.GetString("Rango", localizedTexts["defaultRank"]);
         int xp = PlayerPrefs.GetInt("TempXP", 0);
         int posicion = PlayerPrefs.GetInt("posicion", 0);
-       
 
-        // mostrar datos del usuario en la interfaz 
-        UserName.text = "¡Hola, " + username + "!";
-        posicionText.text = $" # {posicion}";
+        UserName.text = string.Format(localizedTexts["greeting"], username);
+        posicionText.text = string.Format(localizedTexts["position"], posicion);
         Xptext.text = xp.ToString();
         rangotext.text = rangos;
 
         string avatarPath = ObtenerAvatarPorRango(rangos);
         Sprite avatarSprite = Resources.Load<Sprite>(avatarPath) ?? Resources.Load<Sprite>("Avatares/defecto");
-
         avatarimage.sprite = avatarSprite;
     }
-    // Corutina que espera a que se carguen los datos del usuario
+
     IEnumerator LoadUserData(string userId)
     {
-        var task = GetUserData(userId); // Llama a la función GetUserData para obtener los datos del usuario
-        yield return new WaitUntil(() => task.IsCompleted); // Espera hasta que la tarea (obtener los datos) esté completada
+        var task = GetUserData(userId);
+        yield return new WaitUntil(() => task.IsCompleted);
     }
 
-    // Función que devuelve la ruta del avatar según el rango del usuario
     private string ObtenerAvatarPorRango(string rangos)
     {
+        // Esta lógica depende de los nombres en español de la DB, no se traduce.
         switch (rangos)
         {
             case "Novato de laboratorio": return "Avatares/Rango1";
@@ -103,190 +141,142 @@ public class PerfilManager : MonoBehaviour
         }
     }
 
-    // Función para obtener los datos del usuario desde Firebase
     async Task GetUserData(string userId)
     {
-        // Obtiene la referencia al documento del usuario desde Firestore usando su ID
         DocumentReference docRef = db.Collection("users").Document(userId);
-        // Intenta obtener los datos del usuario
         DocumentSnapshot snapshot = await docRef.GetSnapshotAsync();
 
-        // Verifica si el usuario existe en la base de datos
         if (!snapshot.Exists)
         {
-            // Si el usuario no existe, muestra un mensaje de error y asigna valores predeterminados
             Debug.LogError("Usuario no encontrado en la base de datos.");
-            UserName.text = "¡Usuario no encontrado!";
-            rangotext.text = "Sin rango";
-            Xptext.text = "sin xp";
-            return; // Sale de la función si el usuario no existe
+            UserName.text = localizedTexts["userNotFound"];
+            rangotext.text = localizedTexts["noRank"];
+            Xptext.text = localizedTexts["noXp"];
+            return;
         }
 
-        Debug.Log($"Usuario encontrado en Firebase: {userId}"); // Muestra el ID del usuario encontrado
+        string userName = snapshot.GetValue<string>("DisplayName") ?? "Sin nombre";
+        string rangos = snapshot.GetValue<string>("Rango") ?? localizedTexts["defaultRank"];
+        int xp = snapshot.GetValue<int>("xp");
 
-        // Obtiene los valores del usuario (nombre, rango, XP) de Firestore, si existen
-        string userName = snapshot.ContainsField("DisplayName") ? snapshot.GetValue<string>("DisplayName") : "Sin nombre";
-        string rangos = snapshot.ContainsField("Rango") ? snapshot.GetValue<string>("Rango") : "Sin rango";
-        int xp = snapshot.ContainsField("xp") ? snapshot.GetValue<int>("xp") : 0;
+        Xptext.text = xp.ToString();
+        UserName.text = string.Format(localizedTexts["greeting"], userName);
+        rangotext.text = rangos;
 
-
-        // Muestra los datos en la interfaz
-        Xptext.text = xp.ToString(); // Muestra los puntos de experiencia
-        UserName.text = "¡Hola " + userName + "!"; // Muestra el nombre del usuario
-        rangotext.text = "¡" + rangos + "!"; // Muestra el rango del usuario
-
-        // Obtiene y asigna el avatar correspondiente según el rango
-        string avatarPath = ObtenerAvatarPorRango(rangos); // Obtiene la ruta del avatar según el rango
-        Sprite avatarSprite = Resources.Load<Sprite>(avatarPath); // Carga la imagen del avatar
-
-        // Si encontró la imagen del avatar, la asigna a la interfaz
-        if (avatarSprite != null)
-        {
-            avatarimage.sprite = avatarSprite;
-        }
-        else
-        {
-            // Si no se encuentra el avatar, muestra un avatar por defecto
-            Debug.LogError($"No se encontró el avatar para la ruta: {avatarPath}. Asignando avatar por defecto.");
-            avatarimage.sprite = Resources.Load<Sprite>("Avatares/Rango1");
-        }
+        string avatarPath = ObtenerAvatarPorRango(rangos);
+        Sprite avatarSprite = Resources.Load<Sprite>(avatarPath) ?? Resources.Load<Sprite>("Avatares/Rango1");
+        avatarimage.sprite = avatarSprite;
     }
 
-    // Función para obtener la posición del usuario en el ranking
-   public async void ObtenerPosicionUsuario()
+    public async void ObtenerPosicionUsuario()
     {
-        // Realiza una consulta para obtener los usuarios ordenados por XP en orden descendente (de mayor a menor)
         Query rankingQuery = db.Collection("users").OrderByDescending("xp");
-        // Ejecuta la consulta y obtiene los datos
         QuerySnapshot snapshot = await rankingQuery.GetSnapshotAsync();
 
-        // Si no hay usuarios en la base de datos
         if (snapshot.Count == 0)
         {
-            Debug.LogWarning("No hay usuarios registrados en la base de datos.");
-            posicionText.text = "Posición: No disponible"; // Muestra mensaje indicando que no hay usuarios
-            return; // Sale de la función si no hay usuarios
+            Debug.LogWarning("No hay usuarios en la base de datos.");
+            posicionText.text = localizedTexts["positionUnavailable"];
+            return;
         }
 
-        int posicion = 1; // Comienza desde la posición 1 en el ranking
-        bool encontrado = false; // Variable para indicar si se encuentra al usuario
+        int posicion = 1;
+        bool encontrado = false;
 
-        // Recorre todos los usuarios del ranking
         foreach (DocumentSnapshot doc in snapshot.Documents)
         {
-            // Si el ID del documento coincide con el ID del usuario actual
             if (doc.Id == userId)
             {
-                encontrado = true; // Marca que se encontró al usuario-
-                posicionText.text = posicion.ToString(); // Muestra la posición en el ranking
-                PlayerPrefs.SetInt("posicion", posicion); // guardo posición para mostrarla offline --------------------------------
-                Debug.Log($"El usuario {userId} está en la posición {posicion} del ranking.");
-                break; // Sale del ciclo ya que se encontró al usuario
+                encontrado = true;
+                posicionText.text = $"# {posicion}";
+                PlayerPrefs.SetInt("posicion", posicion);
+                break;
             }
-            posicion++; // Incrementa la posición para el siguiente usuario
+            posicion++;
         }
 
-        // Si no se encontró al usuario
         if (!encontrado)
         {
             Debug.LogError("No se encontró al usuario en el ranking.");
-            posicionText.text = "Posición: No encontrada"; // Muestra un mensaje de error
+            posicionText.text = localizedTexts["positionNotFound"];
         }
-
-
     }
+
     public async void Logout()
     {
-        await SubirDatosJSON(); // Guardar el JSON antes de cerrar sesión
-
+        await SubirDatosJSON();
         auth.SignOut();
         PlayerPrefs.DeleteAll();
-
-        //PlayerPrefs.SetString("Estadouser", estadouser);
         PlayerPrefs.Save();
-
-        Debug.Log("✅ Sesión cerrada correctamente.");
+        Debug.Log(localizedTexts["logoutSuccess"]);
         SceneManager.LoadScene("Start");
     }
+
     public async Task SubirDatosJSON()
     {
         if (string.IsNullOrEmpty(userId))
         {
-            Debug.LogError("❌ No hay usuario autenticado.");
+            Debug.LogError(localizedTexts["noUserToUpload"]);
             return;
         }
 
-        // Obtener JSON de misiones y categorías desde PlayerPrefs
         string jsonMisiones = PlayerPrefs.GetString("misionesCategoriasJSON", "{}");
         string jsonCategorias = PlayerPrefs.GetString("CategoriasOrdenadas", "{}");
 
-        // Referencias a los documentos dentro de la colección del usuario
-        DocumentReference misionesDoc = db.Collection("users").Document(userId).Collection("datos").Document("misiones");
-        DocumentReference categoriasDoc = db.Collection("users").Document(userId).Collection("datos").Document("categorias");
-
-        // Crear tareas para subir ambos JSONs
         List<Task> tareasSubida = new List<Task>();
 
         if (jsonMisiones != "{}")
         {
+            DocumentReference misionesDoc = db.Collection("users").Document(userId).Collection("datos").Document("misiones");
             Dictionary<string, object> dataMisiones = new Dictionary<string, object>
-        {
-            { "misiones", jsonMisiones },
-            { "timestamp", FieldValue.ServerTimestamp }
-        };
+            {
+                { "misiones", jsonMisiones },
+                { "timestamp", FieldValue.ServerTimestamp }
+            };
             tareasSubida.Add(misionesDoc.SetAsync(dataMisiones, SetOptions.MergeAll));
         }
 
         if (jsonCategorias != "{}")
         {
+            DocumentReference categoriasDoc = db.Collection("users").Document(userId).Collection("datos").Document("categorias");
             Dictionary<string, object> dataCategorias = new Dictionary<string, object>
-        {
-            { "categorias", jsonCategorias },
-            { "timestamp", FieldValue.ServerTimestamp }
-        };
+            {
+                { "categorias", jsonCategorias },
+                { "timestamp", FieldValue.ServerTimestamp }
+            };
             tareasSubida.Add(categoriasDoc.SetAsync(dataCategorias, SetOptions.MergeAll));
         }
 
         if (tareasSubida.Count == 0)
         {
-            Debug.LogWarning("⚠️ No hay datos de misiones ni categorías para subir.");
+            Debug.LogWarning(localizedTexts["noDataToUpload"]);
             return;
         }
 
-        // Esperar a que todas las tareas finalicen
         await Task.WhenAll(tareasSubida);
-
-        Debug.Log("✅ Datos de misiones y categorías subidos en documentos separados.");
+        Debug.Log(localizedTexts["uploadSuccess"]);
     }
-
-
 
     public void showlogout()
     {
         if (m_logoutUI != null)
-        {
             m_logoutUI.SetActive(true);
-        }
         else
-        {
-            Debug.LogError("El panel de logout no está asignado.");
-        }
+            Debug.LogError(localizedTexts["logoutPanelError"]);
     }
 
     public void quitarlogout()
     {
-        m_logoutUI.SetActive(false);
-
+        if (m_logoutUI != null)
+            m_logoutUI.SetActive(false);
     }
+
     public void ActivarRanking()
     {
         string estadouser = PlayerPrefs.GetString("Estadouser", "");
         if (estadouser == "nube")
         {
             SceneManager.LoadScene("Ranking1");
-            
         }
     }
-
-    
 }
