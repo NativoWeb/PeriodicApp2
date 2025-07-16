@@ -8,6 +8,8 @@ using UnityEngine.EventSystems;
 using System.Collections;
 using System;
 using UnityEngine.SceneManagement;
+using System.IO;
+using System.Threading.Tasks;
 
 public class ComunidadDetalleManager : MonoBehaviour
 {
@@ -242,8 +244,6 @@ public class ComunidadDetalleManager : MonoBehaviour
 
         });
 
-        
-
         // Obtener cantidad de miembros
         int cantidadMiembros = 0;
         if (dataComunidad.TryGetValue("miembros", out object miembrosObj) && miembrosObj is List<object> miembros)
@@ -447,7 +447,6 @@ public class ComunidadDetalleManager : MonoBehaviour
             }
         }
 
-
     public void OcultarPanelConfirmarAbandonarComunidad()
     {
         if (panelConfirmacionAbandonar != null)
@@ -456,8 +455,6 @@ public class ComunidadDetalleManager : MonoBehaviour
             EventSystem.current.SetSelectedGameObject(btnCancelarAbandonar.gameObject);
         }
     }
-
-   
 
     IEnumerator CargarMiembrosConInfo(List<object> miembros)
     {
@@ -640,7 +637,7 @@ public class ComunidadDetalleManager : MonoBehaviour
               panelSolicitudes.SetActive(true);
           });
     }
-    void MostrarEncuestas(Dictionary<string, object> dataComunidad)
+    public void MostrarEncuestas(Dictionary<string, object> dataComunidad)
     {
         panelSeñalarEncuestas.SetActive(true);
         if (panelSeñalarMiembros != null) panelSeñalarMiembros.SetActive(false);
@@ -652,72 +649,183 @@ public class ComunidadDetalleManager : MonoBehaviour
             Destroy(child.gameObject);
         }
 
-        // Verifica si hay encuestas asignadas
-        if (dataComunidad.TryGetValue("encuestasAsignadas", out object encuestasObj))
+        // 1. Obtener el nombre de la comunidad para construir la ruta de la carpeta
+        if (!dataComunidad.TryGetValue("nombre", out object nombreObj) || !(nombreObj is string nombreComunidad))
         {
-            if (encuestasObj is Dictionary<string, object> encuestasDic)
+            Debug.LogError("El diccionario de la comunidad no contiene un campo 'nombre' válido.");
+            // Opcional: mostrar un mensaje de error en la UI
+            return;
+        }
+
+        // 2. Verificar si hay encuestas asignadas en el diccionario
+        if (dataComunidad.TryGetValue("encuestasAsignadas", out object encuestasObj) && encuestasObj is Dictionary<string, object> encuestasDic)
+        {
+            if (encuestasDic.Count == 0)
             {
-                foreach (var par in encuestasDic)
+                Debug.Log($"La comunidad '{nombreComunidad}' no tiene encuestas en su lista.");
+                // Opcional: Mostrar un texto que diga "No hay encuestas asignadas"
+                return;
+            }
+
+            foreach (var par in encuestasDic)
+            {
+                if (par.Value is bool asignada && asignada)
                 {
                     string encuestaId = par.Key;
-                    bool asignada = Convert.ToBoolean(par.Value);
-                    if (asignada)
-                    {
-                        CargarEncuesta(encuestaId); // carga desde Firestore
-                    }
+                    // Llamamos a la nueva función que carga desde el archivo local
+                    InstanciarItemEncuestaLocal(encuestaId, nombreComunidad);
                 }
-            }
-            else
-            {
-                Debug.LogWarning("encuestasAsignadas no es un diccionario válido.");
             }
         }
         else
         {
-            Debug.Log("No hay encuestasAsignadas en este documento.");
+            Debug.Log($"No se encontró el mapa 'encuestasAsignadas' en la comunidad '{nombreComunidad}'.");
         }
 
         panelEncuestas.SetActive(true); // activa el panel al final
     }
 
-    public async void CargarEncuesta(string encuestaId)
+    private async Task InstanciarItemEncuestaLocal(string encuestaId, string nombreComunidad)
     {
-        if (string.IsNullOrEmpty(encuestaId))
-            return;
+        // ... (el código de carga del archivo local se queda igual)
+        string nombreCarpetaSanitizado = SanitizarNombreArchivo(nombreComunidad);
+        string filePath = Path.Combine(Application.persistentDataPath, "EncuestasAsignadas", nombreCarpetaSanitizado, $"{encuestaId}.json");
 
-        DocumentReference docRef = db.Collection("Encuestas").Document(encuestaId);
-        DocumentSnapshot snapshot = await docRef.GetSnapshotAsync();
-
-        if (snapshot.Exists)
+        if (!File.Exists(filePath))
         {
-            string tituloEncuesta = snapshot.GetValue<string>("titulo");
+            Debug.LogWarning($"⚠️ No se encontró el archivo local para la encuesta {encuestaId}.");
+            return;
+        }
 
-            // Instancia el prefab
-            GameObject nuevoItem = Instantiate(prefabEncuesta, contenedorEncuestas);
+        string jsonString = File.ReadAllText(filePath);
+        EncuestaModelo encuestaData = JsonUtility.FromJson<EncuestaModelo>(jsonString);
 
-            // Asigna el texto
-            TextMeshProUGUI textoTitulo = nuevoItem.GetComponentInChildren<TextMeshProUGUI>();
-            if (textoTitulo != null)
-            {
-                textoTitulo.text = tituloEncuesta;
-            }
+        if (encuestaData == null)
+        {
+            Debug.LogError($"Error al deserializar el JSON para la encuesta {encuestaId}.");
+            return;
+        }
 
-            // Si el prefab tiene botón y quieres que haga algo:
-            Button boton = nuevoItem.GetComponent<Button>();
-            if (boton != null)
-            {
-                boton.onClick.AddListener(() =>
-                {
-                    Debug.Log($"➡️ Encuesta {tituloEncuesta} seleccionada con ID {encuestaId}");
-                    // Aquí abre el otro panel donde se va a responder la encuesta y crea otro scripff y lo instancia y le manda un diccionario con los datos de la encuesta
-                    // aca crea el diccionario y lo llena y lo manda al controller de " presentar encuesta" o como sea
-                });
-            }
+        GameObject nuevoItem = Instantiate(prefabEncuesta, contenedorEncuestas);
+
+        // --- LÓGICA ASÍNCRONA ---
+
+        TextMeshProUGUI textoTitulo = nuevoItem.transform.Find("TextoTitulo").GetComponent<TextMeshProUGUI>();
+        TextMeshProUGUI textoIntentos = nuevoItem.transform.Find("TextoCreador").GetComponent<TextMeshProUGUI>();
+
+        textoTitulo.text = encuestaData.Titulo;
+
+        int intentosMaximos = encuestaData.IntentosMaximos;
+
+        // AQUÍ ESTÁ EL CAMBIO CLAVE: Usamos 'await'
+        // La ejecución de este método específico para ESTE item se pausará aquí hasta obtener la respuesta.
+        int intentosRealizados = await ObtenerIntentosRealizadosAsync(encuestaId);
+
+        Transform botonTransform = nuevoItem.transform.Find("ButtonDetalleEncuesta");
+        Button boton = botonTransform?.GetComponent<Button>();
+
+        if (boton == null)
+        {
+            Debug.LogError("No se encontró el objeto 'ButtonDetalleEncuesta' o no tiene un componente Button.", nuevoItem);
+            return;
+        }
+
+        if (intentosRealizados >= intentosMaximos)
+        {
+            boton.interactable = false;
+            textoIntentos.text = "Intentos agotados";
+            textoIntentos.color = Color.red;
         }
         else
         {
-            Debug.LogWarning($"⚠️ Encuesta con ID {encuestaId} no encontrada.");
+            boton.interactable = true;
+            textoIntentos.text = $"Intentos: {intentosRealizados} / {intentosMaximos}";
+
+            boton.onClick.RemoveAllListeners();
+            boton.onClick.AddListener(() =>
+            {
+                Debug.Log($"➡️ Encuesta '{encuestaData.Titulo}' seleccionada. ID: {encuestaId}");
+
+                PlayerPrefs.SetString("IDEncuestaParaEjecutar", encuestaId);
+                PlayerPrefs.SetString("RutaCarpetaEncuesta", Path.Combine("EncuestasAsignadas", nombreCarpetaSanitizado));
+                PlayerPrefs.Save();
+
+                SceneManager.LoadScene("PlantillaEncuestas");
+            });
         }
+    }
+
+    private async Task<int> ObtenerIntentosRealizadosAsync(string encuestaId)
+    {
+        // --- 1. OBTENER DATOS COMUNES ---
+        string currentUserId = PlayerPrefs.GetString("UserID", "usuario_desconocido");
+        int intentosLocales = 0;
+        int intentosFirestore = 0;
+
+        // --- 2. CONTEO DE INTENTOS LOCALES (LÓGICA CORREGIDA) ---
+        string reportesPath = Path.Combine(Application.persistentDataPath, "ReportesEncuestas");
+        if (Directory.Exists(reportesPath))
+        {
+            string[] reportesFiles = Directory.GetFiles(reportesPath, "*.json"); // Solo leemos archivos .json
+            foreach (string filePath in reportesFiles)
+            {
+                try
+                {
+                    // YA NO FILTRAMOS POR NOMBRE DE ARCHIVO. Leemos todos.
+                    string reporteJson = File.ReadAllText(filePath);
+                    ReporteIntento reporte = JsonUtility.FromJson<ReporteIntento>(reporteJson);
+
+                    // AHORA FILTRAMOS USANDO LOS DATOS DENTRO DEL JSON
+                    if (reporte != null && reporte.idUsuario == currentUserId && reporte.idEncuesta == encuestaId)
+                    {
+                        // La condición ahora es triple:
+                        // 1. El reporte es del usuario actual.
+                        // 2. El reporte es de la encuesta que estamos comprobando.
+                        // 3. El objeto reporte no es nulo.
+                        intentosLocales++;
+                    }
+                }
+                catch (Exception e)
+                {
+                    Debug.LogWarning($"No se pudo leer o procesar el archivo de reporte local '{filePath}': {e.Message}");
+                }
+            }
+        }
+        Debug.Log($"[Conteo] Intentos locales para la encuesta '{encuestaId}': {intentosLocales}");
+
+
+        // --- 3. CONTEO DE INTENTOS EN FIRESTORE (Sin cambios, ya era correcto) ---
+        try
+        {
+            FirebaseFirestore db = FirebaseFirestore.DefaultInstance;
+            Query reportesQuery = db.Collection("reportes")
+                                     .WhereEqualTo("idEncuesta", encuestaId)
+                                     .WhereEqualTo("idUsuario", currentUserId);
+
+            QuerySnapshot snapshot = await reportesQuery.GetSnapshotAsync();
+            intentosFirestore = snapshot.Count;
+
+            Debug.Log($"[Conteo] Intentos en Firestore para la encuesta '{encuestaId}': {intentosFirestore}");
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning($"No se pudo consultar Firestore para obtener los intentos: {e.Message}");
+            intentosFirestore = 0;
+        }
+
+        // --- 4. COMBINAR Y DEVOLVER RESULTADOS ---
+        int totalIntentos = intentosLocales + intentosFirestore;
+        Debug.Log($"[Conteo] Total de intentos para '{encuestaId}': {totalIntentos} (Locales: {intentosLocales}, Firestore: {intentosFirestore})");
+        return totalIntentos;
+    }
+
+    private string SanitizarNombreArchivo(string nombre)
+    {
+        foreach (char c in Path.GetInvalidFileNameChars())
+        {
+            nombre = nombre.Replace(c, '_');
+        }
+        return nombre;
     }
 
     void CrearItemSolicitud(Dictionary<string, object> dataSolicitud, string comunidadId, string solicitudId)

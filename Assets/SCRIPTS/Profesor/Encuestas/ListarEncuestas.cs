@@ -29,6 +29,15 @@ public class ListarEncuestas : MonoBehaviour
     public GameObject preguntaDetalleItemPrefab;
     public TMP_Text txtDescripcionDetalles;
     public TMP_Text txtTituloDetalles;
+    public Button botonVistaPrevia;
+    public Button botonResultados;
+    public GameObject panelVistaPrevia;
+    public GameObject panelResultados;
+
+    [Header("Panel de Resultados")]
+    public TMP_Dropdown dropdownComunidades;
+    public Transform contenedorTablaResultados; 
+    public GameObject filaResultadoPrefab;      
 
     [Header("Panel Confirmar Eliminacion")]
     public GameObject panelConfirmacionEliminar;
@@ -67,6 +76,21 @@ public class ListarEncuestas : MonoBehaviour
     private ListenerRegistration encuestasListener;
     private HashSet<string> encuestasCargadas = new();
     public EncuestasManager encuestasManager;
+    // --- Colores para las pestañas de detalles ---
+    private Color colorBotonSeleccionado = new Color(0x51 / 255f, 0xB2 / 255f, 0x7C / 255f); // #51B27C
+    private Color colorLetraSeleccionado = Color.white;
+    private Color colorBotonNoSeleccionado = new Color(0xF9 / 255f, 0xF9 / 255f, 0xF9 / 255f); // #F9F9F9
+    private Color colorLetraNoSeleccionado = Color.black;
+
+    [Tooltip("La altura mínima que tendrá la lista desplegable.")]
+    [SerializeField] private float minDropdownHeight = 60f;
+
+    [Tooltip("La altura de cada item individual en la lista.")]
+    [SerializeField] private float dropdownItemHeight = 60f;
+
+    [Tooltip("El número máximo de items visibles antes de que aparezca el scroll.")]
+    [SerializeField] private int maxVisibleDropdownItems = 20;
+
     #endregion
 
     #region Ciclo de Vida de Unity
@@ -246,6 +270,7 @@ public class ListarEncuestas : MonoBehaviour
         btnConfirmarEliminar.onClick.AddListener(EliminarEncuestaConfirmada);
         btnCancelarEliminar.onClick.AddListener(OcultarPanelConfirmacionEliminar);
         btnSalirVerDetalles.onClick.AddListener(CerrarPanelVerDetalles);
+        ConfigurarPestanasDetalles();
     }
 
     private void CrearTarjetaEncuesta(string titulo, int numPreguntas, string id)
@@ -272,38 +297,257 @@ public class ListarEncuestas : MonoBehaviour
     private async void MostrarDetallesEncuesta(string id)
     {
         encuestaActualID = id;
-
-        // Muestra el panel inmediatamente para que el usuario vea que algo pasa.
         panelDetallesEncuesta.SetActive(true);
-        // Limpiamos la información anterior mientras carga la nueva.
         LimpiarPanelDetalles();
 
-        // --- Carga de datos de la encuesta ---
-        EncuestaModelo encuesta = await CargarEncuestaPorId(id);
+        // 1. Cambia a la pestaña de vista previa por defecto
+        CambiarPestaña(true);
 
+        // 2. Carga los datos de la encuesta (esto no cambia)
+        EncuestaModelo encuesta = await CargarEncuestaPorId(id);
         if (encuesta == null)
         {
             Debug.LogError($"No se pudo cargar la encuesta con ID: {id}");
-            // Opcional: muestra un mensaje de error en la UI.
-            panelDetallesEncuesta.SetActive(false); // Oculta el panel si falla.
+            panelDetallesEncuesta.SetActive(false);
             return;
         }
 
-        // --- Poblado de la UI con los datos cargados ---
-        txtTituloDetalles.text = encuesta.Titulo; // Ya tenías esto, pero lo dejamos.
+        // 3. Puebla la vista previa (esto no cambia)
+        txtTituloDetalles.text = encuesta.Titulo;
         txtDescripcionDetalles.text = encuesta.Descripcion;
-
-        // Poblamos la lista de preguntas
         PoblarListaPreguntasDetalles(encuesta.Preguntas);
 
-        // Configurar los botones de acción como ya lo haces
+        // 4. Configura los botones principales (esto no cambia)
         btnEditarEncuesta.onClick.RemoveAllListeners();
         btnEliminarEncuesta.onClick.RemoveAllListeners();
         btnAsignarEncuesta.onClick.RemoveAllListeners();
-
         btnEditarEncuesta.onClick.AddListener(() => AbrirPanelEncuesta(id));
         btnEliminarEncuesta.onClick.AddListener(MostrarPanelConfirmacionEliminar);
         btnAsignarEncuesta.onClick.AddListener(() => gestorAsignacion.AbrirPanelDeAsignacion(id, encuesta.Titulo, encuesta.Preguntas.Count));
+
+        // 5. NUEVO: Cargar los datos para el panel de resultados
+        await PoblarPanelDeResultados(id);
+    }
+
+    public void OnDropdownClicked_AdjustHeight()
+    {
+        // El objeto de la lista se crea en la raíz del Canvas, por eso usamos GameObject.Find.
+        GameObject dropdownList = GameObject.Find("Dropdown List");
+
+        if (dropdownList == null)
+        {
+            // Si no lo encuentra inmediatamente, es porque tarda un frame en crearse.
+            // Usamos una corrutina para intentarlo de nuevo en el siguiente frame.
+            StartCoroutine(AdjustHeightNextFrame());
+            return;
+        }
+
+        // Si lo encuentra, ajustamos la altura inmediatamente.
+        AjustarAlturaLista(dropdownList);
+    }
+
+    private System.Collections.IEnumerator AdjustHeightNextFrame()
+    {
+        yield return null; // Espera un frame.
+
+        GameObject dropdownList = GameObject.Find("Dropdown List");
+        if (dropdownList != null)
+        {
+            AjustarAlturaLista(dropdownList);
+        }
+    }
+
+    /// <summary>
+    /// Función de ayuda que calcula y aplica la altura a la lista del dropdown.
+    /// </summary>
+    private void AjustarAlturaLista(GameObject dropdownList)
+    {
+        // Lógica de cálculo (usa las variables que ya añadimos al script)
+        float heightFromOptions = dropdownComunidades.options.Count * dropdownItemHeight;
+        float maxAllowedHeight = maxVisibleDropdownItems * dropdownItemHeight;
+        float calculatedHeight = Mathf.Min(heightFromOptions, maxAllowedHeight);
+        float finalHeight = Mathf.Max(calculatedHeight, minDropdownHeight);
+
+        // Obtenemos el RectTransform y aplicamos el nuevo tamaño.
+        RectTransform listRectTransform = dropdownList.GetComponent<RectTransform>();
+        if (listRectTransform != null)
+        {
+            listRectTransform.sizeDelta = new Vector2(listRectTransform.sizeDelta.x, finalHeight);
+            Debug.Log($"[Dropdown] Altura ajustada a: {finalHeight}");
+        }
+    }
+
+    private void AjustarAlturaPlantillaDropdown()
+    {
+        // La plantilla del dropdown es un hijo del propio objeto Dropdown.
+        // Suele llamarse "Template".
+        Transform templateTransform = dropdownComunidades.transform.Find("Template");
+        if (templateTransform == null)
+        {
+            Debug.LogWarning("No se encontró la plantilla ('Template') del Dropdown. No se puede ajustar la altura.");
+            return;
+        }
+
+        // El objeto que realmente tiene el tamaño es el 'Viewport' dentro de la plantilla.
+        RectTransform viewportRect = templateTransform.Find("Viewport")?.GetComponent<RectTransform>();
+        if (viewportRect == null)
+        {
+            // A veces el hijo directo es el que tiene el RectTransform, no un Viewport.
+            viewportRect = templateTransform.GetComponent<RectTransform>();
+        }
+
+        // --- LÓGICA DE CÁLCULO ---
+        // Calcula la altura basada en el número de opciones actuales
+        float heightFromOptions = dropdownComunidades.options.Count * dropdownItemHeight;
+
+        // Limita la altura al máximo permitido (basado en maxVisibleItems)
+        float maxAllowedHeight = maxVisibleDropdownItems * dropdownItemHeight;
+
+        // La altura deseada es el menor entre la altura calculada y la altura máxima
+        float calculatedHeight = Mathf.Min(heightFromOptions, maxAllowedHeight);
+
+        // Pero nunca será menor que la altura mínima definida
+        float finalHeight = Mathf.Max(calculatedHeight, minDropdownHeight);
+
+        // Aplicamos la nueva altura al RectTransform
+        if (viewportRect != null)
+        {
+            viewportRect.sizeDelta = new Vector2(viewportRect.sizeDelta.x, finalHeight);
+        }
+        else
+        {
+            Debug.LogError("No se pudo encontrar el RectTransform de la plantilla para ajustar la altura.");
+        }
+    }
+
+    private async Task PoblarPanelDeResultados(string encuestaId)
+    {
+        Debug.Log($"[DEBUG] Iniciando PoblarPanelDeResultados para encuestaId: <color=yellow>{encuestaId}</color>");
+
+        // Limpiar estado anterior
+        dropdownComunidades.ClearOptions();
+        LimpiarTablaResultados();
+
+        // --- (TODA TU LÓGICA DE CONSULTA A FIREBASE SE MANTIENE IGUAL) ---
+        string campoDeBusqueda = $"encuestasAsignadas.{encuestaId}";
+        var query = db.Collection("comunidades").WhereEqualTo(campoDeBusqueda, true);
+        QuerySnapshot snapshotComunidades = await query.GetSnapshotAsync();
+
+        // ... (el resto del bloque try-catch se mantiene)
+
+        List<string> nombresComunidades = new List<string>();
+        if (snapshotComunidades.Documents.Any())
+        {
+            // ... (el bucle foreach para llenar nombresComunidades se mantiene)
+            foreach (var doc in snapshotComunidades.Documents)
+            {
+                string nombreComunidad = doc.TryGetValue("nombre", out string nombre) ? nombre : doc.Id;
+                nombresComunidades.Add(nombreComunidad);
+            }
+
+            // --- AQUÍ APLICAMOS LOS CAMBIOS ---
+
+            // 1. Añadimos las opciones al dropdown
+            dropdownComunidades.AddOptions(nombresComunidades);
+
+            // 2. ¡NUEVO! Llamamos a nuestra función para ajustar la altura.
+            AjustarAlturaPlantillaDropdown();
+
+            // 3. El resto de la lógica se mantiene igual
+            dropdownComunidades.onValueChanged.RemoveAllListeners();
+            dropdownComunidades.onValueChanged.AddListener(async (index) => {
+                if (index < 0 || index >= dropdownComunidades.options.Count) return;
+                string comunidadSeleccionada = dropdownComunidades.options[index].text;
+                await CargarResultadosParaComunidad(encuestaId, comunidadSeleccionada);
+            });
+
+            if (nombresComunidades.Count > 0)
+            {
+                dropdownComunidades.value = 0;
+                dropdownComunidades.RefreshShownValue();
+                await CargarResultadosParaComunidad(encuestaId, nombresComunidades[0]);
+            }
+        }
+        else
+        {
+            dropdownComunidades.AddOptions(new List<string> { "No asignada" });
+            // También ajustamos la altura aquí para el caso de "No asignada"
+            AjustarAlturaPlantillaDropdown();
+        }
+
+        Debug.Log($"[DEBUG] Proceso finalizado. El dropdown ahora tiene {dropdownComunidades.options.Count} opciones.");
+    }
+
+    private async Task CargarResultadosParaComunidad(string encuestaId, string comunidadId)
+    {
+        LimpiarTablaResultados();
+
+        var query = db.Collection("reportes")
+                      .WhereEqualTo("idEncuesta", encuestaId)
+                      .WhereEqualTo("idComunidad", comunidadId); // <-- Esta línea ya hace lo que necesito
+
+        QuerySnapshot snapshotReportes = await query.GetSnapshotAsync();
+
+        if (!snapshotReportes.Documents.Any())
+        {
+            Debug.Log($"No se encontraron reportes para la encuesta {encuestaId} en la comunidad {comunidadId}");
+            // Opcional: Mostrar un mensaje en la UI de que no hay resultados.
+            return;
+        }
+
+        // Lista para agrupar los resultados. Guardaremos el mejor intento de cada usuario.
+        Dictionary<string, ReporteIntentos> mejoresIntentos = new Dictionary<string, ReporteIntentos>();
+
+        foreach (var doc in snapshotReportes.Documents)
+        {
+            try
+            {
+                ReporteIntentos reporte = doc.ConvertTo<ReporteIntentos>(); // Asume que tienes una clase ReporteIntento
+
+                // Si no tenemos un intento para este usuario, o si este intento es mejor (más respuestas correctas), lo guardamos.
+                if (!mejoresIntentos.ContainsKey(reporte.idUsuario) || reporte.respuestasCorrectas > mejoresIntentos[reporte.idUsuario].respuestasCorrectas)
+                {
+                    mejoresIntentos[reporte.idUsuario] = reporte;
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"Error convirtiendo reporte {doc.Id}: {e.Message}");
+            }
+        }
+
+        // Ahora, poblamos la tabla con los mejores intentos y obtenemos los nombres de los usuarios.
+        foreach (var kvp in mejoresIntentos)
+        {
+            string idDeUsuario = kvp.Key;
+            ReporteIntentos reporte = kvp.Value;
+
+            // Obtener el nombre del usuario desde la colección "users"
+            DocumentSnapshot userDoc = await db.Collection("users").Document(idDeUsuario).GetSnapshotAsync();
+            string nombreUsuario = userDoc.Exists ? userDoc.GetValue<string>("DisplayName") : "Usuario Desconocido";
+
+            // Instanciamos y configuramos la fila
+            GameObject nuevaFila = Instantiate(filaResultadoPrefab, contenedorTablaResultados);
+
+            // Asumimos que el prefab tiene un script, ver Parte 3
+            var filaUI = nuevaFila.GetComponent<FilaResultadoUI>();
+            if (filaUI != null)
+            {
+                filaUI.Configurar(nombreUsuario, reporte.resultadoFinal);
+            }
+        }
+    }
+
+    private void LimpiarTablaResultados()
+    {
+        foreach (Transform child in contenedorTablaResultados)
+        {
+            // No destruir el encabezado si está dentro del mismo contenedor
+            if (child.name != "Fila_Encabezado_Resultados")
+            {
+                Destroy(child.gameObject);
+            }
+        }
     }
 
     private async Task<EncuestaModelo> CargarEncuestaPorId(string id)
@@ -431,6 +675,50 @@ public class ListarEncuestas : MonoBehaviour
             {
                 Debug.LogError($"❌ Error al eliminar encuesta local: {e.Message}");
             }
+        }
+    }
+
+    // Al final de la sección #region Manejo de UI y Encuestas, añade esto:
+    private void ConfigurarPestanasDetalles()
+    {
+        botonVistaPrevia.onClick.AddListener(() => CambiarPestaña(true));
+        botonResultados.onClick.AddListener(() => CambiarPestaña(false));
+    }
+
+    private void CambiarPestaña(bool mostrarVistaPrevia)
+    {
+        // Activar/Desactivar los paneles principales
+        panelVistaPrevia.SetActive(mostrarVistaPrevia);
+        panelResultados.SetActive(!mostrarVistaPrevia);
+
+        // Obtener los componentes de imagen y texto de cada botón
+        // Es un poco más de código, pero muy explícito y seguro.
+        Image imagenBotonVistaPrevia = botonVistaPrevia.GetComponent<Image>();
+        TextMeshProUGUI textoBotonVistaPrevia = botonVistaPrevia.GetComponentInChildren<TextMeshProUGUI>();
+
+        Image imagenBotonResultados = botonResultados.GetComponent<Image>();
+        TextMeshProUGUI textoBotonResultados = botonResultados.GetComponentInChildren<TextMeshProUGUI>();
+
+        // Aplicar estilos según la pestaña seleccionada
+        if (mostrarVistaPrevia)
+        {
+            // Pestaña "Vista Previa" está activa
+            imagenBotonVistaPrevia.color = colorBotonSeleccionado;
+            textoBotonVistaPrevia.color = colorLetraSeleccionado;
+
+            // Pestaña "Resultados" está inactiva
+            imagenBotonResultados.color = colorBotonNoSeleccionado;
+            textoBotonResultados.color = colorLetraNoSeleccionado;
+        }
+        else // Mostrar panel de Resultados
+        {
+            // Pestaña "Vista Previa" está inactiva
+            imagenBotonVistaPrevia.color = colorBotonNoSeleccionado;
+            textoBotonVistaPrevia.color = colorLetraNoSeleccionado;
+
+            // Pestaña "Resultados" está activa
+            imagenBotonResultados.color = colorBotonSeleccionado;
+            textoBotonResultados.color = colorLetraSeleccionado;
         }
     }
     #endregion
