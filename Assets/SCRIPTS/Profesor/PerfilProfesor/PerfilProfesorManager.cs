@@ -179,7 +179,8 @@ public class PerfilProfesorManager : MonoBehaviour
   
     public void showLogout()
     {
-        panelLogout.SetActive(true);
+        PlayerPrefs.SetString("navegacionCuenta", "profesor");
+        SceneManager.LoadScene("Cuenta");
     }
 
     public void ocultarLogout()
@@ -192,12 +193,10 @@ public class PerfilProfesorManager : MonoBehaviour
     public void logout() // ################################################################ Método para cerrar sesión
     {
         // await SubirMisionesJSON(); ponerlo apenas se pueda URGENTE
-        auth.SignOut(); // Cierra la sesión en Firebase
         PlayerPrefs.DeleteAll(); // Elimina el ID del usuario guardado
         PlayerPrefs.Save(); // Guarda los cambios
-
+        auth.SignOut(); // Cierra la sesión en Firebase
         Debug.Log("Sesión cerrada correctamente");
-
         // Opcional: Redirigir a la escena de login
         SceneManager.LoadScene("Start");
     }

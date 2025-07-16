@@ -12,12 +12,29 @@ public class NavegacionCuenta : MonoBehaviour
     [SerializeField] public GameObject panelDatosPersonales;
     [SerializeField] public GameObject panelCerrarSesion;
     [SerializeField] public GameObject PanelIdiomas;
+    [SerializeField] public Image panelSuperior;
     public Button btnIdiomas;
     public Button btnEspañol;
     public Button btnIngles;
+    public Button btnDatos;
 
     private void Start()
     {
+        string navegacionCuenta = PlayerPrefs.GetString("navegacionCuenta", "estudiante");
+
+        if (navegacionCuenta == "profesor")
+        {
+            btnDatos.gameObject.SetActive(false); 
+            Color customColor = new Color(80f / 255f, 178f / 255f, 125f / 255f, 1f);
+            panelSuperior.color = customColor;
+        }
+        else
+        {
+            btnDatos.gameObject.SetActive(true);
+            Color customColor = new Color(59f / 255f, 53f / 255f, 139f / 255f, 1f);
+            panelSuperior.color = customColor;
+        }
+
         btnIdiomas.onClick.AddListener(cambiarIdioma);
         btnEspañol.onClick.AddListener(() => CambiarIdiomaY_CerrarPanel(0));
         btnIngles.onClick.AddListener(() => CambiarIdiomaY_CerrarPanel(1));

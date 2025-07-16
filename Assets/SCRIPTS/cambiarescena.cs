@@ -23,6 +23,20 @@ public class cambiarescena : MonoBehaviour
         SceneManager.LoadScene("VuforiaNuevo");
     }
 
+    public void volverEntrePerfiles()
+    {
+        string navegacionCuenta = PlayerPrefs.GetString("navegacionCuenta", "estudiante");
+
+        if (navegacionCuenta == "estudiante")
+        {
+            SceneManager.LoadScene("Perfil_Usuario");
+        }
+        else
+        {
+            SceneManager.LoadScene("InicioProfesor1");
+        }
+    }
+
     public void DevolverComunidades()
     {
         string Ocupacion = PlayerPrefs.GetString("TempOcupacion", "");
