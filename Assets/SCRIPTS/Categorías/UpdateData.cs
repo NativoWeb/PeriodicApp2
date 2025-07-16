@@ -6,6 +6,7 @@ using System;
 using System.IO;
 using System.Collections;
 using UnityEngine.Networking;
+using UnityEngine.UI;
 
 public class UpdateData : MonoBehaviour
 {
@@ -21,6 +22,8 @@ public class UpdateData : MonoBehaviour
     //panel para registro 
     [SerializeField] GameObject m_NotificacionRegistroUI = null;
     [SerializeField] GameObject m_NotificacionLogueoUI = null;
+    [SerializeField] Button btnAbrirPanelRacha;
+    [SerializeField] GameObject PanelRacha;
 
 
     void Start()
@@ -45,9 +48,13 @@ public class UpdateData : MonoBehaviour
             Debug.Log("No es posible actualizar datos por el momento, el progreso se cargará cuando tengas conexión a internet... desde UpdateData");
         }
         GetuserData();
+        btnAbrirPanelRacha.onClick.AddListener(AbrirPanelRacha);
     }
 
-
+    void AbrirPanelRacha()
+    {
+        PanelRacha.SetActive(true);
+    }
     // 🔹 Modo online
     private  void HandleOnlineMode() // ----------------------------------------------------------------------------------
     {
