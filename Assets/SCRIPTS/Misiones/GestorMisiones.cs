@@ -230,17 +230,17 @@ public class GestorMisiones : MonoBehaviour
         }
 
         if (jsonDataMisiones == null ||
-            !jsonDataMisiones.HasKey("Misiones") ||
-            !jsonDataMisiones["Misiones"].HasKey("Categorias") ||
-            !jsonDataMisiones["Misiones"]["Categorias"].HasKey(categoriaSeleccionada) ||
-            !jsonDataMisiones["Misiones"]["Categorias"][categoriaSeleccionada].HasKey("Elementos") ||
-            !jsonDataMisiones["Misiones"]["Categorias"][categoriaSeleccionada]["Elementos"].HasKey(elementoSeleccionado))
+            !jsonDataMisiones.HasKey("Misiones_Categorias") ||
+            !jsonDataMisiones["Misiones_Categorias"].HasKey("Categorias") ||
+            !jsonDataMisiones["Misiones_Categorias"]["Categorias"].HasKey(categoriaSeleccionada) ||
+            !jsonDataMisiones["Misiones_Categorias"]["Categorias"][categoriaSeleccionada].HasKey("Elementos") ||
+            !jsonDataMisiones["Misiones_Categorias"]["Categorias"][categoriaSeleccionada]["Elementos"].HasKey(elementoSeleccionado))
         {
             Debug.LogError("No se encontró la categoría o el elemento en json_misiones.json");
             return;
         }
 
-        var misionesArray = jsonDataMisiones["Misiones"]["Categorias"][categoriaSeleccionada]["Elementos"][elementoSeleccionado]["misiones"].AsArray;
+        var misionesArray = jsonDataMisiones["Misiones_Categorias"]["Categorias"][categoriaSeleccionada]["Elementos"][elementoSeleccionado]["misiones"].AsArray;
 
         LimpiarMisiones(); // Limpia el contenido previo
 
