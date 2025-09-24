@@ -42,10 +42,17 @@ public class ControladorIdioma : MonoBehaviour
     {
         _active = true;
         yield return LocalizationSettings.InitializationOperation;
-        LocalizationSettings.SelectedLocale = LocalizationSettings.AvailableLocales.Locales[localeID];
+        var locales = LocalizationSettings.AvailableLocales.Locales;
+        if (localeID < 0 || localeID >= locales.Count)
+        {
+            Debug.LogWarning($"Locale ID {localeID} is out of range. Falling back to default locale.");
+            localeID = 0;
+        }
+
+        LocalizationSettings.SelectedLocale = locales[localeID];
         PlayerPrefs.SetInt("LocaleKey", localeID);
         if (localeID == 0)
-            PlayerPrefs.SetString("appIdioma", "español");
+            PlayerPrefs.SetString("appIdioma", "espaÃ±ol");
         else
             PlayerPrefs.SetString("appIdioma", "ingles");
         _active = false;

@@ -31,7 +31,7 @@ public class SolicitudesManager : MonoBehaviour
     private float lastSearchTime;
     private bool searchScheduled = false;
 
-    // MODIFICADO: Variables de localización
+    // MODIFICADO: Variables de localizacin
     private string appIdioma;
     private Dictionary<string, string> localizedTexts = new Dictionary<string, string>();
 
@@ -49,7 +49,7 @@ public class SolicitudesManager : MonoBehaviour
         db = FirebaseFirestore.DefaultInstance;
 
         // MODIFICADO: Inicializar idioma y textos
-        appIdioma = PlayerPrefs.GetString("appIdioma", "español");
+        appIdioma = PlayerPrefs.GetString("appIdioma", "espaÃ±ol");
         InitializeLocalizedTexts();
 
         if (auth.CurrentUser == null)
@@ -67,7 +67,7 @@ public class SolicitudesManager : MonoBehaviour
         LoadPendingRequests();
     }
 
-    // MODIFICADO: Nuevo método para centralizar las traducciones
+    // MODIFICADO: Nuevo mtodo para centralizar las traducciones
     void InitializeLocalizedTexts()
     {
         if (appIdioma == "ingles")
@@ -89,11 +89,11 @@ public class SolicitudesManager : MonoBehaviour
             localizedTexts["rejectRequestError"] = "Error rejecting request";
             localizedTexts["unknownUser"] = "Unknown";
             localizedTexts["unnamedUser"] = "Unnamed User";
-            localizedTexts["defaultRank"] = "Lab Newbie"; // Aunque la lógica se basa en español, el default en UI puede cambiar
+            localizedTexts["defaultRank"] = "Lab Newbie"; // Aunque la lgica se basa en espaÃ±ol, el default en UI puede cambiar
             localizedTexts["noAuthUser"] = "User not authenticated.";
             localizedTexts["rankLabel"] = "Rank: {0}";
         }
-        else // Español (por defecto)
+        else // Espaol (por defecto)
         {
             localizedTexts["loading"] = "Cargando solicitudes...";
             localizedTexts["loadError"] = "Error al obtener solicitudes: ";
@@ -101,12 +101,12 @@ public class SolicitudesManager : MonoBehaviour
             localizedTexts["requestsFound"] = "{0} solicitudes encontradas";
             localizedTexts["noRequestsToShow"] = "No hay solicitudes para mostrar";
             localizedTexts["noMatches"] = "No se encontraron coincidencias";
-            localizedTexts["matchesFound"] = "{0} solicitudes coinciden con tu búsqueda";
+            localizedTexts["matchesFound"] = "{0} solicitudes coinciden con tu bsqueda";
             localizedTexts["showingRequests"] = "Mostrando {0} solicitudes";
             localizedTexts["processing"] = "Procesando solicitud...";
             localizedTexts["getRequestError"] = "Error al obtener datos de la solicitud";
             localizedTexts["updateRequestError"] = "Error al actualizar estado de solicitud";
-            localizedTexts["requestAccepted"] = "Solicitud aceptada y amigo agregado con éxito";
+            localizedTexts["requestAccepted"] = "Solicitud aceptada y amigo agregado con xito";
             localizedTexts["addFriendError"] = "Error al agregar amigo";
             localizedTexts["requestRejected"] = "Solicitud rechazada";
             localizedTexts["rejectRequestError"] = "Error al rechazar solicitud";
@@ -287,7 +287,7 @@ public class SolicitudesManager : MonoBehaviour
         catch (Exception e)
         {
             ShowMessage(localizedTexts["addFriendError"]);
-            Debug.LogError("Error en batch de aceptación: " + e.Message);
+            Debug.LogError("Error en batch de aceptacin: " + e.Message);
         }
     }
 
@@ -317,8 +317,8 @@ public class SolicitudesManager : MonoBehaviour
 
     private string ObtenerAvatarPorRango(string rango)
     {
-        // Esta función depende de los valores en español de la base de datos.
-        // La traducción se maneja en la etiqueta de la UI, no aquí.
+        // Esta funcin depende de los valores en espaÃ±ol de la base de datos.
+        // La traduccin se maneja en la etiqueta de la UI, no aqu.
         switch (rango)
         {
             case "Novato de laboratorio": return "Avatares/Rango1";
@@ -328,7 +328,7 @@ public class SolicitudesManager : MonoBehaviour
             case "Experto Molecular": return "Avatares/Rango5";
             case "Maestro de Laboratorio": return "Avatares/Rango6";
             case "Sabio de la tabla": return "Avatares/Rango7";
-            case "Leyenda química": return "Avatares/Rango8";
+            case "Leyenda qumica": return "Avatares/Rango8";
             default: return "Avatares/Rango1";
         }
     }

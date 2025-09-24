@@ -31,7 +31,7 @@ public class SearchUsers : MonoBehaviour
     private float lastSearchTime;
     private bool searchScheduled = false;
 
-    // MODIFICADO: Variables de localización
+    // MODIFICADO: Variables de localizacin
     private string appIdioma;
     private Dictionary<string, string> localizedTexts = new Dictionary<string, string>();
 
@@ -43,7 +43,7 @@ public class SearchUsers : MonoBehaviour
             auth = FirebaseAuth.DefaultInstance;
 
             // MODIFICADO: Inicializar idioma y textos localizados
-            appIdioma = PlayerPrefs.GetString("appIdioma", "español");
+            appIdioma = PlayerPrefs.GetString("appIdioma", "espaÃ±ol");
             InitializeLocalizedTexts();
 
             if (auth.CurrentUser != null)
@@ -58,7 +58,7 @@ public class SearchUsers : MonoBehaviour
 
             if (searchInput == null || searchButton == null || resultsContainer == null || userResultPrefab == null)
             {
-                Debug.LogError("Uno o más componentes de la UI no están asignados en el inspector.");
+                Debug.LogError("Uno o ms componentes de la UI no estn asignados en el inspector.");
                 return;
             }
 
@@ -73,7 +73,7 @@ public class SearchUsers : MonoBehaviour
         }
     }
 
-    // MODIFICADO: Nuevo método para centralizar la traducción
+    // MODIFICADO: Nuevo mtodo para centralizar la traduccin
     void InitializeLocalizedTexts()
     {
         if (appIdioma == "ingles")
@@ -95,16 +95,16 @@ public class SearchUsers : MonoBehaviour
             localizedTexts["requestSent"] = "Request Sent";
             localizedTexts["requestReceived"] = "Friend Request";
         }
-        else // Español por defecto
+        else // Espaol por defecto
         {
             localizedTexts["minChars"] = "Escribe al menos {0} caracteres para buscar";
             localizedTexts["writing"] = "Escribiendo...";
             localizedTexts["loadingUsers"] = "Cargando usuarios...";
-            localizedTexts["loadError"] = "Hubo un error al cargar usuarios. Inténtalo de nuevo.";
+            localizedTexts["loadError"] = "Hubo un error al cargar usuarios. Intntalo de nuevo.";
             localizedTexts["noOtherUsers"] = "No hay otros usuarios registrados.";
             localizedTexts["suggestedUsers"] = "Usuarios sugeridos:";
             localizedTexts["searching"] = "Buscando...";
-            localizedTexts["searchError"] = "Hubo un error al buscar. Inténtalo de nuevo.";
+            localizedTexts["searchError"] = "Hubo un error al buscar. Intntalo de nuevo.";
             localizedTexts["noUsersFound"] = "No se encontraron usuarios";
             localizedTexts["noAuthUser"] = "No hay usuario autenticado";
             localizedTexts["rankLabel"] = "Rango: {0}";
@@ -243,7 +243,7 @@ public class SearchUsers : MonoBehaviour
 
             ConfigureAvatar(userEntry, rank);
 
-            Button addButton = userEntry.transform.Find("AñadirBtn").GetComponent<Button>();
+            Button addButton = userEntry.transform.Find("AadirBtn").GetComponent<Button>();
             CheckFriendStatus(userId, addButton);
             addButton.onClick.AddListener(() => AddFriend(userId, name, addButton));
         }
@@ -346,14 +346,14 @@ public class SearchUsers : MonoBehaviour
             case "Experto Molecular": return "Avatares/Rango5";
             case "Maestro de Laboratorio": return "Avatares/Rango6";
             case "Sabio de la tabla": return "Avatares/Rango7";
-            case "Leyenda química": return "Avatares/Rango8";
+            case "Leyenda qumica": return "Avatares/Rango8";
             default: return "Avatares/Rango1";
         }
     }
 
     private void PrintHierarchy(Transform parent, string indent = "")
     {
-        // Este método es para depuración y puede ser eliminado en la versión final
+        // Este mtodo es para depuracin y puede ser eliminado en la versin final
         // Debug.Log($"{indent}{parent.name}");
         foreach (Transform child in parent)
         {

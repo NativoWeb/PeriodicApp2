@@ -25,7 +25,7 @@ public class FriendsManager : MonoBehaviour
 
     private HashSet<string> excludedUsers = new HashSet<string>();
 
-    // MODIFICADO: Variables de localización
+    // MODIFICADO: Variables de localizacin
     private string appIdioma;
     private Dictionary<string, string> localizedTexts = new Dictionary<string, string>();
 
@@ -34,7 +34,7 @@ public class FriendsManager : MonoBehaviour
         auth = FirebaseAuth.DefaultInstance;
 
         // MODIFICADO: Inicializar idioma y textos
-        appIdioma = PlayerPrefs.GetString("appIdioma", "español");
+        appIdioma = PlayerPrefs.GetString("appIdioma", "espaÃ±ol");
         InitializeLocalizedTexts();
 
         if (auth.CurrentUser != null)
@@ -54,7 +54,7 @@ public class FriendsManager : MonoBehaviour
         LoadExcludedUsers();
     }
 
-    // MODIFICADO: Nuevo método para centralizar las traducciones
+    // MODIFICADO: Nuevo mtodo para centralizar las traducciones
     void InitializeLocalizedTexts()
     {
         if (appIdioma == "ingles")
@@ -70,7 +70,7 @@ public class FriendsManager : MonoBehaviour
             localizedTexts["sendRequestError"] = "Error sending request: ";
             localizedTexts["rankLabel"] = "Rank: {0}";
         }
-        else // Español por defecto
+        else // Espaol por defecto
         {
             localizedTexts["noAuthUser"] = "No hay usuario autenticado.";
             localizedTexts["requestsError"] = "Error obteniendo solicitudes de amistad: ";
@@ -220,7 +220,7 @@ public class FriendsManager : MonoBehaviour
 
             GameObject newCard = Instantiate(cardPrefab, scrollContent);
             newCard.transform.Find("NombreText")?.GetComponent<TMP_Text>().SetText(nombre);
-            // MODIFICADO: Añadir etiqueta de rango traducida
+            // MODIFICADO: Aadir etiqueta de rango traducida
             newCard.transform.Find("RangoText")?.GetComponent<TMP_Text>().SetText(string.Format(localizedTexts["rankLabel"], rango));
             Image AvatarUsuario = newCard.transform.Find("AvatarImage")?.GetComponent<Image>();
             if (AvatarUsuario != null)
@@ -231,7 +231,7 @@ public class FriendsManager : MonoBehaviour
             Button agregarAmigoButton = newCard.transform.Find("BtnAgregarAmigo")?.GetComponent<Button>();
             if (agregarAmigoButton != null)
             {
-                // MODIFICADO: Establecer estado inicial del botón
+                // MODIFICADO: Establecer estado inicial del botn
                 SetButtonState(agregarAmigoButton, new Color(0.2f, 0.6f, 1f), localizedTexts["addFriend"], true);
                 agregarAmigoButton.onClick.AddListener(() => AddFriend(suggestedUserId, nombre, agregarAmigoButton));
             }
@@ -272,7 +272,7 @@ public class FriendsManager : MonoBehaviour
 
     private string ObtenerAvatarPorRango(string rango)
     {
-        // La lógica depende de los nombres en español de la DB.
+        // La lgica depende de los nombres en espaÃ±ol de la DB.
         switch (rango)
         {
             case "Novato de laboratorio": return "Avatares/Rango1";
@@ -282,7 +282,7 @@ public class FriendsManager : MonoBehaviour
             case "Experto Molecular": return "Avatares/Rango5";
             case "Maestro de Laboratorio": return "Avatares/Rango6";
             case "Sabio de la tabla": return "Avatares/Rango7";
-            case "Leyenda química": return "Avatares/Rango8";
+            case "Leyenda qumica": return "Avatares/Rango8";
             default: return "Avatares/Rango1";
         }
     }
