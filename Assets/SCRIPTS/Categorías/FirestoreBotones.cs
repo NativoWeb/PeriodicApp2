@@ -291,13 +291,13 @@ public class FirestoreBotones : MonoBehaviour
     {
         var json = JSON.Parse(jsonText);
 
-        if (!json.HasKey("Misiones") || !json["Misiones"].HasKey("Categorias"))
+        if (!json.HasKey("Misiones_Categorias") || !json["Misiones_Categorias"].HasKey("Categorias"))
         {
             Debug.LogError("❌ Estructura del JSON incorrecta.");
             return 0f;
         }
 
-        var categoriasJSON = json["Misiones"]["Categorias"];
+        var categoriasJSON = json["Misiones_Categorias"]["Categorias"];
         if (!categoriasJSON.HasKey(categoriaTitulo) || !categoriasJSON[categoriaTitulo].HasKey("Elementos"))
         {
             Debug.LogError($"❌ No se encontró la categoría '{categoriaTitulo}' en el JSON.");

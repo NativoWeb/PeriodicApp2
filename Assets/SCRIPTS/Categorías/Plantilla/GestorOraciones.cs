@@ -46,6 +46,7 @@ public class GestorOraciones : MonoBehaviour
     public TextMeshProUGUI TxtRefuerzo1;
     public TextMeshProUGUI TxtRefuerzo2;
     public Button continuarCompletado;
+    //public Button botonContinuar;
 
 
     [Header("Referencias para Animación")]
