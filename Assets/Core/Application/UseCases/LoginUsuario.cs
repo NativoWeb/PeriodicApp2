@@ -38,12 +38,12 @@ namespace PeriodicApp.Core.Application.UseCases
         {
             private ResultadoLogin(bool exito, string usuarioId, string mensajeError)
             {
-                Exito = exito;
+                EsExitoso = exito;
                 UsuarioId = usuarioId;
                 MensajeError = mensajeError;
             }
 
-            public bool Exito { get; }
+            public bool EsExitoso { get; }
 
             public string UsuarioId { get; }
 
