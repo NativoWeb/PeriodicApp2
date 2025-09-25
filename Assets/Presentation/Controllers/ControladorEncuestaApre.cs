@@ -11,7 +11,12 @@ public class ControladorEncuestaApre : MonoBehaviour
 {
     [Header("UI")]
     public TextMeshProUGUI textoPregunta;
+    public TextMeshProUGUI textoAfirmacion;
     public Slider barraProgreso;
+
+    [Header("Opciones")]
+    [Tooltip("Contenedor que agrupa los botones de respuesta de la encuesta.")]
+    public GameObject contenedorOpciones;
 
     [Header("Contenedor")]
     public ContenedorPreguntas contenedor;
@@ -67,9 +72,20 @@ public class ControladorEncuestaApre : MonoBehaviour
         {
             textoPregunta.text = preguntas[indiceActual].Texto;
             barraProgreso.value = (float)indiceActual / preguntas.Count;
+            if (contenedorOpciones != null && !contenedorOpciones.activeSelf)
+                contenedorOpciones.SetActive(true);
         }
         else
         {
+            // 1. Ocultar los botones de Sí/No
+            if (contenedorOpciones != null)
+                contenedorOpciones.SetActive(false);
+
+            // 2. Ocultar el texto de la pregunta original
+            if (textoAfirmacion != null)
+                textoAfirmacion.gameObject.SetActive(false); // <--- AÑADE ESTA LÍNEA
+
+            // 3. Calcular y mostrar el resultado
             string estilo = calcularEstiloUseCase.Ejecutar(respuestas);
             StartCoroutine(MostrarYContinuar(estilo));
         }

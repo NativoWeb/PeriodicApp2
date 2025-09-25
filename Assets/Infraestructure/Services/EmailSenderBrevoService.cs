@@ -5,7 +5,7 @@ using UnityEngine.Networking;
 
 public class EmailSenderBrevoService : IEmailSender
 {
-    private const string apiKey = "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";
+    private const string apiKey = "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";
     private const string urlBrevo = "https://api.brevo.com/v3/smtp/email";
 
     public async Task<bool> EnviarCorreoAsync(string destinatario, string asunto, string contenidoHtml)
