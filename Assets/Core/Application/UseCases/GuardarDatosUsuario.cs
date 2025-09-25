@@ -1,22 +1,24 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using UnityEngine;
+using PeriodicApp.Core.Domain.Interfaces;
 
-public class GuardarDatosUsuario
+namespace PeriodicApp.Core.Application.UseCases
 {
-    private readonly IServicioFirestore firestore;
-    private readonly IServicioLocalStorage localStorage;
-
-
-    public GuardarDatosUsuario(IServicioFirestore firestore, IServicioLocalStorage localStorage)
+    public sealed class GuardarDatosUsuario
     {
-        this.firestore = firestore;
-        this.localStorage = localStorage;
-    }
+        private readonly IServicioFirestore firestore;
+        private readonly IServicioLocalStorage localStorage;
 
-    public async Task Ejecutar(Dictionary<string, object> data)
-    {
-        string userId = localStorage.Obtener("userId");
-        await firestore.GuardarDatosUsuario(userId, data);
+        public GuardarDatosUsuario(IServicioFirestore firestore, IServicioLocalStorage localStorage)
+        {
+            this.firestore = firestore;
+            this.localStorage = localStorage;
+        }
+
+        public Task Ejecutar(Dictionary<string, object> data)
+        {
+            string userId = localStorage.Obtener("userId");
+            return firestore.GuardarDatosUsuario(userId, data);
+        }
     }
 }

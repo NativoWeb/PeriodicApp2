@@ -1,17 +1,22 @@
-using UnityEngine;
+using System.Threading;
 using System.Threading.Tasks;
+using PeriodicApp.Core.Domain.Entities;
+using PeriodicApp.Core.Domain.Interfaces;
 
-public class RegistrarUsuario
+namespace PeriodicApp.Core.Application.UseCases
 {
-    private readonly IServicioAutenticacion authService;
-
-    public RegistrarUsuario(IServicioAutenticacion authService)
+    public sealed class RegistrarUsuario
     {
-        this.authService = authService;
-    }
+        private readonly IAuthenticationService _authenticationService;
 
-    public async Task<Usuario> Ejecutar(string email, string password)
-    {
-        return await authService.CrearUsuarioAsync(email, password);
+        public RegistrarUsuario(IAuthenticationService authenticationService)
+        {
+            _authenticationService = authenticationService;
+        }
+
+        public Task<Usuario> EjecutarAsync(string email, string password, CancellationToken cancellationToken = default)
+        {
+            return _authenticationService.CreateUserAsync(email, password, cancellationToken);
+        }
     }
 }

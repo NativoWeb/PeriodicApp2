@@ -2,6 +2,8 @@
 using UnityEngine.UI;
 using TMPro;
 using System.Collections;
+using PeriodicApp.Core.Application.UseCases;
+using PeriodicApp.Infrastructure.Services;
 
 public class LoginController : MonoBehaviour
 {
@@ -138,7 +140,7 @@ public class LoginController : MonoBehaviour
         string email = emailInput.text.Trim();
         string password = passwordInput.text.Trim();
 
-        var resultado = await loginUseCase.Ejecutar(email, password);
+        var resultado = await loginUseCase.EjecutarAsync(email, password);
 
         if (resultado.Exito)
         {
@@ -168,7 +170,7 @@ public class LoginController : MonoBehaviour
             return;
         }
 
-        bool enviado = await resetPasswordUseCase.Ejecutar(email);
+        bool enviado = await resetPasswordUseCase.EjecutarAsync(email);
 
         if (enviado)
         {

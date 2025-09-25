@@ -1,48 +1,55 @@
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using PeriodicApp.Core.Domain.Interfaces;
 
-public class FinalizarEncuestaConocimientoUseCase
+namespace PeriodicApp.Core.Application.UseCases
 {
-    private readonly IServicioFirestore firestore;
-    private readonly IServicioAutenticacion auth;
-
-    public FinalizarEncuestaConocimientoUseCase(IServicioFirestore firestore, IServicioAutenticacion auth)
+    public class FinalizarEncuestaConocimientoUseCase
     {
-        this.firestore = firestore;
-        this.auth = auth;
-    }
+        private readonly IServicioFirestore _firestore;
+        private readonly IAuthenticationService _authenticationService;
 
-    public async Task Ejecutar()
-    {
-        PlayerPrefs.SetInt("EstadoEncuestaConocimiento", 1);
-        PlayerPrefs.Save();
-
-        bool hayInternet = Application.internetReachability != NetworkReachability.NotReachable;
-        bool estadoAprendizaje = PlayerPrefs.GetInt("EstadoEncuestaAprendizaje", 0) == 1;
-        bool estadoConocimiento = true;
-
-        string userId = auth.CurrentUser?.UserId;
-
-        if (string.IsNullOrEmpty(userId))
+        public FinalizarEncuestaConocimientoUseCase(IServicioFirestore firestore, IAuthenticationService authenticationService)
         {
-            Debug.LogError("No hay usuario autenticado.");
-            return;
+            _firestore = firestore;
+            _authenticationService = authenticationService;
         }
 
-        if (hayInternet)
+        public async Task EjecutarAsync()
         {
-            await firestore.GuardarEstadoEncuestaConocimientoAsync(userId, true);
-            var userData = await firestore.ObtenerUsuarioAsync(userId);
+            PlayerPrefs.SetInt("EstadoEncuestaConocimiento", 1);
+            PlayerPrefs.Save();
 
-            estadoAprendizaje = userData.ContainsKey("EstadoEncuestaAprendizaje") && (bool)userData["EstadoEncuestaAprendizaje"];
-            estadoConocimiento = userData.ContainsKey("EstadoEncuestaConocimiento") && (bool)userData["EstadoEncuestaConocimiento"];
+            bool hayInternet = Application.internetReachability != NetworkReachability.NotReachable;
+            bool estadoAprendizaje = PlayerPrefs.GetInt("EstadoEncuestaAprendizaje", 0) == 1;
+            bool estadoConocimiento = true;
+
+            string? userId = _authenticationService.CurrentUserId;
+
+            if (string.IsNullOrEmpty(userId))
+            {
+                Debug.LogError("No hay usuario autenticado.");
+                return;
+            }
+
+            if (hayInternet)
+            {
+                await _firestore.GuardarEstadoEncuestaConocimientoAsync(userId, true).ConfigureAwait(false);
+                var userData = await _firestore.ObtenerUsuarioAsync(userId).ConfigureAwait(false);
+
+                estadoAprendizaje = userData.ContainsKey("EstadoEncuestaAprendizaje") && (bool)userData["EstadoEncuestaAprendizaje"];
+                estadoConocimiento = userData.ContainsKey("EstadoEncuestaConocimiento") && (bool)userData["EstadoEncuestaConocimiento"];
+            }
+
+            if (estadoAprendizaje && estadoConocimiento)
+            {
+                SceneManager.LoadScene("Inicio");
+            }
+            else
+            {
+                SceneManager.LoadScene("SeleccionarEncuesta");
+            }
         }
-
-
-        if (estadoAprendizaje && estadoConocimiento)
-            SceneManager.LoadScene("Inicio");
-        else
-            SceneManager.LoadScene("SeleccionarEncuesta");
     }
 }

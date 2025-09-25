@@ -1,9 +1,13 @@
-﻿using TMPro;
+ï»¿using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using System;
 using Firebase.Auth;
 using UnityEngine.SceneManagement;
+using PeriodicApp.Core.Application.UseCases;
+using PeriodicApp.Core.Domain.Entities;
+using PeriodicApp.Core.Domain.Interfaces;
+using PeriodicApp.Infrastructure.Services;
 
 public class RegistroEmailController : MonoBehaviour
 {
@@ -15,7 +19,7 @@ public class RegistroEmailController : MonoBehaviour
     public GameObject panelError;
     public GameObject panelSinInternet;
 
-    [Header("Verificación")]
+    [Header("VerificaciÃ³n")]
     public GameObject panelVerificacion;
     public TMP_Text correoVerificadoText;
     public TMP_Text mensajeVerificacionText;
@@ -29,7 +33,7 @@ public class RegistroEmailController : MonoBehaviour
     public Button btnCerrarError;
     public Button btnVerificar;
 
-    [Header("Validador visual de contraseña")]
+    [Header("Validador visual de contraseÃ±a")]
     public PasswordValidatorController passwordValidatorController;
 
 
@@ -44,7 +48,7 @@ public class RegistroEmailController : MonoBehaviour
 
     void Start()
     {
-        // Inyección manual de dependencias
+        // InyecciÃ³n manual de dependencias
         var firebaseAuthService = new FirebaseAuthService(FirebaseAuth.DefaultInstance);
         emailSender = new EmailSenderBrevoService();
         useCaseRegistro = new RegistrarUsuario(firebaseAuthService);
@@ -71,7 +75,7 @@ public class RegistroEmailController : MonoBehaviour
         {
             tiempoRestante = 0;
             codigoExpirado = true;
-            MostrarError("El código ha expirado. Intenta registrar de nuevo.");
+            MostrarError("El cÃ³digo ha expirado. Intenta registrar de nuevo.");
             VolverARegistro();
         }
     }
@@ -97,27 +101,27 @@ public class RegistroEmailController : MonoBehaviour
 
         try
         {
-            Usuario usuario = await useCaseRegistro.Ejecutar(correo, pass);
+            Usuario usuario = await useCaseRegistro.EjecutarAsync(correo, pass);
 
             PlayerPrefs.SetString("UsuarioEliminar", usuario.UserId);
             PlayerPrefs.SetString("userEmail", usuario.Email);
             PlayerPrefs.SetString("userPassword", pass);
             PlayerPrefs.Save();
 
-            // ✅ Enviar correo de verificación
+            // â Enviar correo de verificaciÃ³n
             codigoVerificacion = UnityEngine.Random.Range(100000, 999999).ToString();
             string html = $"<div style='font-family: Arial, sans-serif; text-align: center; background-color: #f4f4f4; padding: 20px;'>" +
         "<div style='max-width: 500px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);'>" +
-        "<h2 style='color: #332C85;'>🔐 Código de Verificación</h2>" +
-        "<p style='font-size: 16px; color: #333;'>¡Hola! Gracias por registrarte en <strong>PeriodicApp</strong>. Para continuar, usa el siguiente código de verificación:</p>" +
+        "<h2 style='color: #332C85;'>ð CÃ³digo de VerificaciÃ³n</h2>" +
+        "<p style='font-size: 16px; color: #333;'>Â¡Hola! Gracias por registrarte en <strong>PeriodicApp</strong>. Para continuar, usa el siguiente cÃ³digo de verificaciÃ³n:</p>" +
         $"<div style='font-size: 24px; font-weight: bold; color: #ffffff; background: #332C85; padding: 10px; display: inline-block; border-radius: 5px; margin: 10px 0;'>{codigoVerificacion}</div>" +
-        "<p style='font-size: 14px; color: #666;'>Este código expirará en 10 minutos.</p>" +
+        "<p style='font-size: 14px; color: #666;'>Este cÃ³digo expirarÃ¡ en 10 minutos.</p>" +
         "<hr style='border: none; border-top: 1px solid #ddd; margin: 20px 0;'>" +
-        "<p style='font-size: 12px; color: #777;'>Si no solicitaste este código, puedes ignorar este mensaje.</p>" +
+        "<p style='font-size: 12px; color: #777;'>Si no solicitaste este cÃ³digo, puedes ignorar este mensaje.</p>" +
         "</div></div>";
 
 
-            bool enviado = await emailSender.EnviarCorreoAsync(correo, "Código de Verificación", html);
+            bool enviado = await emailSender.EnviarCorreoAsync(correo, "CÃ³digo de VerificaciÃ³n", html);
 
             if (!enviado)
             {
@@ -125,7 +129,7 @@ public class RegistroEmailController : MonoBehaviour
                 return;
             }
 
-            // Mostrar panel de verificación
+            // Mostrar panel de verificaciÃ³n
             tiempoRestante = 180f;
             panelCorreoInfo.SetActive(true);
             panelVerificacion.SetActive(true);
@@ -150,19 +154,19 @@ public class RegistroEmailController : MonoBehaviour
 
         if (string.IsNullOrEmpty(codigoIngresado))
         {
-            MostrarError("Debes ingresar el código de verificación.");
+            MostrarError("Debes ingresar el cÃ³digo de verificaciÃ³n.");
             return;
         }
 
         if (codigoIngresado == codigoVerificacion)
         {
-            Debug.Log("✅ Código correcto. Registro finalizado.");
+            Debug.Log("â CÃ³digo correcto. Registro finalizado.");
             // Puedes cargar una nueva escena o mostrar mensaje
             SceneManager.LoadScene("Registrar");
         }
         else
         {
-            MostrarError("Código incorrecto. Intenta nuevamente.");
+            MostrarError("CÃ³digo incorrecto. Intenta nuevamente.");
         }
     }
 

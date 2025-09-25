@@ -1,7 +1,8 @@
-﻿using System.Text;
+ï»¿using System.Text;
 using UnityEngine;
 using System.Threading.Tasks;
 using UnityEngine.Networking;
+using PeriodicApp.Core.Domain.Interfaces;
 
 public class EmailSenderBrevoService : IEmailSender
 {

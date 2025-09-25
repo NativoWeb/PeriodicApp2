@@ -1,8 +1,21 @@
-using UnityEngine;
-
-public class Usuario
+namespace PeriodicApp.Core.Domain.Entities
 {
-    public string Email { get; set; }
-    public string DisplayName { get; set; }
-    public string UserId { get; set; }
+    /// <summary>
+    /// Representa a un usuario autenticado dentro del sistema.
+    /// </summary>
+    public sealed class Usuario
+    {
+        public Usuario(string email, string displayName, string userId)
+        {
+            Email = email;
+            DisplayName = displayName;
+            UserId = userId;
+        }
+
+        public string Email { get; }
+
+        public string DisplayName { get; }
+
+        public string UserId { get; }
+    }
 }
