@@ -9,7 +9,7 @@ namespace PeriodicApp.Core.Domain.Interfaces
 
         Task GuardarDatosUsuario(string userId, Dictionary<string, object> data);
 
-        Task SubirJson(string userId, string misiones, string logros, string categorias);
+        Task SubirJson(string userId, string misiones, string categorias, string logros);
 
         Task ActualizarRango(string userId, int xpActual);
 
