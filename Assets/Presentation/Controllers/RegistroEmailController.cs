@@ -1,4 +1,4 @@
-ï»¿using TMPro;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using System;
@@ -75,7 +75,7 @@ public class RegistroEmailController : MonoBehaviour
         {
             tiempoRestante = 0;
             codigoExpirado = true;
-            MostrarError("El cÃ³digo ha expirado. Intenta registrar de nuevo.");
+            MostrarError("El código ha expirado. Intenta registrar de nuevo.");
             VolverARegistro();
         }
     }
@@ -108,20 +108,20 @@ public class RegistroEmailController : MonoBehaviour
             PlayerPrefs.SetString("userPassword", pass);
             PlayerPrefs.Save();
 
-            // â Enviar correo de verificaciÃ³n
+            // Enviar correo de verificaciÃ³n
             codigoVerificacion = UnityEngine.Random.Range(100000, 999999).ToString();
             string html = $"<div style='font-family: Arial, sans-serif; text-align: center; background-color: #f4f4f4; padding: 20px;'>" +
         "<div style='max-width: 500px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);'>" +
-        "<h2 style='color: #332C85;'>ð CÃ³digo de VerificaciÃ³n</h2>" +
-        "<p style='font-size: 16px; color: #333;'>Â¡Hola! Gracias por registrarte en <strong>PeriodicApp</strong>. Para continuar, usa el siguiente cÃ³digo de verificaciÃ³n:</p>" +
+        "<h2 style='color: #332C85;'>Su Código de Verificación</h2>" +
+        "<p style='font-size: 16px; color: #333;'>Â¡Hola! Gracias por registrarte en <strong>PeriodicApp</strong>. Para continuar, usa el siguiente código de verificación:</p>" +
         $"<div style='font-size: 24px; font-weight: bold; color: #ffffff; background: #332C85; padding: 10px; display: inline-block; border-radius: 5px; margin: 10px 0;'>{codigoVerificacion}</div>" +
-        "<p style='font-size: 14px; color: #666;'>Este cÃ³digo expirarÃ¡ en 10 minutos.</p>" +
+        "<p style='font-size: 14px; color: #666;'>Este código expirará en 10 minutos.</p>" +
         "<hr style='border: none; border-top: 1px solid #ddd; margin: 20px 0;'>" +
-        "<p style='font-size: 12px; color: #777;'>Si no solicitaste este cÃ³digo, puedes ignorar este mensaje.</p>" +
+        "<p style='font-size: 12px; color: #777;'>Si no solicitaste este código, puedes ignorar este mensaje.</p>" +
         "</div></div>";
 
 
-            bool enviado = await emailSender.EnviarCorreoAsync(correo, "CÃ³digo de VerificaciÃ³n", html);
+            bool enviado = await emailSender.EnviarCorreoAsync(correo, "Código de Verificación", html);
 
             if (!enviado)
             {
@@ -154,19 +154,19 @@ public class RegistroEmailController : MonoBehaviour
 
         if (string.IsNullOrEmpty(codigoIngresado))
         {
-            MostrarError("Debes ingresar el cÃ³digo de verificaciÃ³n.");
+            MostrarError("Debes ingresar el código de verificación.");
             return;
         }
 
         if (codigoIngresado == codigoVerificacion)
         {
-            Debug.Log("â CÃ³digo correcto. Registro finalizado.");
+            Debug.Log("Código correcto.Registro finalizado.");
             // Puedes cargar una nueva escena o mostrar mensaje
             SceneManager.LoadScene("Registrar");
         }
         else
         {
-            MostrarError("CÃ³digo incorrecto. Intenta nuevamente.");
+            MostrarError("Código incorrecto. Intenta nuevamente.");
         }
     }
 

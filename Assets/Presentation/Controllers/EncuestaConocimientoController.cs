@@ -1,4 +1,4 @@
-ï»¿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using TMPro;
@@ -46,7 +46,7 @@ public class EncuestaConocimientoController : MonoBehaviour
 
     // EstadÃ­sticas
     private int correctasAlcalinos = 0;
-    private int correctasMetalesAlcalinotÃ©rreos = 0;
+    private int correctasMetalesAlcalinoterreos = 0;
     private int correctasTransicion = 0;
     private int correctasLantanidos = 0;
     private int correctasActinoides = 0;
@@ -361,7 +361,7 @@ public class EncuestaConocimientoController : MonoBehaviour
             switch (preguntaActual.Grupo)
             {
                 case "Metales Alcalinos": correctasAlcalinos++; break;
-                case "Metales AlcalinotÃ©rreos": correctasMetalesAlcalinotÃ©rreos++; break;
+                case "Metales AlcalinotÃ©rreos": correctasMetalesAlcalinoterreos++; break;
                 case "Metales de TransiciÃ³n": correctasTransicion++; break;
                 case "Metales postransicionales": correctasMetalesPostransiciales++; break;
                 case "Metaloides": correctasMetaloides++; break;
@@ -418,7 +418,7 @@ public class EncuestaConocimientoController : MonoBehaviour
         Debug.Log("Encuesta de conocimiento finalizada (Firebase).");
 
         int totalCorrectas = correctasAlcalinos
-                           + correctasMetalesAlcalinotÃ©rreos
+                           + correctasMetalesAlcalinoterreos
                            + correctasTransicion
                            + correctasLantanidos
                            + correctasActinoides
@@ -442,7 +442,7 @@ public class EncuestaConocimientoController : MonoBehaviour
         float[] features = new float[]
         {
             correctasAlcalinos,
-            correctasMetalesAlcalinotÃ©rreos,
+            correctasMetalesAlcalinoterreos,
             correctasTransicion,
             correctasLantanidos,
             correctasActinoides,
@@ -511,14 +511,14 @@ public class EncuestaConocimientoController : MonoBehaviour
                 string rutaArchivo = Path.Combine(Application.persistentDataPath, "categorias_encuesta_firebase.json");
                 File.WriteAllText(rutaArchivo, json);
 
-                Debug.Log("â CategorÃ­as ordenadas guardadas en archivo: " + rutaArchivo);
+                Debug.Log("La CategorÃ­as ordenadas guardadas en archivo: " + rutaArchivo);
             }
             else
             {
                 // No hay conexiÃ³n a internet: guardar en PlayerPrefs
                 PlayerPrefs.SetString("categorias_encuesta_firebase_json", json);
                 PlayerPrefs.Save();
-                Debug.Log("â CategorÃ­as ordenadas guardadas en PlayerPrefs.");
+                Debug.Log("Las CategorÃ­as ordenadas guardadas en PlayerPrefs.");
             }
             // Iniciar la corrutina (asegÃºrate de que tambiÃ©n maneje errores)
             StartCoroutine(CopiarJsonAuxiliaresSiEsNecesario());
@@ -543,21 +543,21 @@ public class EncuestaConocimientoController : MonoBehaviour
         {
             string rutaLocal = Path.Combine(Application.persistentDataPath, nombreArchivo);
 
-            // â Verificar si el archivo ya existe en la ruta persistente
+            // Verificar si el archivo ya existe en la ruta persistente
             if (File.Exists(rutaLocal))
             {
                 Debug.Log($"ð (Auxiliar) Ya existe localmente: {nombreArchivo}");
             }
             else
             {
-                // ð§© Cargar el archivo desde Resources si no existe localmente
+                // Cargar el archivo desde Resources si no existe localmente
                 string nombreSinExtension = Path.GetFileNameWithoutExtension(nombreArchivo);
                 TextAsset archivoJson = Resources.Load<TextAsset>($"Plantillas_Json/{nombreSinExtension}");
 
                 if (archivoJson != null)
                 {
                     File.WriteAllText(rutaLocal, archivoJson.text);
-                    Debug.Log($"â (Auxiliar) Archivo copiado desde Resources: {nombreArchivo}");
+                    Debug.Log($" (Auxiliar) Archivo copiado desde Resources: {nombreArchivo}");
                 }
                 else
                 {
