@@ -1,20 +1,24 @@
 using UnityEngine;
+using PeriodicApp.Core.Domain.Interfaces;
 
-public class LocalStorageService : IServicioLocalStorage
+namespace PeriodicApp.Infrastructure.Services
 {
-    public void Guardar(string clave, string valor)
+    public sealed class LocalStorageService : IServicioLocalStorage
     {
-        PlayerPrefs.SetString(clave, valor);
-        PlayerPrefs.Save();
-    }
+        public void Guardar(string clave, string valor)
+        {
+            PlayerPrefs.SetString(clave, valor);
+            PlayerPrefs.Save();
+        }
 
-    public string Obtener(string clave, string valor)
-    {
-        return PlayerPrefs.GetString(clave, valor);
-    }
+        public string Obtener(string clave, string valor)
+        {
+            return PlayerPrefs.GetString(clave, valor);
+        }
 
-    public void Eliminar(string clave)
-    {
-        PlayerPrefs.DeleteKey(clave);
+        public void Eliminar(string clave)
+        {
+            PlayerPrefs.DeleteKey(clave);
+        }
     }
 }

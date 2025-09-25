@@ -1,10 +1,14 @@
-﻿using System.Collections;
+ï»¿using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
+using PeriodicApp.Core.Application.UseCases;
+using PeriodicApp.Core.Domain.Entities;
+using PeriodicApp.Core.Domain.Interfaces;
+using PeriodicApp.Infrastructure.Services;
 using System.IO;
 using UnityEngine.Networking;
 using Firebase.Firestore;
@@ -40,9 +44,9 @@ public class EncuestaConocimientoController : MonoBehaviour
     private bool preguntaRespondidaFirebase = false;
     private int racha = 0;
 
-    // Estadísticas
+    // EstadÃ­sticas
     private int correctasAlcalinos = 0;
-    private int correctasMetalesAlcalinotérreos = 0;
+    private int correctasMetalesAlcalinotÃ©rreos = 0;
     private int correctasTransicion = 0;
     private int correctasLantanidos = 0;
     private int correctasActinoides = 0;
@@ -105,7 +109,7 @@ public class EncuestaConocimientoController : MonoBehaviour
         preguntasFirebase = await obtenerPreguntasUseCase.EjecutarAsync();
         indiceActualFirebase = 0;
 
-        // ─── Inicializar Slider de progreso en 0 y definir maxValue ───
+        // âââ Inicializar Slider de progreso en 0 y definir maxValue âââ
         if (sliderProgreso != null && preguntasFirebase.Count > 0)
         {
             sliderProgreso.minValue = 0f;
@@ -120,112 +124,112 @@ public class EncuestaConocimientoController : MonoBehaviour
         categorias = new List<Categoria>
 {
     new Categoria(
-        // Español
+        // EspaÃ±ol
         "Metales Alcalinos",
-        // Inglés
+        // InglÃ©s
         "Alkali Metals",
-        // Descripción Español
-        "¡Explora a los más reactivos de la tabla! Los metales alcalinos son tan activos que necesitan estar bajo aceite para no reaccionar con el aire. Livianos, brillantes y explosivos con el agua: ¡una aventura química garantizada!",
-        // Descripción Inglés
+        // DescripciÃ³n EspaÃ±ol
+        "Â¡Explora a los mÃ¡s reactivos de la tabla! Los metales alcalinos son tan activos que necesitan estar bajo aceite para no reaccionar con el aire. Livianos, brillantes y explosivos con el agua: Â¡una aventura quÃ­mica garantizada!",
+        // DescripciÃ³n InglÃ©s
         "Explore the most reactive on the table! Alkali metals are so active they need to be stored under oil to avoid reacting with the air. Lightweight, shiny, and explosive with water: a chemical adventure is guaranteed!"
     ),
 
     new Categoria(
-        // Español
-        "Metales Alcalinotérreos",
-        // Inglés
+        // EspaÃ±ol
+        "Metales AlcalinotÃ©rreos",
+        // InglÃ©s
         "Alkaline Earth Metals",
-        // Descripción Español
-        "¡Estables pero sorprendentes! Estos metales no son tan impulsivos como los alcalinos, pero también saben cómo llamar la atención. Presentes en nuestros huesos, fuegos artificiales y más, ¡prepárate para descubrir su versatilidad!",
-        // Descripción Inglés
+        // DescripciÃ³n EspaÃ±ol
+        "Â¡Estables pero sorprendentes! Estos metales no son tan impulsivos como los alcalinos, pero tambiÃ©n saben cÃ³mo llamar la atenciÃ³n. Presentes en nuestros huesos, fuegos artificiales y mÃ¡s, Â¡prepÃ¡rate para descubrir su versatilidad!",
+        // DescripciÃ³n InglÃ©s
         "Stable but surprising! These metals aren't as impulsive as the alkali metals, but they also know how to grab attention. Found in our bones, fireworks, and more, get ready to discover their versatility!"
     ),
 
     new Categoria(
-        // Español
-        "Metales de Transición",
-        // Inglés
+        // EspaÃ±ol
+        "Metales de TransiciÃ³n",
+        // InglÃ©s
         "Transition Metals",
-        // Descripción Español
-        "¡Los verdaderos camaleones de la química! Dominan el arte de formar compuestos coloridos, catalizar reacciones y construir estructuras resistentes. Si te gustan los desafíos y los cambios, esta es tu categoría.",
-        // Descripción Inglés
+        // DescripciÃ³n EspaÃ±ol
+        "Â¡Los verdaderos camaleones de la quÃ­mica! Dominan el arte de formar compuestos coloridos, catalizar reacciones y construir estructuras resistentes. Si te gustan los desafÃ­os y los cambios, esta es tu categorÃ­a.",
+        // DescripciÃ³n InglÃ©s
         "The true chameleons of chemistry! They master the art of forming colorful compounds, catalyzing reactions, and building strong structures. If you like challenges and change, this is your category."
     ),
 
     new Categoria(
-        // Español
+        // EspaÃ±ol
         "Metales postransicionales",
-        // Inglés
+        // InglÃ©s
         "Post-transition Metals",
-        // Descripción Español
-        "¡No subestimes a los discretos! Aunque menos conocidos, estos elementos son vitales para la tecnología moderna. Suavemente maleables, conductores y con usos cotidianos, ¡descubre su impacto silencioso!",
-        // Descripción Inglés
+        // DescripciÃ³n EspaÃ±ol
+        "Â¡No subestimes a los discretos! Aunque menos conocidos, estos elementos son vitales para la tecnologÃ­a moderna. Suavemente maleables, conductores y con usos cotidianos, Â¡descubre su impacto silencioso!",
+        // DescripciÃ³n InglÃ©s
         "Don't underestimate the discreet ones! Although less known, these elements are vital for modern technology. Softly malleable, conductive, and with everyday uses, discover their silent impact!"
     ),
 
     new Categoria(
-        // Español
+        // EspaÃ±ol
         "Metaloides",
-        // Inglés
+        // InglÃ©s
         "Metalloids",
-        // Descripción Español
-        "¡En el límite entre dos mundos! Los metaloides tienen propiedades tanto de metales como de no metales. Impredecibles, interesantes y esenciales en la electrónica, ¡perfectos para quienes aman lo inesperado!",
-        // Descripción Inglés
+        // DescripciÃ³n EspaÃ±ol
+        "Â¡En el lÃ­mite entre dos mundos! Los metaloides tienen propiedades tanto de metales como de no metales. Impredecibles, interesantes y esenciales en la electrÃ³nica, Â¡perfectos para quienes aman lo inesperado!",
+        // DescripciÃ³n InglÃ©s
         "On the edge between two worlds! Metalloids have properties of both metals and non-metals. Unpredictable, interesting, and essential in electronics, perfect for those who love the unexpected!"
     ),
 
     new Categoria(
-        // Español
+        // EspaÃ±ol
         "No Metales",
-        // Inglés
+        // InglÃ©s
         "Nonmetals",
-        // Descripción Español
-        "¡Los pilares de la vida y la química orgánica! Desde el oxígeno que respiras hasta el carbono de tu ADN, los no metales son esenciales para todo lo que vive. ¡Investiga su papel crucial en el universo!",
-        // Descripción Inglés
+        // DescripciÃ³n EspaÃ±ol
+        "Â¡Los pilares de la vida y la quÃ­mica orgÃ¡nica! Desde el oxÃ­geno que respiras hasta el carbono de tu ADN, los no metales son esenciales para todo lo que vive. Â¡Investiga su papel crucial en el universo!",
+        // DescripciÃ³n InglÃ©s
         "The pillars of life and organic chemistry! From the oxygen you breathe to the carbon in your DNA, nonmetals are essential for everything that lives. Investigate their crucial role in the universe!"
     ),
 
     new Categoria(
-        // Español
+        // EspaÃ±ol
         "Gases Nobles",
-        // Inglés
+        // InglÃ©s
         "Noble Gases",
-        // Descripción Español
-        "¡Silenciosos, invisibles e invaluables! Estos elementos no reaccionan fácilmente, pero están presentes en luces, atmósferas protectoras y experimentos científicos. ¡Su estabilidad es su superpoder!",
-        // Descripción Inglés
+        // DescripciÃ³n EspaÃ±ol
+        "Â¡Silenciosos, invisibles e invaluables! Estos elementos no reaccionan fÃ¡cilmente, pero estÃ¡n presentes en luces, atmÃ³sferas protectoras y experimentos cientÃ­ficos. Â¡Su estabilidad es su superpoder!",
+        // DescripciÃ³n InglÃ©s
         "Silent, invisible, and invaluable! These elements don't react easily, but they are present in lights, protective atmospheres, and scientific experiments. Their stability is their superpower!"
     ),
 
     new Categoria(
-        // Español
-        "Lantánidos",
-        // Inglés
+        // EspaÃ±ol
+        "LantÃ¡nidos",
+        // InglÃ©s
         "Lanthanides",
-        // Descripción Español
-        "¡Los metales raros que mueven el mundo moderno! Utilizados en imanes potentes, láseres y pantallas de alta tecnología. Aunque raros, su presencia es fundamental en nuestra vida diaria. ¡Descúbrelos!",
-        // Descripción Inglés
+        // DescripciÃ³n EspaÃ±ol
+        "Â¡Los metales raros que mueven el mundo moderno! Utilizados en imanes potentes, lÃ¡seres y pantallas de alta tecnologÃ­a. Aunque raros, su presencia es fundamental en nuestra vida diaria. Â¡DescÃºbrelos!",
+        // DescripciÃ³n InglÃ©s
         "The rare metals that move the modern world! Used in powerful magnets, lasers, and high-tech screens. Although rare, their presence is fundamental in our daily lives. Discover them!"
     ),
 
     new Categoria(
-        // Español
+        // EspaÃ±ol
         "Actinoides",
-        // Inglés
+        // InglÃ©s
         "Actinides",
-        // Descripción Español
-        "¡La energía más poderosa de la tabla! Radiactivos, misteriosos y con potencial para revolucionar el mundo, estos elementos están ligados a la energía nuclear y la exploración científica del futuro.",
-        // Descripción Inglés
+        // DescripciÃ³n EspaÃ±ol
+        "Â¡La energÃ­a mÃ¡s poderosa de la tabla! Radiactivos, misteriosos y con potencial para revolucionar el mundo, estos elementos estÃ¡n ligados a la energÃ­a nuclear y la exploraciÃ³n cientÃ­fica del futuro.",
+        // DescripciÃ³n InglÃ©s
         "The most powerful energy on the table! Radioactive, mysterious, and with the potential to revolutionize the world, these elements are linked to nuclear energy and the scientific exploration of the future."
     ),
 
     new Categoria(
-        // Español
+        // EspaÃ±ol
         "Propiedades desconocidas",
-        // Inglés
+        // InglÃ©s
         "Unknown Properties",
-        // Descripción Español
-        "¡Bienvenido al territorio inexplorado! Estos elementos están en los límites de lo conocido. Sus propiedades aún se investigan, y cada descubrimiento puede cambiar lo que sabemos. ¿Te atreves a descubrir lo desconocido?",
-        // Descripción Inglés
+        // DescripciÃ³n EspaÃ±ol
+        "Â¡Bienvenido al territorio inexplorado! Estos elementos estÃ¡n en los lÃ­mites de lo conocido. Sus propiedades aÃºn se investigan, y cada descubrimiento puede cambiar lo que sabemos. Â¿Te atreves a descubrir lo desconocido?",
+        // DescripciÃ³n InglÃ©s
         "Welcome to unexplored territory! These elements are at the limits of what is known. Their properties are still being investigated, and each discovery can change what we know. Do you dare to discover the unknown?"
     )
 };
@@ -250,7 +254,7 @@ public class EncuestaConocimientoController : MonoBehaviour
 
     private void MostrarPreguntaFirebase()
     {
-        // ─── Actualizar Slider antes de mostrar la pregunta ───
+        // âââ Actualizar Slider antes de mostrar la pregunta âââ
         if (sliderProgreso != null && preguntasFirebase.Count > 0)
         {
             sliderProgreso.value = Mathf.Clamp(indiceActualFirebase, 0, preguntasFirebase.Count);
@@ -357,13 +361,13 @@ public class EncuestaConocimientoController : MonoBehaviour
             switch (preguntaActual.Grupo)
             {
                 case "Metales Alcalinos": correctasAlcalinos++; break;
-                case "Metales Alcalinotérreos": correctasMetalesAlcalinotérreos++; break;
-                case "Metales de Transición": correctasTransicion++; break;
+                case "Metales AlcalinotÃ©rreos": correctasMetalesAlcalinotÃ©rreos++; break;
+                case "Metales de TransiciÃ³n": correctasTransicion++; break;
                 case "Metales postransicionales": correctasMetalesPostransiciales++; break;
                 case "Metaloides": correctasMetaloides++; break;
                 case "No Metales": correctasNoMetales++; break;
                 case "Gases Nobles": correctasGasesNobles++; break;
-                case "Lantánidos": correctasLantanidos++; break;
+                case "LantÃ¡nidos": correctasLantanidos++; break;
                 case "Actinoides": correctasActinoides++; break;
                 case "Propiedades desconocidas": correctasPropiedadesDesconocidas++; break;
                 default: Debug.LogWarning($"Grupo desconocido: {preguntaActual.Grupo}"); break;
@@ -389,7 +393,7 @@ public class EncuestaConocimientoController : MonoBehaviour
         List<string> opcionesAleatorias = new List<string>(opciones);
         if (indiceCorrecto < 0 || indiceCorrecto >= opcionesAleatorias.Count)
         {
-            Debug.LogError("Índice de respuesta correcta fuera de rango: " + indiceCorrecto + ". Se asignará índice 0 por defecto.");
+            Debug.LogError("Ãndice de respuesta correcta fuera de rango: " + indiceCorrecto + ". Se asignarÃ¡ Ã­ndice 0 por defecto.");
             indiceCorrecto = 0;
         }
         string respuestaCorrecta = opcionesAleatorias[indiceCorrecto];
@@ -414,7 +418,7 @@ public class EncuestaConocimientoController : MonoBehaviour
         Debug.Log("Encuesta de conocimiento finalizada (Firebase).");
 
         int totalCorrectas = correctasAlcalinos
-                           + correctasMetalesAlcalinotérreos
+                           + correctasMetalesAlcalinotÃ©rreos
                            + correctasTransicion
                            + correctasLantanidos
                            + correctasActinoides
@@ -432,13 +436,13 @@ public class EncuestaConocimientoController : MonoBehaviour
             ? (dificultadTotalPreguntas / cantidadPreguntasRespondidas)
             : 0f;
 
-        Debug.Log($"[Estadísticas] Porcentaje global de aciertos: {porcentajeGlobal:F2}%");
-        Debug.Log($"[Estadísticas] Dificultad media: {dificultadMedia:F2}");
+        Debug.Log($"[EstadÃ­sticas] Porcentaje global de aciertos: {porcentajeGlobal:F2}%");
+        Debug.Log($"[EstadÃ­sticas] Dificultad media: {dificultadMedia:F2}");
 
         float[] features = new float[]
         {
             correctasAlcalinos,
-            correctasMetalesAlcalinotérreos,
+            correctasMetalesAlcalinotÃ©rreos,
             correctasTransicion,
             correctasLantanidos,
             correctasActinoides,
@@ -459,12 +463,12 @@ public class EncuestaConocimientoController : MonoBehaviour
         }
         else
         {
-            Debug.LogWarning("[Predicción] No se encontró ModeloAI; se omite predicción.");
+            Debug.LogWarning("[PredicciÃ³n] No se encontrÃ³ ModeloAI; se omite predicciÃ³n.");
         }
 
         GuardarCategoriasOrdenadasLocal();
 
-        await finalizarEncuestaUseCase.Ejecutar();
+        await finalizarEncuestaUseCase.EjecutarAsync();
 
         bool estadoAprendizaje = PlayerPrefs.GetInt("EstadoEncuestaAprendizaje", 0) == 1;
         bool estadoConocimiento = PlayerPrefs.GetInt("EstadoEncuestaConocimiento", 0) == 1;
@@ -488,40 +492,40 @@ public class EncuestaConocimientoController : MonoBehaviour
     {
         if (categorias == null)
         {
-            Debug.LogError("[GuardarCategorias] La lista de categorías es null.");
+            Debug.LogError("[GuardarCategorias] La lista de categorÃ­as es null.");
             return; // Salir si la lista es null
         }
         try
         {
-            // Ordenar las categorías por porcentaje
+            // Ordenar las categorÃ­as por porcentaje
             categorias = categorias.OrderBy(c => c.Porcentaje).ToList();
 
-            // Crear el objeto de datos para la serialización
+            // Crear el objeto de datos para la serializaciÃ³n
             CategoriasData data = new CategoriasData { categorias = categorias };
             // Serializar a JSON
             string json = JsonUtility.ToJson(data, true);
 
             if (Application.internetReachability != NetworkReachability.NotReachable)
             {
-                // Hay conexión a internet: guardar en archivo
+                // Hay conexiÃ³n a internet: guardar en archivo
                 string rutaArchivo = Path.Combine(Application.persistentDataPath, "categorias_encuesta_firebase.json");
                 File.WriteAllText(rutaArchivo, json);
 
-                Debug.Log("✅ Categorías ordenadas guardadas en archivo: " + rutaArchivo);
+                Debug.Log("â CategorÃ­as ordenadas guardadas en archivo: " + rutaArchivo);
             }
             else
             {
-                // No hay conexión a internet: guardar en PlayerPrefs
+                // No hay conexiÃ³n a internet: guardar en PlayerPrefs
                 PlayerPrefs.SetString("categorias_encuesta_firebase_json", json);
                 PlayerPrefs.Save();
-                Debug.Log("✅ Categorías ordenadas guardadas en PlayerPrefs.");
+                Debug.Log("â CategorÃ­as ordenadas guardadas en PlayerPrefs.");
             }
-            // Iniciar la corrutina (asegúrate de que también maneje errores)
+            // Iniciar la corrutina (asegÃºrate de que tambiÃ©n maneje errores)
             StartCoroutine(CopiarJsonAuxiliaresSiEsNecesario());
         }
         catch (Exception e)
         {
-            Debug.LogError($"[GuardarCategorias] Error al guardar las categorías: {e.Message}");
+            Debug.LogError($"[GuardarCategorias] Error al guardar las categorÃ­as: {e.Message}");
         }
     }
 
@@ -539,25 +543,25 @@ public class EncuestaConocimientoController : MonoBehaviour
         {
             string rutaLocal = Path.Combine(Application.persistentDataPath, nombreArchivo);
 
-            // ✅ Verificar si el archivo ya existe en la ruta persistente
+            // â Verificar si el archivo ya existe en la ruta persistente
             if (File.Exists(rutaLocal))
             {
-                Debug.Log($"📁 (Auxiliar) Ya existe localmente: {nombreArchivo}");
+                Debug.Log($"ð (Auxiliar) Ya existe localmente: {nombreArchivo}");
             }
             else
             {
-                // 🧩 Cargar el archivo desde Resources si no existe localmente
+                // ð§© Cargar el archivo desde Resources si no existe localmente
                 string nombreSinExtension = Path.GetFileNameWithoutExtension(nombreArchivo);
                 TextAsset archivoJson = Resources.Load<TextAsset>($"Plantillas_Json/{nombreSinExtension}");
 
                 if (archivoJson != null)
                 {
                     File.WriteAllText(rutaLocal, archivoJson.text);
-                    Debug.Log($"✅ (Auxiliar) Archivo copiado desde Resources: {nombreArchivo}");
+                    Debug.Log($"â (Auxiliar) Archivo copiado desde Resources: {nombreArchivo}");
                 }
                 else
                 {
-                    Debug.LogError($"❌ (Auxiliar) No se encontró {nombreArchivo} en Resources/Plantillas_Json.");
+                    Debug.LogError($"â (Auxiliar) No se encontrÃ³ {nombreArchivo} en Resources/Plantillas_Json.");
                 }
             }
             // Pausar un frame entre cada archivo por seguridad

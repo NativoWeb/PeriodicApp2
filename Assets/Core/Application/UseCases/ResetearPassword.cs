@@ -1,25 +1,30 @@
-﻿using System.Threading.Tasks;
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+using PeriodicApp.Core.Domain.Interfaces;
 
-public class ResetearPassword
+namespace PeriodicApp.Core.Application.UseCases
 {
-    private readonly IServicioAutenticacion servicioAutenticacion;
-
-    public ResetearPassword(IServicioAutenticacion servicioAutenticacion)
+    public sealed class ResetearPassword
     {
-        this.servicioAutenticacion = servicioAutenticacion;
-    }
+        private readonly IAuthenticationService _authenticationService;
 
-    public async Task<bool> Ejecutar(string email)
-    {
-        try
+        public ResetearPassword(IAuthenticationService authenticationService)
         {
-            await servicioAutenticacion.ResetPasswordAsync(email);
-            return true;
+            _authenticationService = authenticationService;
         }
-        catch (System.Exception ex)
+
+        public async Task<bool> EjecutarAsync(string email, CancellationToken cancellationToken = default)
         {
-            UnityEngine.Debug.LogError($"Error al enviar email de recuperación: {ex.Message}");
-            return false;
+            try
+            {
+                await _authenticationService.ResetPasswordAsync(email, cancellationToken).ConfigureAwait(false);
+                return true;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
         }
     }
 }

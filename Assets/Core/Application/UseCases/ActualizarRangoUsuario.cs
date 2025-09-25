@@ -1,24 +1,25 @@
 using System.Threading.Tasks;
-using UnityEngine;
+using PeriodicApp.Core.Domain.Interfaces;
 
-public class ActualizarRangoUsuario
+namespace PeriodicApp.Core.Application.UseCases
 {
-    private readonly IServicioFirestore firestore;
-    private readonly IServicioLocalStorage localStorage;
-
-    public ActualizarRangoUsuario(IServicioFirestore firestore, IServicioLocalStorage localStorage)
+    public sealed class ActualizarRangoUsuario
     {
-        this.firestore = firestore;
-        this.localStorage = localStorage;
+        private readonly IServicioFirestore firestore;
+        private readonly IServicioLocalStorage localStorage;
+
+        public ActualizarRangoUsuario(IServicioFirestore firestore, IServicioLocalStorage localStorage)
+        {
+            this.firestore = firestore;
+            this.localStorage = localStorage;
+        }
+
+        public Task Ejecutar()
+        {
+            string userId = localStorage.Obtener("userId");
+            int xp = int.Parse(localStorage.Obtener("TempXp", "0"));
+
+            return firestore.ActualizarRango(userId, xp);
+        }
     }
-
-    public async Task Ejecutar()
-    {
-        string userId = localStorage.Obtener("userId");
-        int xp = int.Parse(localStorage.Obtener("TempXp", "0"));
-
-        await firestore.ActualizarRango(userId, xp);
-
-    }
-
 }

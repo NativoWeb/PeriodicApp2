@@ -1,33 +1,34 @@
-﻿using System.Threading.Tasks;
-using UnityEngine;
 using System.IO;
+using System.Threading.Tasks;
+using UnityEngine;
+using PeriodicApp.Core.Domain.Interfaces;
 
-public class SubirDatosJSON
+namespace PeriodicApp.Core.Application.UseCases
 {
-    private readonly IServicioFirestore firestore;
-    private readonly IServicioLocalStorage localStorage;
-
-
-    public SubirDatosJSON(IServicioFirestore firestore, IServicioLocalStorage localStorage)
+    public sealed class SubirDatosJSON
     {
-        this.firestore = firestore;
-        this.localStorage = localStorage;
-    }
+        private readonly IServicioFirestore firestore;
+        private readonly IServicioLocalStorage localStorage;
 
-    public async Task Ejecutar()
-    {
-        string userId = localStorage.Obtener("userId"); // o ajusta si también quieres cargarlo desde archivo
+        public SubirDatosJSON(IServicioFirestore firestore, IServicioLocalStorage localStorage)
+        {
+            this.firestore = firestore;
+            this.localStorage = localStorage;
+        }
 
-        // Reemplaza estas rutas con la ubicación real de tus archivos JSON
-        string pathMisiones = Path.Combine(Application.persistentDataPath, "Json_Misiones.json");
-        string pathCategorias = Path.Combine(Application.persistentDataPath, "categorias_encuesta_firebase.json");
-        string pathLogros = Path.Combine(Application.persistentDataPath, "Json_Logros.json");
+        public async Task Ejecutar()
+        {
+            string userId = localStorage.Obtener("userId");
 
-        // Lee el contenido de los archivos
-        string misionesJson = File.Exists(pathMisiones) ? File.ReadAllText(pathMisiones) : "{}";
-        string categoriasJson = File.Exists(pathCategorias) ? File.ReadAllText(pathCategorias) : "{}";
-        string logrosJson = File.Exists(pathLogros) ? File.ReadAllText(pathLogros) : "{}";
+            string pathMisiones = Path.Combine(Application.persistentDataPath, "Json_Misiones.json");
+            string pathCategorias = Path.Combine(Application.persistentDataPath, "categorias_encuesta_firebase.json");
+            string pathLogros = Path.Combine(Application.persistentDataPath, "Json_Logros.json");
 
-        await firestore.SubirJson(userId, misionesJson, categoriasJson, logrosJson);
+            string misionesJson = File.Exists(pathMisiones) ? File.ReadAllText(pathMisiones) : "{}";
+            string categoriasJson = File.Exists(pathCategorias) ? File.ReadAllText(pathCategorias) : "{}";
+            string logrosJson = File.Exists(pathLogros) ? File.ReadAllText(pathLogros) : "{}";
+
+            await firestore.SubirJson(userId, misionesJson, categoriasJson, logrosJson);
+        }
     }
 }

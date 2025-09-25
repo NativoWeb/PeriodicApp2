@@ -3,6 +3,9 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using PeriodicApp.Core.Application.UseCases;
+using PeriodicApp.Core.Domain.Interfaces;
+using PeriodicApp.Infrastructure.Services;
 
 public class RegisterController : MonoBehaviour
 {
@@ -50,7 +53,7 @@ public class RegisterController : MonoBehaviour
 
         ButtonMessage.onClick.AddListener(ClosePanelMessage);
 
-        roles.AddOptions(new System.Collections.Generic.List<string> { "Seleccionar una ocupación", "Estudiante", "Profesor" });
+        roles.AddOptions(new System.Collections.Generic.List<string> { "Seleccionar una ocupaciÃ³n", "Estudiante", "Profesor" });
         roles.value = 0;
         roles.onValueChanged.AddListener(delegate { CambiarColor(); });
         CambiarColor();
@@ -79,7 +82,7 @@ public class RegisterController : MonoBehaviour
 
         if (roles.value == 0 && !ocupacionGuardada)
         {
-            MostrarMensaje("Debes seleccionar una ocupación antes de continuar", Color.red);
+            MostrarMensaje("Debes seleccionar una ocupaciÃ³n antes de continuar", Color.red);
             return;
         }
 
@@ -106,7 +109,7 @@ public class RegisterController : MonoBehaviour
         PlayerPrefs.SetInt("EmailVerified", 1);
         PlayerPrefs.Save();
 
-        bool perfilActualizado = await actualizarPerfilUsuarioUseCase.Ejecutar(userName);
+        bool perfilActualizado = await actualizarPerfilUsuarioUseCase.EjecutarAsync(userName);
 
         if (perfilActualizado)
         {
@@ -123,7 +126,7 @@ public class RegisterController : MonoBehaviour
         string userdId = FirebaseServiceLocator.Auth.CurrentUser?.UserId;
         if (string.IsNullOrEmpty(userdId))
         {
-            MostrarMensaje("No se encontró usuario autenticado", Color.red);
+            MostrarMensaje("No se encontrÃ³ usuario autenticado", Color.red);
             return;
         }
 

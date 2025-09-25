@@ -1,69 +1,43 @@
-﻿using UnityEngine;
+using UnityEngine;
+using UnityEngine.Events;
+using PeriodicApp.UnityAdapters.Connectivity;
 
-public class ConnectionManager : MonoBehaviour
+public sealed class ConnectionManager : MonoBehaviour
 {
-    public static ConnectionManager Instance { get; private set; }
+    [SerializeField] private ConnectionMonitorBehaviour connectionMonitor;
+    [SerializeField] private UnityEvent<bool> onConnectionChanged = new UnityEvent<bool>();
 
-    public static bool isOnline = false;
-    public static bool isOffline = false;
-    public static bool IsInitialized { get; private set; } = false; // ✅ Bandera de inicialización
-
-    public delegate void ConnectionChanged();
-    public static event ConnectionChanged OnConnectionChanged;
-
-    private bool lastConnectionState = false; // Guarda el último estado de conexión
-
-    // Hacer Singleton
-    void Awake()
+    private void Awake()
     {
-        if (Instance == null)
+        if (connectionMonitor == null)
         {
-            Instance = this;
-            DontDestroyOnLoad(gameObject); // Mantener entre escenas
-        }
-        else
-        {
-            Destroy(gameObject);
-            return;
+            connectionMonitor = GetComponentInChildren<ConnectionMonitorBehaviour>();
         }
     }
 
-    void Start()
+    private void OnEnable()
     {
-        CheckInternetConnection();
-        IsInitialized = true; // ✅ Marcar como listo
-        Debug.Log("🔌 ConnectionManager inicializado. isOnline = " + isOnline + ", isOffline = " + isOffline);
-    }
-
-    public void CheckInternetConnection()
-    {
-        bool currentConnectionState = (Application.internetReachability != NetworkReachability.NotReachable);
-
-        // Solo ejecutamos el código si el estado ha cambiado
-        if (currentConnectionState != lastConnectionState)
+        if (connectionMonitor != null)
         {
-            lastConnectionState = currentConnectionState; // Actualizamos el estado
-
-            if (!currentConnectionState)
-            {
-                isOffline = true;
-                isOnline = false;
-                Debug.Log("❌ Sin conexión a Internet");
-            }
-            else
-            {
-                isOnline = true;
-                isOffline = false;
-                Debug.Log("✅ Conexión a Internet");
-            }
-
-            OnConnectionChanged?.Invoke(); // Disparamos el evento solo cuando hay un cambio
+            connectionMonitor.ConnectionChanged += HandleConnectionChanged;
         }
     }
 
-    // 🔑 Método público para consultar desde otros scripts
+    private void OnDisable()
+    {
+        if (connectionMonitor != null)
+        {
+            connectionMonitor.ConnectionChanged -= HandleConnectionChanged;
+        }
+    }
+
     public bool IsConnectedToInternet()
     {
-        return isOnline;
+        return connectionMonitor != null && connectionMonitor.IsConnected;
+    }
+
+    private void HandleConnectionChanged(bool isConnected)
+    {
+        onConnectionChanged?.Invoke(isConnected);
     }
 }

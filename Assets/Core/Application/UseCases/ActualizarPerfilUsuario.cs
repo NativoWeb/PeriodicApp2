@@ -1,17 +1,21 @@
+using System.Threading;
 using System.Threading.Tasks;
-using UnityEngine;
+using PeriodicApp.Core.Domain.Interfaces;
 
-public class ActualizarPerfilUsuario
+namespace PeriodicApp.Core.Application.UseCases
 {
-    private readonly IServicioAutenticacion auth;
-
-    public ActualizarPerfilUsuario(IServicioAutenticacion auth)
+    public sealed class ActualizarPerfilUsuario
     {
-        this.auth = auth;
-    }
+        private readonly IAuthenticationService _authenticationService;
 
-    public async Task<bool> Ejecutar(string displayName)
-    {
-        return await auth.ActualizarPerfil(displayName);
+        public ActualizarPerfilUsuario(IAuthenticationService authenticationService)
+        {
+            _authenticationService = authenticationService;
+        }
+
+        public Task<bool> EjecutarAsync(string displayName, CancellationToken cancellationToken = default)
+        {
+            return _authenticationService.UpdateProfileAsync(displayName, cancellationToken);
+        }
     }
 }

@@ -1,6 +1,9 @@
 using System.Threading.Tasks;
 
-public interface IEmailSender
+namespace PeriodicApp.Core.Domain.Interfaces
 {
-    Task<bool> EnviarCorreoAsync(string destinatario, string asunto, string contenidoHtml);
+    public interface IEmailSender
+    {
+        Task<bool> EnviarCorreoAsync(string destinatario, string asunto, string contenidoHtml);
+    }
 }
