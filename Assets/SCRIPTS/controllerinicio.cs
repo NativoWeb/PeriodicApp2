@@ -17,7 +17,7 @@ public class controllerinicio : MonoBehaviour
         m_estudiaropcionesUI.SetActive(false);
         m_trabajaropcionesUI.SetActive(false);
     }
-    //funcion ver registro
+    // Muestra el panel de opciones de estudio
 
     public void showestudiaropciones()
     {
