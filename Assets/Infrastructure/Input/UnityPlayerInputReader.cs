@@ -12,14 +12,14 @@ namespace PeriodicApp.Infrastructure.Input
 
         public override MovementInput ReadMovement()
         {
-            float horizontal = Input.GetAxisRaw(horizontalAxis);
-            float vertical = Input.GetAxisRaw(verticalAxis);
+            float horizontal = UnityEngine.Input.GetAxisRaw(horizontalAxis);
+            float vertical = UnityEngine.Input.GetAxisRaw(verticalAxis);
             return new MovementInput(horizontal, vertical);
         }
 
         public override bool IsJumpPressed()
         {
-            return Input.GetButtonDown(jumpButton);
+            return UnityEngine.Input.GetButtonDown(jumpButton);
         }
     }
 }

@@ -4,6 +4,7 @@ using TMPro;
 using System.Collections;
 using PeriodicApp.Core.Application.UseCases;
 using PeriodicApp.Infrastructure.Services;
+using PeriodicApp.Presentation;
 
 public class LoginController : MonoBehaviour
 {
@@ -23,7 +24,6 @@ public class LoginController : MonoBehaviour
     public Button btnEspañol;
     public Button btnIngles;
     public TMP_Text txtIdiomas;
-
 
 
     [Header("UI Recuperar Contraseña")]
@@ -46,11 +46,18 @@ public class LoginController : MonoBehaviour
 
     private async void Start()
     {
+        // Verificar ServiceLocator
+        if (!ServiceLocator.AreServicesInitialized())
+        {
+            ServiceLocator.Logger.LogError("ServiceLocator no está inicializado");
+            return;
+        }
+
         bool listo = await FirebaseServiceLocator.InicializarFirebase();
 
         if (!listo)
         {
-            Debug.LogError("Firebase no se inicializó correctamente.");
+            ServiceLocator.Logger.LogError("Firebase no se inicializó correctamente.");
             return;
         }
 
@@ -61,8 +68,22 @@ public class LoginController : MonoBehaviour
 
         loginUseCase = new LoginUsuario(authService, localStorage);
         resetPasswordUseCase = new ResetearPassword(authService);
-        intentosFallidosUseCase = new GestionarIntentosFallidos(localStorage);
-        verificarEstadoUsuarioUseCase = new VerificarEstadoUsuario(firestoreService);
+        // GestionarIntentosFallidos necesita IPlayerPrefsService
+        intentosFallidosUseCase = new GestionarIntentosFallidos(
+            localStorage,
+            ServiceLocator.PlayerPrefs
+        );
+
+        // VerificarEstadoUsuario necesita todas las dependencias
+        verificarEstadoUsuarioUseCase = new VerificarEstadoUsuario(
+            firestoreService,
+            ServiceLocator.PlayerPrefs,
+            ServiceLocator.Network,
+            ServiceLocator.Logger,
+            ServiceLocator.Scene,
+            ServiceLocator.Persistence,
+            ServiceLocator.ResourceLoader
+        );
 
         loginButton.onClick.AddListener(OnLoginButtonClick);
         btnSendReset.onClick.AddListener(OnSendResetPasswordClick);
@@ -70,7 +91,7 @@ public class LoginController : MonoBehaviour
 
         //BOTON PARA ABRIR PANEL DE IDIOMAS :D
 
-        int locale = PlayerPrefs.GetInt("LocaleKey", 0);
+        int locale = ServiceLocator.PlayerPrefs.GetInt("LocaleKey", 0);
         switch (locale)
         {
             case 0: // ID para Español
@@ -142,7 +163,7 @@ public class LoginController : MonoBehaviour
 
         var resultado = await loginUseCase.EjecutarAsync(email, password);
 
-        if (resultado.Exito)
+        if (resultado.EsExitoso)
         {
             Debug.Log($"Usuario logueado: {resultado.UsuarioId}");
 

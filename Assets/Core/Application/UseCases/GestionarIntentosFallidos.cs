@@ -1,24 +1,29 @@
+using PeriodicApp.Core.Application.Interfaces;
 using PeriodicApp.Core.Domain.Interfaces;
-using UnityEngine;
+using System;
 
 namespace PeriodicApp.Core.Application.UseCases
 {
     public sealed class GestionarIntentosFallidos
     {
-        private readonly IServicioLocalStorage localStorage;
+        private readonly IServicioLocalStorage _localStorage;
+        private readonly IPlayerPrefsService _playerPrefs;
         private const int MaxIntentos = 3;
         private const int TiempoBloqueoSegundos = 600;
 
-        public GestionarIntentosFallidos(IServicioLocalStorage localStorage)
+        public GestionarIntentosFallidos(
+            IServicioLocalStorage localStorage,
+            IPlayerPrefsService playerPrefs)
         {
-            this.localStorage = localStorage;
+            _localStorage = localStorage;
+            _playerPrefs = playerPrefs;
         }
 
         public void RegistrarIntentoFallido()
         {
-            int intentos = PlayerPrefs.GetInt("FailedAttempts", 0) + 1;
-            PlayerPrefs.SetInt("FailedAttempts", intentos);
-            PlayerPrefs.Save();
+            int intentos = _playerPrefs.GetInt("FailedAttempts", 0) + 1;
+            _playerPrefs.SetInt("FailedAttempts", intentos);
+            _playerPrefs.Save();
 
             if (intentos >= MaxIntentos)
             {
@@ -28,45 +33,47 @@ namespace PeriodicApp.Core.Application.UseCases
 
         public bool EstaBloqueado()
         {
-            if (!PlayerPrefs.HasKey("LockoutTime"))
+            if (!_playerPrefs.HasKey("LockoutTime"))
             {
                 return false;
             }
 
-            int tiempoBloqueo = PlayerPrefs.GetInt("LockoutTime");
+            int tiempoBloqueo = _playerPrefs.GetInt("LockoutTime");
             int tiempoActual = GetUnixTimestamp();
             return tiempoActual < tiempoBloqueo;
         }
 
         public int TiempoRestante()
         {
-            if (!PlayerPrefs.HasKey("LockoutTime"))
+            if (!_playerPrefs.HasKey("LockoutTime"))
             {
                 return 0;
             }
 
-            int tiempoBloqueo = PlayerPrefs.GetInt("LockoutTime");
+            int tiempoBloqueo = _playerPrefs.GetInt("LockoutTime");
             int tiempoActual = GetUnixTimestamp();
-            return Mathf.Max(0, tiempoBloqueo - tiempoActual);
+
+            // Reemplazamos Mathf.Max con Math.Max (de System)
+            return Math.Max(0, tiempoBloqueo - tiempoActual);
         }
 
         public void ResetearIntentos()
         {
-            PlayerPrefs.DeleteKey("FailedAttempts");
-            PlayerPrefs.DeleteKey("LockoutTime");
+            _playerPrefs.DeleteKey("FailedAttempts");
+            _playerPrefs.DeleteKey("LockoutTime");
         }
 
         private void BloquearUsuario()
         {
             int tiempoActual = GetUnixTimestamp();
             int tiempoDesbloqueo = tiempoActual + TiempoBloqueoSegundos;
-            PlayerPrefs.SetInt("LockoutTime", tiempoDesbloqueo);
-            PlayerPrefs.Save();
+            _playerPrefs.SetInt("LockoutTime", tiempoDesbloqueo);
+            _playerPrefs.Save();
         }
 
         private int GetUnixTimestamp()
         {
-            return (int)(System.DateTime.UtcNow.Subtract(new System.DateTime(1970, 1, 1))).TotalSeconds;
+            return (int)(DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1))).TotalSeconds;
         }
     }
 }

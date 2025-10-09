@@ -1,47 +1,69 @@
-﻿using System.Threading.Tasks;
-using UnityEngine;
-using UnityEngine.SceneManagement;
+﻿using System.Collections.Generic;
+//using UnityEngine;
+//using UnityEngine.SceneManagement;
 using System.IO;
-using Firebase.Firestore;
-using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
+using Firebase.Firestore;
+using PeriodicApp.Core.Application;
+using PeriodicApp.Core.Application.Interfaces;
+using PeriodicApp.Core.Domain.Interfaces;
 
 public class VerificarEstadoUsuario
 {
     private readonly IServicioFirestore firestoreService;
+    private readonly IPlayerPrefsService _playerPrefs;
+    private readonly INetworkService _networkService;
+    private readonly ILoggingService _logger;
+    private readonly ISceneService _sceneService;
+    private readonly IPersistenceService _persistenceService;
+    private readonly IResourceLoaderService _resourceLoader;
 
-    public VerificarEstadoUsuario(IServicioFirestore firestoreService)
+    public VerificarEstadoUsuario(
+        IServicioFirestore firestoreService,
+        IPlayerPrefsService playerPrefs,
+        INetworkService networkService,
+        ILoggingService logger,
+        ISceneService sceneService,
+        IPersistenceService persistenceService,
+        IResourceLoaderService resourceLoader)
     {
         this.firestoreService = firestoreService;
+        _playerPrefs = playerPrefs;
+        _networkService = networkService;
+        _logger = logger;
+        _sceneService = sceneService;
+        _persistenceService = persistenceService;
+        _resourceLoader = resourceLoader;
     }
 
     public async Task Ejecutar(string userId)
     {
-        bool hayInternet = Application.internetReachability != NetworkReachability.NotReachable;
+        bool hayInternet = _networkService.IsConnected();
 
         var docRef = FirebaseFirestore.DefaultInstance.Collection("users").Document(userId);
         var snapshot = await docRef.GetSnapshotAsync();
 
         if (!snapshot.Exists)
         {
-            Debug.LogError("No se encontraron datos para este usuario.");
+            _logger.LogError("No se encontraron datos para este usuario.");
             return;
         }
 
         string ocupacion = snapshot.GetValue<string>("Ocupacion");
         bool estadoAprendizaje = hayInternet
             ? snapshot.ContainsField("EstadoEncuestaAprendizaje") && snapshot.GetValue<bool>("EstadoEncuestaAprendizaje")
-            : PlayerPrefs.GetInt("EstadoEncuestaAprendizaje", 0) == 1;
+            : _playerPrefs.GetInt("EstadoEncuestaAprendizaje", 0) == 1;
 
         bool estadoConocimiento = hayInternet
             ? snapshot.ContainsField("EstadoEncuestaConocimiento") && snapshot.GetValue<bool>("EstadoEncuestaConocimiento")
-            : PlayerPrefs.GetInt("EstadoEncuestaConocimiento", 0) == 1;
+            : _playerPrefs.GetInt("EstadoEncuestaConocimiento", 0) == 1;
 
-        Debug.Log($"Usuario: {ocupacion}, Aprendizaje: {estadoAprendizaje}, Conocimiento: {estadoConocimiento}");
+        _logger.Log($"Usuario: {ocupacion}, Aprendizaje: {estadoAprendizaje}, Conocimiento: {estadoConocimiento}");
 
         if (ocupacion == "Profesor")
         {
-            SceneManager.LoadScene("InicioProfesor1");
+            _sceneService.LoadScene("InicioProfesor1");
         }
         else if (ocupacion == "Estudiante")
         {
@@ -49,11 +71,11 @@ public class VerificarEstadoUsuario
             {
                 // Descargar progreso antes de redirigir
                 await DescargarProgreso(userId);
-                SceneManager.LoadScene("Inicio");
+                _sceneService.LoadScene("Inicio");
             }
             else
             {
-                SceneManager.LoadScene("SeleccionarEncuesta");
+                _sceneService.LoadScene("SeleccionarEncuesta");
             }
         }
     }
@@ -65,26 +87,27 @@ public class VerificarEstadoUsuario
 
         // ✅ Verificar si Json_Informacion.json ya existe en persistentDataPath
         string nombreArchivo = "Json_Informacion.json";
-        string rutaLocal = Path.Combine(Application.persistentDataPath, nombreArchivo);
+        string rutaLocal = Path.Combine(_persistenceService.GetPersistentDataPath(), nombreArchivo);
 
         if (!File.Exists(rutaLocal))
         {
             string nombreSinExtension = Path.GetFileNameWithoutExtension(nombreArchivo);
-            TextAsset archivoJson = Resources.Load<TextAsset>($"Plantillas_Json/{nombreSinExtension}");
+            string contenidoRecurso = _resourceLoader.LoadTextAsset($"Plantillas_Json/{nombreSinExtension}");
 
-            if (archivoJson != null)
+
+            if (contenidoRecurso != null)
             {
-                File.WriteAllText(rutaLocal, archivoJson.text);
-                Debug.Log($"✅ Archivo auxiliar '{nombreArchivo}' copiado desde Resources.");
+                File.WriteAllText(rutaLocal, contenidoRecurso);
+                _logger.Log($"✅ Archivo auxiliar '{nombreArchivo}' copiado desde Resources.");
             }
             else
             {
-                Debug.LogError($"❌ No se encontró '{nombreArchivo}' en Resources/Plantillas_Json.");
+                _logger.LogError($"❌ No se encontró '{nombreArchivo}' en Resources/Plantillas_Json.");
             }
         }
         else
         {
-            Debug.Log($"📁 El archivo auxiliar '{nombreArchivo}' ya existe localmente.");
+            _logger.Log($"📁 El archivo auxiliar '{nombreArchivo}' ya existe localmente.");
         }
     }
 
@@ -97,7 +120,7 @@ public class VerificarEstadoUsuario
         var snapshot = await docRef.GetSnapshotAsync();
         if (!snapshot.Exists)
         {
-            Debug.LogWarning($"⚠️ No se encontró el documento '{nombreDocumento}'.");
+            _logger.LogWarning($"⚠️ No se encontró el documento '{nombreDocumento}'.");
             return;
         }
 
@@ -115,7 +138,7 @@ public class VerificarEstadoUsuario
                 if (t.StartsWith("{") || t.StartsWith("["))
                 {
                     contenidoAEscribir = s;
-                    Debug.Log($"📑 Extrayendo JSON desde el campo '{kv.Key}'.");
+                    _logger.Log($"📑 Extrayendo JSON desde el campo '{kv.Key}'.");
                     break;
                 }
             }
@@ -126,13 +149,13 @@ public class VerificarEstadoUsuario
         {
             contenidoAEscribir = Newtonsoft.Json.JsonConvert
                 .SerializeObject(data, Newtonsoft.Json.Formatting.Indented);
-            Debug.Log("🗄️ Ningún campo era JSON-texto. Serializando el diccionario completo.");
+            _logger.Log("🗄️ Ningún campo era JSON-texto. Serializando el diccionario completo.");
         }
 
         // 4) Guardamos en disco
-        string ruta = Path.Combine(Application.persistentDataPath, nombreArchivo);
+        string ruta = Path.Combine(_persistenceService.GetPersistentDataPath(), nombreArchivo);
         File.WriteAllText(ruta, contenidoAEscribir);
-        Debug.Log($"✅ Documento '{nombreDocumento}' guardado en: {ruta}");
+        _logger.Log($"✅ Documento '{nombreDocumento}' guardado en: {ruta}");
     }
 
     // Usamos un envoltorio para convertir objetos genéricos en JSON

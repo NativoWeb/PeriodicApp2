@@ -6,6 +6,8 @@ using UnityEngine.UI;
 using System.Collections.Generic;
 using System.Collections;
 using System.Threading.Tasks;
+using PeriodicApp.Core.Application.UseCases;
+using PeriodicApp.Presentation;
 
 public class ControladorEncuestaApre : MonoBehaviour
 {
@@ -35,7 +37,7 @@ public class ControladorEncuestaApre : MonoBehaviour
     {
         auth = FirebaseAuth.DefaultInstance;
         usuarioRepositorio = new FirebaseUsuarioRepositorio();
-        cargarPreguntasUseCase = new CargarPreguntasEstiloUseCase();
+        cargarPreguntasUseCase = new CargarPreguntasEstiloUseCase(ServiceLocator.Json);
         calcularEstiloUseCase = new CalcularEstiloDominanteUseCase();
 
         CargarPreguntas();

@@ -1,34 +1,42 @@
 using System.Collections.Generic;
-using UnityEngine;
-using static ControladorEncuestaApre;
+using PeriodicApp.Core.Application.Interfaces;
 
-public class CargarPreguntasEstiloUseCase
+namespace PeriodicApp.Core.Application.UseCases
 {
-    public List<PreguntaEstilo> Ejecutar(string json)
+    public class CargarPreguntasEstiloUseCase
     {
-        var contenedor = JsonUtility.FromJson<ContenedorPreguntas>(json);
-        var preguntas = new List<PreguntaEstilo>();
+        private readonly IJsonService _jsonService;
 
-        void Agregar(List < Pregunta > lista, string categoria)
-{
-            foreach (var p in lista)
-            {
-                preguntas.Add(new PreguntaEstilo
-                {
-                    Texto = p.textoAfirmacion,
-                    Categoria = categoria
-                });
-            }
+        public CargarPreguntasEstiloUseCase(IJsonService jsonService)
+        {
+            _jsonService = jsonService;
         }
 
+        public List<PreguntaEstilo> Ejecutar(string json)
+        {
+            var contenedor = _jsonService.FromJson<ContenedorPreguntas>(json);
+            var preguntas = new List<PreguntaEstilo>();
 
-        var estilos = contenedor.preguntasEstiloBinario;
-        Agregar(estilos.Gamificacion, "Gamificacion");
-        Agregar(estilos.Metodologia_Tradicional, "Metodologia_Tradicional");
-        Agregar(estilos.Aprendizaje_Basado_en_Proyectos, "Aprendizaje_Basado_en_Proyectos");
-        Agregar(estilos.Aprendizaje_Basado_en_Problemas, "Aprendizaje_Basado_en_Problemas");
-        Agregar(estilos.Aprendizaje_Cooperativo, "Aprendizaje_Cooperativo");
+            void Agregar(List<Pregunta> lista, string categoria)
+            {
+                foreach (var p in lista)
+                {
+                    preguntas.Add(new PreguntaEstilo
+                    {
+                        Texto = p.textoAfirmacion,
+                        Categoria = categoria
+                    });
+                }
+            }
 
-        return preguntas;
+            var estilos = contenedor.preguntasEstiloBinario;
+            Agregar(estilos.Gamificacion, "Gamificacion");
+            Agregar(estilos.Metodologia_Tradicional, "Metodologia_Tradicional");
+            Agregar(estilos.Aprendizaje_Basado_en_Proyectos, "Aprendizaje_Basado_en_Proyectos");
+            Agregar(estilos.Aprendizaje_Basado_en_Problemas, "Aprendizaje_Basado_en_Problemas");
+            Agregar(estilos.Aprendizaje_Cooperativo, "Aprendizaje_Cooperativo");
+
+            return preguntas;
+        }
     }
 }

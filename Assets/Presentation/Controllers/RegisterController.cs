@@ -6,11 +6,24 @@ using UnityEngine.UI;
 using PeriodicApp.Core.Application.UseCases;
 using PeriodicApp.Core.Domain.Interfaces;
 using PeriodicApp.Infrastructure.Services;
+using PeriodicApp.Presentation;
 
 public class RegisterController : MonoBehaviour
 {
-    [Header("UI")]
+
+    [Header("UI - Campos de Entrada")]
+    public TMP_InputField nombresInput;
     public TMP_InputField userNameInput;
+    public TMP_InputField edadInput;
+    public Dropdown departamentoDropdown;
+    public Dropdown ciudadDropdown;
+    public Dropdown generoDropdown;
+    public Dropdown gradoEscolarDropdown;
+    public TMP_InputField direccionViviendaInput;
+    public Dropdown estratoSocioeconomicoDropdown;
+    public Dropdown lugarResidenciaDropdown;
+
+    [Header("UI - Otros Elementos")]
     public TMP_Text txtMensaje;
     public Button completeProfileButton;
     public Dropdown roles;
@@ -27,15 +40,15 @@ public class RegisterController : MonoBehaviour
     private IServicioLocalStorage localStorage;
 
     private string ocupacionSeleccionada;
-    private TMP_InputField nombresInput;
-    private TMP_InputField edadInput;
-    private TMP_InputField ciudadInput;
-    private TMP_InputField generoInput;
     private string nombresUsuario;
     private int edadUsuario;
+    private string departamentoUsuario;
     private string ciudadUsuario;
     private string generoUsuario;
-    private bool camposAdicionalesConfigurados;
+    private string gradoEscolarUsuario;
+    private string direccionViviendaUsuario;
+    private string estratoSocioeconomicoUsuario;
+    private string lugarResidenciaUsuario;
 
 
     private async void Start()
@@ -57,7 +70,9 @@ public class RegisterController : MonoBehaviour
         validarNombreUsuarioUseCase = new ValidarNombreUsuario(firestore);
         actualizarPerfilUsuarioUseCase = new ActualizarPerfilUsuario(auth);
         guardarDatosUseCase = new GuardarDatosUsuario(firestore, localStorage);
-        subirDatosJSONUseCase = new SubirDatosJSON(firestore, localStorage);
+        subirDatosJSONUseCase = new SubirDatosJSON(firestore,
+            localStorage,
+            ServiceLocator.Persistence);
         actualizarRangoUseCase = new ActualizarRangoUsuario(firestore, localStorage);
 
         ButtonMessage.onClick.AddListener(ClosePanelMessage);
@@ -67,11 +82,23 @@ public class RegisterController : MonoBehaviour
         roles.onValueChanged.AddListener(delegate { CambiarColor(); });
         CambiarColor();
 
+        // Inicializar dropdowns de departamento y ciudad
+        InicializarDropdownDepartamento();
+        departamentoDropdown.onValueChanged.AddListener(OnDepartamentoChanged);
+        ciudadDropdown.interactable = false;
+
+        // Inicializar dropdown de género
+        InicializarDropdownGenero();
+
+        // Inicializar dropdowns adicionales
+        InicializarDropdownGradoEscolar();
+        InicializarDropdownEstratoSocioeconomico();
+        InicializarDropdownLugarResidencia();
+
         m_OcupacionUI.SetActive(!PlayerPrefs.HasKey("TemOcupacion"));
 
         completeProfileButton.onClick.AddListener(OnCompleteProfileButtonClick);
 
-        ConfigurarCamposAdicionales();
     }
 
     private void CambiarColor()
@@ -80,120 +107,108 @@ public class RegisterController : MonoBehaviour
         label.color = (roles.value == 0) ? Color.gray : Color.black;
     }
 
-    private void ConfigurarCamposAdicionales()
+    private void InicializarDropdownDepartamento()
     {
-        if (camposAdicionalesConfigurados || userNameInput == null)
+        departamentoDropdown.ClearOptions();
+        var departamentos = DepartamentoCiudadService.ObtenerDepartamentos();
+        departamentos.Insert(0, "Seleccionar departamento");
+        departamentoDropdown.AddOptions(departamentos);
+        departamentoDropdown.value = 0;
+    }
+
+    private void OnDepartamentoChanged(int index)
+    {
+        ciudadDropdown.ClearOptions();
+
+        if (index == 0) // "Seleccionar departamento"
         {
+            ciudadDropdown.interactable = false;
+            ciudadDropdown.AddOptions(new System.Collections.Generic.List<string> { "Seleccionar ciudad" });
+            ciudadDropdown.value = 0;
             return;
         }
 
-        RectTransform parent = userNameInput.transform.parent as RectTransform;
-        RectTransform userNameRect = userNameInput.GetComponent<RectTransform>();
-        if (parent == null || userNameRect == null)
-        {
-            return;
-        }
+        string departamentoSeleccionado = departamentoDropdown.options[index].text;
+        var ciudades = DepartamentoCiudadService.ObtenerCiudadesPorDepartamento(departamentoSeleccionado);
 
-        float spacing = 130f;
-        Vector2 basePosition = userNameRect.anchoredPosition;
-        int baseIndex = userNameRect.GetSiblingIndex();
-
-        nombresInput = CrearCampoAdicional("inputNames", "Nombres completos", basePosition + new Vector2(0, spacing), parent);
-        edadInput = CrearCampoAdicional("inputAge", "Edad", basePosition - new Vector2(0, spacing), parent, TMP_InputField.ContentType.IntegerNumber);
-        ciudadInput = CrearCampoAdicional("inputCity", "Ciudad", basePosition - new Vector2(0, 2f * spacing), parent);
-        generoInput = CrearCampoAdicional("inputGender", "Género", basePosition - new Vector2(0, 3f * spacing), parent);
-
-        if (nombresInput != null)
-        {
-            nombresInput.transform.SetSiblingIndex(baseIndex);
-        }
-
-        userNameRect.SetSiblingIndex(baseIndex + 1);
-
-        if (edadInput != null)
-        {
-            edadInput.transform.SetSiblingIndex(baseIndex + 2);
-        }
-
-        if (ciudadInput != null)
-        {
-            ciudadInput.transform.SetSiblingIndex(baseIndex + 3);
-        }
-
-        if (generoInput != null)
-        {
-            generoInput.transform.SetSiblingIndex(baseIndex + 4);
-        }
-
-        AjustarPosicionCampo(nombresInput, basePosition + new Vector2(0, spacing));
-        AjustarPosicionCampo(userNameInput, basePosition);
-        AjustarPosicionCampo(edadInput, basePosition - new Vector2(0, spacing));
-        AjustarPosicionCampo(ciudadInput, basePosition - new Vector2(0, 2f * spacing));
-        AjustarPosicionCampo(generoInput, basePosition - new Vector2(0, 3f * spacing));
-
-        if (m_OcupacionUI != null)
-        {
-            RectTransform ocupacionRect = m_OcupacionUI.GetComponent<RectTransform>();
-            if (ocupacionRect != null)
-            {
-                ocupacionRect.SetSiblingIndex(baseIndex + 5);
-                ocupacionRect.anchoredPosition = basePosition - new Vector2(0, 4f * spacing);
-            }
-        }
-
-        if (completeProfileButton != null)
-        {
-            RectTransform buttonRect = completeProfileButton.GetComponent<RectTransform>();
-            if (buttonRect != null)
-            {
-                buttonRect.SetSiblingIndex(baseIndex + 6);
-                buttonRect.anchoredPosition = basePosition - new Vector2(0, 5f * spacing);
-            }
-        }
-
-        camposAdicionalesConfigurados = true;
+        ciudades.Insert(0, "Seleccionar ciudad");
+        ciudadDropdown.AddOptions(ciudades);
+        ciudadDropdown.value = 0;
+        ciudadDropdown.interactable = true;
     }
 
-    private TMP_InputField CrearCampoAdicional(string nombreObjeto, string placeholder, Vector2 posicion, RectTransform parent, TMP_InputField.ContentType contentType = TMP_InputField.ContentType.Standard)
+    private void InicializarDropdownGenero()
     {
-        TMP_InputField campo = Instantiate(userNameInput, parent);
-        campo.gameObject.name = nombreObjeto;
-
-        TMP_Text placeholderText = campo.transform.Find("Text Area/Placeholder")?.GetComponent<TMP_Text>();
-        if (placeholderText != null)
+        generoDropdown.ClearOptions();
+        var generos = new System.Collections.Generic.List<string>
         {
-            placeholderText.text = placeholder;
-        }
-
-        TMP_Text textComponent = campo.transform.Find("Text Area/Text")?.GetComponent<TMP_Text>();
-        if (textComponent != null)
-        {
-            textComponent.text = string.Empty;
-        }
-
-        campo.text = string.Empty;
-        campo.contentType = contentType;
-        campo.ForceLabelUpdate();
-
-        AjustarPosicionCampo(campo, posicion);
-
-        return campo;
+            "Seleccionar género",
+            "Femenino",
+            "Masculino",
+            "Otro"
+        };
+        generoDropdown.AddOptions(generos);
+        generoDropdown.value = 0;
     }
 
-    private void AjustarPosicionCampo(TMP_InputField campo, Vector2 posicion)
+    private void InicializarDropdownGradoEscolar()
     {
-        if (campo == null)
+        gradoEscolarDropdown.ClearOptions();
+        var grados = new System.Collections.Generic.List<string>
         {
-            return;
-        }
-
-        RectTransform rect = campo.GetComponent<RectTransform>();
-        if (rect != null)
-        {
-            rect.anchoredPosition = posicion;
-        }
+            "Seleccionar grado escolar",
+            "Preescolar",
+            "1° Primaria",
+            "2° Primaria",
+            "3° Primaria",
+            "4° Primaria",
+            "5° Primaria",
+            "6° Bachillerato",
+            "7° Bachillerato",
+            "8° Bachillerato",
+            "9° Bachillerato",
+            "10° Bachillerato",
+            "11° Bachillerato",
+            "Técnico",
+            "Tecnólogo",
+            "Universitario",
+            "Posgrado"
+        };
+        gradoEscolarDropdown.AddOptions(grados);
+        gradoEscolarDropdown.value = 0;
     }
 
+    private void InicializarDropdownEstratoSocioeconomico()
+    {
+        estratoSocioeconomicoDropdown.ClearOptions();
+        var estratos = new System.Collections.Generic.List<string>
+        {
+            "Seleccionar estrato",
+            "Estrato 1",
+            "Estrato 2",
+            "Estrato 3",
+            "Estrato 4",
+            "Estrato 5",
+            "Estrato 6"
+        };
+        estratoSocioeconomicoDropdown.AddOptions(estratos);
+        estratoSocioeconomicoDropdown.value = 0;
+    }
+
+    private void InicializarDropdownLugarResidencia()
+    {
+        lugarResidenciaDropdown.ClearOptions();
+        var lugares = new System.Collections.Generic.List<string>
+        {
+            "Seleccionar lugar de residencia",
+            "Urbana",
+            "Rural"
+        };
+        lugarResidenciaDropdown.AddOptions(lugares);
+        lugarResidenciaDropdown.value = 0;
+    }
+
+  
     private async void OnCompleteProfileButtonClick()
     {
         if (Application.internetReachability == NetworkReachability.NotReachable)
@@ -203,8 +218,25 @@ public class RegisterController : MonoBehaviour
 
         string nombres = nombresInput != null ? nombresInput.text.Trim() : string.Empty;
         string edadTexto = edadInput != null ? edadInput.text.Trim() : string.Empty;
-        string ciudad = ciudadInput != null ? ciudadInput.text.Trim() : string.Empty;
-        string genero = generoInput != null ? generoInput.text.Trim() : string.Empty;
+        string departamento = departamentoDropdown != null && departamentoDropdown.value > 0
+            ? departamentoDropdown.options[departamentoDropdown.value].text
+            : string.Empty;
+        string ciudad = ciudadDropdown != null && ciudadDropdown.value > 0
+            ? ciudadDropdown.options[ciudadDropdown.value].text
+            : string.Empty;
+        string genero = generoDropdown != null && generoDropdown.value > 0
+            ? generoDropdown.options[generoDropdown.value].text
+            : string.Empty;
+        string gradoEscolar = gradoEscolarDropdown != null && gradoEscolarDropdown.value > 0
+            ? gradoEscolarDropdown.options[gradoEscolarDropdown.value].text
+            : string.Empty;
+        string direccionVivienda = direccionViviendaInput != null ? direccionViviendaInput.text.Trim() : string.Empty;
+        string estratoSocioeconomico = estratoSocioeconomicoDropdown != null && estratoSocioeconomicoDropdown.value > 0
+            ? estratoSocioeconomicoDropdown.options[estratoSocioeconomicoDropdown.value].text
+            : string.Empty;
+        string lugarResidencia = lugarResidenciaDropdown != null && lugarResidenciaDropdown.value > 0
+            ? lugarResidenciaDropdown.options[lugarResidenciaDropdown.value].text
+            : string.Empty;
         string userName = userNameInput.text.Trim();
         string temOcupacion = PlayerPrefs.GetString("TemOcupacion", "").Trim();
         bool ocupacionGuardada = !string.IsNullOrEmpty(temOcupacion);
@@ -221,15 +253,45 @@ public class RegisterController : MonoBehaviour
             return;
         }
 
+        if (string.IsNullOrEmpty(departamento))
+        {
+            MostrarMensaje("Debes seleccionar un departamento", Color.red);
+            return;
+        }
+
         if (string.IsNullOrEmpty(ciudad))
         {
-            MostrarMensaje("Debes ingresar tu ciudad", Color.red);
+            MostrarMensaje("Debes seleccionar una ciudad", Color.red);
             return;
         }
 
         if (string.IsNullOrEmpty(genero))
         {
-            MostrarMensaje("Debes ingresar tu género", Color.red);
+            MostrarMensaje("Debes seleccionar tu género", Color.red);
+            return;
+        }
+
+        if (string.IsNullOrEmpty(gradoEscolar))
+        {
+            MostrarMensaje("Debes seleccionar tu grado escolar", Color.red);
+            return;
+        }
+
+        if (string.IsNullOrEmpty(direccionVivienda))
+        {
+            MostrarMensaje("Debes ingresar tu dirección de vivienda", Color.red);
+            return;
+        }
+
+        if (string.IsNullOrEmpty(estratoSocioeconomico))
+        {
+            MostrarMensaje("Debes seleccionar tu estrato socioeconómico", Color.red);
+            return;
+        }
+
+        if (string.IsNullOrEmpty(lugarResidencia))
+        {
+            MostrarMensaje("Debes seleccionar tu lugar de residencia", Color.red);
             return;
         }
 
@@ -260,8 +322,13 @@ public class RegisterController : MonoBehaviour
 
         nombresUsuario = nombres;
         edadUsuario = edad;
+        departamentoUsuario = departamento;
         ciudadUsuario = ciudad;
         generoUsuario = genero;
+        gradoEscolarUsuario = gradoEscolar;
+        direccionViviendaUsuario = direccionVivienda;
+        estratoSocioeconomicoUsuario = estratoSocioeconomico;
+        lugarResidenciaUsuario = lugarResidencia;
         PlayerPrefs.SetString("DisplayName", userName);
         PlayerPrefs.SetInt("EmailVerified", 1);
         PlayerPrefs.Save();
@@ -300,8 +367,13 @@ public class RegisterController : MonoBehaviour
             {"Rango", "Novato de laboratorio" },
             {"Nombres", string.IsNullOrEmpty(nombresUsuario) ? (nombresInput != null ? nombresInput.text.Trim() : string.Empty) : nombresUsuario },
             {"Edad", edadUsuario > 0 ? edadUsuario : (edadInput != null && int.TryParse(edadInput.text.Trim(), out int edadLocal) ? edadLocal : 0) },
-            {"Ciudad", string.IsNullOrEmpty(ciudadUsuario) ? (ciudadInput != null ? ciudadInput.text.Trim() : string.Empty) : ciudadUsuario },
-            {"Genero", string.IsNullOrEmpty(generoUsuario) ? (generoInput != null ? generoInput.text.Trim() : string.Empty) : generoUsuario }
+            {"Departamento", string.IsNullOrEmpty(departamentoUsuario) ? (departamentoDropdown != null && departamentoDropdown.value > 0 ? departamentoDropdown.options[departamentoDropdown.value].text : string.Empty) : departamentoUsuario },
+            {"Ciudad", string.IsNullOrEmpty(ciudadUsuario) ? (ciudadDropdown != null && ciudadDropdown.value > 0 ? ciudadDropdown.options[ciudadDropdown.value].text : string.Empty) : ciudadUsuario },
+            {"Genero", string.IsNullOrEmpty(generoUsuario) ? (generoDropdown != null && generoDropdown.value > 0 ? generoDropdown.options[generoDropdown.value].text : string.Empty) : generoUsuario },
+            {"GradoEscolar", string.IsNullOrEmpty(gradoEscolarUsuario) ? (gradoEscolarDropdown != null && gradoEscolarDropdown.value > 0 ? gradoEscolarDropdown.options[gradoEscolarDropdown.value].text : string.Empty) : gradoEscolarUsuario },
+            {"DireccionVivienda", string.IsNullOrEmpty(direccionViviendaUsuario) ? (direccionViviendaInput != null ? direccionViviendaInput.text.Trim() : string.Empty) : direccionViviendaUsuario },
+            {"EstratoSocioeconomico", string.IsNullOrEmpty(estratoSocioeconomicoUsuario) ? (estratoSocioeconomicoDropdown != null && estratoSocioeconomicoDropdown.value > 0 ? estratoSocioeconomicoDropdown.options[estratoSocioeconomicoDropdown.value].text : string.Empty) : estratoSocioeconomicoUsuario },
+            {"LugarResidencia", string.IsNullOrEmpty(lugarResidenciaUsuario) ? (lugarResidenciaDropdown != null && lugarResidenciaDropdown.value > 0 ? lugarResidenciaDropdown.options[lugarResidenciaDropdown.value].text : string.Empty) : lugarResidenciaUsuario }
         };
 
         localStorage.Guardar("EstadoUser", "sinloguear");

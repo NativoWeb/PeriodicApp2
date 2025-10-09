@@ -1,6 +1,7 @@
-using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
+using PeriodicApp.Presentation;
+using UnityEngine;
 
 using UnityEngine.Localization.Settings;
 
@@ -24,8 +25,13 @@ public class ControladorIdioma : MonoBehaviour
 
     void Start()
     {
-        int ID = PlayerPrefs.GetInt("LocaleKey", 0);
-           
+        if (!ServiceLocator.AreServicesInitialized())
+        {
+            Debug.LogError("ServiceLocator no inicializado en ControladorIdioma");
+            return;
+        }
+        int ID = ServiceLocator.PlayerPrefs.GetInt("LocaleKey", 0);
+
         ChangeLocale(ID);
     }
 
