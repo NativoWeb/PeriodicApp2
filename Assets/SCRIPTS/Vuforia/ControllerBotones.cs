@@ -55,27 +55,70 @@ public class ControllerBotones : MonoBehaviour
 
     public void CompletarMision()
     {
+        // Marcar que se gan贸 la misi贸n (similar a como se hace en GestorOraciones)
+        PlayerPrefs.SetInt("UltimoQuizGanado", 1);
+        PlayerPrefs.SetInt("xpGanado", 15); // XP por escanear elemento
+        PlayerPrefs.SetInt("xp_mision", 15); // XP por escanear elemento
+        PlayerPrefs.Save();
+
         PanelMisionCompletada.SetActive(true);
         if (botonContinuar != null)
         {
             botonContinuar.onClick.RemoveAllListeners();
             botonContinuar.onClick.AddListener(() =>
             {
-                PanelContinuar.SetActive(false);
+                PanelMisionCompletada.SetActive(false);
                 if (GuardarMisionCompletada.instancia != null)
                 {
                     GuardarMisionCompletada.instancia.IniciarProcesoMisionCompletada(
                         panelAnimacionMision,
                         imagenAnimacionMision,
-                        audioMisionCompletada
+                        audioMisionCompletada,
+                        () => MostrarBotonContinuar()
                     );
-
-                    btnContinuarPanel.onClick.AddListener(() =>
-                    {
-                        SceneManager.LoadScene("Categor韆s");
-                    });
                 }
             });
+        }
+    }
+
+    void MostrarBotonContinuar()
+    {
+        // Mostrar el panel con el bot贸n continuar despu茅s de la animaci贸n
+        if (PanelContinuar != null)
+        {
+            PanelContinuar.SetActive(true);
+        }
+
+        if (btnContinuarPanel != null)
+        {
+            btnContinuarPanel.onClick.RemoveAllListeners();
+            btnContinuarPanel.onClick.AddListener(() =>
+            {
+                VolverAPantallaAnterior();
+            });
+        }
+    }
+
+    void VolverAPantallaAnterior()
+    {
+        string ruta = PlayerPrefs.GetString("CargarVuforia", "");
+
+        if (ruta == "Inicio")
+        {
+            SceneManager.LoadScene("Perfil_Usuario");
+        }
+        else if (ruta == "Misiones")
+        {
+            SceneManager.LoadScene("Categor铆as");
+        }
+        else if (ruta == "Profesor")
+        {
+            SceneManager.LoadScene("InicioProfesor");
+        }
+        else
+        {
+            // Por defecto, volver a Categor铆as
+            SceneManager.LoadScene("Categor铆as");
         }
     }
 

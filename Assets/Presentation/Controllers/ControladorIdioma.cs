@@ -25,13 +25,43 @@ public class ControladorIdioma : MonoBehaviour
 
     void Start()
     {
+        // Verificar ServiceLocator y crearlo si no existe
         if (!ServiceLocator.AreServicesInitialized())
         {
-            Debug.LogError("ServiceLocator no inicializado en ControladorIdioma");
+            Debug.LogWarning("ServiceLocator no inicializado en ControladorIdioma. Creando instancia...");
+
+            // Buscar ServiceLocator existente
+            ServiceLocator existingLocator = FindObjectOfType<ServiceLocator>();
+
+            if (existingLocator == null)
+            {
+                // Crear un GameObject con ServiceLocator
+                GameObject serviceLocatorObj = new GameObject("ServiceLocator");
+                serviceLocatorObj.AddComponent<ServiceLocator>();
+                Debug.Log("ServiceLocator creado exitosamente en ControladorIdioma");
+            }
+
+            // Esperar un frame para que se inicialice
+            StartCoroutine(InicializarDespuesDeServiceLocator());
             return;
         }
-        int ID = ServiceLocator.PlayerPrefs.GetInt("LocaleKey", 0);
 
+        int ID = ServiceLocator.PlayerPrefs.GetInt("LocaleKey", 0);
+        ChangeLocale(ID);
+    }
+
+    private IEnumerator InicializarDespuesDeServiceLocator()
+    {
+        // Esperar un frame para que ServiceLocator se inicialice
+        yield return null;
+
+        if (!ServiceLocator.AreServicesInitialized())
+        {
+            Debug.LogError("No se pudo inicializar ServiceLocator en ControladorIdioma");
+            yield break;
+        }
+
+        int ID = ServiceLocator.PlayerPrefs.GetInt("LocaleKey", 0);
         ChangeLocale(ID);
     }
 
@@ -56,11 +86,26 @@ public class ControladorIdioma : MonoBehaviour
         }
 
         LocalizationSettings.SelectedLocale = locales[localeID];
-        PlayerPrefs.SetInt("LocaleKey", localeID);
-        if (localeID == 0)
-            PlayerPrefs.SetString("appIdioma", "español");
+
+        // Usar ServiceLocator.PlayerPrefs si está disponible, sino usar PlayerPrefs directo
+        if (ServiceLocator.AreServicesInitialized())
+        {
+            ServiceLocator.PlayerPrefs.SetInt("LocaleKey", localeID);
+            if (localeID == 0)
+                ServiceLocator.PlayerPrefs.SetString("appIdioma", "español");
+            else
+                ServiceLocator.PlayerPrefs.SetString("appIdioma", "ingles");
+        }
         else
-            PlayerPrefs.SetString("appIdioma", "ingles");
+        {
+            // Fallback: usar PlayerPrefs nativo de Unity
+            PlayerPrefs.SetInt("LocaleKey", localeID);
+            if (localeID == 0)
+                PlayerPrefs.SetString("appIdioma", "español");
+            else
+                PlayerPrefs.SetString("appIdioma", "ingles");
+        }
+
         _active = false;
     }
 }

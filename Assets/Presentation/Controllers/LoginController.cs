@@ -15,7 +15,6 @@ public class LoginController : MonoBehaviour
     public Button loginButton;
     public Toggle toggleRememberMe;
 
-
     [Header("UI de Idiomas")]
     public Image RawEspañol;
     public Image RawIngles;
@@ -24,7 +23,6 @@ public class LoginController : MonoBehaviour
     public Button btnEspañol;
     public Button btnIngles;
     public TMP_Text txtIdiomas;
-
 
     [Header("UI Recuperar Contraseña")]
     public Button btnResetPassword;
@@ -44,37 +42,63 @@ public class LoginController : MonoBehaviour
     private GestionarIntentosFallidos intentosFallidosUseCase;
     private VerificarEstadoUsuario verificarEstadoUsuarioUseCase;
 
-    private async void Start()
+    private void Start()
     {
-        // Verificar ServiceLocator
+        StartCoroutine(InicializarAsync());
+    }
+
+    private IEnumerator InicializarAsync()
+    {
+        // Verificar ServiceLocator y crearlo si no existe
         if (!ServiceLocator.AreServicesInitialized())
         {
-            ServiceLocator.Logger.LogError("ServiceLocator no está inicializado");
-            return;
+            Debug.LogWarning("ServiceLocator no está inicializado. Creando instancia...");
+
+            ServiceLocator existingLocator = FindObjectOfType<ServiceLocator>();
+
+            if (existingLocator == null)
+            {
+                GameObject serviceLocatorObj = new GameObject("ServiceLocator");
+                serviceLocatorObj.AddComponent<ServiceLocator>();
+                Debug.Log("ServiceLocator creado exitosamente");
+            }
+
+            yield return null;
+
+            if (!ServiceLocator.AreServicesInitialized())
+            {
+                Debug.LogError("No se pudo inicializar ServiceLocator");
+                yield break;
+            }
         }
 
-        bool listo = await FirebaseServiceLocator.InicializarFirebase();
+        // Inicializar Firebase
+        var firebaseTask = FirebaseServiceLocator.InicializarFirebase();
+        while (!firebaseTask.IsCompleted)
+        {
+            yield return null;
+        }
+
+        bool listo = firebaseTask.Result;
 
         if (!listo)
         {
-            ServiceLocator.Logger.LogError("Firebase no se inicializó correctamente.");
-            return;
+            Debug.LogError("Firebase no se inicializó correctamente.");
+            yield break;
         }
 
+        // Inicializar servicios
         var authService = new FirebaseAuthService(FirebaseServiceLocator.Auth);
         var firestoreService = new FirestoreService(FirebaseServiceLocator.Firestore);
         var localStorage = new LocalStorageService();
 
-
         loginUseCase = new LoginUsuario(authService, localStorage);
         resetPasswordUseCase = new ResetearPassword(authService);
-        // GestionarIntentosFallidos necesita IPlayerPrefsService
         intentosFallidosUseCase = new GestionarIntentosFallidos(
             localStorage,
             ServiceLocator.PlayerPrefs
         );
 
-        // VerificarEstadoUsuario necesita todas las dependencias
         verificarEstadoUsuarioUseCase = new VerificarEstadoUsuario(
             firestoreService,
             ServiceLocator.PlayerPrefs,
@@ -85,26 +109,25 @@ public class LoginController : MonoBehaviour
             ServiceLocator.ResourceLoader
         );
 
-        loginButton.onClick.AddListener(OnLoginButtonClick);
-        btnSendReset.onClick.AddListener(OnSendResetPasswordClick);
+        // Configurar botones
+        loginButton.onClick.AddListener(() => StartCoroutine(OnLoginButtonClickCoroutine()));
+        btnSendReset.onClick.AddListener(() => StartCoroutine(OnSendResetPasswordClickCoroutine()));
         btnResetPassword.onClick.AddListener(MostrarPanelRestablecer);
 
-        //BOTON PARA ABRIR PANEL DE IDIOMAS :D
-
+        // Configurar idioma
         int locale = ServiceLocator.PlayerPrefs.GetInt("LocaleKey", 0);
         switch (locale)
         {
-            case 0: // ID para Español
+            case 0:
                 txtIdiomas.text = "Español";
                 RawIngles.gameObject.SetActive(false);
                 RawEspañol.gameObject.SetActive(true);
                 break;
-            case 1: // ID para Inglés
+            case 1:
                 txtIdiomas.text = "English";
                 RawEspañol.gameObject.SetActive(false);
                 RawIngles.gameObject.SetActive(true);
                 break;
-                // Podrías añadir más casos si tienes más idiomas
         }
 
         btnIdiomas.onClick.AddListener(abrirPanelIdiomas);
@@ -114,54 +137,59 @@ public class LoginController : MonoBehaviour
 
     public void abrirPanelIdiomas()
     {
-        // Esta función ahora solo muestra el panel.
         contenedorIdiomas.SetActive(true);
     }
 
     private void CambiarIdiomaY_CerrarPanel(int id)
     {
-        // Llama a la instancia del controlador de idioma
         if (ControladorIdioma.instancia != null)
         {
             ControladorIdioma.instancia.ChangeLocale(id);
         }
         switch (id)
         {
-            case 0: // ID para Español
+            case 0:
                 txtIdiomas.text = "Español";
                 RawIngles.gameObject.SetActive(false);
                 RawEspañol.gameObject.SetActive(true);
                 break;
-            case 1: // ID para Inglés
+            case 1:
                 txtIdiomas.text = "English";
                 RawEspañol.gameObject.SetActive(false);
                 RawIngles.gameObject.SetActive(true);
                 break;
-                // Podrías añadir más casos si tienes más idiomas
         }
-        // Cierra el panel
         contenedorIdiomas.SetActive(false);
     }
-    private async void OnLoginButtonClick()
+
+    private IEnumerator OnLoginButtonClickCoroutine()
     {
         if (Application.internetReachability == NetworkReachability.NotReachable)
         {
             sinInternetPopup.SetActive(true);
-            return;
+            yield break;
         }
 
         if (intentosFallidosUseCase.EstaBloqueado())
         {
             MostrarError($"Demasiados intentos fallidos. Intenta en {intentosFallidosUseCase.TiempoRestante()} segundos.");
-            return;
+            yield break;
         }
 
-        if (VerificarCamposLoginVacios()) return;
+        if (VerificarCamposLoginVacios())
+            yield break;
 
         string email = emailInput.text.Trim();
         string password = passwordInput.text.Trim();
 
-        var resultado = await loginUseCase.EjecutarAsync(email, password);
+        var loginTask = loginUseCase.EjecutarAsync(email, password);
+
+        while (!loginTask.IsCompleted)
+        {
+            yield return null;
+        }
+
+        var resultado = loginTask.Result;
 
         if (resultado.EsExitoso)
         {
@@ -170,9 +198,11 @@ public class LoginController : MonoBehaviour
             PlayerPrefs.SetInt("rememberMe", 1);
             PlayerPrefs.SetString("userEmail", email);
             PlayerPrefs.SetString("userPassword", password);
-            
-            intentosFallidosUseCase.ResetearIntentos(); // Éxito: resetea intentos
-            OnLoginSuccess();
+            PlayerPrefs.Save();
+
+            intentosFallidosUseCase.ResetearIntentos();
+
+            StartCoroutine(OnLoginSuccessCoroutine());
         }
         else
         {
@@ -181,17 +211,24 @@ public class LoginController : MonoBehaviour
         }
     }
 
-    private async void OnSendResetPasswordClick()
+    private IEnumerator OnSendResetPasswordClickCoroutine()
     {
         string email = emailResetInput.text.Trim();
 
         if (string.IsNullOrEmpty(email))
         {
             MostrarResetError("Ingresa tu correo.", Color.red);
-            return;
+            yield break;
         }
 
-        bool enviado = await resetPasswordUseCase.EjecutarAsync(email);
+        var resetTask = resetPasswordUseCase.EjecutarAsync(email);
+
+        while (!resetTask.IsCompleted)
+        {
+            yield return null;
+        }
+
+        bool enviado = resetTask.Result;
 
         if (enviado)
         {
@@ -204,12 +241,18 @@ public class LoginController : MonoBehaviour
         }
     }
 
-    private async void OnLoginSuccess()
+    private IEnumerator OnLoginSuccessCoroutine()
     {
         string userId = FirebaseServiceLocator.Auth.CurrentUser?.UserId;
+
         if (!string.IsNullOrEmpty(userId))
         {
-            await verificarEstadoUsuarioUseCase.Ejecutar(userId);
+            var verificarTask = verificarEstadoUsuarioUseCase.Ejecutar(userId);
+
+            while (!verificarTask.IsCompleted)
+            {
+                yield return null;
+            }
         }
         else
         {

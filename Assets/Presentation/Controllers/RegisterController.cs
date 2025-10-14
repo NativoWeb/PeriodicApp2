@@ -53,6 +53,30 @@ public class RegisterController : MonoBehaviour
 
     private async void Start()
     {
+        // Verificar ServiceLocator y crearlo si no existe
+        if (!ServiceLocator.AreServicesInitialized())
+        {
+            Debug.LogWarning("ServiceLocator no está inicializado en RegisterController. Creando instancia...");
+
+            ServiceLocator existingLocator = FindObjectOfType<ServiceLocator>();
+
+            if (existingLocator == null)
+            {
+                GameObject serviceLocatorObj = new GameObject("ServiceLocator");
+                serviceLocatorObj.AddComponent<ServiceLocator>();
+                Debug.Log("ServiceLocator creado exitosamente en RegisterController");
+            }
+
+            // Esperar un frame para que se inicialice
+            await System.Threading.Tasks.Task.Yield();
+
+            if (!ServiceLocator.AreServicesInitialized())
+            {
+                Debug.LogError("No se pudo inicializar ServiceLocator en RegisterController");
+                return;
+            }
+        }
+
         bool inicializado = await FirebaseServiceLocator.InicializarFirebase();
         if (!inicializado)
         {

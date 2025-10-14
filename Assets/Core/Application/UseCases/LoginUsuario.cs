@@ -20,7 +20,8 @@ namespace PeriodicApp.Core.Application.UseCases
         {
             try
             {
-                var usuario = await _authenticationService.LoginAsync(email, password, cancellationToken).ConfigureAwait(false);
+                // Removemos ConfigureAwait(false) para asegurar que volvemos al hilo principal de Unity
+                var usuario = await _authenticationService.LoginAsync(email, password, cancellationToken);
 
                 _localStorage.Guardar("userId", usuario.UserId);
                 _localStorage.Guardar("DisplayName", usuario.DisplayName);

@@ -64,13 +64,15 @@ public class GuardarMisionCompletada : MonoBehaviour
         //}
     }
 
-    public void IniciarProcesoMisionCompletada(GameObject panelAnim, GameObject imagenAnim, AudioSource audio)
+    private System.Action callbackDespuesDeAnimacion;
+
+    public void IniciarProcesoMisionCompletada(GameObject panelAnim, GameObject imagenAnim, AudioSource audio, System.Action callback = null)
     {
         Debug.Log("<color=yellow>Recibiendo nuevas referencias de animación...</color>");
         this.panel = panelAnim;
         this.imagenMision = imagenAnim;
         this.audioSource = audio;
-        
+        this.callbackDespuesDeAnimacion = callback;
 
         MarcarMisionComoCompletada();
         AnimacionMisionCompletada();
@@ -124,6 +126,8 @@ public class GuardarMisionCompletada : MonoBehaviour
             .OnComplete(() =>
             {
                 Debug.Log("Animación de misión completada finalizada.");
+                // Ejecutar el callback si existe (para mostrar botón de continuar)
+                callbackDespuesDeAnimacion?.Invoke();
             });
     }
 

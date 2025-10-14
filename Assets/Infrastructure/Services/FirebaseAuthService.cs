@@ -21,7 +21,8 @@ namespace PeriodicApp.Infrastructure.Services
 
         public async Task<Usuario> LoginAsync(string email, string password, CancellationToken cancellationToken = default)
         {
-            var result = await _auth.SignInWithEmailAndPasswordAsync(email, password).ConfigureAwait(false);
+            // Removemos ConfigureAwait(false) para asegurar que volvemos al hilo principal de Unity
+            var result = await _auth.SignInWithEmailAndPasswordAsync(email, password);
             var user = result.User;
 
             return new Usuario(user.Email, user.DisplayName, user.UserId);
@@ -45,7 +46,8 @@ namespace PeriodicApp.Infrastructure.Services
 
         public async Task<Usuario> CreateUserAsync(string email, string password, CancellationToken cancellationToken = default)
         {
-            var result = await _auth.CreateUserWithEmailAndPasswordAsync(email, password).ConfigureAwait(false);
+            // Removemos ConfigureAwait(false) para asegurar que volvemos al hilo principal de Unity
+            var result = await _auth.CreateUserWithEmailAndPasswordAsync(email, password);
             var user = result.User;
 
             return new Usuario(user.Email, user.DisplayName, user.UserId);
@@ -53,7 +55,8 @@ namespace PeriodicApp.Infrastructure.Services
 
         private async Task<bool> UpdateProfileInternalAsync(UserProfile profile)
         {
-            await _auth.CurrentUser.UpdateUserProfileAsync(profile).ConfigureAwait(false);
+            // Removemos ConfigureAwait(false) para asegurar que volvemos al hilo principal de Unity
+            await _auth.CurrentUser.UpdateUserProfileAsync(profile);
             return true;
         }
     }

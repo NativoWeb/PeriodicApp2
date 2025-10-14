@@ -18,7 +18,8 @@ namespace PeriodicApp.Core.Application.UseCases
         {
             try
             {
-                await _authenticationService.ResetPasswordAsync(email, cancellationToken).ConfigureAwait(false);
+                // Removemos ConfigureAwait(false) para asegurar que volvemos al hilo principal de Unity
+                await _authenticationService.ResetPasswordAsync(email, cancellationToken);
                 return true;
             }
             catch (Exception)
