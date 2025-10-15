@@ -101,19 +101,45 @@ public class GestorMisiones : MonoBehaviour
     public IEnumerator CargarJSONYContinuar()
     {
         yield return CargarJSON( JsonIdioma, nodo => jsonDataInformacion = nodo);
-        yield return CargarJSON("json_misiones.json", nodo => jsonDataMisiones = nodo);
+        yield return CargarJSON("Json_Misiones.json", nodo => jsonDataMisiones = nodo);
     }
 
     IEnumerator CargarJSON(string nombreArchivo, System.Action<JSONNode> callback)
     {
         string rutaPersistente = Path.Combine(Application.persistentDataPath, nombreArchivo);
+
+        // Intentar cargar desde persistentDataPath
         if (File.Exists(rutaPersistente))
         {
-            callback(JSON.Parse(File.ReadAllText(rutaPersistente)));
-            yield break;
+            string contenido = File.ReadAllText(rutaPersistente);
+            JSONNode jsonCargado = JSON.Parse(contenido);
+
+            // Verificar si tiene la estructura correcta (para Json_Misiones.json)
+            if (nombreArchivo == "Json_Misiones.json")
+            {
+                // Si tiene la clave vieja "Misiones_Categorias", borramos el archivo
+                if (jsonCargado != null && jsonCargado.HasKey("Misiones_Categorias"))
+                {
+                    Debug.LogWarning($"⚠️ Archivo {nombreArchivo} en persistentDataPath tiene estructura antigua. Eliminando...");
+                    File.Delete(rutaPersistente);
+                    // Continuar para cargar desde Resources
+                }
+                else if (jsonCargado != null && jsonCargado.HasKey("Misiones"))
+                {
+                    // Estructura correcta
+                    callback(jsonCargado);
+                    yield break;
+                }
+            }
+            else
+            {
+                // Para otros archivos, cargar normalmente
+                callback(jsonCargado);
+                yield break;
+            }
         }
 
-        // Si no existe, lo cargo de Resources
+        // Si no existe o fue eliminado, lo cargo de Resources
         string recurso = $"Plantillas_Json/{Path.GetFileNameWithoutExtension(nombreArchivo)}";
         TextAsset txt = Resources.Load<TextAsset>(recurso);
 
@@ -123,6 +149,7 @@ public class GestorMisiones : MonoBehaviour
         if (txt != null)
         {
             callback(JSON.Parse(txt.text));
+            Debug.Log($"✅ {nombreArchivo} cargado desde Resources");
         }
         else
         {
@@ -222,6 +249,9 @@ public class GestorMisiones : MonoBehaviour
     {
 
         string elementoSeleccionado = PlayerPrefs.GetString("ElementoSeleccionado");
+
+        Debug.Log($"🔍 Cargando misiones para: Categoría='{categoriaSeleccionada}', Elemento='{elementoSeleccionado}'");
+
         // Color del panel según categoría
         if (PanelDatosElemento != null)
         {
@@ -232,18 +262,57 @@ public class GestorMisiones : MonoBehaviour
             }
         }
 
-        if (jsonDataMisiones == null ||
-            !jsonDataMisiones.HasKey("Misiones_Categorias") ||
-            !jsonDataMisiones["Misiones_Categorias"].HasKey("Categorias") ||
-            !jsonDataMisiones["Misiones_Categorias"]["Categorias"].HasKey(categoriaSeleccionada) ||
-            !jsonDataMisiones["Misiones_Categorias"]["Categorias"][categoriaSeleccionada].HasKey("Elementos") ||
-            !jsonDataMisiones["Misiones_Categorias"]["Categorias"][categoriaSeleccionada]["Elementos"].HasKey(elementoSeleccionado))
+        // Verificaciones paso a paso con logs
+        if (jsonDataMisiones == null)
         {
-            Debug.LogError("No se encontró la categoría o el elemento en json_misiones.json");
+            Debug.LogError("❌ jsonDataMisiones es NULL");
             return;
         }
 
-        var misionesArray = jsonDataMisiones["Misiones_Categorias"]["Categorias"][categoriaSeleccionada]["Elementos"][elementoSeleccionado]["misiones"].AsArray;
+        if (!jsonDataMisiones.HasKey("Misiones"))
+        {
+            Debug.LogError("❌ El JSON no tiene la clave 'Misiones'");
+            Debug.Log($"Claves disponibles: {string.Join(", ", jsonDataMisiones.Keys)}");
+            return;
+        }
+
+        var misionesNode = jsonDataMisiones["Misiones"];
+
+        if (!misionesNode.HasKey("Categorias"))
+        {
+            Debug.LogError("❌ El JSON no tiene la clave 'Categorias' dentro de 'Misiones'");
+            return;
+        }
+
+        var categoriasNode = misionesNode["Categorias"];
+
+        if (!categoriasNode.HasKey(categoriaSeleccionada))
+        {
+            Debug.LogError($"❌ No se encontró la categoría '{categoriaSeleccionada}'");
+            Debug.Log($"Categorías disponibles: {string.Join(", ", categoriasNode.Keys)}");
+            return;
+        }
+
+        var categoriaNode = categoriasNode[categoriaSeleccionada];
+
+        if (!categoriaNode.HasKey("Elementos"))
+        {
+            Debug.LogError($"❌ La categoría '{categoriaSeleccionada}' no tiene 'Elementos'");
+            return;
+        }
+
+        var elementosNode = categoriaNode["Elementos"];
+
+        if (!elementosNode.HasKey(elementoSeleccionado))
+        {
+            Debug.LogError($"❌ No se encontró el elemento '{elementoSeleccionado}' en la categoría '{categoriaSeleccionada}'");
+            Debug.Log($"Elementos disponibles: {string.Join(", ", elementosNode.Keys)}");
+            return;
+        }
+
+        Debug.Log($"✅ Elemento '{elementoSeleccionado}' encontrado en la categoría '{categoriaSeleccionada}'");
+
+        var misionesArray = jsonDataMisiones["Misiones"]["Categorias"][categoriaSeleccionada]["Elementos"][elementoSeleccionado]["misiones"].AsArray;
 
         LimpiarMisiones(); // Limpia el contenido previo
 
