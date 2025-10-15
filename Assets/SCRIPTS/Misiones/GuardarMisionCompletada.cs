@@ -23,7 +23,7 @@ public class GuardarMisionCompletada : MonoBehaviour
     private FirebaseAuth auth;
     private FirebaseFirestore db;
     private string userId;
-    public ParticleSystem particulasMision; // 🌟 Agregar en el Inspector
+    //public ParticleSystem particulasMision; // 🌟 Agregar en el Inspector
     private string appIdioma;
     void Awake()
     {
@@ -64,13 +64,15 @@ public class GuardarMisionCompletada : MonoBehaviour
         //}
     }
 
-    public void IniciarProcesoMisionCompletada(GameObject panelAnim, GameObject imagenAnim, AudioSource audio)
+    private System.Action callbackDespuesDeAnimacion;
+
+    public void IniciarProcesoMisionCompletada(GameObject panelAnim, GameObject imagenAnim, AudioSource audio, System.Action callback = null)
     {
         Debug.Log("<color=yellow>Recibiendo nuevas referencias de animación...</color>");
         this.panel = panelAnim;
         this.imagenMision = imagenAnim;
         this.audioSource = audio;
-        
+        this.callbackDespuesDeAnimacion = callback;
 
         MarcarMisionComoCompletada();
         AnimacionMisionCompletada();
@@ -109,11 +111,11 @@ public class GuardarMisionCompletada : MonoBehaviour
 
 
         // 🟢 Activar y reproducir el efecto de partículas
-        if (particulasMision != null)
-        {
-            particulasMision.gameObject.SetActive(true);
-            particulasMision.Play();
-        }
+        //if (particulasMision != null)
+        //{
+        //    particulasMision.gameObject.SetActive(true);
+        //    particulasMision.Play();
+        //}
 
         Sequence secuenciaAnimacion = DOTween.Sequence();
         secuenciaAnimacion.Append(imagenMision.transform.DOScale(1.2f, 0.5f).SetEase(Ease.OutBounce))
@@ -124,6 +126,8 @@ public class GuardarMisionCompletada : MonoBehaviour
             .OnComplete(() =>
             {
                 Debug.Log("Animación de misión completada finalizada.");
+                // Ejecutar el callback si existe (para mostrar botón de continuar)
+                callbackDespuesDeAnimacion?.Invoke();
             });
     }
 
@@ -180,13 +184,13 @@ public class GuardarMisionCompletada : MonoBehaviour
         }
 
         var json = JSON.Parse(jsonString);
-        if (!json.HasKey("Misiones") || !json["Misiones"].HasKey("Categorias"))
+        if (!json.HasKey("Misiones_Categorias") || !json["Misiones_Categorias"].HasKey("Categorias"))
         {
             Debug.LogError("❌ Estructura del JSON incorrecta o faltan claves principales.");
             return;
         }
 
-        var categorias = json["Misiones"]["Categorias"];
+        var categorias = json["Misiones_Categorias"]["Categorias"];
         string categoriaSeleccionada = PlayerPrefs.GetString("CategoriaSeleccionada", "");
 
         if (appIdioma == "ingles")

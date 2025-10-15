@@ -50,6 +50,7 @@ public class StartAppManager : MonoBehaviour
 
             // 🔹 Borrar todos los PlayerPrefs
             PlayerPrefs.DeleteAll();
+
             auth.SignOut();
             // 🔹 Cerrar sesión persistente de Firebase (si hay)
             if (FirebaseAuth.DefaultInstance.CurrentUser != null)

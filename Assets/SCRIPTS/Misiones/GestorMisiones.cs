@@ -86,13 +86,16 @@ public class GestorMisiones : MonoBehaviour
     IEnumerator Start()
     {
         // Start es ejecutado después de Awake y OnEnable
-        
+
         yield return StartCoroutine(CargarJSONYContinuar());
 
         datosCargados = true;
 
         // Aquí sí podemos inicializar la UI por primera vez
         RefrescarUI();
+
+        // Verificar si venimos de completar una misión
+        VerificarRetornoDeMision();
     }
 
     public IEnumerator CargarJSONYContinuar()
@@ -230,17 +233,17 @@ public class GestorMisiones : MonoBehaviour
         }
 
         if (jsonDataMisiones == null ||
-            !jsonDataMisiones.HasKey("Misiones") ||
-            !jsonDataMisiones["Misiones"].HasKey("Categorias") ||
-            !jsonDataMisiones["Misiones"]["Categorias"].HasKey(categoriaSeleccionada) ||
-            !jsonDataMisiones["Misiones"]["Categorias"][categoriaSeleccionada].HasKey("Elementos") ||
-            !jsonDataMisiones["Misiones"]["Categorias"][categoriaSeleccionada]["Elementos"].HasKey(elementoSeleccionado))
+            !jsonDataMisiones.HasKey("Misiones_Categorias") ||
+            !jsonDataMisiones["Misiones_Categorias"].HasKey("Categorias") ||
+            !jsonDataMisiones["Misiones_Categorias"]["Categorias"].HasKey(categoriaSeleccionada) ||
+            !jsonDataMisiones["Misiones_Categorias"]["Categorias"][categoriaSeleccionada].HasKey("Elementos") ||
+            !jsonDataMisiones["Misiones_Categorias"]["Categorias"][categoriaSeleccionada]["Elementos"].HasKey(elementoSeleccionado))
         {
             Debug.LogError("No se encontró la categoría o el elemento en json_misiones.json");
             return;
         }
 
-        var misionesArray = jsonDataMisiones["Misiones"]["Categorias"][categoriaSeleccionada]["Elementos"][elementoSeleccionado]["misiones"].AsArray;
+        var misionesArray = jsonDataMisiones["Misiones_Categorias"]["Categorias"][categoriaSeleccionada]["Elementos"][elementoSeleccionado]["misiones"].AsArray;
 
         LimpiarMisiones(); // Limpia el contenido previo
 
@@ -436,5 +439,24 @@ public class GestorMisiones : MonoBehaviour
         PanelMisiones.SetActive(false);
         PanelElemento.SetActive(false);
         PanelCategorias.SetActive(false);
+    }
+
+    void VerificarRetornoDeMision()
+    {
+        // Verificar si tenemos datos de una misión completada
+        string elementoSeleccionado = PlayerPrefs.GetString("ElementoSeleccionado", "");
+        int misionActual = PlayerPrefs.GetInt("MisionActual", -1);
+
+        // Si hay un elemento seleccionado y una misión actual, significa que venimos de una misión
+        if (!string.IsNullOrEmpty(elementoSeleccionado) && misionActual != -1)
+        {
+            Debug.Log($"Retornando de misión {misionActual} del elemento {elementoSeleccionado}");
+
+            // Activar el panel de misiones del elemento
+            PanelElemento.SetActive(false);
+            PanelCategorias.SetActive(false);
+            PanelMisiones.SetActive(true);
+            PanelInformacion.SetActive(false);
+        }
     }
 }

@@ -6,7 +6,7 @@ public class DeslizarParaCerrarManager : MonoBehaviour, IPointerDownHandler, IDr
 {
     
     public RectTransform panel;           // El panel que se contrae
-    public float distanciaMinima = 300f;  // Mínimo de movimiento para cerrar
+    public float distanciaMinima = 900f;  // Mínimo de movimiento para cerrar
     public float velocidadCierre = 5000f; // Velocidad de contracción
 
     private Vector2 inicioTouch;
@@ -82,7 +82,7 @@ public class DeslizarParaCerrarManager : MonoBehaviour, IPointerDownHandler, IDr
         }
 
         panel.gameObject.SetActive(false);
-        alienRotator.DetenerRotacion();
+        //alienRotator.DetenerRotacion();
         panel.sizeDelta = new Vector2(panel.sizeDelta.x, alturaInicial); // Restaurar para próxima vez
         cerrando = false;
     }

@@ -66,6 +66,13 @@ public class PreguntaModelo
 [System.Serializable]
 public class EncuestaModelo
 {
+    // --- CAMPOS NUEVOS NECESARIOS PARA EL RUNNER ---
+    [SerializeField] private bool aleatorizarPreguntas;
+    [SerializeField] private bool aleatorizarRespuestas;
+    [SerializeField] private int minimoPreguntasAprobar;
+    [SerializeField] private int intentosMaximos;
+    [SerializeField] private bool estaActiva;
+
     // --- CAMPOS PRIVADOS PARA JsonUtility (GUARDADO LOCAL) ---
     [SerializeField] private string id;
     [SerializeField] private string idcreador;
@@ -113,6 +120,20 @@ public class EncuestaModelo
     [FirestoreProperty, ServerTimestamp]
     public Timestamp FechaCreacion { get; set; }
 
+    [FirestoreProperty("aleatorizarPreguntas")]
+    public bool AleatorizarPreguntas { get { return aleatorizarPreguntas; } set { aleatorizarPreguntas = value; } }
+
+    [FirestoreProperty("aleatorizarRespuestas")]
+    public bool AleatorizarRespuestas { get { return aleatorizarRespuestas; } set { aleatorizarRespuestas = value; } }
+
+    [FirestoreProperty("minimoPreguntasAprobar")]
+    public int MinimoPreguntasAprobar { get { return minimoPreguntasAprobar; } set { minimoPreguntasAprobar = value; } }
+
+    [FirestoreProperty("intentosMaximos")]
+    public int IntentosMaximos { get { return intentosMaximos; } set { intentosMaximos = value; } }
+
+    [FirestoreProperty("estaActiva")]
+    public bool EstaActiva { get { return estaActiva; } set { estaActiva = value; } }
     public string FechaCreacionString
     {
         get { return fechaCreacionString; }

@@ -46,6 +46,7 @@ public class GestorOraciones : MonoBehaviour
     public TextMeshProUGUI TxtRefuerzo1;
     public TextMeshProUGUI TxtRefuerzo2;
     public Button continuarCompletado;
+    //public Button botonContinuar;
 
 
     [Header("Referencias para Animación")]
@@ -180,8 +181,6 @@ public class GestorOraciones : MonoBehaviour
             barraProgreso.ActualizarProgreso(indicePreguntaActual + 1, preguntasActuales.Count);
         }
 
-
-
         Pregunta preguntaActual = preguntasActuales[indicePreguntaActual];
         txtOracion.text = preguntaActual.oracion;
 
@@ -190,19 +189,32 @@ public class GestorOraciones : MonoBehaviour
             Destroy(child.gameObject);
 
         // Barajar las opciones de respuesta
-        //string[] opcionesBarajadas = BarajarOpciones(preguntaActual.opciones);
-        //int indiceCorrectoBarajado = System.Array.IndexOf(opcionesBarajadas,
-        //    preguntaActual.opciones[preguntaActual.indiceCorrecto]);
+        List<string> opcionesBarajadas = new List<string>(preguntaActual.opciones);
+        int indiceCorrectoOriginal = preguntaActual.respuesta_correcta;
+        string respuestaCorrecta = preguntaActual.opciones[indiceCorrectoOriginal];
 
-        // Crear botones para cada opción
-        for (int i = 0; i < preguntaActual.opciones.Count; i++)
+        // Barajar usando Fisher-Yates
+        System.Random rng = new System.Random();
+        int n = opcionesBarajadas.Count;
+        while (n > 1)
+        {
+            n--;
+            int k = rng.Next(n + 1);
+            string temp = opcionesBarajadas[k];
+            opcionesBarajadas[k] = opcionesBarajadas[n];
+            opcionesBarajadas[n] = temp;
+        }
+
+        // Encontrar el nuevo índice de la respuesta correcta después de barajar
+        int nuevoIndiceRespuestaCorrecta = opcionesBarajadas.IndexOf(respuestaCorrecta);
+
+        // Crear botones para cada opción barajada
+        for (int i = 0; i < opcionesBarajadas.Count; i++)
         {
             GameObject btnObj = Instantiate(botonPrefab, contenedorOpciones);
-            //TextMeshProUGUI txtBtn = btn.GetComponentInChildren<TextMeshProUGUI>();
-            btnObj.GetComponentInChildren<TextMeshProUGUI>().text = preguntaActual.opciones[i];
-            //txtBtn.text = opcionesBarajadas[i];
+            btnObj.GetComponentInChildren<TextMeshProUGUI>().text = opcionesBarajadas[i];
             int opcionIndex = i; // Capturar el índice para el listener
-            btnObj.GetComponent<Button>().onClick.AddListener(() => SeleccionarPalabra(opcionIndex, btnObj));
+            btnObj.GetComponent<Button>().onClick.AddListener(() => SeleccionarPalabra(opcionIndex, btnObj, nuevoIndiceRespuestaCorrecta));
         }
 
         preguntaEnCurso = true;
@@ -210,16 +222,17 @@ public class GestorOraciones : MonoBehaviour
         StartCoroutine("Temporizador");
     }
 
-    void SeleccionarPalabra(int indiceSeleccionado, GameObject boton)
+    void SeleccionarPalabra(int indiceSeleccionado, GameObject boton, int indiceRespuestaCorrecta)
     {
         if (!preguntaEnCurso) return;
         preguntaEnCurso = false;
         StopCoroutine("Temporizador");
 
         Pregunta preguntaActual = preguntasActuales[indicePreguntaActual];
-        bool esCorrecto = (indiceSeleccionado == preguntaActual.respuesta_correcta);
+        bool esCorrecto = (indiceSeleccionado == indiceRespuestaCorrecta);
 
-        string palabraSeleccionada = preguntaActual.opciones[indiceSeleccionado];
+        // Obtener la palabra seleccionada del botón directamente
+        string palabraSeleccionada = boton.GetComponentInChildren<TextMeshProUGUI>().text;
         string colorHex = esCorrecto ? "#AED581" : "#E57373"; // Verde o Rojo
         string palabraColoreada = $"<color={colorHex}>{palabraSeleccionada}</color>";
 

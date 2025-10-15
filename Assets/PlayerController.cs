@@ -1,49 +1,46 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
+using PeriodicApp.Core.Application.Interfaces;
+using PeriodicApp.Presentation.ViewModels.Gameplay;
+using PeriodicApp.Core.Application.DTOs;
+using PeriodicApp.Infrastructure.Input;
 
 public class PlayerController : MonoBehaviour
 {
-    private CharacterController controller;
-    private Vector3 playerVelocity;
-    private bool groundedPlayer;
-    private float playerSpeed = 30f;
-    private float jumpHeight = 20f;
-    private float gravityValue = -9.81f;
+    [SerializeField] private PlayerInputReaderAsset inputReader;
+    [SerializeField] private CharacterController controller;
+    [SerializeField] private float playerSpeed = 30f;
+    [SerializeField] private float jumpHeight = 20f;
+    [SerializeField] private float gravityValue = -9.81f;
 
-    private void Start()
+    private PlayerMovementViewModel viewModel;
+
+    private void Awake()
     {
-        controller = gameObject.AddComponent<CharacterController>();
+        controller = controller != null ? controller : GetComponent<CharacterController>() ?? gameObject.AddComponent<CharacterController>();
+        viewModel = new PlayerMovementViewModel(playerSpeed, jumpHeight, gravityValue);
     }
 
-    void Update()
+    private void Update()
     {
-        groundedPlayer = controller.isGrounded;
-        if (groundedPlayer && playerVelocity.y < 0)
+        if (inputReader == null)
         {
-            playerVelocity.y = 0f;
+            Debug.LogWarning("PlayerController no tiene un inputReader asignado.");
+            return;
         }
 
-        // Horizontal input
-        Vector3 move = new Vector3(Input.GetAxis("Horizontal"), 0, Input.GetAxis("Vertical"));
-        move = Vector3.ClampMagnitude(move, 1f); // Optional: prevents faster diagonal movement
+        MovementInput movementInput = inputReader.ReadMovement();
+        bool jumpPressed = inputReader.IsJumpPressed();
+        bool isGrounded = controller.isGrounded;
 
-        if (move != Vector3.zero)
+        MovementUpdate movement = viewModel.Tick(movementInput, jumpPressed, isGrounded, Time.deltaTime);
+
+        var horizontalMove = new Vector3(movement.HorizontalSpeed, 0f, movement.VerticalSpeed);
+        if (movement.HasMovement)
         {
-            transform.forward = move;
+            transform.forward = horizontalMove.normalized;
         }
 
-        // Jump
-        if (Input.GetButtonDown("Jump") && groundedPlayer)
-        {
-            playerVelocity.y = Mathf.Sqrt(jumpHeight * -2.0f * gravityValue);
-        }
-
-        // Apply gravity
-        playerVelocity.y += gravityValue * Time.deltaTime;
-
-        // Combine horizontal and vertical movement
-        Vector3 finalMove = (move * playerSpeed) + (playerVelocity.y * Vector3.up);
-        controller.Move(finalMove * Time.deltaTime);
+        var verticalMove = new Vector3(0f, movement.VerticalVelocity, 0f);
+        controller.Move((horizontalMove + verticalMove) * Time.deltaTime);
     }
 }

@@ -29,6 +29,8 @@ public class GestorPreguntas : MonoBehaviour
     public GameObject panelAnimacionMision;
     public GameObject imagenAnimacionMision;
     public AudioSource audioMisionCompletada;
+    public Button btnContinuarPanel;
+    
 
     // --- Clases de Datos ---
     [System.Serializable]
@@ -364,11 +366,15 @@ public class GestorPreguntas : MonoBehaviour
                         imagenAnimacionMision,
                         audioMisionCompletada
                     );
+
+                    btnContinuarPanel.onClick.AddListener(()=> {
+                        SceneManager.LoadScene("Categorías");
+                        });
                 }
-                else
-                {
-                    SceneManager.LoadScene("Categorías");
-                }
+                //else
+                //{
+                //    SceneManager.LoadScene("Categorías");
+                //}
             });
         }
 

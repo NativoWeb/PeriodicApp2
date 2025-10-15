@@ -29,9 +29,9 @@ public class SolicitudesAmistadManager : MonoBehaviour
     private List<FriendRequest> allRequests = new List<FriendRequest>();
 
     public Button BtnVerSolicitudes;
-    public Button BtnAñadirAmigos;
+    public Button BtnAadirAmigos;
 
-    [Header("Panel que se moverá al mostrar solicitudes")]
+    [Header("Panel que se mover al mostrar solicitudes")]
     [SerializeField] private RectTransform panelInferiorSolicitudes;
 
     [Header("Panel general solcitudes")]
@@ -42,7 +42,7 @@ public class SolicitudesAmistadManager : MonoBehaviour
     
     public void OnEnable()
     {
-        appIdioma = PlayerPrefs.GetString("appIdioma", "español");
+        appIdioma = PlayerPrefs.GetString("appIdioma", "espaÃ±ol");
         auth = FirebaseAuth.DefaultInstance;
         db = FirebaseFirestore.DefaultInstance;
 
@@ -51,19 +51,19 @@ public class SolicitudesAmistadManager : MonoBehaviour
             Debug.LogError("Usuario no autenticado.");
             return;
         }
-        // GUARDAMOS LA POSICIÓN INICIAL UNA VEZ
+        // GUARDAMOS LA POSICIN INICIAL UNA VEZ
 
         if (panelInferiorSolicitudes != null)
         {
             posicionBaseInferiorSolicitudes = panelInferiorSolicitudes.anchoredPosition;
-            Debug.Log("Posición base del panel inferior guardada: " + posicionBaseInferiorSolicitudes);
+            Debug.Log("Posicin base del panel inferior guardada: " + posicionBaseInferiorSolicitudes);
         }
 
         currentUserId = auth.CurrentUser.UserId;
         LoadPendingRequests();
 
         BtnVerSolicitudes.onClick.AddListener(VerTodasSolicitudes);
-        BtnAñadirAmigos.onClick.AddListener(VerTodosUsuariosSugeridos);
+        BtnAadirAmigos.onClick.AddListener(VerTodosUsuariosSugeridos);
 
     }
 
@@ -75,8 +75,8 @@ public class SolicitudesAmistadManager : MonoBehaviour
    public void LoadPendingRequests()
     {
         // desactivamos btn de agregar amigos
-        if(BtnAñadirAmigos != null)
-            BtnAñadirAmigos.gameObject.SetActive(false);
+        if(BtnAadirAmigos != null)
+            BtnAadirAmigos.gameObject.SetActive(false);
 
         db.Collection("SolicitudesAmistad")
           .WhereEqualTo("idDestinatario", currentUserId)
@@ -144,7 +144,7 @@ public class SolicitudesAmistadManager : MonoBehaviour
             {
                 solicitudPanels[0].SetActive(true);
 
-                if (appIdioma == "español")
+                if (appIdioma == "espaÃ±ol")
                 {
                     solicitudPanels[0].transform.Find("NombreText").GetComponent<TMP_Text>().text = "Sin solicitudes";
                     solicitudPanels[0].transform.Find("RangoText").GetComponent<TMP_Text>().text = "Invita a tus amigos";
@@ -155,7 +155,7 @@ public class SolicitudesAmistadManager : MonoBehaviour
                     solicitudPanels[0].transform.Find("RangoText").GetComponent<TMP_Text>().text = "Invite your friends";
                 }
                 
-                BtnAñadirAmigos.gameObject.SetActive(true);
+                BtnAadirAmigos.gameObject.SetActive(true);
                     
                 solicitudPanels[0].transform.Find("AvatarImage").gameObject.SetActive(false);
                 solicitudPanels[0].transform.Find("AceptarBtn").gameObject.SetActive(false);
@@ -186,7 +186,7 @@ public class SolicitudesAmistadManager : MonoBehaviour
             panel.transform.Find("NombreText").GetComponent<TMP_Text>().text = request.fromUserName;
             panel.transform.Find("RangoText").GetComponent<TMP_Text>().text = request.fromUserRank;
 
-            // lógica para poner el avatar en solicitudes
+            // lgica para poner el avatar en solicitudes
             Sprite avatarSprite = Resources.Load<Sprite>(request.fromUserAvatar) ?? Resources.Load<Sprite>("Avatares/defecto");
 
             panel.transform.Find("AvatarImage").GetComponent<Image>().sprite = avatarSprite;
@@ -242,7 +242,7 @@ public class SolicitudesAmistadManager : MonoBehaviour
 
     void AcceptRequest(string documentId)
     {
-        // Primero obtenemos la información de la solicitud
+        // Primero obtenemos la informacin de la solicitud
         var requestDoc = db.Collection("SolicitudesAmistad").Document(documentId);
         requestDoc.GetSnapshotAsync().ContinueWithOnMainThread(getTask =>
         {
@@ -267,10 +267,10 @@ public class SolicitudesAmistadManager : MonoBehaviour
                     return;
                 }
 
-                // Creamos la referencia a la subcolección de amigos del usuario actual
+                // Creamos la referencia a la subcoleccin de amigos del usuario actual
                 var currentUserFriendsRef = db.Collection("users").Document(currentUserId).Collection("amigos");
 
-                // Creamos la referencia a la subcolección de amigos del otro usuario
+                // Creamos la referencia a la subcoleccin de amigos del otro usuario
                 var otherUserFriendsRef = db.Collection("users").Document(fromUserId).Collection("amigos");
 
                 // Creamos un diccionario con los datos del amigo a agregar
@@ -289,7 +289,7 @@ public class SolicitudesAmistadManager : MonoBehaviour
                 { "fechaAmistad", FieldValue.ServerTimestamp }
             };
 
-                // Batch para ejecutar ambas operaciones atómicamente
+                // Batch para ejecutar ambas operaciones atmicamente
                 var batch = db.StartBatch();
 
                 // Agregamos el amigo al usuario actual
@@ -344,7 +344,7 @@ public class SolicitudesAmistadManager : MonoBehaviour
             case "Experto Molecular": return "Avatares/Rango5";
             case "Maestro de Laboratorio": return "Avatares/Rango6";
             case "Sabio de la tabla": return "Avatares/Rango7";
-            case "Leyenda química": return "Avatares/Rango8";
+            case "Leyenda qumica": return "Avatares/Rango8";
             default: return "Avatares/Rango1";
         }
     }

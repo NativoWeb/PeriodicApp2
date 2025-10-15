@@ -6,11 +6,13 @@ using Firebase.Firestore;
 using System.Collections;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using UnityEngine.UI;
 
 public class RachaManager : MonoBehaviour
 {
     public TMP_Text RachaTexto;
-
+    public Button BtnAbrir_panelRacha;
+    [SerializeField] public GameObject panelRacha;
     private FirebaseAuth auth;
     private FirebaseFirestore db;
     private FirebaseUser user;
@@ -30,8 +32,12 @@ public class RachaManager : MonoBehaviour
         userId = user?.UserId;
 
         VerificarRacha();
+        BtnAbrir_panelRacha.onClick.AddListener(AbrirPanelRacha);
     }
-
+    void AbrirPanelRacha()
+    {
+        panelRacha.SetActive(true);
+    }
     private void VerificarRacha()
     {
         DateTime hoy = DateTime.UtcNow.Date;

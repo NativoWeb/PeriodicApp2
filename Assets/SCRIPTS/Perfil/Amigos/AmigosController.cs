@@ -39,14 +39,14 @@ public class AmigosController : MonoBehaviour
     private bool isLoading = false;
     private int amigosCargados = 0;
 
-    // Variables para el proceso de eliminación
+    // Variables para el proceso de eliminacin
     private string amigoIdSeleccionado;
     private string amigoNombreSeleccionado;
     private string documentoSolicitudSeleccionado;
 
     private Color defaultColor;
 
-    // MODIFICADO: Variables de localización
+    // MODIFICADO: Variables de localizacin
     private string appIdioma;
     private Dictionary<string, string> localizedTexts = new Dictionary<string, string>();
 
@@ -56,7 +56,7 @@ public class AmigosController : MonoBehaviour
         db = FirebaseFirestore.DefaultInstance;
 
         // MODIFICADO: Inicializar idioma y textos
-        appIdioma = PlayerPrefs.GetString("appIdioma", "español");
+        appIdioma = PlayerPrefs.GetString("appIdioma", "espaÃ±ol");
         InitializeLocalizedTexts();
 
         if (messageText != null) defaultColor = messageText.color;
@@ -101,7 +101,7 @@ public class AmigosController : MonoBehaviour
         }
     }
 
-    // MODIFICADO: Nuevo método para centralizar las traducciones
+    // MODIFICADO: Nuevo mtodo para centralizar las traducciones
     void InitializeLocalizedTexts()
     {
         if (appIdioma == "ingles")
@@ -128,24 +128,24 @@ public class AmigosController : MonoBehaviour
             localizedTexts["deleteError"] = "Error removing friend";
             localizedTexts["rankLabel"] = "Rank: {0}";
         }
-        else // Español por defecto
+        else // Espaol por defecto
         {
-            localizedTexts["noConnection"] = "No hay conexión a internet. Algunas funciones pueden no estar disponibles.";
+            localizedTexts["noConnection"] = "No hay conexin a internet. Algunas funciones pueden no estar disponibles.";
             localizedTexts["loadingFriends"] = "Cargando amigos...";
             localizedTexts["searching"] = "Buscando: {0}";
             localizedTexts["notAuthenticated"] = "No autenticado";
-            localizedTexts["emptyUserIdError"] = "Error: ID de usuario vacío";
+            localizedTexts["emptyUserIdError"] = "Error: ID de usuario vaco";
             localizedTexts["loadError"] = "Error al cargar amigos.";
-            localizedTexts["friendshipInfoError"] = "Error al cargar información de amistad.";
-            localizedTexts["noMatches"] = "No se encontraron amigos con ese nombre. ¡Prueba a agregar nuevos amigos!";
-            localizedTexts["noFriendsYet"] = "No tienes amigos aún. ¡Agrega algunos amigos para comenzar!";
+            localizedTexts["friendshipInfoError"] = "Error al cargar informacin de amistad.";
+            localizedTexts["noMatches"] = "No se encontraron amigos con ese nombre. Prueba a agregar nuevos amigos!";
+            localizedTexts["noFriendsYet"] = "No tienes amigos an. Agrega algunos amigos para comenzar!";
             localizedTexts["friendsFound"] = "{0} amigos encontrados";
             localizedTexts["friendsLoaded"] = "{0} amigos cargados";
             localizedTexts["unknown"] = "Desconocido";
             localizedTexts["statusFriends"] = "Amigos";
             localizedTexts["defaultRank"] = "Novato de laboratorio";
-            localizedTexts["cantDeleteOffline"] = "No puedes eliminar amigos sin conexión a internet";
-            localizedTexts["deleteConfirm"] = "¿Estás seguro que deseas eliminar a {0} de tu lista de amigos?";
+            localizedTexts["cantDeleteOffline"] = "No puedes eliminar amigos sin conexin a internet";
+            localizedTexts["deleteConfirm"] = "Ests seguro que deseas eliminar a {0} de tu lista de amigos?";
             localizedTexts["deleteIncompleteData"] = "Datos incompletos para eliminar amigo";
             localizedTexts["deleting"] = "Eliminando a {0}...";
             localizedTexts["deleteSuccess"] = "{0} ha sido eliminado de tu lista de amigos";
@@ -211,7 +211,7 @@ public class AmigosController : MonoBehaviour
                     if (!amigosMostrados.Contains(amigoId) && ShouldShowFriend(nombreAmigo, filtroNombre))
                     {
                         amigosMostrados.Add(amigoId);
-                        CreateFriendCard(amigoId, ""); // documentId se buscará después si es necesario
+                        CreateFriendCard(amigoId, ""); // documentId se buscar despus si es necesario
                         amigosCargados++;
                     }
                 }
@@ -280,7 +280,7 @@ public class AmigosController : MonoBehaviour
 
         amigoIdSeleccionado = amigoId;
         amigoNombreSeleccionado = nombreAmigo;
-        // Para la eliminación, necesitamos encontrar el ID del documento de la solicitud de amistad
+        // Para la eliminacin, necesitamos encontrar el ID del documento de la solicitud de amistad
         FindFriendshipDocumentId(amigoId, (solicitudId) =>
         {
             if (solicitudId != null)
@@ -403,7 +403,7 @@ public class AmigosController : MonoBehaviour
             case "Experto Molecular": return "Avatares/Rango5";
             case "Maestro de Laboratorio": return "Avatares/Rango6";
             case "Sabio de la tabla": return "Avatares/Rango7";
-            case "Leyenda química": return "Avatares/Rango8";
+            case "Leyenda qumica": return "Avatares/Rango8";
             default: return "Avatares/Rango1";
         }
     }

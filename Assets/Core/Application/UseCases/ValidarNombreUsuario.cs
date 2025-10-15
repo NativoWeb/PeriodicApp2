@@ -1,5 +1,6 @@
 using System.Threading.Tasks;
-using UnityEngine;
+//using UnityEngine;
+using PeriodicApp.Core.Domain.Interfaces;
 
 public class ValidarNombreUsuario
 {

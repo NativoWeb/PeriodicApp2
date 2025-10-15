@@ -1,66 +1,79 @@
-using UnityEngine;
+using PeriodicApp.Core.Application.Interfaces;
+using PeriodicApp.Core.Domain.Interfaces;
+using System;
 
-public class GestionarIntentosFallidos
+namespace PeriodicApp.Core.Application.UseCases
 {
-    private readonly IServicioLocalStorage localStorage;
-    private const int MaxIntentos = 3;
-    private const int TiempoBloqueoSegundos = 600;
-
-
-    public GestionarIntentosFallidos(IServicioLocalStorage localStorage)
+    public sealed class GestionarIntentosFallidos
     {
-        this.localStorage = localStorage;
-    }
+        private readonly IServicioLocalStorage _localStorage;
+        private readonly IPlayerPrefsService _playerPrefs;
+        private const int MaxIntentos = 3;
+        private const int TiempoBloqueoSegundos = 600;
 
-    public void RegistrarIntentoFallido()
-    {
-        int intentos = PlayerPrefs.GetInt("FailedAttempts", 0) + 1;
-        PlayerPrefs.SetInt("FailedAttempts", intentos);
-        PlayerPrefs.Save();
-
-        if(intentos >= MaxIntentos)
+        public GestionarIntentosFallidos(
+            IServicioLocalStorage localStorage,
+            IPlayerPrefsService playerPrefs)
         {
-            BloquearUsuario();
+            _localStorage = localStorage;
+            _playerPrefs = playerPrefs;
         }
-    }
 
-    public bool EstaBloqueado()
-    {
-        if (!PlayerPrefs.HasKey("LockoutTime"))
-            return false;
+        public void RegistrarIntentoFallido()
+        {
+            int intentos = _playerPrefs.GetInt("FailedAttempts", 0) + 1;
+            _playerPrefs.SetInt("FailedAttempts", intentos);
+            _playerPrefs.Save();
 
-        int tiempoBloqueo = PlayerPrefs.GetInt("LockoutTime");
-        int tiempoActual = GetUnixTimestamp();
-        return tiempoActual < tiempoBloqueo;
-    }
+            if (intentos >= MaxIntentos)
+            {
+                BloquearUsuario();
+            }
+        }
 
-    public int TiempoRestante()
-    {
-        if (!PlayerPrefs.HasKey("LockoutTime")) 
-        return 0;
+        public bool EstaBloqueado()
+        {
+            if (!_playerPrefs.HasKey("LockoutTime"))
+            {
+                return false;
+            }
 
-        int tiempoBloqueo = PlayerPrefs.GetInt("LockoutTime");
-        int tiempoActual = GetUnixTimestamp();
+            int tiempoBloqueo = _playerPrefs.GetInt("LockoutTime");
+            int tiempoActual = GetUnixTimestamp();
+            return tiempoActual < tiempoBloqueo;
+        }
 
-        return Mathf.Max(0, tiempoBloqueo - tiempoActual);
-    }
+        public int TiempoRestante()
+        {
+            if (!_playerPrefs.HasKey("LockoutTime"))
+            {
+                return 0;
+            }
 
-    public void ResetearIntentos()
-    {
-        PlayerPrefs.DeleteKey("FailedAttempts");
-        PlayerPrefs.DeleteKey("LockoutTime");
-        PlayerPrefs.Save();
-    }
+            int tiempoBloqueo = _playerPrefs.GetInt("LockoutTime");
+            int tiempoActual = GetUnixTimestamp();
 
-    private void BloquearUsuario()
-    {
-        int tiempoBloqueo = GetUnixTimestamp() + TiempoBloqueoSegundos;
-        PlayerPrefs.SetInt("LockoutTime", tiempoBloqueo);
-        PlayerPrefs.Save();
-    }
+            // Reemplazamos Mathf.Max con Math.Max (de System)
+            return Math.Max(0, tiempoBloqueo - tiempoActual);
+        }
 
-    private int GetUnixTimestamp()
-    {
-        return (int)(System.DateTime.UtcNow.Subtract(new System.DateTime(1970, 1, 1))).TotalSeconds;
+        public void ResetearIntentos()
+        {
+            _playerPrefs.DeleteKey("FailedAttempts");
+            _playerPrefs.DeleteKey("LockoutTime");
+        }
+
+        private void BloquearUsuario()
+        {
+            int tiempoActual = GetUnixTimestamp();
+            int tiempoDesbloqueo = tiempoActual + TiempoBloqueoSegundos;
+            _playerPrefs.SetInt("LockoutTime", tiempoDesbloqueo);
+            _playerPrefs.Save();
+        }
+
+        private int GetUnixTimestamp()
+        {
+            return (int)(DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1))).TotalSeconds;
+        }
     }
 }

@@ -1,50 +1,58 @@
+using System;
+using System.Threading;
 using System.Threading.Tasks;
+using PeriodicApp.Core.Domain.Interfaces;
 
-public class LoginUsuario
+namespace PeriodicApp.Core.Application.UseCases
 {
-    private readonly IServicioAutenticacion servicioAutenticacion;
-    private readonly IServicioLocalStorage servicioLocalStorage;
-
-    public LoginUsuario(IServicioAutenticacion servicioAutenticacion, IServicioLocalStorage servicioLocalStorage)
+    public sealed class LoginUsuario
     {
-        this.servicioAutenticacion = servicioAutenticacion;
-        this.servicioLocalStorage = servicioLocalStorage;
-    }
+        private readonly IAuthenticationService _authenticationService;
+        private readonly IServicioLocalStorage _localStorage;
 
-        public async Task<ResultadoLogin> Ejecutar(string email, string password)
+        public LoginUsuario(IAuthenticationService authenticationService, IServicioLocalStorage localStorage)
+        {
+            _authenticationService = authenticationService;
+            _localStorage = localStorage;
+        }
+
+        public async Task<ResultadoLogin> EjecutarAsync(string email, string password, CancellationToken cancellationToken = default)
         {
             try
             {
-                var usuario = await servicioAutenticacion.LoginAsync(email, password);
+                // Removemos ConfigureAwait(false) para asegurar que volvemos al hilo principal de Unity
+                var usuario = await _authenticationService.LoginAsync(email, password, cancellationToken);
 
-                servicioLocalStorage.Guardar("userId", usuario.UserId);
-                servicioLocalStorage.Guardar("DisplayName", usuario.DisplayName);
-                servicioLocalStorage.Guardar("Estadouser", "nube");
+                _localStorage.Guardar("userId", usuario.UserId);
+                _localStorage.Guardar("DisplayName", usuario.DisplayName);
+                _localStorage.Guardar("Estadouser", "nube");
 
-                var resultado = new ResultadoLogin
-                {
-                    Exito = true,
-                    UsuarioId = usuario.UserId
-                };
-
-                return resultado;
+                return ResultadoLogin.Exito(usuario.UserId);
             }
-            catch (System.Exception ex)
+            catch (Exception ex)
             {
-                return new ResultadoLogin
-                {
-                    Exito = false,
-                    MensajeError = ex.Message
-                };
+                return ResultadoLogin.Fallo(ex.Message);
             }
         }
 
+        public readonly struct ResultadoLogin
+        {
+            private ResultadoLogin(bool exito, string usuarioId, string mensajeError)
+            {
+                EsExitoso = exito;
+                UsuarioId = usuarioId;
+                MensajeError = mensajeError;
+            }
 
-    public class ResultadoLogin
-    {
-        public bool Exito { get; set; }
-        public string UsuarioId { get; set; }
-        public string MensajeError { get; set; }
+            public bool EsExitoso { get; }
+
+            public string UsuarioId { get; }
+
+            public string MensajeError { get; }
+
+            public static ResultadoLogin Exito(string usuarioId) => new ResultadoLogin(true, usuarioId, string.Empty);
+
+            public static ResultadoLogin Fallo(string mensajeError) => new ResultadoLogin(false, string.Empty, mensajeError);
+        }
     }
 }
-    

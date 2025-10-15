@@ -38,7 +38,7 @@ public class RankingComunidadesManager : BaseRankingManager
     [SerializeField] public GameObject panelSinComunidades;
     protected override void Start()
     {
-        appIdioma = PlayerPrefs.GetString("appIdioma", "español");
+        appIdioma = PlayerPrefs.GetString("appIdioma", "espaÃ±ol");
         base.Start();
         scrollToUser = FindFirstObjectByType<ScrollToUser>();
 
@@ -56,7 +56,7 @@ public class RankingComunidadesManager : BaseRankingManager
                 {
                     RankingStateManager.Instance.SwitchToComunidades();
                     ClearRanking();
-                    // Activar el dropdown cuando se hace clic en el botón
+                    // Activar el dropdown cuando se hace clic en el botn
                     if (comunidadesDropdown != null)
                     {
                         comunidadesDropdown.gameObject.SetActive(true);
@@ -137,7 +137,7 @@ public class RankingComunidadesManager : BaseRankingManager
         }
     }
 
-    // Nuevo método para resetear el dropdown
+    // Nuevo mtodo para resetear el dropdown
     private void ResetDropdownToDefault()
     {
         if (comunidadesDropdown != null)
@@ -187,7 +187,7 @@ public class RankingComunidadesManager : BaseRankingManager
     {
         comunidadesDropdown.ClearOptions();
         comunidadesDict.Clear();
-        if (appIdioma == "español")
+        if (appIdioma == "espaÃ±ol")
         {
             List<string> opciones = new List<string> { "Selecciona una comunidad" };
             comunidadesDropdown.AddOptions(opciones);
@@ -227,7 +227,7 @@ public class RankingComunidadesManager : BaseRankingManager
                 else
                 {
                     comunidadesDropdown.ClearOptions();
-                    if (appIdioma == "español")
+                    if (appIdioma == "espaÃ±ol")
                     {
                         comunidadesDropdown.AddOptions(new List<string> { "No perteneces a ninguna comunidad" });
                     }
