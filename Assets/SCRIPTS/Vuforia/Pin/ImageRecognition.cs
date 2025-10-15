@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using UnityEngine.Audio;
 using Vuforia;
 
 public class ImageRecognition : MonoBehaviour
@@ -6,24 +7,32 @@ public class ImageRecognition : MonoBehaviour
     private bool logroDesbloqueado = false;
     private ObserverBehaviour trackable;
     private ImageTargetSpawner spawner;
+    private string ruta;
+
+    public GameObject imageTargetPrefab;
+
+    [Header("Audio")]
+    public bool autoPlayAudio = true; // Activa/desactiva reproducci�n autom�tica
+    private AudioSource audioSource;
 
     void Start()
     {
         spawner = FindObjectOfType<ImageTargetSpawner>();
 
-        string elemento = "pin_" + PlayerPrefs.GetString("ElementoSeleccionado", "").ToLower();
+        string elemento = PlayerPrefs.GetString("ElementoSeleccionado", "").Trim().ToLower();
 
         trackable = GetComponent<ObserverBehaviour>();
+
+        ruta = PlayerPrefs.GetString("CargarVuforia", "");
+        // Si este ImageTarget no es el elemento de la misión, se desactiva
+            if (trackable.TargetName.Trim().ToLower() != elemento.Trim().ToLower())
+            {
+                gameObject.SetActive(false);
+            }
 
         if (trackable)
         {
             trackable.OnTargetStatusChanged += OnImageDetected;
-        }
-
-        // Si este ImageTarget no es el elemento de la misión, se desactiva
-        if (trackable.TargetName != elemento)
-        {
-            gameObject.SetActive(false);
         }
     }
 
@@ -32,6 +41,8 @@ public class ImageRecognition : MonoBehaviour
         if (status.Status == Status.TRACKED)
         {
             Debug.Log($"¡Imagen detectada! {trackable.TargetName} desbloqueado.");
+            // Cargar y reproducir audio
+            CargarAudio(trackable.TargetName.Trim().ToLower(), imageTargetPrefab);
             logroDesbloqueado = true;
             DesbloquearLogro(trackable.TargetName);
         }
@@ -41,5 +52,28 @@ public class ImageRecognition : MonoBehaviour
     {
         Debug.Log($"🏆 Logro desbloqueado: {elemento}");
         spawner.botonCompletarMision.interactable = true;
+    }
+
+    private void CargarAudio(string nombreElemento, GameObject parent)
+    {
+        // Obtener o crear el componente AudioSource
+        audioSource = parent.GetComponent<AudioSource>();
+        if (audioSource == null)
+        {
+            audioSource = parent.AddComponent<AudioSource>();
+        }
+
+        // Cargar el archivo de audio desde Resources/Audios/
+        AudioClip clip = Resources.Load<AudioClip>("AudiosPines/" + nombreElemento);
+        if (clip == null)
+        {
+            Debug.LogError("No se encontro el audio: " + nombreElemento);
+        }
+        else
+        {
+            Debug.Log("Audio cargado: " + clip.name);
+            audioSource.clip = clip;
+            audioSource.Play();
+        }
     }
 }
