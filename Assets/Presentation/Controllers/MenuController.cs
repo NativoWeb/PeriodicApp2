@@ -9,10 +9,15 @@ public class MenuController : MonoBehaviour
     [Header("Referencias UI")]
     [SerializeField] private Button volverButton;
     [SerializeField] private Button seleccionarButton;
+    [SerializeField] private Button btnExploraRA;
 
     [Header("Paneles")]
     [SerializeField] private GameObject panelMainMenu;
     [SerializeField] private GameObject panelSeleccion;
+    [SerializeField] private GameObject modalExploraRA;
+
+    [Header("Modal Explora RA")]
+    [SerializeField] private Button btnCerrarModal;
 
     [Header("Escenas")]
     [SerializeField] private string escenaCamara = "VuforiaNuevo";
@@ -37,6 +42,24 @@ public class MenuController : MonoBehaviour
         {
             volverButton.onClick.RemoveAllListeners();
             volverButton.onClick.AddListener(OnVolverClicked);
+        }
+
+        if (btnExploraRA != null)
+        {
+            btnExploraRA.onClick.RemoveAllListeners();
+            btnExploraRA.onClick.AddListener(OnExploraRAClicked);
+        }
+
+        if (btnCerrarModal != null)
+        {
+            btnCerrarModal.onClick.RemoveAllListeners();
+            btnCerrarModal.onClick.AddListener(CerrarModal);
+        }
+
+        // Asegurarse de que el modal esté cerrado al inicio
+        if (modalExploraRA != null)
+        {
+            modalExploraRA.SetActive(false);
         }
 
         viewModel.Initialize();
@@ -75,6 +98,27 @@ public class MenuController : MonoBehaviour
         {
             panelSeleccion.SetActive(state.ShowSelection);
         }
+    }
+
+    private void OnExploraRAClicked()
+    {
+        if (modalExploraRA != null)
+        {
+            modalExploraRA.SetActive(true);
+        }
+    }
+
+    private void CerrarModal()
+    {
+        if (modalExploraRA != null)
+        {
+            modalExploraRA.SetActive(false);
+        }
+    }
+
+    public void IrAEscenaCamara()
+    {
+        StartCoroutine(ActivarRawYIrAEscena(escenaCamara));
     }
 
     private IEnumerator ActivarRawYIrAEscena(string escena)
