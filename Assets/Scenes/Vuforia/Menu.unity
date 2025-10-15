@@ -1907,7 +1907,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 'Juegos
+  m_text: 'Quimicados
 
 '
   m_isRightToLeft: 0
@@ -3365,12 +3365,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 853411323d3309e439e16920a4f019b9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Volver: {fileID: 3809732}
-  btnSeleccion: {fileID: 1461149766}
-  PanelMainMenu: {fileID: 433931645}
-  PanelSeleccion: {fileID: 579777727}
+  volverButton: {fileID: 0}
+  seleccionarButton: {fileID: 0}
+  panelMainMenu: {fileID: 0}
+  panelSeleccion: {fileID: 0}
   escenaCamara: VuforiaNuevo
-  PanelSinInternet: {fileID: 1776284331}
+  selectionDelaySeconds: 0.5
 --- !u!1 &1000599814
 GameObject:
   m_ObjectHideFlags: 0
@@ -4846,7 +4846,19 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 1461149767}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 1836739740}
+        m_TargetAssemblyTypeName: cambiarescena, Assembly-CSharp
+        m_MethodName: siguienteEscena
+        m_Mode: 5
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: Quimicados
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!114 &1461149767
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -6598,7 +6610,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 'Camara
+  m_text: 'Explora
 
 '
   m_isRightToLeft: 0
