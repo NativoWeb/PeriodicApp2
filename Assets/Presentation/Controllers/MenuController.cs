@@ -9,12 +9,13 @@ public class MenuController : MonoBehaviour
     [Header("Referencias UI")]
     [SerializeField] private Button volverButton;
     [SerializeField] private Button seleccionarButton;
-    [SerializeField] private Button btnExploraRA;
+    [SerializeField] private Button explorarButton;
+    [SerializeField] private Button jugarButton;
 
     [Header("Paneles")]
     [SerializeField] private GameObject panelMainMenu;
     [SerializeField] private GameObject panelSeleccion;
-    [SerializeField] private GameObject modalExploraRA;
+    [SerializeField] private GameObject panelModo;
 
     [Header("Modal Explora RA")]
     [SerializeField] private Button btnCerrarModal;
@@ -44,23 +45,19 @@ public class MenuController : MonoBehaviour
             volverButton.onClick.AddListener(OnVolverClicked);
         }
 
-        if (btnExploraRA != null)
+        if (explorarButton != null)
         {
-            btnExploraRA.onClick.RemoveAllListeners();
-            btnExploraRA.onClick.AddListener(OnExploraRAClicked);
+            explorarButton.onClick.RemoveAllListeners();
+            explorarButton.onClick.AddListener(AbrirPanelModo);
         }
 
-        if (btnCerrarModal != null)
+        if (jugarButton != null)
         {
-            btnCerrarModal.onClick.RemoveAllListeners();
-            btnCerrarModal.onClick.AddListener(CerrarModal);
+            jugarButton.onClick.RemoveAllListeners();
+            jugarButton.onClick.AddListener(IrAQuimicados);
         }
 
-        // Asegurarse de que el modal esté cerrado al inicio
-        if (modalExploraRA != null)
-        {
-            modalExploraRA.SetActive(false);
-        }
+       
 
         viewModel.Initialize();
     }
@@ -100,20 +97,43 @@ public class MenuController : MonoBehaviour
         }
     }
 
-    private void OnExploraRAClicked()
+    // Función para abrir el PanelModo (botón Explora)
+    public void AbrirPanelModo()
     {
-        if (modalExploraRA != null)
+        if (panelModo != null)
         {
-            modalExploraRA.SetActive(true);
+            // Desactivar otros paneles
+            if (panelSeleccion != null) panelSeleccion.SetActive(false);
+
+            // Activar PanelModo
+            panelModo.SetActive(true);
         }
     }
 
-    private void CerrarModal()
+    // Función para cerrar PanelModo y volver al menú principal
+    public void CerrarPanelModo()
     {
-        if (modalExploraRA != null)
+        if (panelModo != null)
         {
-            modalExploraRA.SetActive(false);
+            panelModo.SetActive(false);
         }
+
+        if (panelMainMenu != null)
+        {
+            panelMainMenu.SetActive(true);
+        }
+    }
+
+    // Función para ir a la escena Quimicados (botón Jugar)
+    public void IrAQuimicados()
+    {
+        StartCoroutine(CargarEscena("Quimicados"));
+    }
+
+    private IEnumerator CargarEscena(string nombreEscena)
+    {
+        yield return new WaitForSeconds(selectionDelaySeconds);
+        SceneManager.LoadScene(nombreEscena);
     }
 
     public void IrAEscenaCamara()
