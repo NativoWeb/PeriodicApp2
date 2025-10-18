@@ -314,6 +314,9 @@ public class GestorMisiones : MonoBehaviour
 
         var misionesArray = jsonDataMisiones["Misiones"]["Categorias"][categoriaSeleccionada]["Elementos"][elementoSeleccionado]["misiones"].AsArray;
 
+        // Desactivar el contenedor para evitar destello visual durante la actualización
+        contenedorMisiones.gameObject.SetActive(false);
+
         LimpiarMisiones(); // Limpia el contenido previo
 
         if (appIdioma == "español")
@@ -411,6 +414,8 @@ public class GestorMisiones : MonoBehaviour
             }
         }
 
+        // Reactivar el contenedor después de cargar todas las misiones
+        contenedorMisiones.gameObject.SetActive(true);
     }
 
     public string devolverCatTrad(string categoriaSeleccionada)
@@ -489,9 +494,17 @@ public class GestorMisiones : MonoBehaviour
 
     void LimpiarMisiones()
     {
+        // Usar una lista temporal para evitar modificar la colección mientras iteramos
+        var children = new System.Collections.Generic.List<GameObject>();
         foreach (Transform child in contenedorMisiones)
         {
-            Destroy(child.gameObject);
+            children.Add(child.gameObject);
+        }
+
+        // Destruir todos los objetos inmediatamente
+        foreach (var child in children)
+        {
+            DestroyImmediate(child);
         }
     }
 
