@@ -28,22 +28,23 @@ public class ModeloLoader : MonoBehaviour
             modeloAtomico = atomo.gameObject;
         }
 
-        // Carga modelo de aplicaci�n desde Resources/ModelosAplicacion/
-        GameObject prefab = Resources.Load<GameObject>("Modelos3DBlender/" + nombreElemento);
+        // Carga modelo de aplicación usando búsqueda inteligente
+        GameObject prefab = CargarModeloInteligente(nombreElemento);
         if (prefab != null)
         {
             modeloAplicacion = Instantiate(prefab, parent.transform);
             modeloAplicacion.transform.localPosition = Vector3.zero;
             modeloAplicacion.transform.localScale = Vector3.one * 1f; // ajustar tama�o
             modeloAplicacion.SetActive(false);
+            Debug.Log($"✅ [ModeloLoader] Modelo 3D cargado correctamente para: {nombreElemento}");
         }
         else
         {
-            Debug.LogWarning("No se encontr� modelo de aplicaci�n para: " + nombreElemento);
+            Debug.LogError($"❌ [ModeloLoader] No se encontró modelo de aplicación para: {nombreElemento}");
         }
 
-        // Carga textura desde Resources/Textures/[nombreElemento].png
-        Texture2D textura = Resources.Load<Texture2D>("Modelos3DBlender/texturas/" + nombreElemento);
+        // Carga textura usando búsqueda inteligente
+        Texture2D textura = CargarTexturaInteligente(nombreElemento);
         if (textura != null && modeloAplicacion != null)
         {
             Renderer renderer = modeloAplicacion.GetComponentInChildren<Renderer>();
@@ -52,14 +53,148 @@ public class ModeloLoader : MonoBehaviour
                 Material material = new Material(Shader.Find("Standard"));
                 material.mainTexture = textura;
                 renderer.material = material;
+                Debug.Log($"✅ [ModeloLoader] Textura '{textura.name}' aplicada correctamente a {nombreElemento}");
+            }
+        }
+        else if (modeloAplicacion != null)
+        {
+            Debug.LogWarning($"⚠️ [ModeloLoader] No se encontró textura para: {nombreElemento}");
+        }
+
+        if (modeloAplicacion != null)
+        {
+            modeloAplicacion.AddComponent<Rotador>();
+        }
+
+        // Mostrar el botón solo si ambos modelos están disponibles
+        if (botonCambiarModelo != null)
+        {
+            bool mostrarBoton = modeloAtomico != null && modeloAplicacion != null;
+            botonCambiarModelo.SetActive(mostrarBoton);
+
+            Debug.Log($"🔘 [ModeloLoader] Botón cambiar modelo: {(mostrarBoton ? "VISIBLE" : "OCULTO")} " +
+                      $"(Modelo atómico: {(modeloAtomico != null ? "✓" : "✗")}, " +
+                      $"Modelo 3D: {(modeloAplicacion != null ? "✓" : "✗")})");
+        }
+        else
+        {
+            Debug.LogError($"❌ [ModeloLoader] botonCambiarModelo NO está asignado en el Inspector!");
+        }
+
+        mostrandoAtomico = true;
+    }
+
+    // Método mejorado para cargar texturas con múltiples intentos
+    private Texture2D CargarTexturaInteligente(string nombreElemento)
+    {
+        string basePath = "Modelos3DBlender/texturas/";
+        Texture2D textura = null;
+
+        // Lista de variaciones de nombres a probar (orden optimizado)
+        string[] variaciones = new string[]
+        {
+            nombreElemento,                                          // Nombre original
+            CorregirOrtografia(nombreElemento),                     // Correcciones ortográficas PRIMERO
+            CapitalizarPrimeraLetra(nombreElemento),                // Primera letra mayúscula
+            CapitalizarPrimeraLetra(CorregirOrtografia(nombreElemento)), // Corrección + mayúscula
+            nombreElemento.ToLower(),                               // Todo minúsculas
+            nombreElemento.ToUpper(),                               // Todo mayúsculas
+            "e" + nombreElemento,                                   // Con 'e' al inicio (ej: scandio -> escandio)
+            "e" + CorregirOrtografia(nombreElemento)                // e + corrección
+        };
+
+        // Intentar cargar con cada variación
+        foreach (string variacion in variaciones)
+        {
+            if (string.IsNullOrEmpty(variacion)) continue; // Saltar variaciones vacías
+
+            textura = Resources.Load<Texture2D>(basePath + variacion);
+            if (textura != null)
+            {
+                if (variacion != nombreElemento)
+                {
+                    Debug.Log($"🔍 [ModeloLoader] Textura encontrada con variación: '{variacion}' para elemento '{nombreElemento}'");
+                }
+                return textura;
             }
         }
 
-        modeloAplicacion.AddComponent<Rotador>();
+        Debug.LogError($"❌ [ModeloLoader] No se pudo encontrar textura para '{nombreElemento}'. Intentos: {string.Join(", ", variaciones)}");
+        return null;
+    }
 
-        // Mostrar el bot�n solo si ambos modelos est�n disponibles
-        botonCambiarModelo.SetActive(modeloAtomico != null && modeloAplicacion != null);
-        mostrandoAtomico = true;
+    // Capitaliza la primera letra
+    private string CapitalizarPrimeraLetra(string texto)
+    {
+        if (string.IsNullOrEmpty(texto)) return texto;
+        return char.ToUpper(texto[0]) + texto.Substring(1).ToLower();
+    }
+
+    // Correcciones ortográficas conocidas
+    private string CorregirOrtografia(string nombreElemento)
+    {
+        // Mapa de correcciones conocidas
+        switch (nombreElemento.ToLower())
+        {
+            case "einsteinio": return "einstenio";     // Error ortográfico común
+            case "scandio": return "escandio";         // Nombre alternativo
+            case "eurupio": return "europio";          // Error ortográfico
+            case "inidio": return "indio";             // Error ortográfico
+            default: return nombreElemento;
+        }
+    }
+
+    // Método mejorado para cargar modelos 3D con múltiples intentos
+    private GameObject CargarModeloInteligente(string nombreElemento)
+    {
+        string basePath = "Modelos3DBlender/";
+        GameObject modelo = null;
+
+        // Lista de variaciones de nombres a probar (orden optimizado)
+        string[] variaciones = new string[]
+        {
+            nombreElemento,                                          // Nombre original
+            CorregirOrtografiaModelo(nombreElemento),               // Correcciones ortográficas PRIMERO
+            CapitalizarPrimeraLetra(nombreElemento),                // Primera letra mayúscula
+            CapitalizarPrimeraLetra(CorregirOrtografiaModelo(nombreElemento)), // Corrección + mayúscula
+            nombreElemento.ToLower(),                               // Todo minúsculas
+            nombreElemento.ToUpper(),                               // Todo mayúsculas
+            "e" + nombreElemento,                                   // Con 'e' al inicio (ej: scandio -> escandio)
+            nombreElemento + "_antes"                               // Con sufijo _antes
+        };
+
+        // Intentar cargar con cada variación
+        foreach (string variacion in variaciones)
+        {
+            if (string.IsNullOrEmpty(variacion)) continue; // Saltar variaciones vacías
+
+            modelo = Resources.Load<GameObject>(basePath + variacion);
+            if (modelo != null)
+            {
+                if (variacion != nombreElemento)
+                {
+                    Debug.Log($"🔍 [ModeloLoader] Modelo 3D encontrado con variación: '{variacion}' para elemento '{nombreElemento}'");
+                }
+                return modelo;
+            }
+        }
+
+        Debug.LogError($"❌ [ModeloLoader] No se pudo encontrar modelo 3D para '{nombreElemento}'. Intentos: {string.Join(", ", variaciones)}");
+        return null;
+    }
+
+    // Correcciones ortográficas específicas para modelos (pueden ser diferentes a las texturas)
+    private string CorregirOrtografiaModelo(string nombreElemento)
+    {
+        // Para modelos, einsteinio se escribe correctamente (no como einstenio)
+        switch (nombreElemento.ToLower())
+        {
+            case "einstenio": return "einsteinio";     // La textura es einstenio, pero el modelo es einsteinio
+            case "scandio": return "escandio";         // Nombre alternativo
+            case "eurupio": return "europio";          // Error ortográfico
+            case "inidio": return "indio";             // Error ortográfico
+            default: return nombreElemento;
+        }
     }
 
     private void CargarAudio(string nombreElemento, GameObject parent)

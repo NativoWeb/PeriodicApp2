@@ -28,10 +28,19 @@ public class UI_Mision : MonoBehaviour
 
     public void ConfigurarMision(Mision mision)
     {
-        tituloText.text = mision.titulo;
+        // Si es una misi贸n de Evaluaci贸n (del profesor), agregar indicador "OPCIONAL"
+        if (mision.tipo == "Evaluacion")
+        {
+            tituloText.text = mision.titulo + " <color=#FFD700>(OPCIONAL)</color>";
+        }
+        else
+        {
+            tituloText.text = mision.titulo;
+        }
+
         descripcionText.text = mision.descripcion;
 
-        // Cambia el color del bot髇 seg鷑 `mision.colorBoton`
+        // Cambia el color del bot贸n seg煤n `mision.colorBoton`
         Color color;
         if (ColorUtility.TryParseHtmlString(mision.colorBoton, out color))
         {
@@ -40,10 +49,10 @@ public class UI_Mision : MonoBehaviour
 
         if(mision.completada == true)
         {
-            misioncompletada.text = "ompletada!";
+            misioncompletada.text = "隆Completada!";
         }
 
-        // Carga el logo de la misi髇 (debe estar en `Resources`)
+        // Carga el logo de la misi贸n (debe estar en `Resources`)
         Sprite logo = Resources.Load<Sprite>(mision.logoMision);
         if (logo != null)
         {

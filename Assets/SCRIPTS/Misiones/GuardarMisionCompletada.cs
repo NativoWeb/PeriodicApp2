@@ -79,7 +79,7 @@ public class GuardarMisionCompletada : MonoBehaviour
     }
 
 
-    public void MarcarMisionComoCompletada()
+    public async Task MarcarMisionComoCompletada()
     {
         appIdioma = PlayerPrefs.GetString("appIdioma", "español");
 
@@ -92,7 +92,7 @@ public class GuardarMisionCompletada : MonoBehaviour
             return;
         }
 
-        ActualizarMisionEnJSON(elemento, idMision);
+        await ActualizarMisionEnJSON(elemento, idMision);
     }
 
     public void AnimacionMisionCompletada()
@@ -139,7 +139,7 @@ public class GuardarMisionCompletada : MonoBehaviour
     //    SceneManager.LoadScene("Categorías");
     //}
 
-    private async void ActualizarMisionEnJSON(string elemento, int idMision)
+    private async Task ActualizarMisionEnJSON(string elemento, int idMision)
     {
         // 1) Intentar cargar desde archivo
         string jsonString;
@@ -184,13 +184,13 @@ public class GuardarMisionCompletada : MonoBehaviour
         }
 
         var json = JSON.Parse(jsonString);
-        if (!json.HasKey("Misiones_Categorias") || !json["Misiones_Categorias"].HasKey("Categorias"))
+        if (!json.HasKey("Misiones") || !json["Misiones"].HasKey("Categorias"))
         {
             Debug.LogError("❌ Estructura del JSON incorrecta o faltan claves principales.");
             return;
         }
 
-        var categorias = json["Misiones_Categorias"]["Categorias"];
+        var categorias = json["Misiones"]["Categorias"];
         string categoriaSeleccionada = PlayerPrefs.GetString("CategoriaSeleccionada", "");
 
         if (appIdioma == "ingles")
@@ -212,11 +212,22 @@ public class GuardarMisionCompletada : MonoBehaviour
         int xpGanado = PlayerPrefs.GetInt("xp_mision", 0);
 
         // 4) Detectar si quedan misiones pendientes distintas a esta
+        // IMPORTANTE: Las misiones de tipo "Evaluacion" (del profesor) son OPCIONALES
+        // y NO bloquean el desbloqueo del logro del elemento
         foreach (JSONNode m in misiones)
         {
+            // Ignorar misiones de tipo "Evaluacion" (del profesor) - son opcionales
+            if (m["tipo"] == "Evaluacion")
+            {
+                Debug.Log($"ℹ️ Misión '{m["titulo"]}' es de tipo Evaluación (opcional) - se ignora para el logro");
+                continue;
+            }
+
+            // Si hay alguna misión obligatoria (no Evaluacion) pendiente, no es la última
             if (m["id"].AsInt != idMision && !m["completada"].AsBool)
             {
                 esUltimaMisionPendiente = false;
+                Debug.Log($"⏳ Misión pendiente encontrada: '{m["titulo"]}' (ID: {m["id"].AsInt})");
                 break;
             }
         }
@@ -242,7 +253,7 @@ public class GuardarMisionCompletada : MonoBehaviour
 
                     //Sumamos el xp que gano del quiz
                     int xp = PlayerPrefs.GetInt("xp_mision", 0);
-                    TxtXp.text = xp.ToString();
+                    //TxtXp.text = xp.ToString();
                     await ProcesarXP(xp);
 
                     // Si es la última pendiente, gestionar logro de elemento
@@ -263,7 +274,7 @@ public class GuardarMisionCompletada : MonoBehaviour
                     Debug.Log("❌ Quiz no superado (menos del 70%). La misión NO se marca como completada.");
 
                     int xpConsolacion = PlayerPrefs.GetInt("xp_mision", 0);
-                    TxtXp.text = xpConsolacion.ToString();
+                    //TxtXp.text = xpConsolacion.ToString();
                     await ProcesarXP(xpConsolacion);
                     return;
 

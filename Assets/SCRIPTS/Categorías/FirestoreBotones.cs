@@ -16,6 +16,7 @@ public class FirestoreBotones : MonoBehaviour
 
     public GameObject PanelCategorias;
     public GameObject PanelElemento;
+    public GameObject PanelMisiones;
 
     public Button botonSeleccionado;
 
@@ -40,6 +41,27 @@ public class FirestoreBotones : MonoBehaviour
 
     void Start()
     {
+        if (PlayerPrefs.HasKey("PanelDestino") && PlayerPrefs.GetString("PanelDestino") == "PanelMisiones")
+        {
+            Debug.Log("✅ Se recibió la instrucción de volver a PanelMisiones.");
+
+            // Borramos la instrucción para que no afecte la próxima vez
+            PlayerPrefs.DeleteKey("PanelDestino");
+
+            // Activamos el panel de misiones y desactivamos los otros
+            if (PanelMisiones) PanelMisiones.SetActive(true);
+            if (PanelCategorias) PanelCategorias.SetActive(false);
+            if (PanelElemento) PanelElemento.SetActive(false);
+        }
+        else
+        {
+            // Comportamiento normal: mostrar el panel de categorías
+            Debug.Log("Iniciando en el panel de categorías por defecto.");
+            if (PanelMisiones) PanelMisiones.SetActive(false);
+            if (PanelCategorias) PanelCategorias.SetActive(true);
+            if (PanelElemento) PanelElemento.SetActive(false);
+        }
+
         appIdioma = PlayerPrefs.GetString("appIdioma", "");
         CargarCategorias();
         botonSeleccionado.onClick.AddListener(OnClickContinuar);
@@ -291,13 +313,13 @@ public class FirestoreBotones : MonoBehaviour
     {
         var json = JSON.Parse(jsonText);
 
-        if (!json.HasKey("Misiones_Categorias") || !json["Misiones_Categorias"].HasKey("Categorias"))
+        if (!json.HasKey("Misiones") || !json["Misiones"].HasKey("Categorias"))
         {
             Debug.LogError("❌ Estructura del JSON incorrecta.");
             return 0f;
         }
 
-        var categoriasJSON = json["Misiones_Categorias"]["Categorias"];
+        var categoriasJSON = json["Misiones"]["Categorias"];
         if (!categoriasJSON.HasKey(categoriaTitulo) || !categoriasJSON[categoriaTitulo].HasKey("Elementos"))
         {
             Debug.LogError($"❌ No se encontró la categoría '{categoriaTitulo}' en el JSON.");

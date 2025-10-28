@@ -35,6 +35,7 @@ public class GestorMisiones : MonoBehaviour
     private string JsonIdioma;
     string appIdioma;
     string categoriaSeleccionada;
+    private bool estaCargando = false;
 
     JSONNode jsonDataInformacion;
     JSONNode jsonDataMisiones;
@@ -64,38 +65,14 @@ public class GestorMisiones : MonoBehaviour
 
     void OnEnable()
     {
-        categoriaSeleccionada = PlayerPrefs.GetString("CategoriaSeleccionada");
-
-        appIdioma = PlayerPrefs.GetString("appIdioma", "español");
-        if (appIdioma == "español")
-        {
-            JsonIdioma = "Json_Informacion.json";
-        }
-        else
-        {
-            JsonIdioma = "Json_Informacion_en.json";
-            categoriaSeleccionada = devolverCatTrad(categoriaSeleccionada);
-        }
-        // Sólo refresca si ya cargamos los datos
-        if (datosCargados)
-        {
-            RefrescarUI();
-        }
+        StartCoroutine(IniciarCargaYRefresco());
     }
 
-    IEnumerator Start()
+    void Start()
     {
-        // Start es ejecutado después de Awake y OnEnable
-
-        yield return StartCoroutine(CargarJSONYContinuar());
-
-        datosCargados = true;
-
-        // Aquí sí podemos inicializar la UI por primera vez
-        RefrescarUI();
-
-        // Verificar si venimos de completar una misión
-        VerificarRetornoDeMision();
+        // Start sirve como un respaldo en caso de que OnEnable se ejecute
+        // antes de que todo esté listo. La bandera "estaCargando" evitará la doble ejecución.
+        StartCoroutine(IniciarCargaYRefresco());
     }
 
     public IEnumerator CargarJSONYContinuar()
@@ -156,6 +133,55 @@ public class GestorMisiones : MonoBehaviour
             Debug.LogError($"❌ No se encontró {nombreArchivo} en Resources/{recurso}");
             callback(null);
         }
+    }
+
+    private IEnumerator IniciarCargaYRefresco()
+    {
+        // 1. Prevenir doble ejecución
+        if (estaCargando) yield break;
+        estaCargando = true;
+
+        // 2. *** LÓGICA DE PREPARACIÓN (MOVIDA AQUÍ) ***
+        //    Primero, determinamos el contexto y preparamos las variables.
+        if (PlayerPrefs.HasKey("VolverAElemento"))
+        {
+            Debug.Log("✅ [GestorMisiones] Se detectó un retorno. Estableciendo contexto...");
+            string elementoDeRetorno = PlayerPrefs.GetString("VolverAElemento");
+            string categoriaDeRetorno = PlayerPrefs.GetString("VolverACategoria");
+
+            PlayerPrefs.SetString("ElementoSeleccionado", elementoDeRetorno);
+            PlayerPrefs.SetString("CategoriaSeleccionada", categoriaDeRetorno);
+
+            PlayerPrefs.DeleteKey("VolverAElemento");
+            PlayerPrefs.DeleteKey("VolverACategoria");
+            PlayerPrefs.Save();
+        }
+
+        // Asignamos las variables de clase AHORA que el PlayerPrefs es correcto.
+        categoriaSeleccionada = PlayerPrefs.GetString("CategoriaSeleccionada");
+        appIdioma = PlayerPrefs.GetString("appIdioma", "español");
+
+        if (appIdioma == "español")
+        {
+            JsonIdioma = "Json_Informacion.json";
+        }
+        else
+        {
+            JsonIdioma = "Json_Informacion_en.json";
+            categoriaSeleccionada = devolverCatTrad(categoriaSeleccionada);
+        }
+
+        // 3. Ahora que las variables están listas, cargamos los JSON
+        yield return StartCoroutine(CargarJSONYContinuar());
+        datosCargados = true;
+
+        // 4. Refrescamos la UI
+        RefrescarUI();
+
+        // 5. Verificación final
+        VerificarRetornoDeMision();
+
+        estaCargando = false;
     }
 
     public void RefrescarUI()

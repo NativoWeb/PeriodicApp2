@@ -75,21 +75,33 @@ public class DynamicMoleculeLoader : MonoBehaviour
         elementoTarget = FormatearNombreArchivo(elementoTargetprov);
 
         ruta = PlayerPrefs.GetString("CargarVuforia", "");
-        Debug.Log(elementoTarget);
 
         trackable = GetComponent<ObserverBehaviour>();
 
         if (trackable)
         {
+            Debug.Log($"🔍 [DynamicElementLoader] ImageTarget detectado: '{trackable.TargetName}'");
+            Debug.Log($"🎯 [DynamicElementLoader] Elemento esperado: '{elementoTarget}'");
+            Debug.Log($"🛤️ [DynamicElementLoader] Ruta: '{ruta}'");
+
             trackable.OnTargetStatusChanged += OnImageDetected;
+        }
+        else
+        {
+            Debug.LogError($"❌ [DynamicElementLoader] No se encontró ObserverBehaviour en {gameObject.name}");
         }
 
         // Si este ImageTarget no es el elemento de la misión, se desactiva
         if (ruta == "Misiones")
         {
-            if (trackable.TargetName.Trim().ToLower() != elementoTarget.Trim().ToLower())
+            if (trackable != null && trackable.TargetName.Trim().ToLower() != elementoTarget.Trim().ToLower())
             {
+                Debug.Log($"⏸️ [DynamicElementLoader] Desactivando ImageTarget '{trackable.TargetName}' (no coincide con '{elementoTarget}')");
                 gameObject.SetActive(false);
+            }
+            else if (trackable != null)
+            {
+                Debug.Log($"✅ [DynamicElementLoader] ImageTarget '{trackable.TargetName}' activado (coincide con misión)");
             }
         }
     }
@@ -111,9 +123,22 @@ public class DynamicMoleculeLoader : MonoBehaviour
     {
         if (status.Status == Status.TRACKED)
         {
+            Debug.Log($"📸 [DynamicElementLoader] Imagen DETECTADA: '{trackable.TargetName}' - Status: TRACKED");
+
             LimpiarModelos();
-            string resultado = trackable.TargetName.Split('_')[1];
+
+            // Validar que el TargetName tiene el formato correcto (NumeroAtomico_NombreElemento)
+            string[] partes = trackable.TargetName.Split('_');
+            if (partes.Length < 2)
+            {
+                Debug.LogError($"❌ [DynamicElementLoader] El TargetName '{trackable.TargetName}' no tiene el formato correcto. Debe ser: NumeroAtomico_NombreElemento (ej: 1_hidrogeno)");
+                return;
+            }
+
+            string resultado = partes[1];
             elementoSeleccionado = resultado.ToLower();
+            Debug.Log($"🧪 [DynamicElementLoader] Elemento seleccionado: '{elementoSeleccionado}'");
+
             CargarJSON();
 
             if (ruta == "Inicio")
@@ -135,7 +160,12 @@ public class DynamicMoleculeLoader : MonoBehaviour
         // Si pierde el tracking, limpiar todo y simular reinicio
         else if (status.Status == Status.NO_POSE || status.Status == Status.LIMITED)
         {
+            Debug.Log($"⚠️ [DynamicElementLoader] Se perdió el tracking de '{trackable.TargetName}' - Status: {status.Status}");
             SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+        }
+        else
+        {
+            Debug.Log($"ℹ️ [DynamicElementLoader] Estado de tracking: {status.Status} para '{trackable.TargetName}'");
         }
     }
 
@@ -145,8 +175,6 @@ public class DynamicMoleculeLoader : MonoBehaviour
         if (ruta == "Misiones")
         {
             ControladorBotones.PanelBotonUI.SetActive(true);
-
-
             ControladorBotones.botonCompletarMision.interactable = true;
         }
     }
@@ -197,6 +225,8 @@ public class DynamicMoleculeLoader : MonoBehaviour
 
         //// Llamar a la función LoadMoleculeModel con los datos extraídos
         StartCoroutine(LoadMoleculeModel(electronLevels, showProtons, showNeutrons, electrons, modelName, electronModels));
+
+        Debug.Log($"🎨 [DynamicElementLoader] Inicializando cambio visual para elemento: '{elementoSeleccionado}'");
         FindAnyObjectByType<ModeloLoader>()?.InicializarCambioVisual(
             elementoSeleccionado, imageTargetPrefab
         );

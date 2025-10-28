@@ -52,14 +52,14 @@ public class NavigationController : MonoBehaviour
             return;
         }
 
-        // Botón "Atrás" en Android
+        // Botï¿½n "Atrï¿½s" en Android
         if (Input.GetKeyDown(KeyCode.Escape))
         {
             GoBack();
             return;
         }
 
-        // Gestos táctiles en los bordes (solo para móviles)
+        // Gestos tï¿½ctiles en los bordes (solo para mï¿½viles)
         if (Application.isMobilePlatform && Input.touchCount > 0)
         {
             Touch touch = Input.GetTouch(0);
@@ -67,7 +67,7 @@ public class NavigationController : MonoBehaviour
             switch (touch.phase)
             {
                 case TouchPhase.Began:
-                    // Verificar si el toque comenzó en el borde izquierdo o derecho
+                    // Verificar si el toque comenzï¿½ en el borde izquierdo o derecho
                     if (touch.position.x < edgeThreshold || touch.position.x > Screen.width - edgeThreshold)
                     {
                         touchStartPos = touch.position;
@@ -76,16 +76,16 @@ public class NavigationController : MonoBehaviour
                     break;
 
                 case TouchPhase.Ended:
-                    // Solo procesar si comenzó en el borde
+                    // Solo procesar si comenzï¿½ en el borde
                     if (touchStartPos != Vector2.zero)
                     {
                         float swipeDistance = touch.position.x - touchStartPos.x;
                         float swipeDuration = Time.time - touchStartTime;
 
-                        // Validar que sea un gesto rápido y con suficiente distancia
+                        // Validar que sea un gesto rï¿½pido y con suficiente distancia
                         if (Mathf.Abs(swipeDistance) > Screen.width * 0.1f && swipeDuration < 0.5f)
                         {
-                            // Determinar dirección (izquierda o derecha)
+                            // Determinar direcciï¿½n (izquierda o derecha)
                             bool isBackSwipe = (touchStartPos.x < edgeThreshold && swipeDistance > 0) ||
                                               (touchStartPos.x > Screen.width - edgeThreshold && swipeDistance < 0);
 
@@ -108,14 +108,14 @@ public class NavigationController : MonoBehaviour
         panelHistory.Clear();
         currentPanel = null;
 
-        // Solo guardamos en el historial si es una nueva escena (no al volver atrás)
+        // Solo guardamos en el historial si es una nueva escena (no al volver atrï¿½s)
         if (navigationHistory.Count == 0 || navigationHistory.Peek().sceneName != scene.name)
         {
             navigationHistory.Push(new NavigationItem(scene.name));
         }
     }
 
-    // Método para cambiar de panel dentro de la misma escena
+    // Mï¿½todo para cambiar de panel dentro de la misma escena
     public void ShowPanel(GameObject panel)
     {
         // Si estamos en la escena "CombateQuimico", no hacer nada
@@ -133,7 +133,7 @@ public class NavigationController : MonoBehaviour
         currentPanel = panel;
         currentPanel.SetActive(true);
 
-        // Actualizar el último item del historial con el panel actual
+        // Actualizar el ï¿½ltimo item del historial con el panel actual
         if (navigationHistory.Count > 0)
         {
             navigationHistory.Peek().panel = currentPanel;
@@ -142,6 +142,8 @@ public class NavigationController : MonoBehaviour
 
     public void GoBack()
     {
+        Debug.Log($"[NavigationController] GoBack() llamado desde escena: {SceneManager.GetActiveScene().name}");
+
         // Si estamos en la escena "CombateQuimico", no hacer nada
         if (SceneManager.GetActiveScene().name == "CombateQuimico" || SceneManager.GetActiveScene().name == "QuimicadosGame" || SceneManager.GetActiveScene().name == "Quimicados" || SceneManager.GetActiveScene().name == "Cuestionario")
             return;
@@ -173,10 +175,12 @@ public class NavigationController : MonoBehaviour
             NavigationItem current = navigationHistory.Pop();
             NavigationItem previous = navigationHistory.Peek();
 
+            Debug.Log($"[NavigationController] Regresando de '{current.sceneName}' a '{previous.sceneName}'");
+
             // Cargar la escena anterior
             SceneManager.LoadScene(previous.sceneName);
 
-            // Reactivar el panel que estaba activo en esa escena (si había uno)
+            // Reactivar el panel que estaba activo en esa escena (si habï¿½a uno)
             if (previous.panel != null)
             {
                 StartCoroutine(ActivatePanelAfterSceneLoad(previous.panel));
@@ -184,14 +188,14 @@ public class NavigationController : MonoBehaviour
         }
         else
         {
-            // Si no hay más historial, salir de la aplicación
+            // Si no hay mï¿½s historial, salir de la aplicaciï¿½n
             Application.Quit();
         }
     }
 
     private IEnumerator ActivatePanelAfterSceneLoad(GameObject panel)
     {
-        // Esperar hasta que la escena esté completamente cargada
+        // Esperar hasta que la escena estï¿½ completamente cargada
         while (!SceneManager.GetActiveScene().isLoaded)
         {
             yield return null;

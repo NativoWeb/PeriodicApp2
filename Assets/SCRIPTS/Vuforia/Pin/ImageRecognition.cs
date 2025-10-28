@@ -50,8 +50,25 @@ public class ImageRecognition : MonoBehaviour
 
     void DesbloquearLogro(string elemento)
     {
-        Debug.Log($"🏆 Logro desbloqueado: {elemento}");
-        spawner.botonCompletarMision.interactable = true;
+        Debug.Log($"🏆 [ImageRecognition] Logro desbloqueado: {elemento}");
+
+        // Habilitar el botón de completar misión
+        if (spawner != null && spawner.botonCompletarMision != null)
+        {
+            spawner.botonCompletarMision.interactable = true;
+            Debug.Log("✅ [ImageRecognition] Botón de completar misión habilitado");
+        }
+
+        // Mostrar el panel de botón de completar misión
+        if (spawner != null && spawner.PanelBotonCompletarUI != null)
+        {
+            spawner.PanelBotonCompletarUI.SetActive(true);
+            Debug.Log("✅ [ImageRecognition] Panel de completar misión mostrado");
+        }
+        else
+        {
+            Debug.LogWarning("⚠️ [ImageRecognition] PanelBotonCompletarUI no está asignado en ImageTargetSpawner");
+        }
     }
 
     private void CargarAudio(string nombreElemento, GameObject parent)
