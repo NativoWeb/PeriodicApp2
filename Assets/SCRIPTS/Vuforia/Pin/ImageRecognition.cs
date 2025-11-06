@@ -6,18 +6,23 @@ public class ImageRecognition : MonoBehaviour
 {
     private bool logroDesbloqueado = false;
     private ObserverBehaviour trackable;
-    private ImageTargetSpawner spawner;
+    private GuardarMisionCompletada controlador;
     private string ruta;
 
     public GameObject imageTargetPrefab;
 
     [Header("Audio")]
-    public bool autoPlayAudio = true; // Activa/desactiva reproducci�n autom�tica
+    public bool autoPlayAudio = true; // Activa/desactiva reproducción automática
     private AudioSource audioSource;
 
     void Start()
     {
-        spawner = FindObjectOfType<ImageTargetSpawner>();
+        // Buscar el GuardarMisionCompletada en la escena
+        controlador = GuardarMisionCompletada.instancia;
+        if (controlador == null)
+        {
+            controlador = FindAnyObjectByType<GuardarMisionCompletada>();
+        }
 
         string elemento = PlayerPrefs.GetString("ElementoSeleccionado", "").Trim().ToLower();
 
@@ -25,10 +30,10 @@ public class ImageRecognition : MonoBehaviour
 
         ruta = PlayerPrefs.GetString("CargarVuforia", "");
         // Si este ImageTarget no es el elemento de la misión, se desactiva
-            if (trackable.TargetName.Trim().ToLower() != elemento.Trim().ToLower())
-            {
-                gameObject.SetActive(false);
-            }
+        if (trackable.TargetName.Trim().ToLower() != elemento.Trim().ToLower())
+        {
+            gameObject.SetActive(false);
+        }
 
         if (trackable)
         {
@@ -38,7 +43,7 @@ public class ImageRecognition : MonoBehaviour
 
     private void OnImageDetected(ObserverBehaviour observer, TargetStatus status)
     {
-        if (status.Status == Status.TRACKED)
+        if (status.Status == Status.TRACKED && !logroDesbloqueado)
         {
             Debug.Log($"¡Imagen detectada! {trackable.TargetName} desbloqueado.");
             // Cargar y reproducir audio
@@ -52,22 +57,24 @@ public class ImageRecognition : MonoBehaviour
     {
         Debug.Log($"🏆 [ImageRecognition] Logro desbloqueado: {elemento}");
 
-        // Habilitar el botón de completar misión
-        if (spawner != null && spawner.botonCompletarMision != null)
+        // Activar el panel de botón y habilitar el botón de completar misión
+        if (controlador != null)
         {
-            spawner.botonCompletarMision.interactable = true;
-            Debug.Log("✅ [ImageRecognition] Botón de completar misión habilitado");
-        }
+            if (controlador.PanelBotonUI != null)
+            {
+                controlador.PanelBotonUI.SetActive(true);
+                Debug.Log("✅ [ImageRecognition] PanelBotonUI activado");
+            }
 
-        // Mostrar el panel de botón de completar misión
-        if (spawner != null && spawner.PanelBotonCompletarUI != null)
-        {
-            spawner.PanelBotonCompletarUI.SetActive(true);
-            Debug.Log("✅ [ImageRecognition] Panel de completar misión mostrado");
+            if (controlador.botonCompletarMision != null)
+            {
+                controlador.botonCompletarMision.interactable = true;
+                Debug.Log("✅ [ImageRecognition] Botón de completar misión habilitado");
+            }
         }
         else
         {
-            Debug.LogWarning("⚠️ [ImageRecognition] PanelBotonCompletarUI no está asignado en ImageTargetSpawner");
+            Debug.LogWarning("⚠️ [ImageRecognition] GuardarMisionCompletada no encontrado en la escena");
         }
     }
 

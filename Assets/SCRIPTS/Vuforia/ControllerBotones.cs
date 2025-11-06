@@ -4,6 +4,7 @@ using UnityEngine.SceneManagement;
 using TMPro;
 using System.Collections;
 using System.Threading.Tasks;
+using Vuforia;
 
 public class ControllerBotones : MonoBehaviour
 {
@@ -96,8 +97,68 @@ public class ControllerBotones : MonoBehaviour
             if (TxtRefuerzo2 != null) TxtRefuerzo2.transform.parent.gameObject.SetActive(false);
         }
 
-        // 3. Iniciar la corutina para la transición automática
-        StartCoroutine(MostrarResultadosYContinuar(5f));
+        // 3. Configurar el botón continuar - que haga lo mismo que regresar pero a Categorías
+        if (btnContinuarPanel != null)
+        {
+            btnContinuarPanel.gameObject.SetActive(true);
+            btnContinuarPanel.onClick.RemoveAllListeners();
+            btnContinuarPanel.onClick.AddListener(VolverACategorias);
+        }
+
+        if (PanelContinuar != null)
+        {
+            PanelContinuar.SetActive(true);
+        }
+    }
+
+    // Guardar misión y volver a Categorías
+    void VolverACategorias()
+    {
+        StartCoroutine(GuardarMisionYVolver());
+    }
+
+    IEnumerator GuardarMisionYVolver()
+    {
+        Debug.Log("💾 [ControllerBotones] Guardando misión completada...");
+
+        // Guardar la misión PRIMERO
+        if (GuardarMisionCompletada.instancia != null)
+        {
+            Task saveTask = GuardarMisionCompletada.instancia.MarcarMisionComoCompletada();
+
+            // Esperar a que termine de guardar
+            while (!saveTask.IsCompleted)
+            {
+                yield return null;
+            }
+
+            if (saveTask.IsFaulted)
+            {
+                Debug.LogError("❌ [ControllerBotones] Error al guardar: " + saveTask.Exception);
+            }
+            else
+            {
+                Debug.Log("✅ [ControllerBotones] Misión guardada correctamente.");
+            }
+        }
+        else
+        {
+            Debug.LogWarning("⚠️ [ControllerBotones] GuardarMisionCompletada.instancia es null");
+        }
+
+        // Guardar información de dónde volver
+        string elementoActual = PlayerPrefs.GetString("ElementoSeleccionado", "");
+        string categoriaActual = PlayerPrefs.GetString("CategoriaSeleccionada", "");
+
+        PlayerPrefs.SetString("PanelDestino", "PanelMisiones");
+        PlayerPrefs.SetString("VolverAElemento", elementoActual);
+        PlayerPrefs.SetString("VolverACategoria", categoriaActual);
+        PlayerPrefs.Save();
+
+        Debug.Log($"📝 [ControllerBotones] Elemento: {elementoActual}, Categoría: {categoriaActual}");
+
+        // Ir a Categorías
+        SceneManager.LoadScene("Categorías");
     }
 
     // Esta función se encarga de esperar, ocultar el panel y cambiar de escena
@@ -165,14 +226,45 @@ public class ControllerBotones : MonoBehaviour
     {
         Debug.Log("🔄 [ControllerBotones] Iniciando carga asíncrona de escena...");
 
-        // Limpiar el PlayerPrefs que indica desde dónde se cargó Vuforia
-        // Esto evita que el sistema piense que debe regresar automáticamente
-        PlayerPrefs.SetString("PanelDestino", "PanelMisiones");
+        // Guardar información para volver al panel de misiones del elemento
         string elementoActual = PlayerPrefs.GetString("ElementoSeleccionado", "");
+        string categoriaActual = PlayerPrefs.GetString("CategoriaSeleccionada", "");
+
+        PlayerPrefs.SetString("PanelDestino", "PanelMisiones");
         PlayerPrefs.SetString("VolverAElemento", elementoActual);
+        PlayerPrefs.SetString("VolverACategoria", categoriaActual);
         PlayerPrefs.Save();
 
         Debug.Log($"📝 [ControllerBotones] Guardando instrucción de volver al elemento: {elementoActual}");
+
+        // CRÍTICO: Detener Vuforia y desactivar todos los ImageTargets ANTES de cambiar de escena
+        // Esto evita que los eventos OnTargetStatusChanged se disparen durante el cambio de escena
+        Debug.Log("🛑 [ControllerBotones] Deteniendo Vuforia y desactivando ImageTargets...");
+
+        // Buscar todos los ImageTargets y desactivarlos
+        DynamicMoleculeLoader[] loaders = FindObjectsOfType<DynamicMoleculeLoader>();
+        foreach (var loader in loaders)
+        {
+            if (loader != null && loader.gameObject != null)
+            {
+                Debug.Log($"🗑️ [ControllerBotones] Destruyendo DynamicMoleculeLoader en: {loader.gameObject.name}");
+                Destroy(loader.gameObject);
+            }
+        }
+
+        // Detener Vuforia
+        try
+        {
+            Vuforia.VuforiaBehaviour.Instance.enabled = false;
+            Debug.Log("✅ [ControllerBotones] Vuforia detenido");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning($"⚠️ [ControllerBotones] No se pudo detener Vuforia: {e.Message}");
+        }
+
+        // Esperar un frame para que las destrucciones se procesen
+        yield return null;
 
         // IMPORTANTE: Destruir el objeto GuardarMisionCompletada antes de cambiar de escena
         // Este objeto tiene DontDestroyOnLoad y puede causar conflictos

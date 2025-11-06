@@ -26,10 +26,6 @@ public class GestorPreguntas : MonoBehaviour
     public TMP_Text txtMotivacion;
     public TMP_Text txtRefuerzo1;
     public TMP_Text txtRefuerzo2;
-    public GameObject panelAnimacionMision;
-    public GameObject imagenAnimacionMision;
-    public AudioSource audioMisionCompletada;
-    public Button btnContinuarPanel;
     
 
     // --- Clases de Datos ---
@@ -312,7 +308,17 @@ public class GestorPreguntas : MonoBehaviour
 
     void MostrarResultadosFinales()
     {
+        Debug.Log("🎬 [GestorPreguntas] Mostrando resultados finales...");
+
+        if (PanelContinuar == null)
+        {
+            Debug.LogError("❌ [GestorPreguntas] PanelContinuar es NULL! Asígnalo en el Inspector.");
+            return;
+        }
+
         PanelContinuar.SetActive(true);
+        Debug.Log($"✅ [GestorPreguntas] PanelContinuar activado: {PanelContinuar.name}");
+
         float umbralVictoria = 70.0f;
         float porcentajeAciertos = (preguntasFiltradas.Count > 0) ? (float)respuestasCorrectas / preguntasFiltradas.Count * 100f : 0f;
         bool ganoElQuiz = porcentajeAciertos >= umbralVictoria;
@@ -355,27 +361,19 @@ public class GestorPreguntas : MonoBehaviour
         Button botonContinuar = PanelContinuar.GetComponentInChildren<Button>();
         if (botonContinuar != null)
         {
+            Debug.Log($"✅ [GestorPreguntas] Botón continuar encontrado: {botonContinuar.name}");
             botonContinuar.onClick.RemoveAllListeners();
             botonContinuar.onClick.AddListener(() =>
             {
+                Debug.Log("🔘 [GestorPreguntas] Botón continuar presionado");
                 PanelContinuar.SetActive(false);
-                if (GuardarMisionCompletada.instancia != null)
-                {
-                    GuardarMisionCompletada.instancia.IniciarProcesoMisionCompletada(
-                        panelAnimacionMision,
-                        imagenAnimacionMision,
-                        audioMisionCompletada
-                    );
-
-                    btnContinuarPanel.onClick.AddListener(()=> {
-                        SceneManager.LoadScene("Categorías");
-                        });
-                }
-                //else
-                //{
-                //    SceneManager.LoadScene("Categorías");
-                //}
+                // Guardar misión Y volver al panel de misiones del elemento
+                StartCoroutine(GuardarYVolverAMisiones());
             });
+        }
+        else
+        {
+            Debug.LogError("❌ [GestorPreguntas] No se encontró el botón continuar dentro de PanelContinuar!");
         }
 
         if (Application.internetReachability != NetworkReachability.NotReachable)
@@ -439,6 +437,51 @@ public class GestorPreguntas : MonoBehaviour
         PlayerPrefs.SetFloat("ProgresoBarra", barraProgresoSlider.value);
         PlayerPrefs.Save();
         SceneManager.LoadScene("Categorías");
+    }
+
+    // Corrutina para guardar la misión y volver al panel de misiones
+    IEnumerator GuardarYVolverAMisiones()
+    {
+        Debug.Log("💾 [GestorPreguntas] Guardando misión completada...");
+
+        // Guardar la misión PRIMERO (si existe la instancia)
+        if (GuardarMisionCompletada.instancia != null)
+        {
+            System.Threading.Tasks.Task saveTask = GuardarMisionCompletada.instancia.MarcarMisionComoCompletada();
+
+            // Esperar a que termine de guardar
+            while (!saveTask.IsCompleted)
+            {
+                yield return null;
+            }
+
+            if (saveTask.IsFaulted)
+            {
+                Debug.LogError("❌ [GestorPreguntas] Error al guardar: " + saveTask.Exception);
+            }
+            else
+            {
+                Debug.Log("✅ [GestorPreguntas] Misión guardada correctamente.");
+            }
+        }
+        else
+        {
+            Debug.LogWarning("⚠️ [GestorPreguntas] GuardarMisionCompletada.instancia es null");
+        }
+
+        // Guardar información de dónde volver (igual que VuforiaNuevo, ScannerPin y GestorOraciones)
+        string elementoActual = PlayerPrefs.GetString("ElementoSeleccionado", "");
+        string categoriaActual = PlayerPrefs.GetString("CategoriaSeleccionada", "");
+
+        PlayerPrefs.SetString("PanelDestino", "PanelMisiones");
+        PlayerPrefs.SetString("VolverAElemento", elementoActual);
+        PlayerPrefs.SetString("VolverACategoria", categoriaActual);
+        PlayerPrefs.Save();
+
+        Debug.Log($"📝 [GestorPreguntas] Volviendo a panel misiones - Elemento: {elementoActual}, Categoría: {categoriaActual}");
+
+        // Volver a la escena de Categorías
+        SceneManager.LoadScene("Categorías", LoadSceneMode.Single);
     }
 
     void SumarXPTemporario(int xp)

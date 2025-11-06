@@ -121,6 +121,14 @@ public class DynamicMoleculeLoader : MonoBehaviour
     }
     private void OnImageDetected(ObserverBehaviour observer, TargetStatus status)
     {
+        // ⚠️ Verificar que seguimos en la escena VuforiaNuevo antes de procesar
+        string escenaActual = SceneManager.GetActiveScene().name;
+        if (escenaActual != "VuforiaNuevo")
+        {
+            Debug.Log($"🔒 [DynamicElementLoader] Ignorando evento de tracking - Ya no estamos en VuforiaNuevo (estamos en: {escenaActual})");
+            return;
+        }
+
         if (status.Status == Status.TRACKED)
         {
             Debug.Log($"📸 [DynamicElementLoader] Imagen DETECTADA: '{trackable.TargetName}' - Status: TRACKED");
@@ -157,15 +165,25 @@ public class DynamicMoleculeLoader : MonoBehaviour
                 DesbloquearLogro(trackable.TargetName);
             }
         }
-        // Si pierde el tracking, limpiar todo y simular reinicio
+        // Si pierde el tracking, simplemente limpiar
         else if (status.Status == Status.NO_POSE || status.Status == Status.LIMITED)
         {
             Debug.Log($"⚠️ [DynamicElementLoader] Se perdió el tracking de '{trackable.TargetName}' - Status: {status.Status}");
-            SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+            // NO recargar la escena - esto causa problemas al cambiar de escena
         }
         else
         {
             Debug.Log($"ℹ️ [DynamicElementLoader] Estado de tracking: {status.Status} para '{trackable.TargetName}'");
+        }
+    }
+
+    // Desregistrar el evento cuando se destruye el objeto
+    void OnDestroy()
+    {
+        if (trackable != null)
+        {
+            trackable.OnTargetStatusChanged -= OnImageDetected;
+            Debug.Log($"🧹 [DynamicElementLoader] Evento OnTargetStatusChanged desregistrado para '{trackable.TargetName}'");
         }
     }
 

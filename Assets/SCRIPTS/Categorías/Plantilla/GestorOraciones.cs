@@ -46,13 +46,6 @@ public class GestorOraciones : MonoBehaviour
     public TextMeshProUGUI TxtRefuerzo1;
     public TextMeshProUGUI TxtRefuerzo2;
     public Button continuarCompletado;
-    //public Button botonContinuar;
-
-
-    [Header("Referencias para Animación")]
-    public GameObject panelAnimacionMision;
-    public GameObject imagenAnimacionMision;
-    public AudioSource audioMisionCompletada;
 
     //public TextMeshProUGUI txtOracion;
     //public Transform contenedorOpciones;
@@ -90,12 +83,7 @@ public class GestorOraciones : MonoBehaviour
         respuestasCorrectas = 0;
         categoriasFalladas.Clear();
 
-
-        continuarCompletado.onClick.AddListener(() =>
-        {
-            // Aquí puedes cargar la siguiente escena o realizar otra acción
-            SceneManager.LoadScene("Categorías");
-        });
+        // Ya no se necesita este listener aquí, se configura en MostrarResultadosFinales()
         // Cargar preguntas desde JSON
         //CargarPreguntasDesdeJSON();
 
@@ -336,7 +324,16 @@ public class GestorOraciones : MonoBehaviour
 
     void MostrarResultadosFinales()
     {
+        Debug.Log("🎬 [GestorOraciones] Mostrando resultados finales...");
+
+        if (panelFinal == null)
+        {
+            Debug.LogError("❌ [GestorOraciones] panelFinal es NULL! Asígnalo en el Inspector.");
+            return;
+        }
+
         panelFinal.SetActive(true);
+        Debug.Log($"✅ [GestorOraciones] panelFinal activado: {panelFinal.name}");
 
         float umbralVictoria = 69.0f;
         float porcentajeAciertos = (preguntasActuales.Count > 0) ? (float)respuestasCorrectas / preguntasActuales.Count * 100f : 0f;
@@ -375,36 +372,66 @@ public class GestorOraciones : MonoBehaviour
         Button botonContinuar = panelFinal.GetComponentInChildren<Button>();
         if (botonContinuar != null)
         {
+            Debug.Log($"✅ [GestorOraciones] Botón continuar encontrado: {botonContinuar.name}");
             botonContinuar.onClick.RemoveAllListeners();
             botonContinuar.onClick.AddListener(() =>
             {
-                if (ganoLaMision)
-                {
-                    panelFinal.SetActive(false);
-                    if (GuardarMisionCompletada.instancia != null)
-                    {
-                        GuardarMisionCompletada.instancia.IniciarProcesoMisionCompletada(
-                         panelAnimacionMision,
-                         imagenAnimacionMision,
-                         audioMisionCompletada
-                     );
-                    }
-                }
-                else
-                {
-                    panelFinal.SetActive(false);
-                    if (GuardarMisionCompletada.instancia != null)
-                    {
-                        GuardarMisionCompletada.instancia.IniciarProcesoMisionCompletada(
-                         panelAnimacionMision,
-                         imagenAnimacionMision,
-                         audioMisionCompletada
-                     );
-                    }
-                }
+                Debug.Log("🔘 [GestorOraciones] Botón continuar presionado");
+                panelFinal.SetActive(false);
+                // Guardar misión Y volver al panel de misiones del elemento
+                StartCoroutine(GuardarYVolverAMisiones());
             });
         }
+        else
+        {
+            Debug.LogError("❌ [GestorOraciones] No se encontró el botón continuar dentro de panelFinal!");
+        }
 
+    }
+
+    // Corrutina para guardar la misión y volver al panel de misiones
+    IEnumerator GuardarYVolverAMisiones()
+    {
+        Debug.Log("💾 [GestorOraciones] Guardando misión completada...");
+
+        // Guardar la misión PRIMERO (si existe la instancia)
+        if (GuardarMisionCompletada.instancia != null)
+        {
+            System.Threading.Tasks.Task saveTask = GuardarMisionCompletada.instancia.MarcarMisionComoCompletada();
+
+            // Esperar a que termine de guardar
+            while (!saveTask.IsCompleted)
+            {
+                yield return null;
+            }
+
+            if (saveTask.IsFaulted)
+            {
+                Debug.LogError("❌ [GestorOraciones] Error al guardar: " + saveTask.Exception);
+            }
+            else
+            {
+                Debug.Log("✅ [GestorOraciones] Misión guardada correctamente.");
+            }
+        }
+        else
+        {
+            Debug.LogWarning("⚠️ [GestorOraciones] GuardarMisionCompletada.instancia es null");
+        }
+
+        // Guardar información de dónde volver (igual que VuforiaNuevo y ScannerPin)
+        string elementoActual = PlayerPrefs.GetString("ElementoSeleccionado", "");
+        string categoriaActual = PlayerPrefs.GetString("CategoriaSeleccionada", "");
+
+        PlayerPrefs.SetString("PanelDestino", "PanelMisiones");
+        PlayerPrefs.SetString("VolverAElemento", elementoActual);
+        PlayerPrefs.SetString("VolverACategoria", categoriaActual);
+        PlayerPrefs.Save();
+
+        Debug.Log($"📝 [GestorOraciones] Volviendo a panel misiones - Elemento: {elementoActual}, Categoría: {categoriaActual}");
+
+        // Volver a la escena de Categorías
+        SceneManager.LoadScene("Categorías", LoadSceneMode.Single);
     }
 
     //public void DarRecomendacion(string categoria, string elemento, int idMision)

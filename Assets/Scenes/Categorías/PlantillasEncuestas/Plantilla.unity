@@ -1741,7 +1741,7 @@ GameObject:
   - component: {fileID: 602546313}
   - component: {fileID: 602546312}
   m_Layer: 5
-  m_Name: Panel
+  m_Name: PanelMisionCompletada
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2731,7 +2731,7 @@ MonoBehaviour:
   - {fileID: 2012909531}
   txtTiempo: {fileID: 823880327}
   txtRacha: {fileID: 1449515077}
-  PanelContinuar: {fileID: 747474282}
+  PanelContinuar: {fileID: 602546310}
   barraProgresoSlider: {fileID: 57689281}
   txtMision: {fileID: 1496299843}
   txtXp: {fileID: 1739432931}
@@ -2739,10 +2739,6 @@ MonoBehaviour:
   txtMotivacion: {fileID: 867133721}
   txtRefuerzo1: {fileID: 755338126}
   txtRefuerzo2: {fileID: 559125498}
-  panelAnimacionMision: {fileID: 602546310}
-  imagenAnimacionMision: {fileID: 571628261}
-  audioMisionCompletada: {fileID: 1306370139}
-  btnContinuarPanel: {fileID: 1037970316}
 --- !u!4 &1000679899
 Transform:
   m_ObjectHideFlags: 0
@@ -3400,10 +3396,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3e8aa86a808d3984ebbd308de9a7a4ed, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  imagenMision: {fileID: 571628261}
-  panel: {fileID: 602546310}
-  audioSource: {fileID: 1306370139}
-  TxtXp: {fileID: 1739432931}
+  PanelRegresarUI: {fileID: 0}
+  PanelBotonUI: {fileID: 0}
+  PanelMisionCompletada: {fileID: 0}
+  botonCompletarMision: {fileID: 0}
+  Regresar: {fileID: 0}
+  TxtMisionResultado: {fileID: 0}
+  TxtXpResultado: {fileID: 0}
+  TxtPuntuacionResultado: {fileID: 0}
+  TxtMotivacionResultado: {fileID: 0}
+  TxtRefuerzo1: {fileID: 0}
+  TxtRefuerzo2: {fileID: 0}
+  PanelContinuar: {fileID: 0}
+  btnContinuarPanel: {fileID: 0}
 --- !u!4 &1209658528
 Transform:
   m_ObjectHideFlags: 0

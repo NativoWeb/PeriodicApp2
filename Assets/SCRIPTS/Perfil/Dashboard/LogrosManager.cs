@@ -53,11 +53,9 @@ public class LogrosManager : MonoBehaviour
         LimpiarLogros();
         yield return null;
 
-        // 2. Cargar datos del JSON.
-        if (jsonData == null)
-        {
-            yield return StartCoroutine(CargarJSON());
-        }
+        // 2. SIEMPRE recargar datos del JSON (para que se actualicen los logros)
+        Debug.Log("🔄 [LogrosManager] Recargando Json_Logros.json...");
+        yield return StartCoroutine(CargarJSON());
 
         if (jsonData == null)
         {
@@ -118,14 +116,20 @@ public class LogrosManager : MonoBehaviour
         };
 
         var elementosJson = categoriaJson["logros_elementos"].AsObject;
+        Debug.Log($"📊 [LogrosManager] Cargando logros de elementos para categoría '{catSeleccionada}':");
         foreach (var kvp in elementosJson)
         {
             JSONNode nodoElem = kvp.Value;
+            bool desbloqueado = nodoElem["desbloqueado"].AsBool;
+            string nombreElemento = nodoElem["nombre"];
+
+            Debug.Log($"  {(desbloqueado ? "✅" : "🔒")} {nombreElemento} (key: {kvp.Key}) - Desbloqueado: {desbloqueado}");
+
             categoriaInfo.Elementos[kvp.Key] = new ElementoData
             {
-                nombre = nodoElem["nombre"],
+                nombre = nombreElemento,
                 simbolo = nodoElem["simbolo"],
-                desbloqueado = nodoElem["desbloqueado"].AsBool
+                desbloqueado = desbloqueado
             };
         }
 
