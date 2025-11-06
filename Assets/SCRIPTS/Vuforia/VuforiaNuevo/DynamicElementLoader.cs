@@ -165,11 +165,25 @@ public class DynamicMoleculeLoader : MonoBehaviour
                 DesbloquearLogro(trackable.TargetName);
             }
         }
-        // Si pierde el tracking, simplemente limpiar
+        // Si pierde el tracking, limpiar modelos y detener audio
         else if (status.Status == Status.NO_POSE || status.Status == Status.LIMITED)
         {
             Debug.Log($"⚠️ [DynamicElementLoader] Se perdió el tracking de '{trackable.TargetName}' - Status: {status.Status}");
-            // NO recargar la escena - esto causa problemas al cambiar de escena
+
+            // Ya verificamos al inicio del método que estamos en VuforiaNuevo
+            // Detener audio, limpiar modelos y ocultar botón
+            ModeloLoader modeloLoader = FindAnyObjectByType<ModeloLoader>();
+            if (modeloLoader != null)
+            {
+                modeloLoader.DetenerAudio();
+                modeloLoader.LimpiarModelos();
+                modeloLoader.OcultarBotonCambiarModelo();
+            }
+
+            // Limpiar los modelos del contenedor atómico
+            LimpiarModelos();
+
+            Debug.Log($"🧹 [DynamicElementLoader] Modelos, audio y botón limpiados por pérdida de tracking");
         }
         else
         {

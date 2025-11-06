@@ -228,4 +228,40 @@ public class ModeloLoader : MonoBehaviour
         modeloAtomico.SetActive(mostrandoAtomico);
         modeloAplicacion.SetActive(!mostrandoAtomico);
     }
+
+    // Método público para detener el audio cuando se pierde el tracking
+    public void DetenerAudio()
+    {
+        if (audioSource != null && audioSource.isPlaying)
+        {
+            audioSource.Stop();
+            Debug.Log("🔇 [ModeloLoader] Audio detenido");
+        }
+    }
+
+    // Método público para limpiar los modelos
+    public void LimpiarModelos()
+    {
+        if (modeloAtomico != null)
+        {
+            Destroy(modeloAtomico);
+            modeloAtomico = null;
+        }
+        if (modeloAplicacion != null)
+        {
+            Destroy(modeloAplicacion);
+            modeloAplicacion = null;
+        }
+        Debug.Log("🧹 [ModeloLoader] Modelos limpiados");
+    }
+
+    // Método público para ocultar el botón de cambiar modelo
+    public void OcultarBotonCambiarModelo()
+    {
+        if (botonCambiarModelo != null)
+        {
+            botonCambiarModelo.SetActive(false);
+            Debug.Log("🔘 [ModeloLoader] Botón cambiar modelo ocultado");
+        }
+    }
 }
