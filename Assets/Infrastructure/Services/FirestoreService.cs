@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using Firebase.Firestore;
 using UnityEngine;
 using PeriodicApp.Core.Domain.Interfaces;
+using Infrastructure.Services;
 
 namespace PeriodicApp.Infrastructure.Services
 {
@@ -27,19 +28,19 @@ namespace PeriodicApp.Infrastructure.Services
         {
             if (string.IsNullOrEmpty(userId))
             {
-                Debug.LogError("No se porporciono userId para GuardarDatosUsuario.");
+                DebugLogger.LogError("No se porporciono userId para GuardarDatosUsuario.");
             }
 
             DocumentReference docRef = firestore.Collection("users").Document(userId);
             await docRef.SetAsync(data, SetOptions.MergeAll);
-            Debug.Log("Datos del usuario guardados correctamente");
+            DebugLogger.Log("Datos del usuario guardados correctamente");
         }
 
         public async Task SubirJson(string userId, string misionesJson, string categoriasJson, string logrosJson)
         {
             if (string.IsNullOrEmpty(userId))
             {
-                Debug.LogError("UserId vacio al subir JSON");
+                DebugLogger.LogError("UserId vacio al subir JSON");
             }
 
             List<Task> tareas = new List<Task>();
@@ -80,11 +81,11 @@ namespace PeriodicApp.Infrastructure.Services
             if (tareas.Count > 0)
             {
                 await Task.WhenAll(tareas);
-                Debug.Log("Misiones logros y categorias subidas correctamente");
+                DebugLogger.Log("Misiones logros y categorias subidas correctamente");
             }
             else
             {
-                Debug.LogWarning("No se encontraron datos validos para subir");
+                DebugLogger.LogWarning("No se encontraron datos validos para subir");
             }
         }
 
@@ -92,7 +93,7 @@ namespace PeriodicApp.Infrastructure.Services
         {
             if (string.IsNullOrEmpty(userId))
             {
-                Debug.LogError("UserId vacio para actualizar rango. ");
+                DebugLogger.LogError("UserId vacio para actualizar rango. ");
                 return;
             }
 
@@ -107,7 +108,7 @@ namespace PeriodicApp.Infrastructure.Services
                 if (nuevoRango != rangoActual)
                 {
                     await docRef.UpdateAsync("Rango", nuevoRango);
-                    Debug.Log($"Rango actualizado a: {nuevoRango}");
+                    DebugLogger.Log($"Rango actualizado a: {nuevoRango}");
                 }
             }
         }

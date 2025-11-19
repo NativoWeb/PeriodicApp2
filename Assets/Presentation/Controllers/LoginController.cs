@@ -5,6 +5,7 @@ using System.Collections;
 using PeriodicApp.Core.Application.UseCases;
 using PeriodicApp.Infrastructure.Services;
 using PeriodicApp.Presentation;
+using Infrastructure.Services;
 
 public class LoginController : MonoBehaviour
 {
@@ -52,7 +53,7 @@ public class LoginController : MonoBehaviour
         // Verificar ServiceLocator y crearlo si no existe
         if (!ServiceLocator.AreServicesInitialized())
         {
-            Debug.LogWarning("ServiceLocator no está inicializado. Creando instancia...");
+            DebugLogger.LogWarning("ServiceLocator no está inicializado. Creando instancia...");
 
             ServiceLocator existingLocator = FindObjectOfType<ServiceLocator>();
 
@@ -60,14 +61,14 @@ public class LoginController : MonoBehaviour
             {
                 GameObject serviceLocatorObj = new GameObject("ServiceLocator");
                 serviceLocatorObj.AddComponent<ServiceLocator>();
-                Debug.Log("ServiceLocator creado exitosamente");
+                DebugLogger.Log("ServiceLocator creado exitosamente");
             }
 
             yield return null;
 
             if (!ServiceLocator.AreServicesInitialized())
             {
-                Debug.LogError("No se pudo inicializar ServiceLocator");
+                DebugLogger.LogError("No se pudo inicializar ServiceLocator");
                 yield break;
             }
         }
@@ -83,7 +84,7 @@ public class LoginController : MonoBehaviour
 
         if (!listo)
         {
-            Debug.LogError("Firebase no se inicializó correctamente.");
+            DebugLogger.LogError("Firebase no se inicializó correctamente.");
             yield break;
         }
 
@@ -193,7 +194,7 @@ public class LoginController : MonoBehaviour
 
         if (resultado.EsExitoso)
         {
-            Debug.Log($"Usuario logueado: {resultado.UsuarioId}");
+            DebugLogger.Log($"Usuario logueado: {resultado.UsuarioId}");
 
             PlayerPrefs.SetInt("rememberMe", 1);
             PlayerPrefs.SetString("userEmail", email);
@@ -256,7 +257,7 @@ public class LoginController : MonoBehaviour
         }
         else
         {
-            Debug.LogError("Usuario no autenticado.");
+            DebugLogger.LogError("Usuario no autenticado.");
         }
     }
 

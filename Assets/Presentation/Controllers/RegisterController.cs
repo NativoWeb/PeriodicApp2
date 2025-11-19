@@ -7,6 +7,7 @@ using PeriodicApp.Core.Application.UseCases;
 using PeriodicApp.Core.Domain.Interfaces;
 using PeriodicApp.Infrastructure.Services;
 using PeriodicApp.Presentation;
+using Infrastructure.Services;
 
 public class RegisterController : MonoBehaviour
 {
@@ -56,7 +57,7 @@ public class RegisterController : MonoBehaviour
         // Verificar ServiceLocator y crearlo si no existe
         if (!ServiceLocator.AreServicesInitialized())
         {
-            Debug.LogWarning("ServiceLocator no está inicializado en RegisterController. Creando instancia...");
+            DebugLogger.LogWarning("ServiceLocator no está inicializado en RegisterController. Creando instancia...");
 
             ServiceLocator existingLocator = FindObjectOfType<ServiceLocator>();
 
@@ -64,7 +65,7 @@ public class RegisterController : MonoBehaviour
             {
                 GameObject serviceLocatorObj = new GameObject("ServiceLocator");
                 serviceLocatorObj.AddComponent<ServiceLocator>();
-                Debug.Log("ServiceLocator creado exitosamente en RegisterController");
+                DebugLogger.Log("ServiceLocator creado exitosamente en RegisterController");
             }
 
             // Esperar un frame para que se inicialice
@@ -72,7 +73,7 @@ public class RegisterController : MonoBehaviour
 
             if (!ServiceLocator.AreServicesInitialized())
             {
-                Debug.LogError("No se pudo inicializar ServiceLocator en RegisterController");
+                DebugLogger.LogError("No se pudo inicializar ServiceLocator en RegisterController");
                 return;
             }
         }

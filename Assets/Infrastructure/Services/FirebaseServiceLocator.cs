@@ -3,11 +3,13 @@ using Firebase.Auth;
 using Firebase.Firestore;
 using System.Threading.Tasks;
 using UnityEngine;
+using Infrastructure.Services;
 
 public static class FirebaseServiceLocator
 {
     private static bool initialized = false;
     private static Task<bool> initializationTask; // Cambiamos el tipo para que devuelva nuestro resultado
+    private static FirebaseConfig config;
 
     public static FirebaseAuth Auth { get; private set; }
     public static FirebaseFirestore Firestore { get; private set; }
@@ -33,6 +35,23 @@ public static class FirebaseServiceLocator
     {
         try
         {
+            // Cargar la configuración desde Resources
+            if (config == null)
+            {
+                config = Resources.Load<FirebaseConfig>("FirebaseConfig");
+                if (config == null)
+                {
+                    Debug.LogError("FirebaseConfig no encontrado en Resources. Por favor crea un FirebaseConfig en Assets/Resources/");
+                    return false;
+                }
+
+                if (!config.IsValid())
+                {
+                    Debug.LogError("FirebaseConfig inválido. Por favor configura todas las credenciales necesarias.");
+                    return false;
+                }
+            }
+
             // 'await' pausa este método, libera el hilo principal,
             // y cuando la tarea termina, el código que sigue se ejecuta
             // de vuelta en el HILO PRINCIPAL de Unity.
@@ -40,14 +59,16 @@ public static class FirebaseServiceLocator
 
             if (dependencyStatus == DependencyStatus.Available)
             {
-                // Configurar las opciones de Firebase para evitar el uso del emulador
+                // Configurar las opciones de Firebase usando el ScriptableObject
                 var options = new Firebase.AppOptions
                 {
-                    ApiKey = "AIzaSyDga959UgRVlfvY3zgKyirXYlSvVScdYRU",
-                    AppId = "1:22318390969:android:5eb17f4f1901e17037c568",
-                    ProjectId = "periodiccapp",
-                    StorageBucket = "periodiccapp.firebasestorage.app",
-                    DatabaseUrl = new System.Uri("https://periodiccapp-default-rtdb.firebaseio.com")
+                    ApiKey = config.apiKey,
+                    AppId = config.appId,
+                    ProjectId = config.projectId,
+                    StorageBucket = config.storageBucket,
+                    DatabaseUrl = string.IsNullOrEmpty(config.databaseUrl)
+                        ? null
+                        : new System.Uri(config.databaseUrl)
                 };
 
                 // Crear la app con las opciones configuradas
@@ -68,19 +89,29 @@ public static class FirebaseServiceLocator
 
                 Firestore = FirebaseFirestore.GetInstance(app);
                 initialized = true;
-                Debug.Log("Firebase inicializado correctamente (ServiceLocator) con servicio en la nube.");
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                if (config.enableFirebaseLogs)
+                {
+                    Debug.Log("Firebase inicializado correctamente (ServiceLocator) con servicio en la nube.");
+                }
+#endif
                 return true;
             }
             else
             {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
                 Debug.LogError($"Error al inicializar Firebase: {dependencyStatus}");
+#endif
                 initialized = false;
                 return false;
             }
         }
         catch (System.Exception ex)
         {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
             Debug.LogError($"Excepción al inicializar Firebase: {ex.Message}\n{ex.StackTrace}");
+#endif
             initialized = false;
             return false;
         }
