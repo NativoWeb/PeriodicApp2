@@ -4,6 +4,7 @@ using TMPro;
 using UnityEngine.UI;
 using System.Collections.Generic;
 
+[System.Obsolete("Este script está obsoleto. Usa CompoundMatchingGame que hereda de DragAndMatchBase. Ver GAME_SCRIPTS_MIGRATION.md")]
 public class ControllerGame2 : MonoBehaviour, IDragHandler, IEndDragHandler
 {
     private Vector3 posicionInicial;

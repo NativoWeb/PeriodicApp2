@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+[System.Obsolete("Este script está obsoleto. Usa ObjectRotator con RotationType.RotateAroundTarget en su lugar. Ver ROTATION_SCRIPTS_MIGRATION.md")]
 public class RotateAround : MonoBehaviour
 {
     public GameObject objeto;

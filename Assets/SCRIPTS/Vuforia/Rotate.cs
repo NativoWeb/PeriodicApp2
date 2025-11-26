@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+[System.Obsolete("Este script está obsoleto. Usa ObjectRotator con RotationType.RotateAroundSelf en su lugar. Ver ROTATION_SCRIPTS_MIGRATION.md")]
 public class Rotate : MonoBehaviour
 {
     public int speed;

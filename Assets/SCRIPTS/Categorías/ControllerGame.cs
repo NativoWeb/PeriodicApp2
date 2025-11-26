@@ -7,6 +7,7 @@ using Firebase.Firestore;
 using Firebase.Auth;
 using System.Threading.Tasks;
 
+[System.Obsolete("Este script está obsoleto. Usa ElementMatchingGame que hereda de DragAndMatchBase. Ver GAME_SCRIPTS_MIGRATION.md")]
 public class ControllerGame : MonoBehaviour, IDragHandler, IEndDragHandler
 {
     private Vector3 posicionInicial;
