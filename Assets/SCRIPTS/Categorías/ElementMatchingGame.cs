@@ -95,7 +95,15 @@ public class ElementMatchingGame : DragAndMatchBase
 
         ResetMatchCount();
         initialPositions.Clear();
-        SceneManager.LoadScene(nextSceneName);
+
+        if (SceneTransition.Instance != null)
+        {
+            SceneTransition.Instance.LoadScene(nextSceneName);
+        }
+        else
+        {
+            SceneManager.LoadScene(nextSceneName);
+        }
     }
 
     private void GenerateRandomPositions()

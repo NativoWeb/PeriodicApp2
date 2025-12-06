@@ -1,5 +1,6 @@
 ﻿//using System.Drawing.Text;
 using UnityEngine;
+using QuantumAI.Core;
 
 public class SistemaXP : MonoBehaviour
 {
@@ -20,17 +21,25 @@ public class SistemaXP : MonoBehaviour
 
     public void AgregarXP(int cantidad)
     {
-      
+
         Debug.Log($"🟢 XP agregado: {cantidad}");
 
         // Aquí iría la lógica para sumar XP al jugador.
        int  xptempactual = PlayerPrefs.GetInt("TempXP", 0);
-        PlayerPrefs.SetInt("TempXP", cantidad + xptempactual);
+        int nuevoXP = cantidad + xptempactual;
+        PlayerPrefs.SetInt("TempXP", nuevoXP);
 
         // Guardar cambios en PlayerPrefs
         PlayerPrefs.Save();
 
-        Debug.Log($"✅ XP Total ahora: {PlayerPrefs.GetInt("TempXP")}");
+        Debug.Log($"✅ XP Total ahora: {nuevoXP}");
+
+        // 🤖 Notificar a Quantum AI sobre la ganancia de XP
+        if (QuantumAICore.Instance != null)
+        {
+            string razon = "Completar misión"; // Puedes hacer esto más específico si tienes el contexto
+            QuantumAICore.Instance.NotifyXPGained(cantidad, razon, nuevoXP);
+        }
     }
 
     // ✨ Nuevo método para crear una instancia si no existe

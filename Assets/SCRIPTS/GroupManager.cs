@@ -86,8 +86,16 @@ public class GroupManager : MonoBehaviour
     // Acción cuando se selecciona un grupo
     void OnGroupSelected(string gameScene)
     {
-        // Cargar la escena relacionada con el grupo
+        // Cargar la escena relacionada con el grupo con transición suave
         Debug.Log($"Grupo seleccionado. Cargando la escena: {gameScene}");
-        SceneManager.LoadScene(gameScene);
+
+        if (SceneTransition.Instance != null)
+        {
+            SceneTransition.Instance.LoadScene(gameScene);
+        }
+        else
+        {
+            SceneManager.LoadScene(gameScene);
+        }
     }
 }

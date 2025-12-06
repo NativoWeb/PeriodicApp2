@@ -1,0 +1,52 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b51a36b56c811914fa17d4077d2d9bcb, type: 3}
+  m_Name: QuantumAIConfig
+  m_EditorClassIdentifier: 
+  geminiApiKey: AIzaSyCzkvzTKfhZ-nqAt64dpgw1RfB_FL-xI7M
+  geminiModel: gemini-2.0-flash
+  geminiApiUrl: https://generativelanguage.googleapis.com/v1beta/models/
+  apiTimeout: 30
+  maxTokens: 500
+  temperature: 0.7
+  useHybridApproach: 1
+  prioritizeLocalResponses: 1
+  enableResponseCache: 1
+  cacheDurationMinutes: 60
+  maxCacheEntries: 100
+  defaultInteractionPreference: 1
+  inactivityThreshold: 10
+  stuckThreshold: 120
+  failureThreshold: 3
+  enableCelebrations: 1
+  enableProactiveRecommendations: 1
+  iconPosition: 3
+  iconSize: 60
+  enableIconAnimations: 1
+  showNotificationBadge: 1
+  typingSpeed: 50
+  enableVoiceNarration: 1
+  voiceInAR: 1
+  voiceInGames: 0
+  voiceVolume: 0.8
+  voiceSpeed: 1
+  enableLearningStyleDetection: 1
+  enablePerformanceAnalysis: 1
+  minMissionsForPatternDetection: 5
+  enablePersonalizedRecommendations: 1
+  enableDebugLogs: 1
+  showGeminiPrompts: 0
+  simulateGeminiResponses: 0
+  defaultLanguage: es
+  supportedLanguages:
+  - es
+  - en

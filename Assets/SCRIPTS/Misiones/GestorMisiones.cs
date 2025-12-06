@@ -6,6 +6,8 @@ using UnityEngine.SceneManagement;
 using UnityEngine;
 using System.IO;
 using System.Collections;
+using QuantumAI.Core;
+using DG.Tweening;
 
 public class GestorMisiones : MonoBehaviour
 {
@@ -24,6 +26,7 @@ public class GestorMisiones : MonoBehaviour
     [Header("UI Misiones")]
     public GameObject prefabMision;
     public Transform contenedorMisiones;
+    private CanvasGroup contenedorCanvasGroup;
 
 
     [Header("Botón de Regreso a categorias")]
@@ -61,6 +64,16 @@ public class GestorMisiones : MonoBehaviour
         // Setup de listeners que no dependen de JSON
         btnInformacion.onClick.AddListener(IrAIformacion);
         BtnCategorias.onClick.AddListener(RegresaraCategorias);
+
+        // Obtener o añadir CanvasGroup al contenedor de misiones
+        if (contenedorMisiones != null)
+        {
+            contenedorCanvasGroup = contenedorMisiones.GetComponent<CanvasGroup>();
+            if (contenedorCanvasGroup == null)
+            {
+                contenedorCanvasGroup = contenedorMisiones.gameObject.AddComponent<CanvasGroup>();
+            }
+        }
     }
 
     void OnEnable()
@@ -340,8 +353,11 @@ public class GestorMisiones : MonoBehaviour
 
         var misionesArray = jsonDataMisiones["Misiones"]["Categorias"][categoriaSeleccionada]["Elementos"][elementoSeleccionado]["misiones"].AsArray;
 
-        // Desactivar el contenedor para evitar destello visual durante la actualización
-        contenedorMisiones.gameObject.SetActive(false);
+        // Ocultar el contenedor con fade para evitar destello visual
+        if (contenedorCanvasGroup != null)
+        {
+            contenedorCanvasGroup.alpha = 0f;
+        }
 
         LimpiarMisiones(); // Limpia el contenido previo
 
@@ -440,8 +456,20 @@ public class GestorMisiones : MonoBehaviour
             }
         }
 
-        // Reactivar el contenedor después de cargar todas las misiones
-        contenedorMisiones.gameObject.SetActive(true);
+        // Hacer fade-in suave del contenedor después de cargar todas las misiones
+        StartCoroutine(FadeInContenedor());
+    }
+
+    IEnumerator FadeInContenedor()
+    {
+        // Esperar un frame para que todo se inicialice
+        yield return new WaitForEndOfFrame();
+
+        if (contenedorCanvasGroup != null)
+        {
+            // Fade in suave usando DOTween
+            contenedorCanvasGroup.DOFade(1f, 0.3f).SetEase(Ease.OutQuad);
+        }
     }
 
     public string devolverCatTrad(string categoriaSeleccionada)
@@ -514,8 +542,23 @@ public class GestorMisiones : MonoBehaviour
         }
         PlayerPrefs.Save();
 
-        // Cargar la escena de la misión
-        SceneManager.LoadScene(nombreEscena);
+        // 🤖 Notificar a Quantum AI que la misión está iniciando
+        if (QuantumAICore.Instance != null)
+        {
+            // Determinar tipo de misión basado en ID
+            string tipoMision = nombreEscena.Contains("Vuforia") ? "AR" : "Juego";
+            QuantumAICore.Instance.NotifyMissionStarted(elemento, tipoMision, idMision);
+        }
+
+        // Cargar la escena de la misión con transición suave
+        if (SceneTransition.Instance != null)
+        {
+            SceneTransition.Instance.LoadScene(nombreEscena);
+        }
+        else
+        {
+            SceneManager.LoadScene(nombreEscena);
+        }
     }
 
     void LimpiarMisiones()

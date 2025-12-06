@@ -12,6 +12,7 @@ using UnityEngine.SceneManagement;
 using System.IO;
 using System;
 using Vuforia;
+using QuantumAI.Core;
 
 
 public class GuardarMisionCompletada : MonoBehaviour
@@ -335,8 +336,15 @@ public class GuardarMisionCompletada : MonoBehaviour
             instancia = null;
         }
 
-        // Forzar el cambio de escena
-        SceneManager.LoadScene("Categorías", LoadSceneMode.Single);
+        // Forzar el cambio de escena con transición suave
+        if (SceneTransition.Instance != null)
+        {
+            SceneTransition.Instance.LoadScene("Categorías", LoadSceneMode.Single);
+        }
+        else
+        {
+            SceneManager.LoadScene("Categorías", LoadSceneMode.Single);
+        }
     }
 
     public async Task MarcarMisionComoCompletada()
@@ -366,7 +374,12 @@ public class GuardarMisionCompletada : MonoBehaviour
         string jsonString;
         string fileName = "Json_Misiones.json";
         string filePath = Path.Combine(Application.persistentDataPath, fileName);
-        bool ganoElUltimoQuiz = PlayerPrefs.GetInt("UltimoQuizGanado", 0) == 1;
+
+        // DEBUG: Ver el valor de UltimoQuizGanado
+        int valorUltimoQuiz = PlayerPrefs.GetInt("UltimoQuizGanado", 0);
+        Debug.Log($"🔍 [ActualizarMisionEnJSON] Valor de UltimoQuizGanado en PlayerPrefs: {valorUltimoQuiz}");
+
+        bool ganoElUltimoQuiz = valorUltimoQuiz == 1;
 
         if (File.Exists(filePath))
         {
@@ -504,6 +517,12 @@ public class GuardarMisionCompletada : MonoBehaviour
                     int xp = PlayerPrefs.GetInt("xp_mision", 0);
                     await ProcesarXP(xp);
 
+                    // 🤖 Notificar a Quantum AI que la misión se completó con éxito
+                    if (QuantumAICore.Instance != null)
+                    {
+                        QuantumAICore.Instance.NotifyMissionCompleted(elemento, idMision, true);
+                    }
+
                     // Si es la última pendiente, gestionar logro de elemento
                     Debug.Log($"🔍 [ActualizarMisionEnJSON] ¿Es última misión? {esUltimaMisionPendiente}");
 
@@ -511,6 +530,12 @@ public class GuardarMisionCompletada : MonoBehaviour
                     {
                         Debug.Log($"🏆 [GuardarMisionCompletada] ¡Todas las misiones completadas! Desbloqueando logro del elemento '{elemento}'");
                         await ProcesarXP(15);
+
+                        // 🤖 Notificar a Quantum AI sobre el logro desbloqueado
+                        if (QuantumAICore.Instance != null)
+                        {
+                            QuantumAICore.Instance.NotifyAchievementUnlocked($"Elemento {elemento} dominado", 15);
+                        }
 
                         // IMPORTANTE: Los logros están en un archivo SEPARADO
                         await GuardarLogroElemento(categoriaSeleccionada, elemento);
@@ -526,6 +551,13 @@ public class GuardarMisionCompletada : MonoBehaviour
                 {
                     // El jugador perdió, no marcamos la misión
                     Debug.LogWarning($"⚠️ [ActualizarMisionEnJSON] El jugador NO ganó el quiz. No se marca la misión.");
+
+                    // 🤖 Notificar a Quantum AI que la misión falló
+                    if (QuantumAICore.Instance != null)
+                    {
+                        QuantumAICore.Instance.NotifyMissionCompleted(elemento, idMision, false);
+                    }
+
                     int xpConsolacion = PlayerPrefs.GetInt("xp_mision", 0);
                     await ProcesarXP(xpConsolacion);
                     return;

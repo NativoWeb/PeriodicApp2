@@ -562,7 +562,15 @@ public class GestorElementos : MonoBehaviour
         if (!string.IsNullOrEmpty(rutaMisionFinal))
         {
             Debug.Log($"🔄 Cargando misión final: {rutaMisionFinal}");
-            SceneManager.LoadScene(rutaMisionFinal);
+
+            if (SceneTransition.Instance != null)
+            {
+                SceneTransition.Instance.LoadScene(rutaMisionFinal);
+            }
+            else
+            {
+                SceneManager.LoadScene(rutaMisionFinal);
+            }
         }
         else
         {

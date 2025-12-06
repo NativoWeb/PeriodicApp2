@@ -69,7 +69,14 @@ public class ControllerBotones : MonoBehaviour
     }
     void CargarVuforiaProfesor()
     {
-        SceneManager.LoadScene("InicioProfesor");
+        if (SceneTransition.Instance != null)
+        {
+            SceneTransition.Instance.LoadScene("InicioProfesor");
+        }
+        else
+        {
+            SceneManager.LoadScene("InicioProfesor");
+        }
     }
 
     public void CompletarMision()
@@ -157,8 +164,15 @@ public class ControllerBotones : MonoBehaviour
 
         Debug.Log($"📝 [ControllerBotones] Elemento: {elementoActual}, Categoría: {categoriaActual}");
 
-        // Ir a Categorías
-        SceneManager.LoadScene("Categorías");
+        // Ir a Categorías con transición suave
+        if (SceneTransition.Instance != null)
+        {
+            SceneTransition.Instance.LoadScene("Categorías");
+        }
+        else
+        {
+            SceneManager.LoadScene("Categorías");
+        }
     }
 
     // Esta función se encarga de esperar, ocultar el panel y cambiar de escena
@@ -275,24 +289,32 @@ public class ControllerBotones : MonoBehaviour
             GuardarMisionCompletada.instancia = null;
         }
 
-        // Cargar la escena de Categorías (donde está el panel de misiones)
+        // Cargar la escena de Categorías (donde está el panel de misiones) con transición suave
         Debug.Log("🔄 [ControllerBotones] Cargando escena 'Categorías'...");
-        AsyncOperation asyncLoad = SceneManager.LoadSceneAsync("Categorías");
 
-        if (asyncLoad == null)
+        if (SceneTransition.Instance != null)
         {
-            Debug.LogError("❌ [ControllerBotones] asyncLoad es null - la escena no existe o no está en Build Settings");
-            yield break;
+            SceneTransition.Instance.LoadScene("Categorías");
         }
-
-        // Esperar hasta que la escena termine de cargar
-        while (!asyncLoad.isDone)
+        else
         {
-            Debug.Log($"⏳ [ControllerBotones] Progreso de carga: {asyncLoad.progress * 100}%");
-            yield return null;
-        }
+            AsyncOperation asyncLoad = SceneManager.LoadSceneAsync("Categorías");
 
-        Debug.Log("✅ [ControllerBotones] Escena 'Categorías' cargada exitosamente");
+            if (asyncLoad == null)
+            {
+                Debug.LogError("❌ [ControllerBotones] asyncLoad es null - la escena no existe o no está en Build Settings");
+                yield break;
+            }
+
+            // Esperar hasta que la escena termine de cargar
+            while (!asyncLoad.isDone)
+            {
+                Debug.Log($"⏳ [ControllerBotones] Progreso de carga: {asyncLoad.progress * 100}%");
+                yield return null;
+            }
+
+            Debug.Log("✅ [ControllerBotones] Escena 'Categorías' cargada exitosamente");
+        }
     }
 
 
@@ -312,22 +334,28 @@ public class ControllerBotones : MonoBehaviour
     {
         string ruta = PlayerPrefs.GetString("CargarVuforia", "");
 
+        string targetScene = "Categorías"; // Por defecto
+
         if (ruta == "Inicio")
         {
-            SceneManager.LoadScene("Perfil_Usuario");
+            targetScene = "Perfil_Usuario";
         }
         else if (ruta == "Misiones")
         {
-            SceneManager.LoadScene("Categorías");
+            targetScene = "Categorías";
         }
         else if (ruta == "Profesor")
         {
-            SceneManager.LoadScene("InicioProfesor");
+            targetScene = "InicioProfesor";
+        }
+
+        if (SceneTransition.Instance != null)
+        {
+            SceneTransition.Instance.LoadScene(targetScene);
         }
         else
         {
-            // Por defecto, volver a Categorías
-            SceneManager.LoadScene("Categorías");
+            SceneManager.LoadScene(targetScene);
         }
     }
 

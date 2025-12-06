@@ -365,9 +365,12 @@ public class GestorOraciones : MonoBehaviour
             TxtRefuerzo2.text = (categoriasFalladas.Count > 1) ? "- " + categoriasFalladas[1] : "";
         }
 
-        PlayerPrefs.SetInt("UltimoQuizGanado", ganoLaMision ? 1 : 0);
+        int valorMisionGanada = ganoLaMision ? 1 : 0;
+        PlayerPrefs.SetInt("UltimoQuizGanado", valorMisionGanada);
         PlayerPrefs.SetInt("xpGanado", xpGanado);
         PlayerPrefs.Save();
+
+        Debug.Log($"🎮 [GestorOraciones] Guardado - Ganó la misión: {ganoLaMision} (valor: {valorMisionGanada}), XP: {xpGanado}");
 
         Button botonContinuar = panelFinal.GetComponentInChildren<Button>();
         if (botonContinuar != null)
@@ -430,8 +433,15 @@ public class GestorOraciones : MonoBehaviour
 
         Debug.Log($"📝 [GestorOraciones] Volviendo a panel misiones - Elemento: {elementoActual}, Categoría: {categoriaActual}");
 
-        // Volver a la escena de Categorías
-        SceneManager.LoadScene("Categorías", LoadSceneMode.Single);
+        // Volver a la escena de Categorías con transición suave
+        if (SceneTransition.Instance != null)
+        {
+            SceneTransition.Instance.LoadScene("Categorías", LoadSceneMode.Single);
+        }
+        else
+        {
+            SceneManager.LoadScene("Categorías", LoadSceneMode.Single);
+        }
     }
 
     //public void DarRecomendacion(string categoria, string elemento, int idMision)

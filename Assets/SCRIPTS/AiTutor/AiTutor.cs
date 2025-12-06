@@ -9,6 +9,7 @@ using UnityEngine.SceneManagement;
 using System.Text.RegularExpressions;
 using System.Collections;
 using UnityEngine.Networking;
+using QuantumAI.Core;
 
 [System.Serializable]
 public class ElementoQuimico
@@ -86,6 +87,41 @@ public class AiTutor : MonoBehaviour
         else
         {
             Debug.Log("Embedder activo en tiempo de ejecución.");
+        }
+
+        // NUEVO: Suscribirse a respuestas de Quantum
+        if (QuantumAICore.Instance != null)
+        {
+            QuantumAICore.Instance.OnAIResponse += OnQuantumResponse;
+            Debug.Log("AiTutor conectado con Quantum AI");
+        }
+    }
+
+    void OnDestroy()
+    {
+        // Desuscribirse al destruir
+        if (QuantumAICore.Instance != null)
+        {
+            QuantumAICore.Instance.OnAIResponse -= OnQuantumResponse;
+        }
+    }
+
+    /// <summary>
+    /// Maneja las respuestas generadas por Quantum (Gemini)
+    /// </summary>
+    private void OnQuantumResponse(string response)
+    {
+        Debug.Log($"[AiTutor] Respuesta recibida de Quantum: {response}");
+
+        // Mostrar la respuesta de Quantum en una burbuja de IA
+        if (!string.IsNullOrEmpty(response))
+        {
+            CrearBurbujaIA(response);
+            Debug.Log("[AiTutor] Burbuja de IA creada con respuesta de Quantum");
+        }
+        else
+        {
+            Debug.LogWarning("[AiTutor] Respuesta de Quantum está vacía");
         }
     }
 
@@ -248,6 +284,22 @@ public class AiTutor : MonoBehaviour
         Debug.Log("Pregunta Original: " + pregunta);
         string preguntaNormalizada = pregunta.Trim().ToLower();
         Debug.Log("Pregunta Normalizada: " + preguntaNormalizada);
+
+        // NUEVO: Usar Quantum para preguntas complejas
+        if (EsPreguntaCompleja(preguntaNormalizada))
+        {
+            if (QuantumAICore.Instance != null)
+            {
+                Debug.Log("[AiTutor] Delegando a Quantum AI (Gemini)...");
+                // Delegar a Quantum para respuestas más sofisticadas
+                QuantumAICore.Instance.ProcessUserQuestion(pregunta);
+                return;
+            }
+            else
+            {
+                Debug.LogWarning("[AiTutor] Pregunta compleja detectada pero QuantumAICore no está disponible. Usando respuesta local.");
+            }
+        }
 
         // PASO 1: Verificar si es una respuesta afirmativa en contexto
         if (!string.IsNullOrEmpty(ultimoElementoActivo) && EsRespuestaAfirmativa(preguntaNormalizada))
@@ -565,5 +617,53 @@ public class AiTutor : MonoBehaviour
         rt.anchorMax = new Vector2(0, 1);
         rt.pivot = new Vector2(0, 1);
         rt.anchoredPosition = new Vector2(10, rt.anchoredPosition.y);
+    }
+
+    /// <summary>
+    /// Determina si una pregunta es compleja y debe ser manejada por Quantum (Gemini)
+    /// </summary>
+    private bool EsPreguntaCompleja(string pregunta)
+    {
+        // Limpiar signos de puntuación al inicio
+        string preguntaLimpia = pregunta.TrimStart('¿', '?', ' ');
+
+        // Preguntas que empiezan con "por qué", "cómo", "explica" son complejas
+        if (preguntaLimpia.StartsWith("por qué") || preguntaLimpia.StartsWith("por que") ||
+            preguntaLimpia.StartsWith("cómo") || preguntaLimpia.StartsWith("como") ||
+            pregunta.Contains("explica") || pregunta.Contains("explicame") ||
+            pregunta.Contains("ayúdame") || pregunta.Contains("ayudame") ||
+            pregunta.Contains("no entiendo"))
+        {
+            Debug.Log($"[AiTutor] Pregunta compleja detectada: {pregunta}");
+            return true;
+        }
+
+        // Preguntas largas (más de 50 caracteres) probablemente son complejas
+        if (pregunta.Length > 50)
+        {
+            Debug.Log($"[AiTutor] Pregunta larga detectada ({pregunta.Length} chars): {pregunta}");
+            return true;
+        }
+
+        // Preguntas sobre comparaciones
+        if (pregunta.Contains("diferencia entre") || pregunta.Contains("comparar") ||
+            pregunta.Contains("mejor que") || pregunta.Contains("peor que"))
+        {
+            Debug.Log($"[AiTutor] Pregunta de comparación detectada: {pregunta}");
+            return true;
+        }
+
+        // Preguntas sobre aplicaciones o contexto real
+        if (pregunta.Contains("en la vida") || pregunta.Contains("aplicacion") ||
+            pregunta.Contains("aplicación") || pregunta.Contains("ejemplo") ||
+            pregunta.Contains("esencial") || pregunta.Contains("importante") ||
+            pregunta.Contains("vital"))
+        {
+            Debug.Log($"[AiTutor] Pregunta de aplicación/contexto detectada: {pregunta}");
+            return true;
+        }
+
+        Debug.Log($"[AiTutor] Pregunta simple detectada: {pregunta}");
+        return false;
     }
 }

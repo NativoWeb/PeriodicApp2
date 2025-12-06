@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using System.Collections.Generic;
+using QuantumAI.Core;
 
 /// <summary>
 /// Clase base para juegos de arrastrar y emparejar.
@@ -22,6 +23,8 @@ public abstract class DragAndMatchBase : MonoBehaviour, IDragHandler, IEndDragHa
     protected RectTransform rectTransform;
     protected CanvasGroup canvasGroup;
     protected static int correctMatches = 0;
+    protected static int failureCount = 0;  // 🤖 Contador de fallos para Quantum AI
+    protected float startTime;  // 🤖 Tiempo de inicio del juego
 
     // Componentes
     protected virtual void Awake()
@@ -46,6 +49,10 @@ public abstract class DragAndMatchBase : MonoBehaviour, IDragHandler, IEndDragHa
             continueButton.gameObject.SetActive(false);
             continueButton.onClick.AddListener(OnContinueButtonClick);
         }
+
+        // 🤖 Iniciar contador de tiempo para Quantum AI
+        startTime = Time.time;
+        failureCount = 0;
 
         // Inicialización específica del juego
         OnGameStart();
@@ -140,6 +147,16 @@ public abstract class DragAndMatchBase : MonoBehaviour, IDragHandler, IEndDragHa
             Debug.Log("❌ Emparejamiento incorrecto. Reintentando...");
         }
 
+        failureCount++;
+
+        // 🤖 Notificar a Quantum AI sobre el fallo
+        if (QuantumAICore.Instance != null)
+        {
+            string gameType = GetType().Name; // Nombre de la clase (ej: "ElementMatchingGame")
+            string attemptDetails = $"{gameObject.name} no coincide con zona de emparejamiento";
+            QuantumAICore.Instance.NotifyGameFailure(gameType, attemptDetails, failureCount);
+        }
+
         ReturnToInitialPosition();
     }
 
@@ -164,7 +181,30 @@ public abstract class DragAndMatchBase : MonoBehaviour, IDragHandler, IEndDragHa
             }
 
             continueButton.gameObject.SetActive(true);
+
+            // 🤖 Notificar a Quantum AI sobre el éxito
+            if (QuantumAICore.Instance != null)
+            {
+                string gameType = GetType().Name;
+                float timeSpent = Time.time - startTime;
+                int score = CalculateScore(timeSpent, failureCount);
+                QuantumAICore.Instance.NotifyGameSuccess(gameType, timeSpent, score);
+            }
         }
+    }
+
+    /// <summary>
+    /// Calcula la puntuación basada en tiempo y fallos.
+    /// Puede ser sobrescrito por clases hijas para lógica personalizada.
+    /// </summary>
+    protected virtual int CalculateScore(float timeSpent, int failures)
+    {
+        // Puntuación base de 100, menos penalizaciones
+        int baseScore = 100;
+        int timePenalty = Mathf.FloorToInt(timeSpent / 10);  // -1 punto cada 10 segundos
+        int failurePenalty = failures * 5;  // -5 puntos por cada fallo
+
+        return Mathf.Max(0, baseScore - timePenalty - failurePenalty);
     }
 
     #endregion

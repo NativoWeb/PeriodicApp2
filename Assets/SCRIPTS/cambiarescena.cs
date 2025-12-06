@@ -8,32 +8,56 @@ public class cambiarescena : MonoBehaviour
     // Start is called before the first frame update
     public void siguienteEscena(string nombre)
     {
-        SceneManager.LoadScene(nombre);
+        // Usar SceneTransition para transición suave sin flash
+        if (SceneTransition.Instance != null)
+        {
+            SceneTransition.Instance.LoadScene(nombre);
+        }
+        else
+        {
+            SceneManager.LoadScene(nombre);
+        }
     }
 
     public void VuforiaDesdeInicio()
     {
         PlayerPrefs.SetString("CargarVuforia", "Inicio");
-        SceneManager.LoadScene("VuforiaNuevo");
+        if (SceneTransition.Instance != null)
+        {
+            SceneTransition.Instance.LoadScene("VuforiaNuevo");
+        }
+        else
+        {
+            SceneManager.LoadScene("VuforiaNuevo");
+        }
     }
 
     public void VuforiaDesdeProfesor()
     {
         PlayerPrefs.SetString("CargarVuforia", "Profesor");
-        SceneManager.LoadScene("VuforiaNuevo");
+        if (SceneTransition.Instance != null)
+        {
+            SceneTransition.Instance.LoadScene("VuforiaNuevo");
+        }
+        else
+        {
+            SceneManager.LoadScene("VuforiaNuevo");
+        }
     }
 
     public void volverEntrePerfiles()
     {
         string navegacionCuenta = PlayerPrefs.GetString("navegacionCuenta", "estudiante");
 
-        if (navegacionCuenta == "estudiante")
+        string targetScene = (navegacionCuenta == "estudiante") ? "Perfil_Usuario" : "InicioProfesor1";
+
+        if (SceneTransition.Instance != null)
         {
-            SceneManager.LoadScene("Perfil_Usuario");
+            SceneTransition.Instance.LoadScene(targetScene);
         }
         else
         {
-            SceneManager.LoadScene("InicioProfesor1");
+            SceneManager.LoadScene(targetScene);
         }
     }
 
@@ -41,13 +65,16 @@ public class cambiarescena : MonoBehaviour
     {
         string Ocupacion = PlayerPrefs.GetString("TempOcupacion", "");
         string vuforia = PlayerPrefs.GetString("CargarVuforia", "");
-        if(Ocupacion == "Estudiante" || vuforia == "inicio")
+
+        string targetScene = (Ocupacion == "Estudiante" || vuforia == "inicio") ? "Perfil_Usuario" : "InicioProfesor1";
+
+        if (SceneTransition.Instance != null)
         {
-            SceneManager.LoadScene("Perfil_Usuario");
+            SceneTransition.Instance.LoadScene(targetScene);
         }
         else
         {
-            SceneManager.LoadScene("InicioProfesor1");
+            SceneManager.LoadScene(targetScene);
         }
     }
 }

@@ -354,9 +354,12 @@ public class GestorPreguntas : MonoBehaviour
             if (categoriasFalladas.Count > 1) txtRefuerzo2.text = "- " + categoriasFalladas[1];
         }
 
-        PlayerPrefs.SetInt("UltimoQuizGanado", ganoElQuiz ? 1 : 0);
+        int valorQuizGanado = ganoElQuiz ? 1 : 0;
+        PlayerPrefs.SetInt("UltimoQuizGanado", valorQuizGanado);
         PlayerPrefs.SetInt("xp_mision", xpGanado);
         PlayerPrefs.Save();
+
+        Debug.Log($"🎮 [GestorPreguntas] Guardado - Ganó el quiz: {ganoElQuiz} (valor: {valorQuizGanado}), Porcentaje: {porcentajeAciertos}%, XP: {xpGanado}");
 
         Button botonContinuar = PanelContinuar.GetComponentInChildren<Button>();
         if (botonContinuar != null)
@@ -436,7 +439,15 @@ public class GestorPreguntas : MonoBehaviour
         PlayerPrefs.SetInt("RachaActual", rachaActual);
         PlayerPrefs.SetFloat("ProgresoBarra", barraProgresoSlider.value);
         PlayerPrefs.Save();
-        SceneManager.LoadScene("Categorías");
+
+        if (SceneTransition.Instance != null)
+        {
+            SceneTransition.Instance.LoadScene("Categorías");
+        }
+        else
+        {
+            SceneManager.LoadScene("Categorías");
+        }
     }
 
     // Corrutina para guardar la misión y volver al panel de misiones
@@ -480,8 +491,15 @@ public class GestorPreguntas : MonoBehaviour
 
         Debug.Log($"📝 [GestorPreguntas] Volviendo a panel misiones - Elemento: {elementoActual}, Categoría: {categoriaActual}");
 
-        // Volver a la escena de Categorías
-        SceneManager.LoadScene("Categorías", LoadSceneMode.Single);
+        // Volver a la escena de Categorías con transición suave
+        if (SceneTransition.Instance != null)
+        {
+            SceneTransition.Instance.LoadScene("Categorías", LoadSceneMode.Single);
+        }
+        else
+        {
+            SceneManager.LoadScene("Categorías", LoadSceneMode.Single);
+        }
     }
 
     void SumarXPTemporario(int xp)

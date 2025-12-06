@@ -128,6 +128,14 @@ public class ControllerGame : MonoBehaviour, IDragHandler, IEndDragHandler
     public void OnContinuarClick()
     {
         Debug.Log("➡️ Volviendo a la escena de niveles...");
-        SceneManager.LoadScene("Grupo1");
+
+        if (SceneTransition.Instance != null)
+        {
+            SceneTransition.Instance.LoadScene("Grupo1");
+        }
+        else
+        {
+            SceneManager.LoadScene("Grupo1");
+        }
     }
 }
