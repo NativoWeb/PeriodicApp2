@@ -71,18 +71,26 @@ public class ControllerPerfil : MonoBehaviour
     private void MostrarDatosOffline()
     {
         string username = PlayerPrefs.GetString("DisplayName", "");
-        string rangos = PlayerPrefs.GetString("Rango", "");
         int xp = PlayerPrefs.GetInt("xp", 0);
-        rangoActual = rangos;
 
-        // mostrar datos del usuario en la interfaz 
+        // ✅ Calcular el rango correcto según el XP (igual que en PerfilManager)
+        string rangoCalculado = ObtenerRangoSegunXP(xp);
+        rangoActual = rangoCalculado;
+
+        Debug.Log($"🔍 [INICIO OFFLINE] XP guardado: {xp}, Rango calculado: {rangoCalculado}");
+
+        // mostrar datos del usuario en la interfaz
         tmpUsername.text = "¡Hola, " + username + "!";
-        
 
-        string avatarPath = ObtenerAvatarPorRango(rangos);
+
+        string avatarPath = ObtenerAvatarPorRango(rangoCalculado);
         Sprite avatarSprite = Resources.Load<Sprite>(avatarPath) ?? Resources.Load<Sprite>("Avatares/defecto");
 
         avatarImage.sprite = avatarSprite;
+
+        // Guardar el rango actualizado
+        PlayerPrefs.SetString("Rango", rangoCalculado);
+        PlayerPrefs.Save();
     }
 
     private void EscucharCambiosUsuario(string userId)
@@ -108,12 +116,21 @@ public class ControllerPerfil : MonoBehaviour
                     Debug.Log($"🔄 XP actualizado en Firebase: {xpFirebase} ➡ {nuevoXP}");
                 }
 
-                rangoActual = rangos;
-                ActualizarRangoSegunXP(xpFirebase);
+                // ✅ CALCULAR EL RANGO SEGÚN EL XP ACTUAL (igual que en PerfilManager)
+                string rangoCalculado = ObtenerRangoSegunXP(xpFirebase);
+                rangoActual = rangoCalculado;
 
+                Debug.Log($"🔍 [INICIO] XP Firebase: {xpFirebase}, XP Temp: {xpTemp}, Rango guardado: {rangos}, Rango calculado: {rangoCalculado}");
 
-                // Cargar avatar y datos
-                string avatarPath = ObtenerAvatarPorRango(rangos);
+                // ✅ Actualizar rango en Firebase solo si cambió
+                if (rangoCalculado != rangos)
+                {
+                    ActualizarRangoSegunXP(xpFirebase);
+                    Debug.Log($"✅ Rango actualizado en Inicio: {rangoCalculado}");
+                }
+
+                // ✅ Cargar avatar usando el rango CALCULADO (no el guardado en Firebase)
+                string avatarPath = ObtenerAvatarPorRango(rangoCalculado);
                 Sprite avatarSprite = Resources.Load<Sprite>(avatarPath) ?? Resources.Load<Sprite>("Avatares/Rango1");
 
                 avatarImage.sprite = avatarSprite;// información que se muestra del usuario en la interfaz ----------------------------------------------------
@@ -121,7 +138,7 @@ public class ControllerPerfil : MonoBehaviour
 
                 // Guardar en PlayerPrefs
                 PlayerPrefs.SetString("DisplayName", username);
-                PlayerPrefs.SetString("Rango", rangos);
+                PlayerPrefs.SetString("Rango", rangoCalculado); // ✅ Guardar el rango calculado
                 PlayerPrefs.SetInt("xp", xpFirebase);
                 PlayerPrefs.SetString("Avatar", avatarPath);
                 PlayerPrefs.Save();

@@ -257,16 +257,22 @@ public class GeneradorElementosUI : MonoBehaviour
         if (!hayInternet)
         {
             // 📴 Sin conexión: mostrar desde PlayerPrefs
-            int xpLocal = PlayerPrefs.GetInt("TempXP", 0);
+            // ✅ Usar "xp" (XP guardado de Firebase), NO "TempXP" (XP temporal acumulado)
+            int xpLocal = PlayerPrefs.GetInt("xp", 0);
+            int xpTemp = PlayerPrefs.GetInt("TempXP", 0);
             string nombreLocal = PlayerPrefs.GetString("DisplayName", "Sin nombre");
+
+            Debug.Log($"🔍 [INICIO OFFLINE] XP guardado: {xpLocal}, TempXP: {xpTemp}");
 
             TotalXP.text = xpLocal.ToString();
             DisplayName.text = nombreLocal;
 
-            // Obtener rango por XP
+            // ✅ Calcular rango según el XP guardado (no TempXP)
             string rangoLocal = ObtenerRangoSegunXP(xpLocal);
             Rango.text = rangoLocal;
             PlayerPrefs.SetString("Rango", rangoLocal); // actualiza el rango local
+
+            Debug.Log($"🔍 [INICIO OFFLINE] Rango calculado: {rangoLocal}");
 
             // 🖼 Avatar offline
             string rutaAvatar = ObtenerAvatarPorRango(rangoLocal);
@@ -301,25 +307,35 @@ public class GeneradorElementosUI : MonoBehaviour
             {
                 var snapshot = task.Result;
 
-                // XP
-                int xp = snapshot.ContainsField("xp") ? snapshot.GetValue<int>("xp") : 0;
-                TotalXP.text = xp.ToString();
-                PlayerPrefs.SetInt("TempXP", xp);
+                // XP de Firebase
+                int xpFirebase = snapshot.ContainsField("xp") ? snapshot.GetValue<int>("xp") : 0;
+                string rangoGuardado = snapshot.ContainsField("Rango") ? snapshot.GetValue<string>("Rango") : "Novato de laboratorio";
+
+                TotalXP.text = xpFirebase.ToString();
+
+                // ✅ Guardar XP en "xp", NO en "TempXP" (TempXP es solo para acumulación temporal)
+                PlayerPrefs.SetInt("xp", xpFirebase);
 
                 // Display Name
                 string displayName = snapshot.ContainsField("DisplayName") ? snapshot.GetValue<string>("DisplayName") : "Sin nombre";
                 DisplayName.text = displayName;
                 PlayerPrefs.SetString("DisplayName", displayName);
 
-                // Rango calculado por XP
-                rango = ObtenerRangoSegunXP(xp);
+                // ✅ Calcular rango según XP actual
+                rango = ObtenerRangoSegunXP(xpFirebase);
                 Rango.text = rango;
                 PlayerPrefs.SetString("Rango", rango);
 
-                //Actualiza rango en firebase
-                ActualizarRangoSegunXP(xp);
+                Debug.Log($"🔍 [INICIO] XP Firebase: {xpFirebase}, Rango guardado: {rangoGuardado}, Rango calculado: {rango}");
 
-                // 🖼 Avatar online
+                // ✅ Actualizar rango en Firebase solo si cambió
+                if (rango != rangoGuardado)
+                {
+                    ActualizarRangoSegunXP(xpFirebase);
+                    Debug.Log($"✅ Rango actualizado en Inicio: {rango}");
+                }
+
+                // 🖼 Avatar online (usando el rango calculado)
                 string rutaAvatar = ObtenerAvatarPorRango(rango);
                 Sprite avatar = Resources.Load<Sprite>(rutaAvatar);
                 if (avatar != null) avatarImage.sprite = avatar;
@@ -344,31 +360,32 @@ public class GeneradorElementosUI : MonoBehaviour
         rango = nuevoRango;
     }
 
+    // ✅ ESTANDARIZADO: Mismo sistema de rangos que PerfilManager y ControllerPerfil
     private string ObtenerRangoSegunXP(int xp)
     {
-        if (xp >= 25000) return "Alquimista Supremo";
-        if (xp >= 13000) return "Leyenda química";
-        if (xp >= 7500) return "Sabio de la tabla";
-        if (xp >= 4000) return "Maestro de Laboratorio";
-        if (xp >= 2000) return "Experto Molecular";
-        if (xp >= 900) return "Científico en Formación";
-        if (xp >= 300) return "Explorador de Elementos";
-        return "Aprendiz Atomico";
+        if (xp >= 10000) return "Leyenda química";
+        if (xp >= 6000) return "Sabio de la tabla";
+        if (xp >= 3500) return "Maestro de Laboratorio";
+        if (xp >= 2300) return "Experto Molecular";
+        if (xp >= 1200) return "Cientifico en Formacion";
+        if (xp >= 600) return "Promesa quimica";
+        if (xp >= 200) return "Aprendiz Atomico";
+        return "Novato de laboratorio";
     }
 
-    // ✅ Avatar según rango
+    // ✅ ESTANDARIZADO: Mismo mapeo de avatares que PerfilManager y ControllerPerfil
     private string ObtenerAvatarPorRango(string rangos)
     {
         switch (rangos)
         {
-            case "Aprendiz Atomico": return "Avatares/Rango1";
-            case "Explorador de Elementos": return "Avatares/Rango2";
-            case "Científico en Formación": return "Avatares/Rango3";
-            case "Experto Molecular": return "Avatares/Rango4";
-            case "Maestro de Laboratorio": return "Avatares/Rango5";
-            case "Sabio de la tabla": return "Avatares/Rango6";
-            case "Leyenda química": return "Avatares/Rango7";
-            case "Alquimista Supremo": return "Avatares/Rango8";
+            case "Novato de laboratorio": return "Avatares/Rango1";
+            case "Aprendiz Atomico": return "Avatares/Rango2";
+            case "Promesa quimica": return "Avatares/Rango3";
+            case "Cientifico en Formacion": return "Avatares/Rango4";
+            case "Experto Molecular": return "Avatares/Rango5";
+            case "Maestro de Laboratorio": return "Avatares/Rango6";
+            case "Sabio de la tabla": return "Avatares/Rango7";
+            case "Leyenda química": return "Avatares/Rango8";
             default: return "Avatares/Rango1";
         }
     }

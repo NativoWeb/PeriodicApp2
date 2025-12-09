@@ -85,6 +85,10 @@ public class JuegoPreguntadosManager : MonoBehaviour
     private string turnoActual;
 
     private string appIdioma;
+
+    // Banderas para prevenir ejecuciones múltiples
+    private bool partidaCargada = false;
+    private bool estaCalculandoLogro = false;
     void Start()
     {
         auth = FirebaseAuth.DefaultInstance;
@@ -125,6 +129,13 @@ public class JuegoPreguntadosManager : MonoBehaviour
         yield return new WaitForSeconds(2f);
         PanelVs.SetActive(false);
     }
+
+    private IEnumerator OcultarPanelLogroConDelay()
+    {
+        PanelInfoLogro.SetActive(true);
+        yield return new WaitForSeconds(3f);
+        PanelInfoLogro.SetActive(false);
+    }
     private IEnumerator VerificarConexionPeriodicamente()
     {
         while (true)
@@ -155,6 +166,15 @@ public class JuegoPreguntadosManager : MonoBehaviour
     }
     void CargarPartida()
     {
+        // Prevenir carga duplicada
+        if (partidaCargada)
+        {
+            Debug.LogWarning("⚠️ CargarPartida ya fue llamada anteriormente. Ignorando.");
+            return;
+        }
+
+        partidaCargada = true;
+
         string[] Categorias = new string[]
         {
         "Metales Alcalinos", "Metales Alcalinotérreos", "Metales de Transición",
@@ -325,6 +345,13 @@ public class JuegoPreguntadosManager : MonoBehaviour
     }
     void EscucharCambiosPartida(string partidaId)
     {
+        // Prevenir listener duplicado
+        if (listenerCambiosPartida != null)
+        {
+            Debug.LogWarning("⚠️ Listener ya está activo. Deteniendo el anterior.");
+            listenerCambiosPartida.Stop();
+        }
+
         listenerCambiosPartida = db.Collection("partidasQuimicados").Document(partidaId)
             .Listen(snapshot =>
             {
@@ -395,7 +422,78 @@ public class JuegoPreguntadosManager : MonoBehaviour
                 // Actualizar nombres, progreso, turno, etc.
                 MostrarTurno();
                 LoadCoronaProgress();
+
+                // ✅ Recargar categorías completadas para ambos jugadores
+                ActualizarCategoriasCompletadas(datos);
             });
+    }
+
+    void ActualizarCategoriasCompletadas(Dictionary<string, object> datos)
+    {
+        string[] Categorias = new string[]
+        {
+            "Metales Alcalinos", "Metales Alcalinotérreos", "Metales de Transición",
+            "Metales Postransicionales", "Metaloides", "No Metales Reactivos", "Gases Nobles",
+            "Lantánidos", "Actínoides", "Propiedades Desconocidas"
+        };
+        string[] CategoriasImg = new string[]
+        {
+            "MetalesAlcalinos", "MetalesAlcalinoterreos", "MetalesTransicion",
+            "MetalesPostransicionales", "Metaloides", "NoMetalesReactivos", "GasesNobles",
+            "Lantanidos", "Actinoides", "PropiedadesDesconocidas"
+        };
+
+        coronasA = 0;
+        coronasB = 0;
+
+        // Actualizar Jugador A
+        if (datos.ContainsKey("CategoriasJugadorA"))
+        {
+            int i = 0;
+            Dictionary<string, object> categoriasA = datos["CategoriasJugadorA"] as Dictionary<string, object>;
+
+            foreach (Transform child in ContentCategoriasCompletadasA)
+            {
+                Destroy(child.gameObject);
+            }
+
+            foreach (string categoria in Categorias)
+            {
+                bool completada = categoriasA.ContainsKey(categoria) && Convert.ToBoolean(categoriasA[categoria]);
+                if (completada) coronasA++;
+
+                InstanciarCategoria(CategoriasImg[i], completada, ContentCategoriasCompletadasA);
+                i++;
+            }
+        }
+
+        // Actualizar Jugador B
+        if (datos.ContainsKey("CategoriasJugadorB"))
+        {
+            int i = 0;
+            Dictionary<string, object> categoriasB = datos["CategoriasJugadorB"] as Dictionary<string, object>;
+
+            foreach (Transform child in ContentCategoriasCompletadasB)
+            {
+                Destroy(child.gameObject);
+            }
+
+            foreach (string categoria in Categorias)
+            {
+                bool completada = categoriasB.ContainsKey(categoria) && Convert.ToBoolean(categoriasB[categoria]);
+                if (completada) coronasB++;
+
+                InstanciarCategoria(CategoriasImg[i], completada, ContentCategoriasCompletadasB);
+                i++;
+            }
+        }
+
+        // Actualizar textos de coronas
+        txtCoronasA.text = coronasA.ToString();
+        txtCoronasB.text = coronasB.ToString();
+
+        // ✅ Verificar victoria después de actualizar
+        VerificarVictoria(partidaId, coronasA, coronasB, uidJugadorA, uidJugadorB);
     }
     void MostrarNombresJugadores()
     {
@@ -521,6 +619,15 @@ public class JuegoPreguntadosManager : MonoBehaviour
     }
     public void CalcularLogro()
     {
+        // Prevenir ejecución múltiple simultánea
+        if (estaCalculandoLogro)
+        {
+            Debug.LogWarning("⚠️ CalcularLogro ya se está ejecutando. Ignorando llamada duplicada.");
+            return;
+        }
+
+        estaCalculandoLogro = true;
+
         int reiniciarCorona = PlayerPrefs.GetInt("reiniciarCorona", 0);
         int wasCorrect = PlayerPrefs.GetInt("wasCorrect", 0);
         int wasIncorrect = PlayerPrefs.GetInt("wasIncorrect", 0);
@@ -552,6 +659,8 @@ public class JuegoPreguntadosManager : MonoBehaviour
                 });
             PlayerPrefs.SetInt("wasCorrect", 0);
             LoadCoronaProgress();
+
+            estaCalculandoLogro = false;
             return;
         }
 
@@ -577,10 +686,16 @@ public class JuegoPreguntadosManager : MonoBehaviour
 
             PlayerPrefs.SetInt("wasCorrect", 0);
             LoadCoronaProgress();
+
+            estaCalculandoLogro = false;
             return;
         }
 
-        if (wasCorrect == 0) return;
+        if (wasCorrect == 0)
+        {
+            estaCalculandoLogro = false;
+            return;
+        }
 
         partidaRef.UpdateAsync(campoCorona, FieldValue.Increment(1))
             .ContinueWithOnMainThread(task =>
@@ -593,6 +708,8 @@ public class JuegoPreguntadosManager : MonoBehaviour
         // Luego de actualizar en server, recarga visual:
         PlayerPrefs.SetInt("wasCorrect", 0);
         LoadCoronaProgress();
+
+        estaCalculandoLogro = false;
     }
     void LoadCoronaProgress()
     {
@@ -638,9 +755,9 @@ public class JuegoPreguntadosManager : MonoBehaviour
                     progressImage.sprite = Resources.Load<Sprite>($"images/CategoriasQuimicados/{nombreArchivo}");
                     BtnGirar.interactable = false;
                     BtnActivarCategoria.interactable = true;
-                    PanelInfoLogro.SetActive(true);
-                    await Task.Delay(3000);
-                    PanelInfoLogro.SetActive(false);
+
+                    // Usar Coroutine en lugar de Task.Delay para no bloquear la UI
+                    StartCoroutine(OcultarPanelLogroConDelay());
                 }
                 else if (coronaCount == 0)
                 {

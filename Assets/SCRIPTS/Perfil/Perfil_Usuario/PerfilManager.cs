@@ -41,24 +41,26 @@ public class PerfilManager : MonoBehaviour
         appIdioma = PlayerPrefs.GetString("appIdioma", "español");
         InitializeLocalizedTexts();
 
+        // ✅ OPTIMIZACIÓN: Mostrar datos guardados INMEDIATAMENTE para carga rápida
+        MostrarDatosGuardados();
+
         hayInternet = Application.internetReachability != NetworkReachability.NotReachable;
         if (hayInternet)
         {
             if (!string.IsNullOrEmpty(userId))
             {
-                ObtenerPosicionUsuario();
+                // ✅ Actualizar datos en segundo plano sin bloquear la UI
                 StartCoroutine(LoadUserData(userId));
+                ObtenerPosicionUsuario(); // Se ejecuta en paralelo, actualiza cuando termine
             }
             else
             {
                 Debug.Log(localizedTexts["offlineData"]);
-                MostrarDatosOffline();
             }
         }
         else
         {
             Debug.Log(localizedTexts["offlineData"]);
-            MostrarDatosOffline();
         }
     }
 
@@ -101,16 +103,24 @@ public class PerfilManager : MonoBehaviour
         }
     }
 
-    private void MostrarDatosOffline()
+    // ✅ OPTIMIZACIÓN: Mostrar datos guardados inmediatamente para carga rápida
+    private void MostrarDatosGuardados()
     {
         string username = PlayerPrefs.GetString("DisplayName", "");
-        string rangos = PlayerPrefs.GetString("Rango", localizedTexts["defaultRank"]);
-        int xp = PlayerPrefs.GetInt("TempXP", 0);
+
+        // ✅ Leer XP guardado (no TempXP) - TempXP es solo temporal
+        int xpGuardado = PlayerPrefs.GetInt("xp", 0);
         int posicion = PlayerPrefs.GetInt("posicion", 0);
 
+        Debug.Log($"⚡ [PERFIL CARGA RÁPIDA] Mostrando datos guardados - XP: {xpGuardado}, Posición: {posicion}");
+
+        // ✅ Calcular el rango correcto según el XP
+        string rangos = ObtenerRangoSegunXP(xpGuardado);
+
+        // Mostrar datos inmediatamente
         UserName.text = string.Format(localizedTexts["greeting"], username);
-        posicionText.text = string.Format(localizedTexts["position"], posicion);
-        Xptext.text = xp.ToString();
+        posicionText.text = posicion > 0 ? string.Format(localizedTexts["position"], posicion) : localizedTexts["positionUnavailable"];
+        Xptext.text = xpGuardado.ToString();
         rangotext.text = rangos;
 
         string avatarPath = ObtenerAvatarPorRango(rangos);
@@ -141,6 +151,27 @@ public class PerfilManager : MonoBehaviour
         }
     }
 
+    // ✅ Calcular rango según XP (copiado de ControllerPerfil.cs)
+    private string ObtenerRangoSegunXP(int xp)
+    {
+        if (xp >= 10000) return "Leyenda química";
+        if (xp >= 6000) return "Sabio de la tabla";
+        if (xp >= 3500) return "Maestro de Laboratorio";
+        if (xp >= 2300) return "Experto Molecular";
+        if (xp >= 1200) return "Cientifico en Formacion";
+        if (xp >= 600) return "Promesa quimica";
+        if (xp >= 200) return "Aprendiz Atomico";
+        return "Novato de laboratorio";
+    }
+
+    // ✅ Actualizar rango en Firebase
+    private async Task ActualizarRangoEnFirebase(string userId, string nuevoRango)
+    {
+        DocumentReference userRef = db.Collection("users").Document(userId);
+        await userRef.UpdateAsync("Rango", nuevoRango);
+        Debug.Log($"✅ Rango actualizado en Firebase: {nuevoRango}");
+    }
+
     async Task GetUserData(string userId)
     {
         DocumentReference docRef = db.Collection("users").Document(userId);
@@ -159,6 +190,19 @@ public class PerfilManager : MonoBehaviour
         string rangos = snapshot.GetValue<string>("Rango") ?? localizedTexts["defaultRank"];
         int xp = snapshot.GetValue<int>("xp");
 
+        Debug.Log($"🔍 [PERFIL] XP Firebase: {xp}, Rango guardado: {rangos}");
+
+        // ✅ ACTUALIZAR EL RANGO SEGÚN EL XP ACTUAL (igual que en ControllerPerfil)
+        string nuevoRango = ObtenerRangoSegunXP(xp);
+        Debug.Log($"🔍 [PERFIL] Rango calculado según XP: {nuevoRango}");
+        if (nuevoRango != rangos)
+        {
+            await ActualizarRangoEnFirebase(userId, nuevoRango);
+            rangos = nuevoRango;
+            Debug.Log($"✅ Rango actualizado en Perfil: {rangos}");
+        }
+
+        // ✅ Actualizar UI con datos de Firebase
         Xptext.text = xp.ToString();
         UserName.text = string.Format(localizedTexts["greeting"], userName);
         rangotext.text = rangos;
@@ -166,10 +210,21 @@ public class PerfilManager : MonoBehaviour
         string avatarPath = ObtenerAvatarPorRango(rangos);
         Sprite avatarSprite = Resources.Load<Sprite>(avatarPath) ?? Resources.Load<Sprite>("Avatares/Rango1");
         avatarimage.sprite = avatarSprite;
+
+        // Guardar en PlayerPrefs
+        PlayerPrefs.SetString("DisplayName", userName);
+        PlayerPrefs.SetInt("xp", xp);
+        PlayerPrefs.SetString("Rango", rangos);
+        PlayerPrefs.SetString("Avatar", avatarPath);
+        PlayerPrefs.Save();
+
+        Debug.Log($"✅ [PERFIL] Datos actualizados desde Firebase");
     }
 
     public async void ObtenerPosicionUsuario()
     {
+        Debug.Log($"🔄 [PERFIL] Obteniendo posición en ranking...");
+
         Query rankingQuery = db.Collection("users").OrderByDescending("xp");
         QuerySnapshot snapshot = await rankingQuery.GetSnapshotAsync();
 
@@ -190,6 +245,8 @@ public class PerfilManager : MonoBehaviour
                 encontrado = true;
                 posicionText.text = $"# {posicion}";
                 PlayerPrefs.SetInt("posicion", posicion);
+                PlayerPrefs.Save();
+                Debug.Log($"✅ [PERFIL] Posición actualizada: #{posicion}");
                 break;
             }
             posicion++;
