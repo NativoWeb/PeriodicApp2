@@ -132,9 +132,18 @@ public class JuegoPreguntadosManager : MonoBehaviour
 
     private IEnumerator OcultarPanelLogroConDelay()
     {
-        PanelInfoLogro.SetActive(true);
-        yield return new WaitForSeconds(3f);
-        PanelInfoLogro.SetActive(false);
+        // ✅ Verificar que el panel esté asignado antes de usarlo
+        if (PanelInfoLogro != null)
+        {
+            PanelInfoLogro.SetActive(true);
+            yield return new WaitForSeconds(3f);
+            PanelInfoLogro.SetActive(false);
+        }
+        else
+        {
+            Debug.LogWarning("⚠️ PanelInfoLogro no está asignado en el Inspector.");
+            yield return null;
+        }
     }
     private IEnumerator VerificarConexionPeriodicamente()
     {

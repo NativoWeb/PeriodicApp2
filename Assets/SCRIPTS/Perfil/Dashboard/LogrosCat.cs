@@ -61,10 +61,28 @@ public class LogrosManagarCat: MonoBehaviour
         // --- LA MAGIA ESTÁ AQUÍ ---
         // Ahora que el panel está ACTIVO, forzamos la reconstrucción del layout
         yield return new WaitForEndOfFrame();
+
+        // ✅ Reconstruir el layout del panel de categorías
         if (categoriaPanel != null)
         {
-            LayoutRebuilder.ForceRebuildLayoutImmediate(categoriaPanel.GetComponent<RectTransform>());
-            Debug.Log("Layout de categorías reconstruido al activar panel.");
+            RectTransform panelRect = categoriaPanel.GetComponent<RectTransform>();
+            LayoutRebuilder.ForceRebuildLayoutImmediate(panelRect);
+
+            // ✅ También reconstruir el ScrollView padre si existe
+            Transform parent = categoriaPanel.parent;
+            if (parent != null)
+            {
+                RectTransform parentRect = parent.GetComponent<RectTransform>();
+                if (parentRect != null)
+                {
+                    LayoutRebuilder.ForceRebuildLayoutImmediate(parentRect);
+                }
+            }
+
+            // ✅ Forzar actualización de Canvas
+            Canvas.ForceUpdateCanvases();
+
+            Debug.Log("✅ Layout de categorías reconstruido completamente.");
         }
 
         isInitialized = true; // <-- Marcar como inicializado
@@ -219,19 +237,25 @@ public class LogrosManagarCat: MonoBehaviour
         if (categorias != null)
             categorias.Clear();
 
-        // Restablecer la posición del panel (opcional, si se desplaza)
-        var layoutGroup = categoriaPanel.GetComponent<VerticalLayoutGroup>();
-        if (layoutGroup != null)
+        // ✅ Resetear la posición del RectTransform del panel de categorías
+        RectTransform panelRect = categoriaPanel.GetComponent<RectTransform>();
+        if (panelRect != null)
         {
-            LayoutRebuilder.ForceRebuildLayoutImmediate((RectTransform)categoriaPanel);
+            panelRect.anchoredPosition = Vector2.zero;
+
+            // ✅ También resetear el ScrollView padre si existe
+            Transform parent = categoriaPanel.parent;
+            if (parent != null)
+            {
+                ScrollRect scrollRect = parent.GetComponentInParent<ScrollRect>();
+                if (scrollRect != null)
+                {
+                    scrollRect.verticalNormalizedPosition = 1f; // Scroll al inicio (arriba)
+                }
+            }
         }
 
-        // También puedes resetear la posición del RectTransform si se está moviendo visualmente
-        var rect = categoriaPanel.GetComponent<RectTransform>();
-        if (rect != null)
-        {
-            rect.anchoredPosition = Vector2.zero;
-        }
+        Debug.Log("🧹 Panel de categorías limpiado y reseteado.");
     }
 
 }

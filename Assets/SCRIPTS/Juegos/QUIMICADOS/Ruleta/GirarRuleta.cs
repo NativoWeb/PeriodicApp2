@@ -32,6 +32,9 @@ public class GirarRuleta : MonoBehaviour
     private string partidaId;
 
     private string PartidaIdQuimicados;
+
+    // ✅ Variable para guardar el listener y poder detenerlo
+    private Firebase.Firestore.ListenerRegistration listenerTurno;
     string[] categorias = new string[]
     {
         "No Metales Reactivos",
@@ -56,8 +59,16 @@ public class GirarRuleta : MonoBehaviour
     }
     void EscucharTurno()
     {
-        db.Collection("partidasQuimicados").Document(partidaId).Listen(snapshot =>
+        // ✅ Guardar el listener para poder detenerlo después
+        listenerTurno = db.Collection("partidasQuimicados").Document(partidaId).Listen(snapshot =>
         {
+            // ✅ Verificar que el botón no haya sido destruido antes de acceder
+            if (botonGirar == null || this == null)
+            {
+                Debug.LogWarning("⚠️ botonGirar o el objeto ha sido destruido, ignorando listener.");
+                return;
+            }
+
             if (snapshot.Exists && snapshot.TryGetValue("turnoActual", out string turnoActual))
             {
                 if (turnoActual == uidActual)
@@ -70,6 +81,16 @@ public class GirarRuleta : MonoBehaviour
                 }
             }
         });
+    }
+
+    // ✅ Detener el listener cuando se destruya el objeto
+    void OnDestroy()
+    {
+        if (listenerTurno != null)
+        {
+            listenerTurno.Stop();
+            Debug.Log("🛑 Listener de turno detenido correctamente.");
+        }
     }
 
     public void Girar()
