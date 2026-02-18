@@ -30,42 +30,46 @@ public class ControllerPerfil : MonoBehaviour
 
     async void Start()
     {
-
         Debug.Log("ControllerPerfil ejecutándose...");
 
-        // Inicializar Firebase
-        await FirebaseApp.CheckAndFixDependenciesAsync();
-        db = FirebaseFirestore.DefaultInstance;
-        auth = FirebaseAuth.DefaultInstance;
+        try
+        {
+            await FirebaseApp.CheckAndFixDependenciesAsync();
+            db = FirebaseFirestore.DefaultInstance;
+            auth = FirebaseAuth.DefaultInstance;
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[ControllerPerfil] Error inicializando Firebase: {e.Message}");
+            MostrarDatosOffline();
+            return;
+        }
 
-        // Verificar conexión a internet
         hayInternet = Application.internetReachability != NetworkReachability.NotReachable;
 
         if (hayInternet)
         {
-            Debug.Log("✅ Conexión a internet detectada");
             currentUser = auth.CurrentUser;
             userId = PlayerPrefs.GetString("userId", "").Trim();
 
-            if (!string.IsNullOrEmpty(userId))
+            if (currentUser == null || string.IsNullOrEmpty(userId))
             {
-                Debug.Log("✅ Usuario autenticado: " + userId);
-                EscucharCambiosUsuario(userId);
+                Debug.LogWarning("[ControllerPerfil] No hay usuario autenticado. Redirigiendo a Start.");
+                PlayerPrefs.DeleteAll();
+                PlayerPrefs.Save();
+                SceneManager.LoadScene("Start");
+                return;
             }
-            else
-            {
-                Debug.LogError("❌ No hay usuario autenticado, Mostrando datos offline");
-                MostrarDatosOffline();
-            }
+
+            Debug.Log("[ControllerPerfil] Usuario autenticado: " + userId);
+            EscucharCambiosUsuario(userId);
         }
         else
         {
-            Debug.LogWarning("⚠️ No hay conexión a internet. Cargando datos offline.");
+            Debug.LogWarning("[ControllerPerfil] Sin conexión. Cargando datos offline.");
             MostrarDatosOffline();
             ImprimirDatosPlayerPrefs();
         }
-
-        
     }
   
     private void MostrarDatosOffline()
@@ -151,8 +155,10 @@ public class ControllerPerfil : MonoBehaviour
             }
             else
             {
-                Debug.LogError("❌ El documento no existe");
-                MostrarDatosOffline();
+                Debug.LogWarning("[ControllerPerfil] El documento del usuario no existe en Firestore. Redirigiendo a Start.");
+                PlayerPrefs.DeleteAll();
+                PlayerPrefs.Save();
+                SceneManager.LoadScene("Start");
             }
         });
     }

@@ -26,17 +26,21 @@ public class PanelEntrada : MonoBehaviour
  
     void Start()
     {
-
-        // incializamos las variables firebase
         auth = FirebaseAuth.DefaultInstance;
         db = FirebaseFirestore.DefaultInstance;
         currentUser = auth.CurrentUser;
+
+        if (currentUser == null)
+        {
+            Debug.LogWarning("[PanelEntrada] No hay usuario autenticado. Omitiendo verificación.");
+            return;
+        }
 
         userId = currentUser.UserId;
 
         if (string.IsNullOrEmpty(userId))
         {
-            Debug.Log("Sin usuario autenticado");
+            Debug.LogWarning("[PanelEntrada] UserId vacío.");
             return;
         }
         verificarCampos();
@@ -47,28 +51,37 @@ public class PanelEntrada : MonoBehaviour
     {
         if (!HayInternet())
         {
-            Debug.Log("🚫 No hay conexión a Internet. No se puede sincronizar.");
-
+            Debug.Log("[PanelEntrada] No hay conexión a Internet. Omitiendo verificación.");
+            return;
         }
-        DocumentReference userRef = db.Collection("users").Document(userId);
 
-        DocumentSnapshot snapshot = await userRef.GetSnapshotAsync();
-        if (snapshot.Exists)
+        try
         {
+            DocumentReference userRef = db.Collection("users").Document(userId);
+            DocumentSnapshot snapshot = await userRef.GetSnapshotAsync();
+
+            if (!snapshot.Exists)
+            {
+                Debug.LogWarning("[PanelEntrada] El documento del usuario no existe en Firestore. Redirigiendo a Login.");
+                PlayerPrefs.DeleteAll();
+                PlayerPrefs.Save();
+                SceneManager.LoadScene("Start");
+                return;
+            }
+
             Dictionary<string, object> datos = snapshot.ToDictionary();
             bool tieneedad = datos.ContainsKey("Edad");
             bool tienedepartamento = datos.ContainsKey("Departamento");
             bool tieneciudad = datos.ContainsKey("Ciudad");
 
-            if (tieneciudad && tienedepartamento && tieneedad)
-            {
-                return;
-            }
-            else
+            if (!(tieneciudad && tienedepartamento && tieneedad))
             {
                 ActivarPanelEntrada();
             }
-
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"[PanelEntrada] Error verificando campos: {e.Message}");
         }
     }
 

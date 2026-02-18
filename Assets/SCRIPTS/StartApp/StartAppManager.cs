@@ -46,20 +46,24 @@ public class StartAppManager : MonoBehaviour
 
         if (esPrimeraVez)
         {
-            Debug.Log("🔄 Primera ejecución detectada: limpiando datos");
+            Debug.Log("[StartApp] Primera ejecución detectada: limpiando datos");
 
-            // 🔹 Borrar todos los PlayerPrefs
             PlayerPrefs.DeleteAll();
 
-            auth.SignOut();
-            // 🔹 Cerrar sesión persistente de Firebase (si hay)
-            if (FirebaseAuth.DefaultInstance.CurrentUser != null)
+            try
             {
-                FirebaseAuth.DefaultInstance.SignOut();
-                Debug.Log("🔒 Sesión de Firebase cerrada");
+                if (auth != null) auth.SignOut();
+                if (FirebaseAuth.DefaultInstance.CurrentUser != null)
+                {
+                    FirebaseAuth.DefaultInstance.SignOut();
+                    Debug.Log("[StartApp] Sesión de Firebase cerrada");
+                }
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning("[StartApp] Error cerrando sesión Firebase: " + e.Message);
             }
 
-            // 🔹 Marcar que ya no es primera ejecución
             PlayerPrefs.SetInt("isFirstRun", 0);
             PlayerPrefs.Save();
         }
@@ -246,9 +250,10 @@ public class StartAppManager : MonoBehaviour
                 }
                 else
                 {
-                    Debug.LogError("❌ Falló el login automático...--");
-                    Debug.LogError(task.Exception?.Message);
-                    TryOfflineLogin(savedEmail, savedPassword);
+                    Debug.LogError("[StartApp] Falló el login automático: " + task.Exception?.Message);
+                    PlayerPrefs.DeleteAll();
+                    PlayerPrefs.Save();
+                    SceneManager.LoadScene("Start");
                 }
             });
         }
@@ -282,7 +287,8 @@ public class StartAppManager : MonoBehaviour
         {
             if (task.IsFaulted || task.IsCanceled)
             {
-                Debug.LogError("❌ Fallo al obtener snapshot de misiones.");
+                Debug.LogError("[StartApp] Fallo al obtener snapshot de misiones: " + task.Exception?.Message);
+                CheckUserStatus(userId);
                 return;
             }
 
@@ -317,6 +323,11 @@ public class StartAppManager : MonoBehaviour
         {
             if (task.IsCanceled || task.IsFaulted)
             {
+                Debug.LogError("[StartApp] Error obteniendo datos de usuario: " + task.Exception?.Message);
+                auth.SignOut();
+                PlayerPrefs.DeleteAll();
+                PlayerPrefs.Save();
+                SceneManager.LoadScene("Start");
                 return;
             }
 
@@ -324,6 +335,11 @@ public class StartAppManager : MonoBehaviour
 
             if (!snapshot.Exists)
             {
+                Debug.LogWarning("[StartApp] Documento de usuario no existe en Firestore. Limpiando sesión.");
+                auth.SignOut();
+                PlayerPrefs.DeleteAll();
+                PlayerPrefs.Save();
+                SceneManager.LoadScene("Start");
                 return;
             }
 

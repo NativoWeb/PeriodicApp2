@@ -1,4 +1,5 @@
 using System.Text;
+using System.IO;
 using UnityEngine;
 using System.Threading.Tasks;
 using UnityEngine.Networking;
@@ -7,17 +8,47 @@ using PeriodicApp.Core.Domain.Interfaces;
 public class EmailSenderBrevoService : IEmailSender
 {
     private const string urlBrevo = "https://api.brevo.com/v3/smtp/email";
+    private static string _cachedApiKey;
+
+    [System.Serializable]
+    private class SecretsData
+    {
+        public string BREVO_API_KEY;
+    }
 
     private string ObtenerApiKey()
     {
-        string key = PlayerPrefs.GetString("BREVO_API_KEY", "");
+        if (!string.IsNullOrEmpty(_cachedApiKey)) return _cachedApiKey;
 
-        if (string.IsNullOrEmpty(key))
+        string path = Path.Combine(Application.streamingAssetsPath, "secrets.json");
+
+        try
         {
-            Debug.LogError("BREVO_API_KEY no está configurada. Usa el script ConfigurarBrevo para configurarla.");
+            string json;
+            if (path.Contains("://") || path.Contains("jar:"))
+            {
+                // Android: usar UnityWebRequest sincrónicamente no es posible,
+                // cargar desde Resources como fallback
+                var request = UnityWebRequest.Get(path);
+                request.SendWebRequest();
+                while (!request.isDone) { }
+                json = request.downloadHandler.text;
+            }
+            else
+            {
+                json = File.ReadAllText(path);
+            }
+
+            var secrets = JsonUtility.FromJson<SecretsData>(json);
+            _cachedApiKey = secrets.BREVO_API_KEY;
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[Brevo] Error leyendo secrets.json: {e.Message}");
+            return "";
         }
 
-        return key;
+        return _cachedApiKey;
     }
 
     public async Task<bool> EnviarCorreoAsync(string destinatario, string asunto, string contenidoHtml)
