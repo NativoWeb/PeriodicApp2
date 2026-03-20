@@ -75,18 +75,16 @@ namespace QuantumAI.UI
 
             canvasRect = GetComponent<RectTransform>();
 
-            // Asegurar que tenga un Canvas configurado correctamente
-            canvas = GetComponentInParent<Canvas>();
+            // Usar SOLO el Canvas propio del toast (nunca el canvas padre)
+            canvas = GetComponent<Canvas>();
             if (canvas == null)
             {
-                canvas = GetComponent<Canvas>();
+                canvas = gameObject.AddComponent<Canvas>();
+                gameObject.AddComponent<UnityEngine.UI.GraphicRaycaster>();
             }
 
-            if (canvas != null)
-            {
-                canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-                canvas.sortingOrder = 9999; // Por encima de todo
-            }
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            canvas.sortingOrder = 9999; // Por encima de todo, sin afectar el canvas padre
 
             Debug.Log("🔔 [QuantumToastNotification] Sistema persistente inicializado");
         }
