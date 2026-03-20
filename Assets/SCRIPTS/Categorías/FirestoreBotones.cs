@@ -63,6 +63,7 @@ public class FirestoreBotones : MonoBehaviour
         }
 
         appIdioma = PlayerPrefs.GetString("appIdioma", "");
+        if (SliderProgreso != null) { SliderProgreso.minValue = 0f; SliderProgreso.maxValue = 1f; SliderProgreso.value = 0f; }
         CargarCategorias();
         botonSeleccionado.onClick.AddListener(OnClickContinuar);
     }
@@ -276,37 +277,40 @@ public class FirestoreBotones : MonoBehaviour
 
     public void ObtenerProgresoCategoria(string categoriaTitulo, System.Action<float> callback)
     {
+        if (appIdioma == "ingles")
+            categoriaTitulo = devolverCatTrad(categoriaTitulo);
+
         string rutaMisiones = Path.Combine(Application.persistentDataPath, "Json_Misiones.json");
 
+        // 1. Intentar desde persistentDataPath
         if (File.Exists(rutaMisiones))
         {
-            if(appIdioma == "ingles")
-                categoriaTitulo = devolverCatTrad(categoriaTitulo);
-
             string jsonText = File.ReadAllText(rutaMisiones);
             float progreso = ProcesarProgresoDesdeJSON(jsonText, categoriaTitulo);
             callback(progreso);
+            return;
         }
-        else
+
+        // 2. Intentar desde PlayerPrefs (clave correcta del JSON de misiones)
+        string jsonPrefs = PlayerPrefs.GetString("misionesCategoriasJSON", "");
+        if (!string.IsNullOrEmpty(jsonPrefs) && jsonPrefs != "{}")
         {
-            Debug.LogWarning("⚠️ Json_Misiones.json no encontrado. Buscando en PlayerPrefs...");
-
-            string jsonTextPlayerPrefs = PlayerPrefs.GetString("categorias_encuesta_firebase_json", "");
-
-            if (!string.IsNullOrEmpty(jsonTextPlayerPrefs) && jsonTextPlayerPrefs != "{}")
-            {
-                if (appIdioma == "ingles")
-                    categoriaTitulo = devolverCatTrad(categoriaTitulo);
-
-                float progreso = ProcesarProgresoDesdeJSON(jsonTextPlayerPrefs, categoriaTitulo);
-                callback(progreso);
-            }
-            else
-            {
-                Debug.LogWarning("⚠️ No se encontró información válida en PlayerPrefs.");
-                callback(0f); // O cualquier valor predeterminado
-            }
+            float progreso = ProcesarProgresoDesdeJSON(jsonPrefs, categoriaTitulo);
+            callback(progreso);
+            return;
         }
+
+        // 3. Fallback: cargar desde Resources (plantilla sin misiones completadas)
+        TextAsset asset = Resources.Load<TextAsset>("Plantillas_Json/Json_Misiones");
+        if (asset != null)
+        {
+            float progreso = ProcesarProgresoDesdeJSON(asset.text, categoriaTitulo);
+            callback(progreso);
+            return;
+        }
+
+        Debug.LogWarning("⚠️ No se encontró Json_Misiones en ninguna fuente.");
+        callback(0f);
     }
 
     private float ProcesarProgresoDesdeJSON(string jsonText, string categoriaTitulo)

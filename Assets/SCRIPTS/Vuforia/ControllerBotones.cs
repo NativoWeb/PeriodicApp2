@@ -58,6 +58,8 @@ public class ControllerBotones : MonoBehaviour
             PanelRegresarUI.SetActive(true);
             PanelBotonUI.SetActive(false);
             botonCompletarMision.interactable = false;
+            Regresar.onClick.RemoveAllListeners();
+            Regresar.onClick.AddListener(RegresarAMisionesDesdeAR);
         }
         else if (ruta == "Profesor")
         {
@@ -67,6 +69,21 @@ public class ControllerBotones : MonoBehaviour
             botonCompletarMision.interactable = false;
         }
     }
+    void RegresarAMisionesDesdeAR()
+    {
+        string elemento = PlayerPrefs.GetString("ElementoSeleccionado", "");
+        string categoria = PlayerPrefs.GetString("CategoriaSeleccionada", "");
+        PlayerPrefs.SetString("PanelDestino", "PanelMisiones");
+        PlayerPrefs.SetString("VolverAElemento", elemento);
+        PlayerPrefs.SetString("VolverACategoria", categoria);
+        PlayerPrefs.Save();
+
+        if (SceneTransition.Instance != null)
+            SceneTransition.Instance.LoadScene("Categorías");
+        else
+            SceneManager.LoadScene("Categorías");
+    }
+
     void CargarVuforiaProfesor()
     {
         if (SceneTransition.Instance != null)

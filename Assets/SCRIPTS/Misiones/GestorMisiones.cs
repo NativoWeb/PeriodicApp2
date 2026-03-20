@@ -536,10 +536,7 @@ public class GestorMisiones : MonoBehaviour
         PlayerPrefs.SetString("ElementoSeleccionado", elemento);
         PlayerPrefs.SetString("SimboloElemento", txtSimbolo.text);
         PlayerPrefs.SetInt("MisionActual", idMision);
-        if (idMision == 1)
-        {
-            PlayerPrefs.SetString("CargarVuforia", "Misiones");
-        }
+        PlayerPrefs.SetString("CargarVuforia", "Misiones");
         PlayerPrefs.Save();
 
         // 🤖 Notificar a Quantum AI que la misión está iniciando

@@ -473,40 +473,17 @@ public class GestorElementos : MonoBehaviour
         {
             var elementoNode = elementosNode[elemento];
 
-            if (elementoNode.HasKey("Misiones"))
+            // El JSON usa "misiones" (minúscula) como array
+            if (elementoNode.HasKey("misiones"))
             {
-                var misionesElemento = elementoNode["Misiones"];
-                foreach (var misionKey in misionesElemento.Keys)
+                var misionesArray = elementoNode["misiones"].AsArray;
+                foreach (JSONNode mision in misionesArray)
                 {
-                    var mision = misionesElemento[misionKey];
+                    // Ignorar misiones de tipo "Evaluacion" (opcionales)
+                    if (mision["tipo"] == "Evaluacion") continue;
                     totalMisiones++;
-                    if (mision.HasKey("completada") && mision["completada"].AsBool)
-                    {
+                    if (mision["completada"].AsBool)
                         misionesCompletadas++;
-                    }
-                }
-            }
-
-            // 🔍 Extraer título de la misión final si existe
-            if (elementoNode.HasKey("Mision Final") &&
-                elementoNode["Mision Final"].HasKey("MisionFinal") &&
-                elementoNode["Mision Final"]["MisionFinal"].HasKey("titulo"))
-            {
-                string tituloMisionFinal = elementoNode["Mision Final"]["MisionFinal"]["titulo"];
-                Descripcion.text = tituloMisionFinal;
-                Description.text = tituloMisionFinal;
-                Debug.Log($"🧪 Misión Final del elemento '{elemento}': {tituloMisionFinal}");
-            }
-
-            // Verificar si misión final está completada
-            if (elementoNode.HasKey("Mision Final") &&
-                elementoNode["Mision Final"].HasKey("MisionFinal"))
-            {
-                var misionFinal = elementoNode["Mision Final"]["MisionFinal"];
-                totalMisiones++;
-                if (misionFinal.HasKey("completada") && misionFinal["completada"].AsBool)
-                {
-                    misionesCompletadas++;
                 }
             }
         }
