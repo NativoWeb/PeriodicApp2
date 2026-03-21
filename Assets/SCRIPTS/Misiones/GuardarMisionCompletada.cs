@@ -54,7 +54,11 @@ public class GuardarMisionCompletada : MonoBehaviour
         }
         else
         {
-            Destroy(gameObject);
+            // Destruir la instancia vieja (que tiene referencias a paneles de escenas anteriores)
+            // y usar esta nueva instancia que tiene referencias válidas de la escena actual
+            Destroy(instancia.gameObject);
+            instancia = this;
+            DontDestroyOnLoad(gameObject);
         }
     }
 
@@ -284,6 +288,17 @@ public class GuardarMisionCompletada : MonoBehaviour
 
     private void DevolverAPantallaAnterior()
     {
+        // Guardar destino para que Categorías abra directamente el panel de misiones del elemento
+        string elementoActual = PlayerPrefs.GetString("ElementoSeleccionado", "");
+        string categoriaActual = PlayerPrefs.GetString("CategoriaSeleccionada", "");
+        if (!string.IsNullOrEmpty(elementoActual))
+        {
+            PlayerPrefs.SetString("PanelDestino", "PanelMisiones");
+            PlayerPrefs.SetString("VolverAElemento", elementoActual);
+            PlayerPrefs.SetString("VolverACategoria", categoriaActual);
+            PlayerPrefs.Save();
+        }
+
         // Asegurar que el tiempo está normal
         Time.timeScale = 1f;
 
