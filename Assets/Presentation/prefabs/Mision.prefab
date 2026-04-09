@@ -11,7 +11,6 @@ GameObject:
   - component: {fileID: 336059888402159349}
   - component: {fileID: 3885586302508927709}
   - component: {fileID: 192725851870928378}
-  - component: {fileID: 5714032405460040927}
   m_Layer: 5
   m_Name: TextoComenzar
   m_TagString: Untagged
@@ -137,19 +136,6 @@ MonoBehaviour:
   m_hasFontAssetChanged: 0
   m_baseMaterial: {fileID: 0}
   m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
---- !u!114 &5714032405460040927
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 582165810018502528}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 85c1164fcc3574741acc7d845736f5b0, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  localizationKey: MISION_COMENZAR_TEXTOCOMENZAR
 --- !u!1 &1029877034720595809
 GameObject:
   m_ObjectHideFlags: 0
@@ -162,6 +148,7 @@ GameObject:
   - component: {fileID: 4514566848006838163}
   - component: {fileID: 7918951312976747474}
   - component: {fileID: 5372089567939049330}
+  - component: {fileID: 6235378181258901029}
   m_Layer: 5
   m_Name: Mision
   m_TagString: Untagged
@@ -248,6 +235,50 @@ MonoBehaviour:
   misioncompletada: {fileID: 8383967895492341613}
   logoImage: {fileID: 960040827688967918}
   botonMision: {fileID: 5688348884044908335}
+--- !u!114 &6235378181258901029
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1029877034720595809}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4e29b1a8efbd4b44bb3f3716e73f07ff, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_Navigation:
+    m_Mode: 3
+    m_WrapAround: 0
+    m_SelectOnUp: {fileID: 0}
+    m_SelectOnDown: {fileID: 0}
+    m_SelectOnLeft: {fileID: 0}
+    m_SelectOnRight: {fileID: 0}
+  m_Transition: 0
+  m_Colors:
+    m_NormalColor: {r: 1, g: 1, b: 1, a: 1}
+    m_HighlightedColor: {r: 0.9607843, g: 0.9607843, b: 0.9607843, a: 1}
+    m_PressedColor: {r: 0.78431374, g: 0.78431374, b: 0.78431374, a: 1}
+    m_SelectedColor: {r: 0.9607843, g: 0.9607843, b: 0.9607843, a: 1}
+    m_DisabledColor: {r: 0.78431374, g: 0.78431374, b: 0.78431374, a: 0.5019608}
+    m_ColorMultiplier: 1
+    m_FadeDuration: 0.1
+  m_SpriteState:
+    m_HighlightedSprite: {fileID: 0}
+    m_PressedSprite: {fileID: 0}
+    m_SelectedSprite: {fileID: 0}
+    m_DisabledSprite: {fileID: 0}
+  m_AnimationTriggers:
+    m_NormalTrigger: Normal
+    m_HighlightedTrigger: Highlighted
+    m_PressedTrigger: Pressed
+    m_SelectedTrigger: Selected
+    m_DisabledTrigger: Disabled
+  m_Interactable: 1
+  m_TargetGraphic: {fileID: 7918951312976747474}
+  m_OnClick:
+    m_PersistentCalls:
+      m_Calls: []
 --- !u!1 &2130967058704561748
 GameObject:
   m_ObjectHideFlags: 0
@@ -259,7 +290,6 @@ GameObject:
   - component: {fileID: 4863630765633111123}
   - component: {fileID: 2349318956961607989}
   - component: {fileID: 6790935363704955827}
-  - component: {fileID: 7403700473470454755}
   m_Layer: 5
   m_Name: NombreMision
   m_TagString: Untagged
@@ -385,19 +415,6 @@ MonoBehaviour:
   m_hasFontAssetChanged: 0
   m_baseMaterial: {fileID: 0}
   m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
---- !u!114 &7403700473470454755
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2130967058704561748}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 85c1164fcc3574741acc7d845736f5b0, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  localizationKey: MISION_NOMBREMISION
 --- !u!1 &2530408073412311002
 GameObject:
   m_ObjectHideFlags: 0
@@ -409,7 +426,6 @@ GameObject:
   - component: {fileID: 5392301295833051525}
   - component: {fileID: 3590589951121870030}
   - component: {fileID: 750581649100820249}
-  - component: {fileID: 1420128859926788357}
   m_Layer: 5
   m_Name: Descripcion
   m_TagString: Untagged
@@ -535,19 +551,6 @@ MonoBehaviour:
   m_hasFontAssetChanged: 0
   m_baseMaterial: {fileID: 0}
   m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
---- !u!114 &1420128859926788357
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2530408073412311002}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 85c1164fcc3574741acc7d845736f5b0, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  localizationKey: MISION_DESCRIPCION
 --- !u!1 &5586101857063633558
 GameObject:
   m_ObjectHideFlags: 0
@@ -559,7 +562,6 @@ GameObject:
   - component: {fileID: 5368777183844810943}
   - component: {fileID: 4196330239737729277}
   - component: {fileID: 8383967895492341613}
-  - component: {fileID: -7839807298485741339}
   m_Layer: 5
   m_Name: Completada
   m_TagString: Untagged
@@ -685,19 +687,6 @@ MonoBehaviour:
   m_hasFontAssetChanged: 0
   m_baseMaterial: {fileID: 0}
   m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
---- !u!114 &-7839807298485741339
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5586101857063633558}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 85c1164fcc3574741acc7d845736f5b0, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  localizationKey: MISION_COMPLETADA
 --- !u!1 &7667306605930204546
 GameObject:
   m_ObjectHideFlags: 0

@@ -435,6 +435,7 @@ public class GestorElementos : MonoBehaviour
         PlayerPrefs.SetString("ElementoSeleccionado", nombreElemento);
         PlayerPrefs.Save();
 
+        panelMisionesInfo.SetActive(false);
         panelMisionesInfo.SetActive(true);
         PanelElemento.SetActive(false);
         PanelCategorias.SetActive(false);

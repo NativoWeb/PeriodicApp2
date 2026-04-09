@@ -52,6 +52,8 @@ public class ControllerBotones : MonoBehaviour
             PanelRegresarUI.SetActive(true);
             PanelBotonUI.SetActive(false);
             botonCompletarMision.interactable = false;
+            Regresar.onClick.RemoveAllListeners();
+            Regresar.onClick.AddListener(VolverAPantallaAnterior);
         }
         else if (ruta == "Misiones")
         {
@@ -355,7 +357,7 @@ public class ControllerBotones : MonoBehaviour
 
         if (ruta == "Inicio")
         {
-            targetScene = "Perfil_Usuario";
+            targetScene = "Menu";
         }
         else if (ruta == "Misiones")
         {

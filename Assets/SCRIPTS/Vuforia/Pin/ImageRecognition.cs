@@ -24,13 +24,14 @@ public class ImageRecognition : MonoBehaviour
             controlador = FindAnyObjectByType<GuardarMisionCompletada>();
         }
 
-        string elemento = PlayerPrefs.GetString("ElementoSeleccionado", "").Trim().ToLower();
+        string numeroAtomico = PlayerPrefs.GetString("NumeroAtomico", "").Trim();
 
         trackable = GetComponent<ObserverBehaviour>();
 
         ruta = PlayerPrefs.GetString("CargarVuforia", "");
         // Si este ImageTarget no es el elemento de la misión, se desactiva
-        if (trackable.TargetName.Trim().ToLower() != elemento.Trim().ToLower())
+        // Comparamos por número atómico para evitar problemas con acentos o variantes de nombre
+        if (string.IsNullOrEmpty(numeroAtomico) || !trackable.TargetName.Trim().ToLower().StartsWith(numeroAtomico + "_"))
         {
             gameObject.SetActive(false);
         }
@@ -46,11 +47,23 @@ public class ImageRecognition : MonoBehaviour
         if (status.Status == Status.TRACKED && !logroDesbloqueado)
         {
             Debug.Log($"¡Imagen detectada! {trackable.TargetName} desbloqueado.");
-            // Cargar y reproducir audio
-            CargarAudio(trackable.TargetName.Trim().ToLower(), imageTargetPrefab);
+            // Usar ElementoSeleccionado del JSON (normalizado) para evitar discrepancias con el nombre del target Vuforia
+            string audioName = NormalizarNombre(PlayerPrefs.GetString("ElementoSeleccionado", "").Trim());
+            Debug.Log($"🔊 Buscando audio: AudiosPines/{audioName}");
+            CargarAudio(audioName, imageTargetPrefab);
             logroDesbloqueado = true;
             DesbloquearLogro(trackable.TargetName);
         }
+    }
+
+    private string NormalizarNombre(string nombre)
+    {
+        return nombre
+            .Replace("á", "a").Replace("é", "e").Replace("í", "i").Replace("ó", "o").Replace("ú", "u")
+            .Replace("ü", "u").Replace("ñ", "n")
+            .Replace("Á", "A").Replace("É", "E").Replace("Í", "I").Replace("Ó", "O").Replace("Ú", "U")
+            .Replace("Ü", "U").Replace("Ñ", "N")
+            .ToUpper();
     }
 
     void DesbloquearLogro(string elemento)

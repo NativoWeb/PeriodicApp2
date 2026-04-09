@@ -77,6 +77,9 @@ public class GestorInfoElemento : MonoBehaviour
         }
         CargarJSON();
         
+        BtnCategorias.onClick.RemoveAllListeners();
+        BtnCerrar.onClick.RemoveAllListeners();
+        btnMisiones.onClick.RemoveAllListeners();
         BtnCategorias.onClick.AddListener(RegresaraCategorias);
         BtnCerrar.onClick.AddListener(CerrarPanelPropiedad);
         btnMisiones.onClick.AddListener(IrAMisiones);

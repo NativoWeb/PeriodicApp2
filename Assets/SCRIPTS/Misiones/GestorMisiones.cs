@@ -518,10 +518,12 @@ public class GestorMisiones : MonoBehaviour
         UI_Mision uiMision = nuevaMision.GetComponent<UI_Mision>();
         uiMision.ConfigurarMision(mision);
 
-        Button botonMision = nuevaMision.GetComponentInChildren<Button>();
-
-        // Asignar evento para cambiar de escena
-        botonMision.onClick.AddListener(() => CargarEscenaMision(mision.rutaEscena, elementoseleccionado, mision.id));
+        // Asignar evento a todos los botones de la tarjeta (root + "Comenzar")
+        Button[] botones = nuevaMision.GetComponentsInChildren<Button>();
+        foreach (Button botonMision in botones)
+        {
+            botonMision.onClick.AddListener(() => CargarEscenaMision(mision.rutaEscena, elementoseleccionado, mision.id));
+        }
     }
 
     void CargarEscenaMision(string nombreEscena, string elemento, int idMision)
@@ -534,7 +536,9 @@ public class GestorMisiones : MonoBehaviour
 
         // Guardar el estado de la misión antes de cambiar de escena
         PlayerPrefs.SetString("ElementoSeleccionado", elemento);
+        PlayerPrefs.SetString("CategoriaSeleccionada", categoriaSeleccionada);
         PlayerPrefs.SetString("SimboloElemento", txtSimbolo.text);
+        PlayerPrefs.SetString("NumeroAtomico", txtNumeroAtomico.text);
         PlayerPrefs.SetInt("MisionActual", idMision);
         PlayerPrefs.SetString("CargarVuforia", "Misiones");
         PlayerPrefs.Save();
