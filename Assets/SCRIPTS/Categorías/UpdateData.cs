@@ -83,9 +83,11 @@ public class UpdateData : MonoBehaviour
         PlayerPrefs.SetString("UserID", userId); // ¡IMPORTANTE! Guardar el UserID en PlayerPrefs
         Debug.Log($"Usuario autenticado: {userId}. Guardando en PlayerPrefs.");
 
-        // *** LLAMADA EN EL LUGAR CORRECTO ***
         // Primero, descargamos los datos del usuario para tener la información más reciente.
         await GetUserData(userId);
+
+        // Subir misiones locales (pueden tener completaciones hechas offline)
+        await SincronizarMisionesPendientes(userId);
 
         // Ahora, con los datos actualizados, podemos sincronizar el resto.
         await SincronizarEncuestasAsignadas(userId);
@@ -193,6 +195,37 @@ public class UpdateData : MonoBehaviour
 
         isSyncing = false;
         Debug.Log($"[Sincronización Firestore] Proceso finalizado. Subidos: {subidosConExito}, Ya existían: {yaExistian}, Fallidos: {fallidos}");
+
+        // Al reconectarse, también sincronizar misiones completadas offline
+        if (auth != null && auth.CurrentUser != null)
+        {
+            await SincronizarMisionesPendientes(auth.CurrentUser.UserId);
+        }
+    }
+
+    private async Task SincronizarMisionesPendientes(string userId)
+    {
+        string filePath = Path.Combine(Application.persistentDataPath, "Json_Misiones.json");
+        if (!File.Exists(filePath)) return;
+
+        try
+        {
+            string jsonMisiones = File.ReadAllText(filePath);
+            if (string.IsNullOrEmpty(jsonMisiones)) return;
+
+            DocumentReference misionesDoc = db.Collection("users").Document(userId).Collection("datos").Document("misiones");
+            Dictionary<string, object> data = new Dictionary<string, object>
+            {
+                { "misiones", jsonMisiones },
+                { "timestamp", FieldValue.ServerTimestamp }
+            };
+            await misionesDoc.SetAsync(data, SetOptions.MergeAll);
+            Debug.Log("[UpdateData] Misiones locales sincronizadas con Firebase.");
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning("[UpdateData] No se pudieron sincronizar misiones con Firebase: " + ex.Message);
+        }
     }
 
     private async Task ActualizarEstadoEncuestaEnFirebase(string userId, string encuesta, bool estadoencuesta)

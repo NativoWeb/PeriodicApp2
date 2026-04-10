@@ -98,10 +98,10 @@ public class StartAppManager : MonoBehaviour
         
         // ---------------------------------------------- VALIDACIONES --------------------------------------------------------------------------
 
-        if (estadoUsuario == "nube") 
+        if (estadoUsuario == "nube")
         {
-            AutoLogin();
-
+            // Offline: usar datos guardados localmente, NO intentar Firebase auth (requiere internet y borra sesión si falla)
+            NavegueConDatosLocales();
         }
         else if (estadoUsuario == "local")
         {
@@ -146,6 +146,37 @@ public class StartAppManager : MonoBehaviour
             IsReady = true; // 🔹 Marcamos como listo también en modo offline
     }
 
+
+    // Navega usando datos guardados en PlayerPrefs (para usuarios "nube" sin internet)
+    void NavegueConDatosLocales()
+    {
+        string ocupacion = PlayerPrefs.GetString("TempOcupacion", "").Trim();
+        bool estadoAprendizaje = PlayerPrefs.GetInt("EstadoEncuestaAprendizaje", 0) == 1;
+        bool estadoConocimiento = PlayerPrefs.GetInt("EstadoEncuestaConocimiento", 0) == 1;
+
+        Debug.Log($"[StartApp] Offline con sesión guardada. Ocupacion={ocupacion}, Aprendizaje={estadoAprendizaje}, Conocimiento={estadoConocimiento}");
+
+        if (ocupacion == "Profesor")
+        {
+            SceneManager.LoadScene("InicioProfesor1");
+        }
+        else if (ocupacion == "Estudiante")
+        {
+            if (estadoAprendizaje && estadoConocimiento)
+            {
+                SceneManager.LoadScene("Inicio");
+            }
+            else
+            {
+                SceneManager.LoadScene("SeleccionarEncuesta");
+            }
+        }
+        else
+        {
+            // Sin datos de ocupación guardados localmente (nunca se logueó con internet antes)
+            LoadSceneIfNotAlready("Login");
+        }
+    }
 
     // 🔹 Modo online
     void HandleOnlineMode()
@@ -281,9 +312,21 @@ public class StartAppManager : MonoBehaviour
     {
         Debug.Log("Verificando misiones...");
 
-        DocumentReference userDoc = db.Collection("users").Document(userId);
+        // Si ya existe un archivo local (puede tener completaciones offline),
+        // subir el local a Firebase y usarlo directamente. No sobreescribir con Firebase.
+        string filePath = System.IO.Path.Combine(Application.persistentDataPath, "Json_Misiones.json");
+        if (System.IO.File.Exists(filePath))
+        {
+            Debug.Log("[StartApp] Archivo local Json_Misiones.json encontrado. Subiendo a Firebase y usando datos locales.");
+            _ = SubirMisionesLocalesAFirebase(userId, filePath);
+            CheckUserStatus(userId);
+            return;
+        }
 
-        userDoc.GetSnapshotAsync().ContinueWithOnMainThread(task =>
+        // No hay archivo local — descargar desde Firebase
+        DocumentReference misionesDoc = db.Collection("users").Document(userId).Collection("datos").Document("misiones");
+
+        misionesDoc.GetSnapshotAsync().ContinueWithOnMainThread(task =>
         {
             if (task.IsFaulted || task.IsCanceled)
             {
@@ -296,22 +339,55 @@ public class StartAppManager : MonoBehaviour
 
             if (!snapshot.Exists || !snapshot.ContainsField("misiones"))
             {
-                Debug.Log("No hay campo 'misiones', saltando a CheckUserStatus");
+                Debug.Log("[StartApp] No hay misiones guardadas en Firebase, usando datos locales.");
                 CheckUserStatus(userId);
                 return;
             }
 
             string misionesJson = snapshot.GetValue<string>("misiones");
-            Debug.Log("Misiones obtenidas");
+            Debug.Log("[StartApp] Misiones descargadas de Firebase.");
 
             if (!string.IsNullOrEmpty(misionesJson))
             {
-                PlayerPrefs.SetString("misionesJSON", misionesJson);
+                // Guardar en el archivo que usa GestorMisiones y GuardarMisionCompletada
+                try
+                {
+                    System.IO.File.WriteAllText(filePath, misionesJson);
+                    Debug.Log("[StartApp] Json_Misiones.json restaurado desde Firebase.");
+                }
+                catch (System.Exception e)
+                {
+                    Debug.LogWarning("[StartApp] No se pudo escribir Json_Misiones.json: " + e.Message);
+                }
+                // Clave correcta usada por todo el sistema
+                PlayerPrefs.SetString("misionesCategoriasJSON", misionesJson);
                 PlayerPrefs.Save();
             }
 
             CheckUserStatus(userId);
         });
+    }
+
+    private async System.Threading.Tasks.Task SubirMisionesLocalesAFirebase(string userId, string filePath)
+    {
+        try
+        {
+            string jsonMisiones = System.IO.File.ReadAllText(filePath);
+            if (string.IsNullOrEmpty(jsonMisiones)) return;
+
+            DocumentReference misionesDoc = db.Collection("users").Document(userId).Collection("datos").Document("misiones");
+            var data = new System.Collections.Generic.Dictionary<string, object>
+            {
+                { "misiones", jsonMisiones },
+                { "timestamp", FieldValue.ServerTimestamp }
+            };
+            await misionesDoc.SetAsync(data, SetOptions.MergeAll);
+            Debug.Log("[StartApp] Misiones locales subidas a Firebase correctamente.");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning("[StartApp] No se pudieron subir misiones locales a Firebase: " + e.Message);
+        }
     }
 
 
@@ -345,10 +421,15 @@ public class StartAppManager : MonoBehaviour
 
             string ocupacion = snapshot.GetValue<string>("Ocupacion");
 
-
             bool estadoencuestaaprendizaje = snapshot.ContainsField("EstadoEncuestaAprendizaje") ? snapshot.GetValue<bool>("EstadoEncuestaAprendizaje") : false;
 
-            bool estadoencuestaconocimiento = snapshot.ContainsField("EstadoEncuestaConocimiento") ? snapshot.GetValue<bool>("EstadoEncuestaConocimiento") : false;  // Valor por defecto si el campo no existe
+            bool estadoencuestaconocimiento = snapshot.ContainsField("EstadoEncuestaConocimiento") ? snapshot.GetValue<bool>("EstadoEncuestaConocimiento") : false;
+
+            // Guardar en PlayerPrefs para poder navegar offline en sesiones futuras sin internet
+            PlayerPrefs.SetString("TempOcupacion", ocupacion);
+            PlayerPrefs.SetInt("EstadoEncuestaAprendizaje", estadoencuestaaprendizaje ? 1 : 0);
+            PlayerPrefs.SetInt("EstadoEncuestaConocimiento", estadoencuestaconocimiento ? 1 : 0);
+            PlayerPrefs.Save();
 
             if (ocupacion == "Profesor")
             {

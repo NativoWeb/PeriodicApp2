@@ -501,20 +501,17 @@ public class GuardarMisionCompletada : MonoBehaviour
                 {
                     Debug.Log($"⚠️ [ActualizarMisionEnJSON] La misión {idMision} ya estaba completada.");
 
-                    // IMPORTANTE: Aunque ya esté completada, verificar si se debe desbloquear el logro
                     Debug.Log($"🔍 [ActualizarMisionEnJSON] ¿Es última misión? {esUltimaMisionPendiente}");
 
                     if (esUltimaMisionPendiente)
                     {
                         Debug.Log($"🏆 [GuardarMisionCompletada] ¡Todas las misiones completadas! Desbloqueando logro del elemento '{elemento}'");
-                        await ProcesarXP(15); // XP por desbloquear el logro
-                        await GuardarLogroElemento(categoriaSeleccionada, elemento);
-                        Debug.Log($"💾 [GuardarMisionCompletada] Logro guardado en el archivo JSON");
+                        _ = ProcesarXP(15);
+                        _ = GuardarLogroElemento(categoriaSeleccionada, elemento);
                     }
                     else
                     {
-                        Debug.Log($"💰 [ActualizarMisionEnJSON] Dando XP de bonificación (3 XP)");
-                        await ProcesarXP(3);
+                        _ = ProcesarXP(3);
                     }
 
                     return;
@@ -528,9 +525,13 @@ public class GuardarMisionCompletada : MonoBehaviour
                     cambioRealizado = true;
                     Debug.Log($"✅ [ActualizarMisionEnJSON] Misión {idMision} marcada como completada");
 
-                    // Sumamos el xp que ganó del quiz
+                    // Guardar localmente primero (instantáneo) para no bloquear la navegación
+                    Debug.Log($"💾 [ActualizarMisionEnJSON] Guardando Json_Misiones.json localmente...");
+                    GuardarJsonActualizado(filePath, json.ToString());
+
+                    // Sincronizar con Firebase en background (sin bloquear)
                     int xp = PlayerPrefs.GetInt("xp_mision", 0);
-                    await ProcesarXP(xp);
+                    _ = ProcesarXP(xp);
 
                     // 🤖 Notificar a Quantum AI que la misión se completó con éxito
                     if (QuantumAICore.Instance != null)
@@ -538,24 +539,20 @@ public class GuardarMisionCompletada : MonoBehaviour
                         QuantumAICore.Instance.NotifyMissionCompleted(elemento, idMision, true);
                     }
 
-                    // Si es la última pendiente, gestionar logro de elemento
                     Debug.Log($"🔍 [ActualizarMisionEnJSON] ¿Es última misión? {esUltimaMisionPendiente}");
 
                     if (esUltimaMisionPendiente)
                     {
                         Debug.Log($"🏆 [GuardarMisionCompletada] ¡Todas las misiones completadas! Desbloqueando logro del elemento '{elemento}'");
-                        await ProcesarXP(15);
+                        _ = ProcesarXP(15);
 
-                        // 🤖 Notificar a Quantum AI sobre el logro desbloqueado
                         if (QuantumAICore.Instance != null)
                         {
                             QuantumAICore.Instance.NotifyAchievementUnlocked($"Elemento {elemento} dominado", 15);
                         }
 
-                        // IMPORTANTE: Los logros están en un archivo SEPARADO
-                        await GuardarLogroElemento(categoriaSeleccionada, elemento);
-
-                        Debug.Log($"💾 [GuardarMisionCompletada] Logro guardado en el archivo JSON");
+                        _ = GuardarLogroElemento(categoriaSeleccionada, elemento);
+                        Debug.Log($"💾 [GuardarMisionCompletada] Logro en proceso de guardado en Firebase");
                     }
                     else
                     {
@@ -567,22 +564,14 @@ public class GuardarMisionCompletada : MonoBehaviour
                     // El jugador perdió, no marcamos la misión
                     Debug.LogWarning($"⚠️ [ActualizarMisionEnJSON] El jugador NO ganó el quiz. No se marca la misión.");
 
-                    // 🤖 Notificar a Quantum AI que la misión falló
                     if (QuantumAICore.Instance != null)
                     {
                         QuantumAICore.Instance.NotifyMissionCompleted(elemento, idMision, false);
                     }
 
                     int xpConsolacion = PlayerPrefs.GetInt("xp_mision", 0);
-                    await ProcesarXP(xpConsolacion);
+                    _ = ProcesarXP(xpConsolacion);
                     return;
-                }
-
-                if (cambioRealizado)
-                {
-                    // Guardar cambios físico y en PlayerPrefs
-                    Debug.Log($"💾 [ActualizarMisionEnJSON] Guardando Json_Misiones.json...");
-                    GuardarJsonActualizado(filePath, json.ToString());
                 }
 
                 return;
@@ -829,7 +818,7 @@ public class GuardarMisionCompletada : MonoBehaviour
         }
 
         string jsonMisiones = "";
-        string filePath = Path.Combine(Application.persistentDataPath, "Json_misiones.json");
+        string filePath = Path.Combine(Application.persistentDataPath, "Json_Misiones.json");
 
         // Primero intentar leer el archivo JSON del almacenamiento del dispositivo
         if (File.Exists(filePath))
