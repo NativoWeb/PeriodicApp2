@@ -65,13 +65,22 @@ public class GestorMisiones : MonoBehaviour
         btnInformacion.onClick.AddListener(IrAIformacion);
         BtnCategorias.onClick.AddListener(RegresaraCategorias);
 
-        // Obtener o añadir CanvasGroup al contenedor de misiones
         if (contenedorMisiones != null)
         {
             contenedorCanvasGroup = contenedorMisiones.GetComponent<CanvasGroup>();
             if (contenedorCanvasGroup == null)
-            {
                 contenedorCanvasGroup = contenedorMisiones.gameObject.AddComponent<CanvasGroup>();
+
+            if (contenedorMisiones.GetComponent<ResponsiveMissionLayout>() == null)
+                contenedorMisiones.gameObject.AddComponent<ResponsiveMissionLayout>();
+
+            var rect = contenedorMisiones.GetComponent<RectTransform>();
+            if (rect != null)
+            {
+                rect.anchorMin = new Vector2(0f, rect.anchorMin.y);
+                rect.anchorMax = new Vector2(1f, rect.anchorMax.y);
+                rect.offsetMin = new Vector2(0f, rect.offsetMin.y);
+                rect.offsetMax = new Vector2(0f, rect.offsetMax.y);
             }
         }
     }
@@ -356,7 +365,7 @@ public class GestorMisiones : MonoBehaviour
         // Ocultar el contenedor con fade para evitar destello visual
         if (contenedorCanvasGroup != null)
         {
-            contenedorCanvasGroup.alpha = 0f;
+            contenedorCanvasGroup.alpha = 1f;
         }
 
         LimpiarMisiones(); // Limpia el contenido previo
@@ -456,20 +465,6 @@ public class GestorMisiones : MonoBehaviour
             }
         }
 
-        // Hacer fade-in suave del contenedor después de cargar todas las misiones
-        StartCoroutine(FadeInContenedor());
-    }
-
-    IEnumerator FadeInContenedor()
-    {
-        // Esperar un frame para que todo se inicialice
-        yield return new WaitForEndOfFrame();
-
-        if (contenedorCanvasGroup != null)
-        {
-            // Fade in suave usando DOTween
-            contenedorCanvasGroup.DOFade(1f, 0.3f).SetEase(Ease.OutQuad);
-        }
     }
 
     public string devolverCatTrad(string categoriaSeleccionada)
@@ -518,7 +513,9 @@ public class GestorMisiones : MonoBehaviour
         UI_Mision uiMision = nuevaMision.GetComponent<UI_Mision>();
         uiMision.ConfigurarMision(mision);
 
-        // Asignar evento a todos los botones de la tarjeta (root + "Comenzar")
+        int index = contenedorMisiones.childCount - 1;
+        ListItemAnimator.AnimateIn(nuevaMision, index);
+
         Button[] botones = nuevaMision.GetComponentsInChildren<Button>();
         foreach (Button botonMision in botones)
         {

@@ -157,7 +157,13 @@ namespace QuantumAI.Core
             studentContext.rachaActual = PlayerPrefs.GetInt("rachaActual", 0);
             studentContext.ocupacion = PlayerPrefs.GetString("TempOcupacion", "Estudiante");
 
-            // Intentar cargar fecha de último login
+            string learningStyle = PlayerPrefs.GetString("LearningStyleMapped", "");
+            if (!string.IsNullOrEmpty(learningStyle))
+            {
+                if (Enum.TryParse<LearningStyle>(learningStyle, out var parsed))
+                    studentContext.estiloAprendizaje = parsed;
+            }
+
             string fechaStr = PlayerPrefs.GetString("ultimaFecha", "");
             if (!string.IsNullOrEmpty(fechaStr) && DateTime.TryParse(fechaStr, out DateTime fecha))
             {

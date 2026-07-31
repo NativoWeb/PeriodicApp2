@@ -42,7 +42,6 @@ public class EncuestaConocimientoController : MonoBehaviour
     private bool preguntaRespondidaFirebase = false;
     private int racha = 0;
 
-    // Estadísticas
     private int correctasAlcalinos = 0;
     private int correctasMetalesAlcalinoterreos = 0;
     private int correctasTransicion = 0;
@@ -58,7 +57,6 @@ public class EncuestaConocimientoController : MonoBehaviour
     private int cantidadPreguntasRespondidas = 0;
     private List<Categoria> categorias;
     private IServicioLocalStorage localStorage;
-
 
     private SubirDatosJSON subirDatosJSONUseCase;
 
@@ -85,15 +83,13 @@ public class EncuestaConocimientoController : MonoBehaviour
     public class CategoriasData
     {
         public List<Categoria> categorias;
-
     }
 
     private async void Start()
     {
-        // Verificar ServiceLocator
         if (!ServiceLocator.AreServicesInitialized())
         {
-            ServiceLocator.Logger.LogError("ServiceLocator no está inicializado");
+            ServiceLocator.Logger.LogError("ServiceLocator no esta inicializado");
             return;
         }
         panelFeedback.SetActive(false);
@@ -117,7 +113,6 @@ public class EncuestaConocimientoController : MonoBehaviour
         preguntasFirebase = await obtenerPreguntasUseCase.EjecutarAsync();
         indiceActualFirebase = 0;
 
-        // âââ Inicializar Slider de progreso en 0 y definir maxValue âââ
         if (sliderProgreso != null && preguntasFirebase.Count > 0)
         {
             sliderProgreso.minValue = 0f;
@@ -133,8 +128,6 @@ public class EncuestaConocimientoController : MonoBehaviour
             ServiceLocator.Persistence
         );
 
-        
-
         InicializarCategorias();
         MostrarPreguntaFirebase();
     }
@@ -144,43 +137,43 @@ public class EncuestaConocimientoController : MonoBehaviour
         categorias = new List<Categoria>
         {
             new Categoria("Metales Alcalinos", "Alkali Metals",
-                "¡Explora a los más reactivos de la tabla! Los metales alcalinos son tan activos que necesitan estar bajo aceite para no reaccionar con el aire.",
+                "Explora a los mas reactivos de la tabla! Los metales alcalinos son tan activos que necesitan estar bajo aceite para no reaccionar con el aire.",
                 "Explore the most reactive on the table! Alkali metals are so active they need to be stored under oil."),
 
-            new Categoria("Metales Alcalinotérreos", "Alkaline Earth Metals",
-                "¡Estables pero sorprendentes! Estos metales no son tan impulsivos como los alcalinos.",
+            new Categoria("Metales Alcalinoterreos", "Alkaline Earth Metals",
+                "Estables pero sorprendentes! Estos metales no son tan impulsivos como los alcalinos.",
                 "Stable but surprising! These metals aren't as impulsive as the alkali metals."),
 
-            new Categoria("Metales de Transición", "Transition Metals",
-                "¡Los verdaderos camaleones de la química! Dominan el arte de formar compuestos coloridos.",
+            new Categoria("Metales de Transicion", "Transition Metals",
+                "Los verdaderos camaleones de la quimica! Dominan el arte de formar compuestos coloridos.",
                 "The true chameleons of chemistry! They master the art of forming colorful compounds."),
 
             new Categoria("Metales postransicionales", "Post-transition Metals",
-                "¡No subestimes a los discretos! Aunque menos conocidos, estos elementos son vitales.",
+                "No subestimes a los discretos! Aunque menos conocidos, estos elementos son vitales.",
                 "Don't underestimate the discreet ones! Although less known, these elements are vital."),
 
             new Categoria("Metaloides", "Metalloids",
-                "¡En el límite entre dos mundos! Los metaloides tienen propiedades tanto de metales como de no metales.",
+                "En el limite entre dos mundos! Los metaloides tienen propiedades tanto de metales como de no metales.",
                 "On the edge between two worlds! Metalloids have properties of both metals and non-metals."),
 
             new Categoria("No Metales", "Nonmetals",
-                "¡Los pilares de la vida y la química orgánica! Desde el oxígeno que respiras hasta el carbono de tu ADN.",
+                "Los pilares de la vida y la quimica organica! Desde el oxigeno que respiras hasta el carbono de tu ADN.",
                 "The pillars of life and organic chemistry! From the oxygen you breathe to the carbon in your DNA."),
 
             new Categoria("Gases Nobles", "Noble Gases",
-                "¡Silenciosos, invisibles e invaluables! Estos elementos no reaccionan fácilmente.",
+                "Silenciosos, invisibles e invaluables! Estos elementos no reaccionan facilmente.",
                 "Silent, invisible, and invaluable! These elements don't react easily."),
 
-            new Categoria("Lantánidos", "Lanthanides",
-                "¡Los metales raros que mueven el mundo moderno! Utilizados en imanes potentes.",
+            new Categoria("Lantanidos", "Lanthanides",
+                "Los metales raros que mueven el mundo moderno! Utilizados en imanes potentes.",
                 "The rare metals that move the modern world! Used in powerful magnets."),
 
             new Categoria("Actinoides", "Actinides",
-                "¡La energía más poderosa de la tabla! Radiactivos, misteriosos y con potencial.",
+                "La energia mas poderosa de la tabla! Radiactivos, misteriosos y con potencial.",
                 "The most powerful energy on the table! Radioactive, mysterious, and with potential."),
 
             new Categoria("Propiedades desconocidas", "Unknown Properties",
-                "¡Bienvenido al territorio inexplorado! Estos elementos están en los límites de lo conocido.",
+                "Bienvenido al territorio inexplorado! Estos elementos estan en los limites de lo conocido.",
                 "Welcome to unexplored territory! These elements are at the limits of what is known.")
         };
     }
@@ -201,7 +194,6 @@ public class EncuestaConocimientoController : MonoBehaviour
 
     private void MostrarPreguntaFirebase()
     {
-        // âââ Actualizar Slider antes de mostrar la pregunta âââ
         if (sliderProgreso != null && preguntasFirebase.Count > 0)
         {
             sliderProgreso.value = Mathf.Clamp(indiceActualFirebase, 0, preguntasFirebase.Count);
@@ -216,11 +208,16 @@ public class EncuestaConocimientoController : MonoBehaviour
         var pregunta = preguntasFirebase[indiceActualFirebase];
         textoPreguntaUI.text = pregunta.Texto;
 
+        var canvasGroupPregunta = textoPreguntaUI.GetComponent<CanvasGroup>();
+        if (canvasGroupPregunta == null)
+            canvasGroupPregunta = textoPreguntaUI.gameObject.AddComponent<CanvasGroup>();
+        canvasGroupPregunta.alpha = 0f;
+        StartCoroutine(FadeCanvasGroup(canvasGroupPregunta, 1f, 0.2f));
+
         var opcionesAleatorias = AleatorizarOpcionesFirebase(pregunta.Opciones, pregunta.IndiceCorrecto);
         var respuestaCorrecta = pregunta.Opciones[pregunta.IndiceCorrecto];
         pregunta.IndiceCorrecto = opcionesAleatorias.IndexOf(respuestaCorrecta);
 
-        // Configurar toggles y listeners
         for (int i = 0; i < opcionesToggleUI.Length; i++)
         {
             opcionesToggleUI[i].onValueChanged.RemoveAllListeners();
@@ -232,6 +229,12 @@ public class EncuestaConocimientoController : MonoBehaviour
                 opcionesToggleUI[i].isOn = false;
                 opcionesToggleUI[i].image.color = colorNormal;
                 opcionesToggleUI[i].interactable = true;
+
+                var toggleCg = opcionesToggleUI[i].GetComponent<CanvasGroup>();
+                if (toggleCg == null)
+                    toggleCg = opcionesToggleUI[i].gameObject.AddComponent<CanvasGroup>();
+                toggleCg.alpha = 0f;
+                StartCoroutine(FadeCanvasGroup(toggleCg, 1f, 0.2f, 0.05f * i));
 
                 int index = i;
                 opcionesToggleUI[i].onValueChanged.AddListener((bool isOn) =>
@@ -288,16 +291,29 @@ public class EncuestaConocimientoController : MonoBehaviour
             if (!opcionesToggleUI[i].gameObject.activeSelf) continue;
 
             if (i == preguntasFirebase[indiceActualFirebase].IndiceCorrecto)
+            {
                 opcionesToggleUI[i].image.color = colorCorrecto;
+                if (correcta)
+                    StartCoroutine(PunchScale(opcionesToggleUI[i].transform, 0.1f, 0.3f));
+            }
             else if (opcionesToggleUI[i].isOn)
+            {
                 opcionesToggleUI[i].image.color = colorIncorrecto;
+                StartCoroutine(ShakePosition(opcionesToggleUI[i].transform, 10f, 0.3f));
+            }
             else
+            {
                 opcionesToggleUI[i].image.color = colorNormal;
+            }
         }
 
-        panelFeedback.SetActive(true);
-        textoFeedback.text = correcta ? "Correcto" : "Incorrecto";
         panelFeedback.GetComponent<Image>().color = correcta ? colorFondoCorrecto : colorFondoIncorrecto;
+        textoFeedback.text = correcta ? "Correcto" : "Incorrecto";
+        panelFeedback.SetActive(true);
+        StartCoroutine(FadeCanvasGroupForPanel(panelFeedback, 1f, 0.2f));
+
+        if (racha >= 3)
+            StartCoroutine(PunchScale(txtRacha.transform, 0.2f, 0.3f));
 
         var preguntaActual = preguntasFirebase[indiceActualFirebase];
         dificultadTotalPreguntas += preguntaActual.Dificultad;
@@ -330,17 +346,77 @@ public class EncuestaConocimientoController : MonoBehaviour
 
     private void OcultarFeedbackYContinuarFirebase()
     {
-        panelFeedback.SetActive(false);
-        indiceActualFirebase++;
-        MostrarPreguntaFirebase();
+        StartCoroutine(FadeCanvasGroupForPanel(panelFeedback, 0f, 0.15f, 0f, () =>
+        {
+            panelFeedback.SetActive(false);
+            indiceActualFirebase++;
+            MostrarPreguntaFirebase();
+        }));
     }
+
+    #region Animaciones con Coroutines
+
+    private IEnumerator FadeCanvasGroup(CanvasGroup cg, float target, float duration, float delay = 0f)
+    {
+        if (delay > 0f) yield return new WaitForSeconds(delay);
+        float start = cg.alpha;
+        float elapsed = 0f;
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            cg.alpha = Mathf.Lerp(start, target, elapsed / duration);
+            yield return null;
+        }
+        cg.alpha = target;
+    }
+
+    private IEnumerator FadeCanvasGroupForPanel(GameObject panel, float target, float duration, float delay = 0f, Action onComplete = null)
+    {
+        var cg = panel.GetComponent<CanvasGroup>();
+        if (cg == null) cg = panel.AddComponent<CanvasGroup>();
+        yield return FadeCanvasGroup(cg, target, duration, delay);
+        onComplete?.Invoke();
+    }
+
+    private IEnumerator PunchScale(Transform t, float force, float duration)
+    {
+        Vector3 original = t.localScale;
+        float elapsed = 0f;
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float progress = elapsed / duration;
+            float wave = Mathf.Sin(progress * Mathf.PI * 4f) * (1f - progress);
+            t.localScale = original + Vector3.one * wave * force;
+            yield return null;
+        }
+        t.localScale = original;
+    }
+
+    private IEnumerator ShakePosition(Transform t, float force, float duration)
+    {
+        Vector3 original = t.localPosition;
+        float elapsed = 0f;
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float progress = elapsed / duration;
+            float decay = 1f - progress;
+            float offsetX = UnityEngine.Random.Range(-force, force) * decay;
+            t.localPosition = original + new Vector3(offsetX, 0f, 0f);
+            yield return null;
+        }
+        t.localPosition = original;
+    }
+
+    #endregion
 
     private List<string> AleatorizarOpcionesFirebase(List<string> opciones, int indiceCorrecto)
     {
         List<string> opcionesAleatorias = new List<string>(opciones);
         if (indiceCorrecto < 0 || indiceCorrecto >= opcionesAleatorias.Count)
         {
-            ServiceLocator.Logger.LogError("Índice de respuesta correcta fuera de rango: " + indiceCorrecto);
+            ServiceLocator.Logger.LogError("Indice de respuesta correcta fuera de rango: " + indiceCorrecto);
             indiceCorrecto = 0;
         }
         string respuestaCorrecta = opcionesAleatorias[indiceCorrecto];
@@ -366,15 +442,15 @@ public class EncuestaConocimientoController : MonoBehaviour
 
         int totalCorrectas = correctasAlcalinos + correctasMetalesAlcalinoterreos + correctasTransicion +
                            correctasLantanidos + correctasActinoides + correctasMetalesPostransicionales +
-                           correctasMetaloides + correctasNoMetales + correctasGasesNobles + 
+                           correctasMetaloides + correctasNoMetales + correctasGasesNobles +
                            correctasPropiedadesDesconocidas;
-        
+
         int totalRespuestas = totalCorrectas + incorrectasTotales;
         float porcentajeGlobal = (totalRespuestas > 0) ? ((float)totalCorrectas / totalRespuestas) * 100f : 0f;
         float dificultadMedia = (cantidadPreguntasRespondidas > 0) ? (dificultadTotalPreguntas / cantidadPreguntasRespondidas) : 0f;
 
-        ServiceLocator.Logger.Log($"[Estadísticas] Porcentaje global: {porcentajeGlobal:F2}%");
-        ServiceLocator.Logger.Log($"[Estadísticas] Dificultad media: {dificultadMedia:F2}");
+        ServiceLocator.Logger.Log($"[Estadisticas] Porcentaje global: {porcentajeGlobal:F2}%");
+        ServiceLocator.Logger.Log($"[Estadisticas] Dificultad media: {dificultadMedia:F2}");
 
         float[] features = new float[]
         {
@@ -392,7 +468,7 @@ public class EncuestaConocimientoController : MonoBehaviour
         }
         else
         {
-            ServiceLocator.Logger.LogWarning("[Predicción] No se encontró ModeloAI.");
+            ServiceLocator.Logger.LogWarning("[Prediccion] No se encontro ModeloAI.");
         }
 
         GuardarCategoriasOrdenadasLocal();
@@ -420,7 +496,7 @@ public class EncuestaConocimientoController : MonoBehaviour
     {
         if (categorias == null)
         {
-            ServiceLocator.Logger.LogError("[GuardarCategorias] La lista de categorías es null.");
+            ServiceLocator.Logger.LogError("[GuardarCategorias] La lista de categorias es null.");
             return;
         }
 
@@ -434,13 +510,13 @@ public class EncuestaConocimientoController : MonoBehaviour
             {
                 string rutaArchivo = Path.Combine(ServiceLocator.Persistence.GetPersistentDataPath(), "categorias_encuesta_firebase.json");
                 File.WriteAllText(rutaArchivo, json);
-                ServiceLocator.Logger.Log("Categorías ordenadas guardadas en archivo: " + rutaArchivo);
+                ServiceLocator.Logger.Log("Categorias ordenadas guardadas en archivo: " + rutaArchivo);
             }
             else
             {
                 ServiceLocator.PlayerPrefs.SetString("categorias_encuesta_firebase_json", json);
                 ServiceLocator.PlayerPrefs.Save();
-                ServiceLocator.Logger.Log("Categorías ordenadas guardadas en PlayerPrefs.");
+                ServiceLocator.Logger.Log("Categorias ordenadas guardadas en PlayerPrefs.");
             }
 
             StartCoroutine(CopiarJsonAuxiliaresSiEsNecesario());
@@ -481,7 +557,7 @@ public class EncuestaConocimientoController : MonoBehaviour
                 }
                 else
                 {
-                    ServiceLocator.Logger.LogError($"No se encontró {nombreArchivo} en Resources/Plantillas_Json.");
+                    ServiceLocator.Logger.LogError($"No se encontro {nombreArchivo} en Resources/Plantillas_Json.");
                 }
             }
             yield return null;

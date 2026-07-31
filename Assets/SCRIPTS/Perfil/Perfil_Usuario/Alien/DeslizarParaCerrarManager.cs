@@ -1,90 +1,114 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
+using DG.Tweening;
 
 public class DeslizarParaCerrarManager : MonoBehaviour, IPointerDownHandler, IDragHandler, IPointerUpHandler
 {
-    
-    public RectTransform panel;           // El panel que se contrae
-    public float distanciaMinima = 900f;  // Mínimo de movimiento para cerrar
-    public float velocidadCierre = 5000f; // Velocidad de contracción
+    public RectTransform panel;
+    public float distanciaMinima = 900f;
+    public float velocidadCierre = 5000f;
 
-    private Vector2 inicioTouch;
-    private bool cerrando = false;
-    private float alturaInicial;
+    private Vector2 _inicioTouch;
+    private bool _cerrando;
+    private float _alturaInicial;
 
-    
-    
-
-    private AlienRotator alienRotator;
-    private PortalRotator portalRotator;
+    private AlienRotator _alienRotator;
+    private PortalRotator _portalRotator;
 
     private void Start()
     {
         if (panel != null)
-            alturaInicial = panel.sizeDelta.y;
+            _alturaInicial = panel.sizeDelta.y;
 
-        alienRotator = FindAnyObjectByType<AlienRotator>();
-        portalRotator = FindAnyObjectByType<PortalRotator>(); 
+        _alienRotator = FindAnyObjectByType<AlienRotator>();
+        _portalRotator = FindAnyObjectByType<PortalRotator>();
     }
 
     public void AbrirPanelAlien()
     {
         panel.gameObject.SetActive(true);
-        //portalRotator.IniciarRotacion();
     }
+
     public void OnPointerDown(PointerEventData eventData)
     {
-        inicioTouch = eventData.position;
+        _inicioTouch = eventData.position;
     }
 
     public void OnDrag(PointerEventData eventData)
     {
-        if (cerrando) return;
+        if (_cerrando) return;
 
-        Vector2 delta = eventData.position - inicioTouch;
+        Vector2 delta = eventData.position - _inicioTouch;
 
         if (delta.y < 0)
         {
-            float nuevaAltura = Mathf.Clamp(alturaInicial + delta.y, 0, alturaInicial);
+            float nuevaAltura = Mathf.Clamp(_alturaInicial + delta.y, 0, _alturaInicial);
             panel.sizeDelta = new Vector2(panel.sizeDelta.x, nuevaAltura);
         }
     }
 
     public void OnPointerUp(PointerEventData eventData)
     {
-        if (cerrando) return;
+        if (_cerrando) return;
 
-        Vector2 delta = eventData.position - inicioTouch;
+        Vector2 delta = eventData.position - _inicioTouch;
 
         if (Mathf.Abs(delta.y) > distanciaMinima)
         {
-            StartCoroutine(ContraerPanel());
+            ContraerPanel();
         }
         else
         {
-            // Volver a la altura original
-            panel.sizeDelta = new Vector2(panel.sizeDelta.x, alturaInicial);
+            AnimarRestaurar();
         }
     }
 
-    private System.Collections.IEnumerator ContraerPanel()
+    private void ContraerPanel()
     {
-        cerrando = true;
+        _cerrando = true;
+        DOTween.Kill(panel);
 
         float alturaActual = panel.sizeDelta.y;
-
-        while (panel.sizeDelta.y > 10f)
-        {
-            alturaActual -= Time.deltaTime * velocidadCierre;
-            panel.sizeDelta = new Vector2(panel.sizeDelta.x, Mathf.Max(alturaActual, 0));
-            yield return null;
-        }
-
-        panel.gameObject.SetActive(false);
-        //alienRotator.DetenerRotacion();
-        panel.sizeDelta = new Vector2(panel.sizeDelta.x, alturaInicial); // Restaurar para próxima vez
-        cerrando = false;
+        DOTween.To(
+                () => alturaActual,
+                v =>
+                {
+                    alturaActual = v;
+                    panel.sizeDelta = new Vector2(panel.sizeDelta.x, v);
+                },
+                0f,
+                0.3f)
+            .SetEase(Ease.InCubic)
+            .SetTarget(panel)
+            .OnComplete(() =>
+            {
+                panel.gameObject.SetActive(false);
+                panel.sizeDelta = new Vector2(panel.sizeDelta.x, _alturaInicial);
+                _cerrando = false;
+            });
     }
 
+    private void AnimarRestaurar()
+    {
+        DOTween.Kill(panel);
+
+        float alturaActual = panel.sizeDelta.y;
+        DOTween.To(
+                () => alturaActual,
+                v =>
+                {
+                    alturaActual = v;
+                    panel.sizeDelta = new Vector2(panel.sizeDelta.x, v);
+                },
+                _alturaInicial,
+                0.2f)
+            .SetEase(Ease.OutCubic)
+            .SetTarget(panel);
+    }
+
+    private void OnDestroy()
+    {
+        DOTween.Kill(panel);
+    }
 }

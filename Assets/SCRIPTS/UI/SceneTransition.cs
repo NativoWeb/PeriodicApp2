@@ -4,10 +4,6 @@ using UnityEngine.SceneManagement;
 using System.Collections;
 using DG.Tweening;
 
-/// <summary>
-/// Maneja transiciones suaves entre escenas con fade in/out
-/// Persiste entre escenas para evitar el parpadeo
-/// </summary>
 public class SceneTransition : MonoBehaviour
 {
     #region Singleton
@@ -19,10 +15,7 @@ public class SceneTransition : MonoBehaviour
         {
             if (_instance == null)
             {
-                // Buscar en la escena
                 _instance = FindObjectOfType<SceneTransition>();
-
-                // Si no existe, crear uno
                 if (_instance == null)
                 {
                     GameObject go = new GameObject("SceneTransition");
@@ -35,17 +28,20 @@ public class SceneTransition : MonoBehaviour
 
     #endregion
 
-    [Header("Configuración")]
-    [SerializeField] private float fadeDuration = 0.15f; // Transición muy rápida
-    [SerializeField] private Color fadeColor = Color.white; // Blanco para transición suave
+    [Header("Configuracion")]
+    [SerializeField] private float fadeDuration = 0.25f;
+    [SerializeField] private Color fadeColor = Color.black;
 
-    private Canvas canvas;
-    private Image fadeImage;
-    private bool isTransitioning = false;
+    private const float FadeMaxAlpha = 0.7f;
+
+    private Canvas _canvas;
+    private Image _fadeImage;
+    private Text _loadingText;
+    private bool _isTransitioning;
+    private Coroutine _dotsCoroutine;
 
     private void Awake()
     {
-        // Singleton
         if (_instance != null && _instance != this)
         {
             Destroy(gameObject);
@@ -54,24 +50,22 @@ public class SceneTransition : MonoBehaviour
 
         _instance = this;
         DontDestroyOnLoad(gameObject);
-
-        // Crear UI de fade
         SetupFadeUI();
     }
 
     private void SetupFadeUI()
     {
-        // Crear Canvas
-        canvas = gameObject.AddComponent<Canvas>();
-        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        canvas.sortingOrder = 10000; // Por encima de TODO
+        _canvas = gameObject.AddComponent<Canvas>();
+        _canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        _canvas.sortingOrder = 10000;
 
-        gameObject.AddComponent<CanvasScaler>();
+        var scaler = gameObject.AddComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1080, 1920);
         gameObject.AddComponent<GraphicRaycaster>();
 
-        // Crear panel de fade
         GameObject fadePanel = new GameObject("FadePanel");
-        fadePanel.transform.SetParent(transform);
+        fadePanel.transform.SetParent(transform, false);
 
         RectTransform rect = fadePanel.AddComponent<RectTransform>();
         rect.anchorMin = Vector2.zero;
@@ -79,80 +73,105 @@ public class SceneTransition : MonoBehaviour
         rect.sizeDelta = Vector2.zero;
         rect.anchoredPosition = Vector2.zero;
 
-        fadeImage = fadePanel.AddComponent<Image>();
-        // Color blanco con alpha muy bajo (casi imperceptible)
-        fadeImage.color = new Color(1f, 1f, 1f, 0f); // Transparente al inicio
-        fadeImage.raycastTarget = false; // NO bloquear interacción cuando no hay transición
+        _fadeImage = fadePanel.AddComponent<Image>();
+        _fadeImage.color = new Color(0f, 0f, 0f, 0f);
+        _fadeImage.raycastTarget = false;
 
-        Debug.Log("[SceneTransition] Sistema de transición inicializado");
+        GameObject loadingObj = new GameObject("LoadingText");
+        loadingObj.transform.SetParent(fadePanel.transform, false);
+
+        RectTransform textRect = loadingObj.AddComponent<RectTransform>();
+        textRect.anchorMin = new Vector2(0.5f, 0.5f);
+        textRect.anchorMax = new Vector2(0.5f, 0.5f);
+        textRect.sizeDelta = new Vector2(400f, 60f);
+        textRect.anchoredPosition = Vector2.zero;
+
+        _loadingText = loadingObj.AddComponent<Text>();
+        _loadingText.text = "";
+        _loadingText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        _loadingText.fontSize = 32;
+        _loadingText.color = Color.white;
+        _loadingText.alignment = TextAnchor.MiddleCenter;
+        _loadingText.raycastTarget = false;
+        loadingObj.SetActive(false);
     }
 
-    /// <summary>
-    /// Cambia de escena con transición fade suave
-    /// </summary>
     public void LoadScene(string sceneName)
     {
-        if (!isTransitioning)
-        {
+        if (!_isTransitioning)
             StartCoroutine(TransitionToScene(sceneName));
-        }
     }
 
-    /// <summary>
-    /// Cambia de escena con transición fade suave (sobrecarga con LoadSceneMode)
-    /// </summary>
     public void LoadScene(string sceneName, LoadSceneMode mode)
     {
-        if (!isTransitioning)
-        {
+        if (!_isTransitioning)
             StartCoroutine(TransitionToScene(sceneName, mode));
-        }
     }
 
     private IEnumerator TransitionToScene(string sceneName, LoadSceneMode mode = LoadSceneMode.Single)
     {
-        isTransitioning = true;
+        _isTransitioning = true;
 
-        // FADE OUT (oscurecer)
         yield return FadeOut();
-
-        // Pausa mínima
         yield return new WaitForSeconds(0.05f);
 
-        // CARGAR ESCENA de forma asíncrona
+        ShowLoadingIndicator();
+
         AsyncOperation asyncLoad = SceneManager.LoadSceneAsync(sceneName, mode);
         asyncLoad.allowSceneActivation = false;
 
-        // Esperar a que cargue (mínimo 90%)
         while (asyncLoad.progress < 0.9f)
-        {
             yield return null;
-        }
 
-        // Activar la escena
+        HideLoadingIndicator();
+
         asyncLoad.allowSceneActivation = true;
 
-        // Esperar un frame más para que todo se inicialice
         yield return new WaitForEndOfFrame();
         yield return new WaitForSeconds(0.05f);
 
-        // FADE IN (aclarar)
         yield return FadeIn();
-
-        isTransitioning = false;
+        _isTransitioning = false;
     }
 
-    /// <summary>
-    /// Fade a negro (oscurecer)
-    /// </summary>
+    private void ShowLoadingIndicator()
+    {
+        if (_loadingText != null)
+        {
+            _loadingText.gameObject.SetActive(true);
+            _dotsCoroutine = StartCoroutine(AnimateDots());
+        }
+    }
+
+    private void HideLoadingIndicator()
+    {
+        if (_dotsCoroutine != null)
+        {
+            StopCoroutine(_dotsCoroutine);
+            _dotsCoroutine = null;
+        }
+
+        if (_loadingText != null)
+            _loadingText.gameObject.SetActive(false);
+    }
+
+    private IEnumerator AnimateDots()
+    {
+        string[] frames = { "Cargando", "Cargando.", "Cargando..", "Cargando..." };
+        int index = 0;
+        while (true)
+        {
+            _loadingText.text = frames[index % frames.Length];
+            index++;
+            yield return new WaitForSecondsRealtime(0.35f);
+        }
+    }
+
     public Coroutine FadeOut()
     {
-        return StartCoroutine(FadeCoroutine(1f));
+        return StartCoroutine(FadeCoroutine(FadeMaxAlpha));
     }
 
-    /// <summary>
-    /// Fade desde negro (aclarar)
-    /// </summary>
     public Coroutine FadeIn()
     {
         return StartCoroutine(FadeCoroutine(0f));
@@ -160,61 +179,33 @@ public class SceneTransition : MonoBehaviour
 
     private IEnumerator FadeCoroutine(float targetAlpha)
     {
-        if (fadeImage == null)
-        {
-            Debug.LogError("[SceneTransition] fadeImage es null!");
-            yield break;
-        }
+        if (_fadeImage == null) yield break;
 
-        // Reducir el alpha objetivo para que sea casi imperceptible
-        float subtleAlpha = targetAlpha * 0.3f; // Solo 30% de opacidad máxima
+        _fadeImage.raycastTarget = targetAlpha > 0f;
 
-        // Bloquear interacción SOLO durante el fade out (cuando aparece)
-        fadeImage.raycastTarget = targetAlpha > 0f;
-
-        // Animar con DOTween - fade muy sutil
-        yield return fadeImage.DOFade(subtleAlpha, fadeDuration)
+        yield return _fadeImage.DOFade(targetAlpha, fadeDuration)
             .SetEase(Ease.InOutQuad)
-            .SetUpdate(true) // Ignorar Time.timeScale
+            .SetUpdate(true)
             .WaitForCompletion();
 
-        // Desbloquear interacción después del fade in
         if (targetAlpha == 0f)
-        {
-            fadeImage.raycastTarget = false;
-        }
+            _fadeImage.raycastTarget = false;
     }
 
-    /// <summary>
-    /// Verifica si hay una transición en progreso
-    /// </summary>
-    public bool IsTransitioning()
-    {
-        return isTransitioning;
-    }
+    public bool IsTransitioning() => _isTransitioning;
 
-    #region Métodos de utilidad
-
-    /// <summary>
-    /// Cambia la duración del fade
-    /// </summary>
     public void SetFadeDuration(float duration)
     {
         fadeDuration = Mathf.Max(0.1f, duration);
     }
 
-    /// <summary>
-    /// Cambia el color del fade
-    /// </summary>
     public void SetFadeColor(Color color)
     {
         fadeColor = color;
-        if (fadeImage != null)
+        if (_fadeImage != null)
         {
-            Color currentColor = fadeImage.color;
-            fadeImage.color = new Color(color.r, color.g, color.b, currentColor.a);
+            Color currentColor = _fadeImage.color;
+            _fadeImage.color = new Color(color.r, color.g, color.b, currentColor.a);
         }
     }
-
-    #endregion
 }

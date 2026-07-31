@@ -54,10 +54,11 @@ public class EncuestaConocimientoFirebase : IEncuestaConocimientoRepositorio
 
         System.Random rnd = new System.Random();
 
-        foreach (var grupo in wrapper.gruposPreguntas)
+        int totalGrupos = wrapper.gruposPreguntas.Count;
+
+        for (int grupoIndex = 0; grupoIndex < totalGrupos; grupoIndex++)
         {
-            // Para cada grupo (por ejemplo "Metales Alcalinos"), juntamos todas las preguntas
-            // de sus elementos, las mezclamos y tomamos hasta 5.
+            var grupo = wrapper.gruposPreguntas[grupoIndex];
             List<PreguntaJson> preguntasGrupo = new List<PreguntaJson>();
 
             foreach (var elemento in grupo.elementos)
@@ -67,8 +68,10 @@ public class EncuestaConocimientoFirebase : IEncuestaConocimientoRepositorio
 
             var seleccionadas = preguntasGrupo
                 .OrderBy(x => rnd.Next())
-                .Take(5) // máximo 5 preguntas por grupo
+                .Take(5)
                 .ToList();
+
+            float dificultad = (float)(grupoIndex + 1) / totalGrupos;
 
             foreach (var p in seleccionadas)
             {
@@ -77,8 +80,8 @@ public class EncuestaConocimientoFirebase : IEncuestaConocimientoRepositorio
                     Texto = p.textoPregunta,
                     Opciones = p.opcionesRespuesta,
                     IndiceCorrecto = p.indiceRespuestaCorrecta,
-                    Grupo = grupo.grupo,        // asignamos el nombre del grupo desde el wrapper
-                    Dificultad = 0f             // el JSON no tiene dificultad; ponemos 0 por defecto
+                    Grupo = grupo.grupo,
+                    Dificultad = dificultad
                 });
             }
 

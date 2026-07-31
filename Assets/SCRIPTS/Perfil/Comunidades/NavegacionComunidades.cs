@@ -1,7 +1,5 @@
-using Newtonsoft.Json.Bson;
 using UnityEngine;
 using UnityEngine.UI;
-using UnityEngine.UIElements;
 
 public class NavegacionComunidades : MonoBehaviour
 {
@@ -10,48 +8,44 @@ public class NavegacionComunidades : MonoBehaviour
     [SerializeField] public GameObject m_panelMisComunidadesUI = null;
     [SerializeField] public GameObject m_panelEncuentraComunidadesUI = null;
 
-    // declaracion de intancias de script para llamar metodos
-    private ListaComunidadesManager listaComunidadesManager;
-    private MisComunidadesManager misComunidadesManager;
-    private CrearComunidad crearcomunidad;
+    private ListaComunidadesManager _listaComunidadesManager;
+    private MisComunidadesManager _misComunidadesManager;
+    private CrearComunidad _crearComunidad;
+
     void Start()
     {
-        
-        listaComunidadesManager = FindFirstObjectByType<ListaComunidadesManager>();
-        misComunidadesManager = FindFirstObjectByType<MisComunidadesManager>();
-        crearcomunidad = FindFirstObjectByType<CrearComunidad>();
+        _listaComunidadesManager = FindFirstObjectByType<ListaComunidadesManager>();
+        _misComunidadesManager = FindFirstObjectByType<MisComunidadesManager>();
+        _crearComunidad = FindFirstObjectByType<CrearComunidad>();
     }
+
     public void MostrarInicioComunidades()
     {
-        m_InicioComunidadesUI.SetActive(true);
-        // recargamos el metodo de cargar cada vez que se activa el panel
-        misComunidadesManager.CargarComunidadesDelUsuario();
-        crearcomunidad.LimpiarFormulario();
-        m_CrearComunidadUI.SetActive(false);
+        PanelAnimator.Show(m_InicioComunidadesUI);
+        _misComunidadesManager.CargarComunidadesDelUsuario();
+        _crearComunidad.LimpiarFormulario();
+        PanelAnimator.Hide(m_CrearComunidadUI);
     }
 
     public void MostrarMisComunidades()
     {
-        m_panelMisComunidadesUI.SetActive(true);
-        // recargamos el metodo de cargar cada vez que se activa el panel
-        misComunidadesManager.CargarComunidadesDelUsuario();
-        m_CrearComunidadUI.SetActive(false);
-        m_panelEncuentraComunidadesUI.SetActive(false);
-
+        PanelAnimator.Show(m_panelMisComunidadesUI);
+        _misComunidadesManager.CargarComunidadesDelUsuario();
+        PanelAnimator.Hide(m_CrearComunidadUI);
+        PanelAnimator.Hide(m_panelEncuentraComunidadesUI);
     }
+
     public void MostrarCrearComunidad()
     {
-        m_CrearComunidadUI.SetActive(true);
-        m_InicioComunidadesUI.SetActive(false);
+        PanelAnimator.Show(m_CrearComunidadUI);
+        PanelAnimator.Hide(m_InicioComunidadesUI);
     }
 
     public void MostrarEncuentraComunidades()
     {
-        m_panelEncuentraComunidadesUI.SetActive(true);
-        // recargamos el metodo de cargar cada vez que se activa el panel 
-        listaComunidadesManager.CargarComunidades();
-        m_CrearComunidadUI.SetActive(false);
-        m_panelMisComunidadesUI.SetActive(false);
+        PanelAnimator.Show(m_panelEncuentraComunidadesUI);
+        _listaComunidadesManager.CargarComunidades();
+        PanelAnimator.Hide(m_CrearComunidadUI);
+        PanelAnimator.Hide(m_panelMisComunidadesUI);
     }
-    
 }

@@ -3,9 +3,7 @@ using UnityEngine.UI;
 
 public class NavegacionCuenta : MonoBehaviour
 {
-    // instanciamos los 3 paneles para poder navegar 
-
-    [Header("paneles de navegación")]
+    [Header("paneles de navegacion")]
     [SerializeField] public GameObject panelMenuCuenta;
     [SerializeField] public GameObject panelTerminos_Condiciones;
     [SerializeField] public GameObject panelPoliticas;
@@ -14,7 +12,7 @@ public class NavegacionCuenta : MonoBehaviour
     [SerializeField] public GameObject PanelIdiomas;
     [SerializeField] public Image panelSuperior;
     public Button btnIdiomas;
-    public Button btnEspañol;
+    public Button btnEspanol;
     public Button btnIngles;
     public Button btnDatos;
 
@@ -24,7 +22,7 @@ public class NavegacionCuenta : MonoBehaviour
 
         if (navegacionCuenta == "profesor")
         {
-            btnDatos.gameObject.SetActive(false); 
+            btnDatos.gameObject.SetActive(false);
             Color customColor = new Color(80f / 255f, 178f / 255f, 125f / 255f, 1f);
             panelSuperior.color = customColor;
         }
@@ -36,65 +34,66 @@ public class NavegacionCuenta : MonoBehaviour
         }
 
         btnIdiomas.onClick.AddListener(cambiarIdioma);
-        btnEspañol.onClick.AddListener(() => CambiarIdiomaY_CerrarPanel(0));
+        btnEspanol.onClick.AddListener(() => CambiarIdiomaY_CerrarPanel(0));
         btnIngles.onClick.AddListener(() => CambiarIdiomaY_CerrarPanel(1));
     }
 
     public void verMenuCuenta()
     {
-        panelMenuCuenta.SetActive(true);
-        panelTerminos_Condiciones.SetActive(false);
-        panelPoliticas.SetActive(false);
-        panelDatosPersonales.SetActive(false);
+        PanelAnimator.Show(panelMenuCuenta);
+        PanelAnimator.Hide(panelTerminos_Condiciones);
+        PanelAnimator.Hide(panelPoliticas);
+        PanelAnimator.Hide(panelDatosPersonales);
     }
+
     public void verTerminosCondiciones()
     {
-        panelTerminos_Condiciones.SetActive(true);
-        panelMenuCuenta.SetActive(false);
-        panelPoliticas.SetActive(false);
-        panelDatosPersonales.SetActive(false);
+        PanelAnimator.Show(panelTerminos_Condiciones);
+        PanelAnimator.Hide(panelMenuCuenta);
+        PanelAnimator.Hide(panelPoliticas);
+        PanelAnimator.Hide(panelDatosPersonales);
     }
-   public void verPoliticas()
+
+    public void verPoliticas()
     {
-        panelPoliticas.SetActive(true);
-        panelTerminos_Condiciones.SetActive(false);
-        panelMenuCuenta.SetActive(false);
-        panelDatosPersonales.SetActive(false);
+        PanelAnimator.Show(panelPoliticas);
+        PanelAnimator.Hide(panelTerminos_Condiciones);
+        PanelAnimator.Hide(panelMenuCuenta);
+        PanelAnimator.Hide(panelDatosPersonales);
     }
+
     public void verDatosPersonales()
     {
-        panelDatosPersonales.SetActive(true);
-        panelPoliticas.SetActive(false);
-        panelTerminos_Condiciones.SetActive(false);
-        panelMenuCuenta.SetActive(false);
+        PanelAnimator.Show(panelDatosPersonales);
+        PanelAnimator.Hide(panelPoliticas);
+        PanelAnimator.Hide(panelTerminos_Condiciones);
+        PanelAnimator.Hide(panelMenuCuenta);
     }
+
     public void cambiarIdioma()
     {
-        PanelIdiomas.SetActive(true);
-        panelDatosPersonales.SetActive(false);
-        panelPoliticas.SetActive(false);
-        panelTerminos_Condiciones.SetActive(false);
+        PanelAnimator.Show(PanelIdiomas);
+        PanelAnimator.Hide(panelDatosPersonales);
+        PanelAnimator.Hide(panelPoliticas);
+        PanelAnimator.Hide(panelTerminos_Condiciones);
     }
+
     private void CambiarIdiomaY_CerrarPanel(int id)
     {
-        // Llama a la instancia del controlador de idioma
         if (ControladorIdioma.instancia != null)
         {
             ControladorIdioma.instancia.ChangeLocale(id);
         }
-        // Cierra el panel
-        PanelIdiomas.SetActive(false);
+        PanelAnimator.Hide(PanelIdiomas);
     }
+
     public void ActivarPaneCerrarSesion()
     {
-        panelCerrarSesion.SetActive(true);
+        PanelAnimator.Show(panelCerrarSesion);
     }
+
     public void DesactivarPaneCerrarSesion()
     {
-        if (panelCerrarSesion != null )
-        panelCerrarSesion.SetActive(false);
-
+        PanelAnimator.Hide(panelCerrarSesion);
     }
-
-
 }

@@ -1,4 +1,5 @@
 using UnityEngine;
+using DG.Tweening;
 
 public class GlowPulseAnimation : MonoBehaviour
 {
@@ -6,33 +7,47 @@ public class GlowPulseAnimation : MonoBehaviour
     public float maxSize = 0.45f;
     public float pulseSpeed = 0.5f;
 
-    private float currentScale;
-    private bool growing = true;
+    private Renderer _renderer;
+    private Material _material;
+    private float _emissionIntensity;
 
-    void Update()
+    private void Start()
     {
-        // Calcular el nuevo tamaño
-        if (growing)
-        {
-            currentScale += Time.deltaTime * pulseSpeed;
-            if (currentScale >= maxSize) growing = false;
-        }
-        else
-        {
-            currentScale -= Time.deltaTime * pulseSpeed;
-            if (currentScale <= minSize) growing = true;
-        }
+        _renderer = GetComponent<Renderer>();
+        if (_renderer != null)
+            _material = _renderer.material;
 
-        // Aplicar el tamaño
-        transform.localScale = Vector3.one * currentScale;
+        float range = maxSize - minSize;
+        float pulseDuration = range / pulseSpeed;
 
-        // Variar también la intensidad de la emisión
-        Renderer renderer = GetComponent<Renderer>();
-        if (renderer != null)
+        transform.localScale = Vector3.one * minSize;
+        transform.DOScale(maxSize, pulseDuration)
+            .SetLoops(-1, LoopType.Yoyo)
+            .SetEase(Ease.InOutSine)
+            .SetTarget(transform);
+
+        if (_material != null)
         {
-            float emissionIntensity = Mathf.Lerp(1.0f, 1.5f, (currentScale - minSize) / (maxSize - minSize));
-            Color baseColor = renderer.material.GetColor("_Color");
-            renderer.material.SetColor("_EmissionColor", baseColor * emissionIntensity);
+            _emissionIntensity = 1.0f;
+            DOTween.To(
+                    () => _emissionIntensity,
+                    v =>
+                    {
+                        _emissionIntensity = v;
+                        Color baseColor = _material.GetColor("_Color");
+                        _material.SetColor("_EmissionColor", baseColor * v);
+                    },
+                    1.5f,
+                    pulseDuration)
+                .SetLoops(-1, LoopType.Yoyo)
+                .SetEase(Ease.InOutSine)
+                .SetTarget(this);
         }
+    }
+
+    private void OnDestroy()
+    {
+        DOTween.Kill(transform);
+        DOTween.Kill(this);
     }
 }

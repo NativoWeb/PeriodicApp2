@@ -1,8 +1,9 @@
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Firebase.Auth;
 using Firebase.Firestore;
 
-public class FirebaseUsuarioRepositorio :IUsuarioRepositorio
+public class FirebaseUsuarioRepositorio : IUsuarioRepositorio
 {
     private readonly FirebaseFirestore firestore;
 
@@ -24,5 +25,16 @@ public class FirebaseUsuarioRepositorio :IUsuarioRepositorio
         bool conocimiento = snapshot.ContainsField("EstadoEncuestaConocimiento") && snapshot.GetValue<bool>("EstadoEncuestaConocimiento");
 
         return (aprendizaje, conocimiento);
+    }
+
+    public async Task GuardarEstiloAprendizajeAsync(string userId, string estiloDominante, string rankingJson)
+    {
+        var userRef = firestore.Collection("users").Document(userId);
+        var updates = new Dictionary<string, object>
+        {
+            { "EstiloAprendizajeDominante", estiloDominante },
+            { "RankingEstilosAprendizaje", rankingJson }
+        };
+        await userRef.UpdateAsync(updates);
     }
 }

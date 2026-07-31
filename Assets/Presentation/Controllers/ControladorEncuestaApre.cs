@@ -1,4 +1,4 @@
-﻿using Firebase.Auth;
+using Firebase.Auth;
 using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -6,6 +6,7 @@ using UnityEngine.UI;
 using System.Collections.Generic;
 using System.Collections;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
 using PeriodicApp.Core.Application.UseCases;
 using PeriodicApp.Presentation;
 
@@ -23,23 +24,31 @@ public class ControladorEncuestaApre : MonoBehaviour
     [Header("Contenedor")]
     public ContenedorPreguntas contenedor;
 
-    private FirebaseAuth auth;
-    private IUsuarioRepositorio usuarioRepositorio;
+    private FirebaseAuth _auth;
+    private IUsuarioRepositorio _usuarioRepositorio;
 
-    private List<PreguntaEstilo> preguntas;
-    private Dictionary<string, int> respuestas = new();
-    private int indiceActual = 0;
+    private List<PreguntaEstilo> _preguntas;
+    private Dictionary<string, int> _respuestas = new();
+    private int _indiceActual = 0;
 
-    private CargarPreguntasEstiloUseCase cargarPreguntasUseCase;
-    private CalcularEstiloDominanteUseCase calcularEstiloUseCase;
+    private CargarPreguntasEstiloUseCase _cargarPreguntasUseCase;
+    private CalcularEstiloDominanteUseCase _calcularEstiloUseCase;
+
+    private static readonly Dictionary<string, string> MapeoEstiloEncuestaALearningStyle = new()
+    {
+        { "Gamificacion", "Kinest\u00e9sico" },
+        { "Metodologia_Tradicional", "Verbal" },
+        { "Aprendizaje_Basado_en_Proyectos", "Kinest\u00e9sico" },
+        { "Aprendizaje_Basado_en_Problemas", "Visual" },
+        { "Aprendizaje_Cooperativo", "Verbal" }
+    };
 
     void Start()
     {
-        auth = FirebaseAuth.DefaultInstance;
-        usuarioRepositorio = new FirebaseUsuarioRepositorio();
-        cargarPreguntasUseCase = new CargarPreguntasEstiloUseCase(ServiceLocator.Json);
-        calcularEstiloUseCase = new CalcularEstiloDominanteUseCase();
-
+        _auth = FirebaseAuth.DefaultInstance;
+        _usuarioRepositorio = new FirebaseUsuarioRepositorio();
+        _cargarPreguntasUseCase = new CargarPreguntasEstiloUseCase(ServiceLocator.Json);
+        _calcularEstiloUseCase = new CalcularEstiloDominanteUseCase();
         CargarPreguntas();
     }
 
@@ -48,48 +57,50 @@ public class ControladorEncuestaApre : MonoBehaviour
         TextAsset json = Resources.Load<TextAsset>("preguntas_estilo_aprendizaje_2");
         if (json != null)
         {
-            preguntas = cargarPreguntasUseCase.Ejecutar(json.text);
+            _preguntas = _cargarPreguntasUseCase.Ejecutar(json.text);
             InicializarContadores();
             MostrarPregunta();
         }
         else
         {
             textoPregunta.text = "Error al cargar preguntas.";
-            Debug.LogError("❌ No se encontró el archivo JSON.");
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            Debug.LogError("No se encontro el archivo JSON de preguntas de estilo de aprendizaje.");
+#endif
         }
     }
 
     private void InicializarContadores()
     {
-        foreach (var p in preguntas)
+        foreach (var p in _preguntas)
         {
-            if (!respuestas.ContainsKey(p.Categoria))
-                respuestas[p.Categoria] = 0;
+            if (!_respuestas.ContainsKey(p.Categoria))
+                _respuestas[p.Categoria] = 0;
         }
     }
 
     private void MostrarPregunta()
     {
-        if (indiceActual < preguntas.Count)
+        if (_indiceActual < _preguntas.Count)
         {
-            textoPregunta.text = preguntas[indiceActual].Texto;
-            barraProgreso.value = (float)indiceActual / preguntas.Count;
+            textoPregunta.text = _preguntas[_indiceActual].Texto;
+            barraProgreso.value = (float)_indiceActual / _preguntas.Count;
             if (contenedorOpciones != null && !contenedorOpciones.activeSelf)
                 contenedorOpciones.SetActive(true);
         }
         else
         {
-            // 1. Ocultar los botones de Sí/No
             if (contenedorOpciones != null)
                 contenedorOpciones.SetActive(false);
-
-            // 2. Ocultar el texto de la pregunta original
             if (textoAfirmacion != null)
-                textoAfirmacion.gameObject.SetActive(false); // <--- AÑADE ESTA LÍNEA
+                textoAfirmacion.gameObject.SetActive(false);
 
-            // 3. Calcular y mostrar el resultado
-            string estilo = calcularEstiloUseCase.Ejecutar(respuestas);
-            StartCoroutine(MostrarYContinuar(estilo));
+            var ranking = _calcularEstiloUseCase.EjecutarRanking(_respuestas);
+            string estiloDominante = ranking.Count > 0 ? ranking[0].estilo : "Mixto";
+
+            PersistirResultados(estiloDominante, ranking);
+
+            StartCoroutine(MostrarYContinuar(estiloDominante, ranking));
         }
     }
 
@@ -97,19 +108,64 @@ public class ControladorEncuestaApre : MonoBehaviour
     {
         if (afirmativo)
         {
-            string categoria = preguntas[indiceActual].Categoria;
-            respuestas[categoria]++;
+            string categoria = _preguntas[_indiceActual].Categoria;
+            _respuestas[categoria]++;
         }
-        indiceActual++;
+        _indiceActual++;
         MostrarPregunta();
     }
 
-    private IEnumerator MostrarYContinuar(string estilo)
+    private void PersistirResultados(string estiloDominante, List<(string estilo, int puntaje)> ranking)
     {
-        textoPregunta.text = $"🧠 Tu estilo dominante es:\n<b>{estilo.Replace("_", " ")}</b>";
+        PlayerPrefs.SetString("EstiloAprendizajeDominante", estiloDominante);
+
+        var rankingSerializable = new List<Dictionary<string, object>>();
+        foreach (var (estilo, puntaje) in ranking)
+        {
+            rankingSerializable.Add(new Dictionary<string, object>
+            {
+                { "estilo", estilo },
+                { "puntaje", puntaje }
+            });
+        }
+        string rankingJson = JsonConvert.SerializeObject(rankingSerializable);
+        PlayerPrefs.SetString("RankingEstilosAprendizaje", rankingJson);
+
+        string learningStyle = MapearALearningStyle(estiloDominante, ranking);
+        PlayerPrefs.SetString("LearningStyleMapped", learningStyle);
+
+        PlayerPrefs.Save();
+    }
+
+    private string MapearALearningStyle(string estiloDominante, List<(string estilo, int puntaje)> ranking)
+    {
+        if (ranking.Count >= 2)
+        {
+            int diferencia = ranking[0].puntaje - ranking[1].puntaje;
+            if (diferencia < 2)
+                return "Mixto";
+        }
+
+        if (MapeoEstiloEncuestaALearningStyle.TryGetValue(estiloDominante, out string mapped))
+            return mapped;
+
+        return "Mixto";
+    }
+
+    private IEnumerator MostrarYContinuar(string estiloDominante, List<(string estilo, int puntaje)> ranking)
+    {
+        string texto = $"Tu estilo dominante es:\n<b>{estiloDominante.Replace("_", " ")}</b>\n";
+        int mostrar = ranking.Count < 3 ? ranking.Count : 3;
+        for (int i = 0; i < mostrar; i++)
+        {
+            string nombre = ranking[i].estilo.Replace("_", " ");
+            texto += $"\n{i + 1}. {nombre}: {ranking[i].puntaje} pts";
+        }
+
+        textoPregunta.text = texto;
         barraProgreso.value = 1f;
-        yield return new WaitForSeconds(3f);
-        FinalizarEncuesta(estilo);
+        yield return new WaitForSeconds(4f);
+        FinalizarEncuesta(estiloDominante);
     }
 
     private async void FinalizarEncuesta(string estilo)
@@ -117,10 +173,12 @@ public class ControladorEncuestaApre : MonoBehaviour
         PlayerPrefs.SetInt("EstadoEncuestaAprendizaje", 1);
         PlayerPrefs.Save();
 
-        var user = auth.CurrentUser;
+        var user = _auth.CurrentUser;
         if (user == null)
         {
-            Debug.LogError("❌ Usuario no autenticado.");
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            Debug.LogError("Usuario no autenticado al finalizar encuesta de aprendizaje.");
+#endif
             SceneManager.LoadScene("SeleccionarEncuesta");
             return;
         }
@@ -130,9 +188,23 @@ public class ControladorEncuestaApre : MonoBehaviour
 
         if (Application.internetReachability != NetworkReachability.NotReachable)
         {
-            await usuarioRepositorio.ActualizarEstadoEncuestaAprendizajeAsync(user.UserId, true);
-            var (estadoAprendizaje, estadoConocimiento) = await usuarioRepositorio.ObtenerEstadosEncuestasAsync(user.UserId);
-            CargarEscenaSegunEstados(estadoAprendizaje, estadoConocimiento);
+            try
+            {
+                string rankingJson = PlayerPrefs.GetString("RankingEstilosAprendizaje", "[]");
+                await Task.WhenAll(
+                    _usuarioRepositorio.ActualizarEstadoEncuestaAprendizajeAsync(user.UserId, true),
+                    _usuarioRepositorio.GuardarEstiloAprendizajeAsync(user.UserId, estilo, rankingJson)
+                );
+                var (estadoAprendizaje, estadoConocimiento) = await _usuarioRepositorio.ObtenerEstadosEncuestasAsync(user.UserId);
+                CargarEscenaSegunEstados(estadoAprendizaje, estadoConocimiento);
+            }
+            catch (System.Exception ex)
+            {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                Debug.LogError($"Error al guardar estilo en Firebase: {ex.Message}");
+#endif
+                CargarEscenaSegunEstados(aprendizaje, conocimiento);
+            }
         }
         else
         {

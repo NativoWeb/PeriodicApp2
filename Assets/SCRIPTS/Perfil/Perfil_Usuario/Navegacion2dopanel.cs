@@ -3,8 +3,6 @@ using UnityEngine.UI;
 
 public class Navegacion2dopanel : MonoBehaviour
 {
-
-    // acá tengo que instanciar los 4 paneles el seleccionar x y Y y el de listar amigos y listar solicitudes para dependiendo el btn se activa o desactiva los paneles con el btn
     [Header("Botones para seleccionar panel")]
     public Button BtnPanelAmigos;
     public Button BtnPanelSolicitudes;
@@ -17,40 +15,33 @@ public class Navegacion2dopanel : MonoBehaviour
     [SerializeField] public GameObject panelAmigos;
     [SerializeField] public GameObject panelSolicitudes;
 
-
     void Start()
     {
         BtnPanelAmigos.onClick.AddListener(ActivarPanelAmigos);
         BtnPanelSolicitudes.onClick.AddListener(ActivarPanelSolicitudes);
-
     }
 
     void ActivarPanelAmigos()
     {
-        
-        panelAmigos.SetActive(true);
+        PanelAnimator.Show(panelAmigos);
         panelseleccionarX.SetActive(true);
 
-        // desactivamos los paneles anteriores
         if (panelSolicitudes != null)
-            panelSolicitudes.SetActive(false);
+            PanelAnimator.Hide(panelSolicitudes);
 
-        if(panelseleccionarY != null)
+        if (panelseleccionarY != null)
             panelseleccionarY.SetActive(false);
     }
+
     void ActivarPanelSolicitudes()
     {
-        panelSolicitudes.SetActive(true);
+        PanelAnimator.Show(panelSolicitudes);
         panelseleccionarY.SetActive(true);
-        
-        // desactivamos los paneles anteriores
+
         if (panelAmigos != null)
-            panelAmigos.SetActive(false);
+            PanelAnimator.Hide(panelAmigos);
 
         if (panelseleccionarX != null)
             panelseleccionarX.SetActive(false);
-
-
     }
-
 }
