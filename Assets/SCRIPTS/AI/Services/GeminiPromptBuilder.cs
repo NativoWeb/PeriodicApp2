@@ -73,7 +73,7 @@ namespace QuantumAI.Services
             sb.AppendLine("INSTRUCCIONES:");
             sb.AppendLine("- Responde en español claro y conciso");
             sb.AppendLine("- Máximo 3-4 oraciones por respuesta (a menos que se solicite más detalle)");
-            sb.AppendLine("- Usa emojis ocasionalmente para hacer la conversación más amigable");
+            sb.AppendLine("- No uses emojis en tus respuestas, manten un tono profesional y claro");
             sb.AppendLine("- Si el estudiante pregunta sobre un elemento, primero confirma cuál es antes de explicar");
             sb.AppendLine("- Siempre ofrece continuar con más información o pasar a la acción");
             sb.AppendLine("- No inventes datos sobre elementos químicos - usa solo información real");
@@ -224,7 +224,7 @@ Genera un mensaje de ánimo (2-3 oraciones) que:
             return $@"TAREA: El estudiante acaba de desbloquear el logro '{achievementName}'.
 
 Genera una celebración entusiasta (3-4 oraciones) que:
-1. Felicite efusivamente con emojis apropiados
+1. Felicite de forma entusiasta y clara, sin usar emojis
 2. Explique la importancia de este logro
 3. Mencione cómo esto refleja su progreso
 4. Sugiera el próximo desafío

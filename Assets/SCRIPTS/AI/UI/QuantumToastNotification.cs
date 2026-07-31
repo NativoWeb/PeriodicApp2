@@ -153,12 +153,12 @@ namespace QuantumAI.UI
 
         private void OnXPGained(int amount, string reason)
         {
-            ShowToast($"⭐ +{amount} XP - {reason}", ToastType.XP);
+            ShowToast($"+{amount} XP - {reason}", ToastType.XP);
         }
 
         private void OnAchievementUnlocked(string achievementName)
         {
-            ShowToast($"🏆 {achievementName}", ToastType.Achievement, 4f); // Mostrar más tiempo
+            ShowToast($"Logro: {achievementName}", ToastType.Achievement, 8f);
         }
 
         private void OnAIResponse(string response)
@@ -170,7 +170,7 @@ namespace QuantumAI.UI
                 displayMessage = displayMessage.Substring(0, 177) + "...";
             }
 
-            ShowToast(displayMessage, ToastType.Info, 6f); // Mostrar más tiempo para leer
+            ShowToast(displayMessage, ToastType.Info, 8f);
             Debug.Log($"[QuantumToastNotification] Mostrando respuesta de IA: {displayMessage}");
         }
 
@@ -296,7 +296,13 @@ namespace QuantumAI.UI
 
         private void PositionToast(RectTransform toastRect, int index)
         {
-            float yPos = -100f - (index * toastSpacing);
+            toastRect.anchorMin = new Vector2(0.5f, 1f);
+            toastRect.anchorMax = new Vector2(0.5f, 1f);
+            toastRect.pivot = new Vector2(0.5f, 1f);
+
+            float safeAreaTop = Screen.height - Screen.safeArea.yMax;
+            float yOffset = safeAreaTop > 10f ? safeAreaTop + 10f : 20f;
+            float yPos = -yOffset - (index * toastSpacing);
             toastRect.anchoredPosition = new Vector2(0, yPos);
         }
 
@@ -336,11 +342,11 @@ namespace QuantumAI.UI
         {
             switch (missionType)
             {
-                case "AR": return "📱";
-                case "QR": return "📷";
-                case "Juego": return "🎮";
-                case "Quiz": return "❓";
-                default: return "📋";
+                case "AR": return "[AR]";
+                case "QR": return "[QR]";
+                case "Juego": return "[Juego]";
+                case "Quiz": return "[Quiz]";
+                default: return "[Mision]";
             }
         }
 

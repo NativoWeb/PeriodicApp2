@@ -70,18 +70,6 @@ public class GestorMisiones : MonoBehaviour
             contenedorCanvasGroup = contenedorMisiones.GetComponent<CanvasGroup>();
             if (contenedorCanvasGroup == null)
                 contenedorCanvasGroup = contenedorMisiones.gameObject.AddComponent<CanvasGroup>();
-
-            if (contenedorMisiones.GetComponent<ResponsiveMissionLayout>() == null)
-                contenedorMisiones.gameObject.AddComponent<ResponsiveMissionLayout>();
-
-            var rect = contenedorMisiones.GetComponent<RectTransform>();
-            if (rect != null)
-            {
-                rect.anchorMin = new Vector2(0f, rect.anchorMin.y);
-                rect.anchorMax = new Vector2(1f, rect.anchorMax.y);
-                rect.offsetMin = new Vector2(0f, rect.offsetMin.y);
-                rect.offsetMax = new Vector2(0f, rect.offsetMax.y);
-            }
         }
     }
 
@@ -365,7 +353,7 @@ public class GestorMisiones : MonoBehaviour
         // Ocultar el contenedor con fade para evitar destello visual
         if (contenedorCanvasGroup != null)
         {
-            contenedorCanvasGroup.alpha = 1f;
+            contenedorCanvasGroup.alpha = 0f;
         }
 
         LimpiarMisiones(); // Limpia el contenido previo
@@ -465,6 +453,17 @@ public class GestorMisiones : MonoBehaviour
             }
         }
 
+        StartCoroutine(FadeInContenedor());
+    }
+
+    IEnumerator FadeInContenedor()
+    {
+        yield return new WaitForEndOfFrame();
+
+        if (contenedorCanvasGroup != null)
+        {
+            contenedorCanvasGroup.DOFade(1f, 0.3f).SetEase(Ease.OutQuad);
+        }
     }
 
     public string devolverCatTrad(string categoriaSeleccionada)
@@ -512,9 +511,6 @@ public class GestorMisiones : MonoBehaviour
         GameObject nuevaMision = Instantiate(prefabMision, contenedorMisiones);
         UI_Mision uiMision = nuevaMision.GetComponent<UI_Mision>();
         uiMision.ConfigurarMision(mision);
-
-        int index = contenedorMisiones.childCount - 1;
-        ListItemAnimator.AnimateIn(nuevaMision, index);
 
         Button[] botones = nuevaMision.GetComponentsInChildren<Button>();
         foreach (Button botonMision in botones)
