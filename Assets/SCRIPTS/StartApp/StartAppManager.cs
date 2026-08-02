@@ -48,7 +48,11 @@ public class StartAppManager : MonoBehaviour
         {
             Debug.Log("[StartApp] Primera ejecución detectada: limpiando datos");
 
+            int idiomaActual = PlayerPrefs.GetInt("LocaleKey", 0);
             PlayerPrefs.DeleteAll();
+            PlayerPrefs.SetInt("LocaleKey", idiomaActual);
+            PlayerPrefs.SetString("appIdioma", idiomaActual == 0 ? "español" : "english");
+            PlayerPrefs.Save();
 
             try
             {

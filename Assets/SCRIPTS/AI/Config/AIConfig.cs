@@ -23,10 +23,10 @@ namespace QuantumAI.Config
         public string geminiApiUrl = "https://generativelanguage.googleapis.com/v1beta/models/";
 
         [Tooltip("Timeout para requests API en segundos")]
-        public int apiTimeout = 30;
+        public int apiTimeout = 15;
 
         [Tooltip("Máximo de tokens por respuesta")]
-        public int maxTokens = 500;
+        public int maxTokens = 150;
 
         [Tooltip("Temperatura para generación (0.0 = determinista, 1.0 = creativo)")]
         [Range(0f, 1f)]

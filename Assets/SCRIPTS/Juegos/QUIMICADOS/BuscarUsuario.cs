@@ -58,6 +58,7 @@ public class BuscarUsuario : MonoBehaviour
     private float lastSearchTime;
     private bool searchScheduled = false;
     private string appIdioma;
+    private bool _cargandoPartidas;
 
     void Start()
     {
@@ -95,6 +96,8 @@ public class BuscarUsuario : MonoBehaviour
 
         BtnPartidaActiva.onClick.AddListener(() =>
         {
+            if (_cargandoPartidas) return;
+
             BtnNuevaPartida.GetComponent<Image>().color = new Color32(255, 251, 239, 255);
             BtnPartidaActiva.GetComponent<Image>().color = new Color32(81, 178, 124, 255);
 
@@ -105,6 +108,7 @@ public class BuscarUsuario : MonoBehaviour
             searchInput.gameObject.SetActive(false);
             scrollNuevos.SetActive(false);
             scrollActivos.SetActive(true);
+            LimpiarResultadosActivos();
             ShowPartidasMiTurno();
             ShowPartidasTurnoOponente();
         });
@@ -211,6 +215,7 @@ public class BuscarUsuario : MonoBehaviour
                 return;
             }
 
+            ShowMessage("");
             foreach (var doc in users)
                 InstanciarUsuarioEnLista(doc);
         });
@@ -266,10 +271,14 @@ public class BuscarUsuario : MonoBehaviour
                     found = true;
                 }
 
-                if (!found)
+                if (found)
+                {
+                    ShowMessage("");
+                }
+                else
                 {
                     if (appIdioma == "ingles")
-                        ShowMessage($"No users found.");
+                        ShowMessage("No users found.");
                     else
                         ShowMessage("No se encontraron usuarios.");
                 }
@@ -277,7 +286,7 @@ public class BuscarUsuario : MonoBehaviour
     }
     void ShowPartidasMiTurno()
     {
-        LimpiarResultadosActivos();
+        foreach (Transform child in contentMiTurno) Destroy(child.gameObject);
         if (appIdioma == "ingles")
             ShowMessage($"Loading games on your turn...");
         else
@@ -322,11 +331,8 @@ public class BuscarUsuario : MonoBehaviour
     }
     void ShowPartidasTurnoOponente()
     {
-        LimpiarResultadosActivos();
-        if (appIdioma == "ingles")
-            ShowMessage($"Loading games on opponent's turn...");
-        else
-            ShowMessage("Cargando partidas en turno del oponente...");
+        _cargandoPartidas = true;
+        foreach (Transform child in contentTurnoOponente) Destroy(child.gameObject);
 
         string miUid = auth.CurrentUser.UserId;
         var partidasRef = db.Collection("partidasQuimicados");
@@ -336,6 +342,7 @@ public class BuscarUsuario : MonoBehaviour
 
         Task.WhenAll(qA, qB).ContinueWithOnMainThread(tasks =>
         {
+            _cargandoPartidas = false;
             if (tasks.IsFaulted)
             {
                 Debug.LogError("Error cargando partidas: " + tasks.Exception);

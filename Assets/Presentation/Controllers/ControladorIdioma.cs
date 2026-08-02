@@ -25,29 +25,22 @@ public class ControladorIdioma : MonoBehaviour
 
     void Start()
     {
-        // Verificar ServiceLocator y crearlo si no existe
         if (!ServiceLocator.AreServicesInitialized())
         {
-            Debug.LogWarning("ServiceLocator no inicializado en ControladorIdioma. Creando instancia...");
-
-            // Buscar ServiceLocator existente
             ServiceLocator existingLocator = FindObjectOfType<ServiceLocator>();
 
             if (existingLocator == null)
             {
-                // Crear un GameObject con ServiceLocator
                 GameObject serviceLocatorObj = new GameObject("ServiceLocator");
                 serviceLocatorObj.AddComponent<ServiceLocator>();
-                Debug.Log("ServiceLocator creado exitosamente en ControladorIdioma");
             }
 
-            // Esperar un frame para que se inicialice
             StartCoroutine(InicializarDespuesDeServiceLocator());
             return;
         }
 
         int ID = ServiceLocator.PlayerPrefs.GetInt("LocaleKey", 0);
-        ChangeLocale(ID);
+        ForzarLocale(ID);
     }
 
     private IEnumerator InicializarDespuesDeServiceLocator()
@@ -62,15 +55,18 @@ public class ControladorIdioma : MonoBehaviour
         }
 
         int ID = ServiceLocator.PlayerPrefs.GetInt("LocaleKey", 0);
-        ChangeLocale(ID);
+        ForzarLocale(ID);
+    }
+
+    private void ForzarLocale(int localeID)
+    {
+        _active = false;
+        StartCoroutine(SetLocale(localeID));
     }
 
     public void ChangeLocale(int localeID)
     {
-        if (_active)
-        {
-            return;
-        }
+        if (_active) return;
         StartCoroutine(SetLocale(localeID));
     }
 

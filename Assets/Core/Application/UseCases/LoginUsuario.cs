@@ -31,7 +31,8 @@ namespace PeriodicApp.Core.Application.UseCases
             }
             catch (Exception ex)
             {
-                return ResultadoLogin.Fallo(ex.Message);
+                string errorMsg = ex.InnerException != null ? ex.InnerException.Message : ex.Message;
+                return ResultadoLogin.Fallo(errorMsg);
             }
         }
 

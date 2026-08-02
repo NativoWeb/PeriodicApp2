@@ -22,78 +22,102 @@ public class NavegacionCuenta : MonoBehaviour
 
         if (navegacionCuenta == "profesor")
         {
-            btnDatos.gameObject.SetActive(false);
+            if (btnDatos != null) btnDatos.gameObject.SetActive(false);
             Color customColor = new Color(80f / 255f, 178f / 255f, 125f / 255f, 1f);
-            panelSuperior.color = customColor;
+            if (panelSuperior != null) panelSuperior.color = customColor;
         }
         else
         {
-            btnDatos.gameObject.SetActive(true);
+            if (btnDatos != null) btnDatos.gameObject.SetActive(true);
             Color customColor = new Color(59f / 255f, 53f / 255f, 139f / 255f, 1f);
-            panelSuperior.color = customColor;
+            if (panelSuperior != null) panelSuperior.color = customColor;
         }
 
-        btnIdiomas.onClick.AddListener(cambiarIdioma);
-        btnEspanol.onClick.AddListener(() => CambiarIdiomaY_CerrarPanel(0));
-        btnIngles.onClick.AddListener(() => CambiarIdiomaY_CerrarPanel(1));
+        if (PanelIdiomas != null)
+        {
+            if (btnEspanol == null || btnIngles == null)
+            {
+                var botones = PanelIdiomas.GetComponentsInChildren<Button>(true);
+                foreach (var btn in botones)
+                {
+                    string nombre = btn.gameObject.name.ToLower();
+                    if (nombre.Contains("espa")) btnEspanol = btn;
+                    else if (nombre.Contains("ingl")) btnIngles = btn;
+                }
+            }
+
+            PanelIdiomas.SetActive(false);
+        }
+
+        if (btnIdiomas != null) btnIdiomas.onClick.AddListener(cambiarIdioma);
+        if (btnEspanol != null) btnEspanol.onClick.AddListener(() => CambiarIdiomaY_CerrarPanel(0));
+        if (btnIngles != null) btnIngles.onClick.AddListener(() => CambiarIdiomaY_CerrarPanel(1));
     }
 
     public void verMenuCuenta()
     {
-        PanelAnimator.Show(panelMenuCuenta);
-        PanelAnimator.Hide(panelTerminos_Condiciones);
-        PanelAnimator.Hide(panelPoliticas);
-        PanelAnimator.Hide(panelDatosPersonales);
+        panelMenuCuenta.SetActive(true);
+        panelTerminos_Condiciones.SetActive(false);
+        panelPoliticas.SetActive(false);
+        panelDatosPersonales.SetActive(false);
+        CerrarPanelIdiomas();
     }
 
     public void verTerminosCondiciones()
     {
-        PanelAnimator.Show(panelTerminos_Condiciones);
-        PanelAnimator.Hide(panelMenuCuenta);
-        PanelAnimator.Hide(panelPoliticas);
-        PanelAnimator.Hide(panelDatosPersonales);
+        panelTerminos_Condiciones.SetActive(true);
+        panelMenuCuenta.SetActive(false);
+        panelPoliticas.SetActive(false);
+        panelDatosPersonales.SetActive(false);
+        CerrarPanelIdiomas();
     }
 
     public void verPoliticas()
     {
-        PanelAnimator.Show(panelPoliticas);
-        PanelAnimator.Hide(panelTerminos_Condiciones);
-        PanelAnimator.Hide(panelMenuCuenta);
-        PanelAnimator.Hide(panelDatosPersonales);
+        panelPoliticas.SetActive(true);
+        panelTerminos_Condiciones.SetActive(false);
+        panelMenuCuenta.SetActive(false);
+        panelDatosPersonales.SetActive(false);
+        CerrarPanelIdiomas();
     }
 
     public void verDatosPersonales()
     {
-        PanelAnimator.Show(panelDatosPersonales);
-        PanelAnimator.Hide(panelPoliticas);
-        PanelAnimator.Hide(panelTerminos_Condiciones);
-        PanelAnimator.Hide(panelMenuCuenta);
+        panelDatosPersonales.SetActive(true);
+        panelPoliticas.SetActive(false);
+        panelTerminos_Condiciones.SetActive(false);
+        panelMenuCuenta.SetActive(false);
+        CerrarPanelIdiomas();
     }
 
     public void cambiarIdioma()
     {
-        PanelAnimator.Show(PanelIdiomas);
-        PanelAnimator.Hide(panelDatosPersonales);
-        PanelAnimator.Hide(panelPoliticas);
-        PanelAnimator.Hide(panelTerminos_Condiciones);
+        if (PanelIdiomas != null)
+            PanelIdiomas.SetActive(!PanelIdiomas.activeSelf);
+    }
+
+    public void CerrarPanelIdiomas()
+    {
+        if (PanelIdiomas != null)
+            PanelIdiomas.SetActive(false);
     }
 
     private void CambiarIdiomaY_CerrarPanel(int id)
     {
         if (ControladorIdioma.instancia != null)
-        {
             ControladorIdioma.instancia.ChangeLocale(id);
-        }
-        PanelAnimator.Hide(PanelIdiomas);
+        CerrarPanelIdiomas();
     }
 
     public void ActivarPaneCerrarSesion()
     {
-        PanelAnimator.Show(panelCerrarSesion);
+        if (panelCerrarSesion != null)
+            panelCerrarSesion.SetActive(true);
     }
 
     public void DesactivarPaneCerrarSesion()
     {
-        PanelAnimator.Hide(panelCerrarSesion);
+        if (panelCerrarSesion != null)
+            panelCerrarSesion.SetActive(false);
     }
 }

@@ -134,11 +134,15 @@ public class LoginController : MonoBehaviour
         btnIdiomas.onClick.AddListener(abrirPanelIdiomas);
         btnEspañol.onClick.AddListener(() => CambiarIdiomaY_CerrarPanel(0));
         btnIngles.onClick.AddListener(() => CambiarIdiomaY_CerrarPanel(1));
+
+        var btnCerrarError = panelMessage.GetComponentInChildren<Button>();
+        if (btnCerrarError != null)
+            btnCerrarError.onClick.AddListener(CerrarPanelError);
     }
 
     public void abrirPanelIdiomas()
     {
-        contenedorIdiomas.SetActive(true);
+        contenedorIdiomas.SetActive(!contenedorIdiomas.activeSelf);
     }
 
     private void CambiarIdiomaY_CerrarPanel(int id)
@@ -173,7 +177,10 @@ public class LoginController : MonoBehaviour
 
         if (intentosFallidosUseCase.EstaBloqueado())
         {
-            MostrarError($"Demasiados intentos fallidos. Intenta en {intentosFallidosUseCase.TiempoRestante()} segundos.");
+            int segundos = intentosFallidosUseCase.TiempoRestante();
+            int minutos = segundos / 60;
+            int segs = segundos % 60;
+            MostrarError($"Demasiados intentos fallidos. Intenta en {minutos}:{segs:D2} minutos.");
             yield break;
         }
 
@@ -182,6 +189,10 @@ public class LoginController : MonoBehaviour
 
         string email = emailInput.text.Trim();
         string password = passwordInput.text.Trim();
+
+        loginButton.interactable = false;
+        errorText.text = "Iniciando sesion...";
+        panelMessage.SetActive(true);
 
         var loginTask = loginUseCase.EjecutarAsync(email, password);
 
@@ -207,8 +218,9 @@ public class LoginController : MonoBehaviour
         }
         else
         {
+            loginButton.interactable = true;
             intentosFallidosUseCase.RegistrarIntentoFallido();
-            MostrarError(resultado.MensajeError);
+            MostrarError(TraducirErrorFirebase(resultado.MensajeError));
         }
     }
 
@@ -300,5 +312,36 @@ public class LoginController : MonoBehaviour
         yield return new WaitForSeconds(seconds);
         panelLogin.SetActive(true);
         panelRestablecerUI.SetActive(false);
+    }
+
+    public void CerrarPanelError()
+    {
+        panelMessage.SetActive(false);
+    }
+
+    private string TraducirErrorFirebase(string errorEnIngles)
+    {
+        if (string.IsNullOrEmpty(errorEnIngles))
+            return "Error al iniciar sesion. Intenta de nuevo.";
+
+        if (errorEnIngles.Contains("The password is invalid") || errorEnIngles.Contains("INVALID_LOGIN_CREDENTIALS"))
+            return "La contrasena o el correo son incorrectos.";
+
+        if (errorEnIngles.Contains("There is no user record"))
+            return "No existe una cuenta con este correo.";
+
+        if (errorEnIngles.Contains("The email address is badly formatted"))
+            return "El formato del correo no es valido.";
+
+        if (errorEnIngles.Contains("The user account has been disabled"))
+            return "Esta cuenta ha sido desactivada.";
+
+        if (errorEnIngles.Contains("Too many unsuccessful login attempts"))
+            return "Demasiados intentos. Intenta mas tarde.";
+
+        if (errorEnIngles.Contains("A network error"))
+            return "Error de conexion. Verifica tu internet.";
+
+        return "Error al iniciar sesion. Intenta de nuevo.";
     }
 }

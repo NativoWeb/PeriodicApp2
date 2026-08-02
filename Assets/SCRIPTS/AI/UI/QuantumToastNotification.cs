@@ -4,6 +4,7 @@ using TMPro;
 using DG.Tweening;
 using System.Collections;
 using System.Collections.Generic;
+using UnityEngine.SceneManagement;
 using QuantumAI.Core;
 
 namespace QuantumAI.UI
@@ -38,7 +39,7 @@ namespace QuantumAI.UI
 
         [Header("Configuración")]
         [Tooltip("Duración que el toast permanece visible (segundos)")]
-        [SerializeField] private float displayDuration = 3f;
+        [SerializeField] private float displayDuration = 5f;
 
         [Tooltip("Tiempo de animación de entrada/salida")]
         [SerializeField] private float animationDuration = 0.3f;
@@ -85,6 +86,8 @@ namespace QuantumAI.UI
 
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             canvas.sortingOrder = 9999; // Por encima de todo, sin afectar el canvas padre
+
+            SceneManager.sceneLoaded += OnSceneLoaded;
 
             Debug.Log("🔔 [QuantumToastNotification] Sistema persistente inicializado");
         }
@@ -158,7 +161,7 @@ namespace QuantumAI.UI
 
         private void OnAchievementUnlocked(string achievementName)
         {
-            ShowToast($"Logro: {achievementName}", ToastType.Achievement, 8f);
+            ShowToast($"Logro: {achievementName}", ToastType.Achievement, 5f);
         }
 
         private void OnAIResponse(string response)
@@ -170,7 +173,7 @@ namespace QuantumAI.UI
                 displayMessage = displayMessage.Substring(0, 177) + "...";
             }
 
-            ShowToast(displayMessage, ToastType.Info, 8f);
+            ShowToast(displayMessage, ToastType.Info, 5f);
             Debug.Log($"[QuantumToastNotification] Mostrando respuesta de IA: {displayMessage}");
         }
 
@@ -219,6 +222,14 @@ namespace QuantumAI.UI
 
             // Configurar el toast
             ConfigureToast(toastObj, data);
+
+            // Tap to dismiss
+            var button = toastObj.GetComponent<Button>();
+            if (button == null)
+                button = toastObj.AddComponent<Button>();
+            button.transition = Selectable.Transition.None;
+            GameObject capturedToast = toastObj;
+            button.onClick.AddListener(() => DismissToast(capturedToast));
 
             // Posicionar el toast
             RectTransform toastRect = toastObj.GetComponent<RectTransform>();
@@ -354,6 +365,44 @@ namespace QuantumAI.UI
 
         #region Public API
 
+        public void DismissToast(GameObject toastObj)
+        {
+            if (toastObj == null) return;
+
+            StopCoroutine("DisplayToast");
+            DOTween.Kill(toastObj.transform);
+
+            var cg = toastObj.GetComponent<CanvasGroup>();
+            if (cg != null)
+            {
+                cg.DOFade(0f, 0.15f).OnComplete(() =>
+                {
+                    activeToasts.Remove(toastObj);
+                    Destroy(toastObj);
+                    RepositionToasts();
+                });
+            }
+            else
+            {
+                activeToasts.Remove(toastObj);
+                Destroy(toastObj);
+                RepositionToasts();
+            }
+        }
+
+        public void DismissAllToasts()
+        {
+            foreach (var toast in activeToasts)
+            {
+                if (toast != null)
+                {
+                    DOTween.Kill(toast.transform);
+                    Destroy(toast);
+                }
+            }
+            activeToasts.Clear();
+        }
+
         /// <summary>
         /// Mostrar un mensaje personalizado de info
         /// </summary>
@@ -380,8 +429,15 @@ namespace QuantumAI.UI
 
         #endregion
 
+        private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+        {
+            DismissAllToasts();
+        }
+
         private void OnDestroy()
         {
+            SceneManager.sceneLoaded -= OnSceneLoaded;
+
             if (QuantumAICore.Instance != null)
             {
                 QuantumAICore.Instance.OnMissionStarted -= OnMissionStarted;

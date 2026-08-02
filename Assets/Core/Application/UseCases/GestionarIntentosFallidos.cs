@@ -8,8 +8,8 @@ namespace PeriodicApp.Core.Application.UseCases
     {
         private readonly IServicioLocalStorage _localStorage;
         private readonly IPlayerPrefsService _playerPrefs;
-        private const int MaxIntentos = 3;
-        private const int TiempoBloqueoSegundos = 600;
+        private const int MaxIntentos = 5;
+        private const int TiempoBloqueoSegundos = 180;
 
         public GestionarIntentosFallidos(
             IServicioLocalStorage localStorage,
