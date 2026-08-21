@@ -46,14 +46,14 @@ public class AlienDataManager : MonoBehaviour
     [SerializeField]
     private RangoXP[] rangosXP = new RangoXP[]
 {
-    new RangoXP { nombre = "Aprendiz Atomico", xpMinimo = 0, xpMaximo = 300 },
-    new RangoXP { nombre = "Explorador de Elementos", xpMinimo = 300, xpMaximo = 900 },
-    new RangoXP { nombre = "Científico en Formación", xpMinimo = 900, xpMaximo = 2000 },
-    new RangoXP { nombre = "Experto Molecular", xpMinimo = 2000, xpMaximo = 4000 },
-    new RangoXP { nombre = "Maestro de Laboratorio", xpMinimo = 4000, xpMaximo = 7500 },
-    new RangoXP { nombre = "Sabio de la tabla", xpMinimo = 7500, xpMaximo = 13000 },
-    new RangoXP { nombre = "Leyenda química", xpMinimo = 13000, xpMaximo = 25000 },
-    new RangoXP { nombre = "Alquimista Supremo", xpMinimo = 25000, xpMaximo = 50000 /*Mathf.Infinity*/ }
+    new RangoXP { nombre = "Novato de laboratorio", xpMinimo = 0, xpMaximo = 200 },
+    new RangoXP { nombre = "Aprendiz Atomico", xpMinimo = 200, xpMaximo = 600 },
+    new RangoXP { nombre = "Promesa quimica", xpMinimo = 600, xpMaximo = 1200 },
+    new RangoXP { nombre = "Cientifico en Formacion", xpMinimo = 1200, xpMaximo = 2300 },
+    new RangoXP { nombre = "Experto Molecular", xpMinimo = 2300, xpMaximo = 3500 },
+    new RangoXP { nombre = "Maestro de Laboratorio", xpMinimo = 3500, xpMaximo = 6000 },
+    new RangoXP { nombre = "Sabio de la tabla", xpMinimo = 6000, xpMaximo = 10000 },
+    new RangoXP { nombre = "Leyenda química", xpMinimo = 10000, xpMaximo = 50000 }
 };
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
