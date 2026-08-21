@@ -242,6 +242,7 @@ public class ControllerPerfil : MonoBehaviour
     // ✅ Rango según XP
     private string ObtenerRangoSegunXP(int xp)
     {
+        if (xp >= 25000) return "Alquimista Supremo";
         if (xp >= 10000) return "Leyenda química";
         if (xp >= 6000) return "Sabio de la tabla";
         if (xp >= 3500) return "Maestro de Laboratorio";
@@ -265,6 +266,7 @@ public class ControllerPerfil : MonoBehaviour
             case "Maestro de Laboratorio": return "Avatares/Rango6";
             case "Sabio de la tabla": return "Avatares/Rango7";
             case "Leyenda química": return "Avatares/Rango8";
+            case "Alquimista Supremo": return "Avatares/Rango8";
             default: return "Avatares/Rango1";
         }
     }

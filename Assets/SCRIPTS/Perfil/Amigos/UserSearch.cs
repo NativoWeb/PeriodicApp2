@@ -347,6 +347,7 @@ public class SearchUsers : MonoBehaviour
             case "Maestro de Laboratorio": return "Avatares/Rango6";
             case "Sabio de la tabla": return "Avatares/Rango7";
             case "Leyenda qumica": return "Avatares/Rango8";
+            case "Alquimista Supremo": return "Avatares/Rango8";
             default: return "Avatares/Rango1";
         }
     }

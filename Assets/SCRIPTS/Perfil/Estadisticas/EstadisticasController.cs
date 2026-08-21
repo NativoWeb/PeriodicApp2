@@ -243,7 +243,8 @@ public class EstadisticasController : MonoBehaviour
             case "Experto Molecular": xpMin = 2300; xpMax = 3499; break;
             case "Maestro de Laboratorio": xpMin = 3500; xpMax = 5999; break;
             case "Sabio de la tabla": xpMin = 6000; xpMax = 9999; break;
-            case "Leyenda química": xpMin = 10000; xpMax = 1000000; break;
+            case "Leyenda química": xpMin = 10000; xpMax = 24999; break;
+            case "Alquimista Supremo": xpMin = 25000; xpMax = 1000000; break;
         }
 
         int rangoXP = xpMax - xpMin;
@@ -265,6 +266,7 @@ public class EstadisticasController : MonoBehaviour
             case "Maestro de Laboratorio": return "Avatares/Rango6";
             case "Sabio de la tabla": return "Avatares/Rango7";
             case "Leyenda química": return "Avatares/Rango8";
+            case "Alquimista Supremo": return "Avatares/Rango8";
             default: return "Avatares/Rango1";
         }
     }

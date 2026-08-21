@@ -363,7 +363,25 @@ public class UpdateData : MonoBehaviour
                 }
                 else
                 {
-                    Debug.Log($"✅ El archivo {fileName} ya existe en {persistentDataPath}.");
+                    // El archivo no existe en persistentDataPath: copiarlo desde Resources
+                    string resourceName = Path.GetFileNameWithoutExtension(fileName);
+                    TextAsset textAsset = Resources.Load<TextAsset>("Plantillas_Json/" + resourceName);
+                    if (textAsset != null && !string.IsNullOrEmpty(textAsset.text))
+                    {
+                        try
+                        {
+                            File.WriteAllText(filePath, textAsset.text);
+                            Debug.Log($"✅ {fileName} copiado desde Resources/Plantillas_Json a {filePath}");
+                        }
+                        catch (Exception e)
+                        {
+                            Debug.LogError($"❌ Error al copiar {fileName} desde Resources: {e.Message}");
+                        }
+                    }
+                    else
+                    {
+                        Debug.LogWarning($"⚠️ No se encontro {fileName} en Resources/Plantillas_Json/{resourceName}");
+                    }
                 }
             }
         }

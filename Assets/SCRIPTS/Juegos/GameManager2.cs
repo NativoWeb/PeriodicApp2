@@ -1071,6 +1071,7 @@ public class GameManager2 : MonoBehaviour
     IEnumerator VolverAlMenu()
     {
         yield return new WaitForSeconds(3f);
+        Screen.orientation = ScreenOrientation.AutoRotation;
         SceneManager.LoadScene("Inicio");
     }
     //------------------------------------------ Modo CPU --------------------------------------------------

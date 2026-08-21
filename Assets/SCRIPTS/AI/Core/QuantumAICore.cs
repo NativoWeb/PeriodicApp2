@@ -169,6 +169,9 @@ namespace QuantumAI.Core
             {
                 studentContext.ultimaFechaLogin = fecha;
             }
+
+            string appIdioma = PlayerPrefs.GetString("appIdioma", "español");
+            studentContext.idiomaPreferido = (appIdioma == "ingles" || appIdioma == "english") ? "en" : "es";
         }
 
         private void LoadFromFirebase()

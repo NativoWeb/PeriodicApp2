@@ -33,7 +33,8 @@ public class AlienDataManager : MonoBehaviour
     "Experto Molecular",
     "Maestro de Laboratorio",
     "Sabio de la tabla",
-    "Leyenda química"
+    "Leyenda química",
+    "Alquimista Supremo"
 };
     [System.Serializable]
     public class RangoXP
@@ -147,9 +148,23 @@ public class AlienDataManager : MonoBehaviour
 
     private void ModoSinInternet()
     {
-        Debug.Log("no tienes conexión a internet");
-        swipeController.IrAlAlien(0);
-        return;
+        Debug.Log("[AlienDataManager] Sin internet. Usando datos locales.");
+
+        int xpLocal = PlayerPrefs.GetInt("xp", 0);
+        int indiceRango = CalcularIndiceRangoPorXP(xpLocal);
+
+        // Crear mascara de desbloqueo basada en XP local
+        int totalAliens = swipeController.alienRotators.Length;
+        bool[] desbloqueado = new bool[totalAliens];
+        for (int i = 0; i < totalAliens; i++)
+            desbloqueado[i] = i <= indiceRango;
+
+        swipeController.SetUnlockMask(desbloqueado, lockedMaterial);
+        swipeController.ActualizarSliderXP(xpLocal, rangosXP);
+        swipeController.IrAlAlien(indiceRango);
+
+        if (xptotalTxt != null)
+            xptotalTxt.text = xpLocal.ToString();
     }
 
     IEnumerator HayInternetCoroutine(System.Action<bool> callback)
