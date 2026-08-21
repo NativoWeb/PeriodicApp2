@@ -12,7 +12,7 @@ public class ScanearElemento : MonoBehaviour
     {
         ControladorBotones = FindAnyObjectByType<ControllerBotones>();
 
-        string elemento = PlayerPrefs.GetString("NumeroAtomico", "").Trim() + "_" + PlayerPrefs.GetString("ElementoSeleccionado", "").Trim();
+        string numeroAtomico = PlayerPrefs.GetString("NumeroAtomico", "").Trim();
         string ruta = PlayerPrefs.GetString("CargarVuforia", "");
 
         trackable = GetComponent<ObserverBehaviour>();
@@ -22,10 +22,13 @@ public class ScanearElemento : MonoBehaviour
             trackable.OnTargetStatusChanged += OnImageDetected;
         }
 
-        // Si este ImageTarget no es el elemento de la misión, se desactiva
+        // Si este ImageTarget no es el elemento de la misión, se desactiva.
+        // Se compara solo por número atómico (prefijo "21_") para evitar
+        // discrepancias entre el nombre en el JSON y el nombre del target Vuforia.
         if (ruta == "Misiones")
         {
-            if (trackable.TargetName.Trim().ToLower() != elemento.Trim().ToLower())
+            if (string.IsNullOrEmpty(numeroAtomico) ||
+                !trackable.TargetName.Trim().ToLower().StartsWith(numeroAtomico + "_"))
             {
                 gameObject.SetActive(false);
             }
