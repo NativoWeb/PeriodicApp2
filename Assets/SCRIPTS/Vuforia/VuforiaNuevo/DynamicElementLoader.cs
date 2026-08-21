@@ -141,7 +141,8 @@ public class DynamicMoleculeLoader : MonoBehaviour
 
         ControladorBotones = FindAnyObjectByType<ControllerBotones>();
 
-        elementoTargetprov = PlayerPrefs.GetString("NumeroAtomico", "").Trim() + "_" + PlayerPrefs.GetString("ElementoSeleccionado", "").Trim();
+        string numeroAtomico = PlayerPrefs.GetString("NumeroAtomico", "").Trim();
+        elementoTargetprov = numeroAtomico + "_" + PlayerPrefs.GetString("ElementoSeleccionado", "").Trim();
         elementoTarget = FormatearNombreArchivo(elementoTargetprov);
 
         ruta = PlayerPrefs.GetString("CargarVuforia", "");
@@ -151,7 +152,7 @@ public class DynamicMoleculeLoader : MonoBehaviour
         if (trackable)
         {
             Debug.Log($"🔍 [DynamicElementLoader] ImageTarget detectado: '{trackable.TargetName}'");
-            Debug.Log($"🎯 [DynamicElementLoader] Elemento esperado: '{elementoTarget}'");
+            Debug.Log($"🎯 [DynamicElementLoader] Elemento esperado (prefijo): '{numeroAtomico}_'");
             Debug.Log($"🛤️ [DynamicElementLoader] Ruta: '{ruta}'");
 
             trackable.OnTargetStatusChanged += OnImageDetected;
@@ -161,12 +162,17 @@ public class DynamicMoleculeLoader : MonoBehaviour
             Debug.LogError($"❌ [DynamicElementLoader] No se encontró ObserverBehaviour en {gameObject.name}");
         }
 
-        // Si este ImageTarget no es el elemento de la misión, se desactiva
+        // Si este ImageTarget no es el elemento de la misión, se desactiva.
+        // Se compara solo por número atómico (prefijo "21_") para evitar
+        // discrepancias entre el nombre en el JSON y el nombre del target Vuforia
+        // (ej: "Escandio" vs "Scandio", "Tantalio" vs "Tantalo", "Hassio" vs "hasio").
         if (ruta == "Misiones")
         {
-            if (trackable != null && trackable.TargetName.Trim().ToLower() != elementoTarget.Trim().ToLower())
+            if (trackable != null &&
+                (string.IsNullOrEmpty(numeroAtomico) ||
+                 !trackable.TargetName.Trim().ToLower().StartsWith(numeroAtomico + "_")))
             {
-                Debug.Log($"⏸️ [DynamicElementLoader] Desactivando ImageTarget '{trackable.TargetName}' (no coincide con '{elementoTarget}')");
+                Debug.Log($"⏸️ [DynamicElementLoader] Desactivando ImageTarget '{trackable.TargetName}' (no coincide con prefijo '{numeroAtomico}_')");
                 gameObject.SetActive(false);
             }
             else if (trackable != null)
